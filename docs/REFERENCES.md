@@ -1,0 +1,12 @@
+# Design sources
+
+The LabAdd specifications and tests are self-contained. Some source repositories require access. The references below show where the engineering patterns came from. Deployment templates and all test fixtures should use fictional data and placeholders.
+
+| Source | Pattern applied to LabAdd |
+| --- | --- |
+| [Project management air-gap deployment](https://github.com/kvmani/project_management_software/blob/main/docs/deployment_airgap.md) and [testing strategy](https://github.com/kvmani/project_management_software/blob/main/specifications/testing_strategy.md) | Keep deployment state outside source, support separate prefixed instances and internal mirrors, and verify browser interactions through persistence and reload. |
+| [ML Server Ubuntu intranet guide](https://github.com/kvmani/ml_server/blob/main/docs/DEPLOYMENT_UBUNTU_INTRANET.md) and [service configuration](https://github.com/kvmani/ml_server/blob/main/docs/DEPLOYMENT_INTRANET.md) | Serve local assets and dependencies, bind services behind the intranet proxy, and use site-configurable service units. |
+| [LabAxes agent instructions](https://github.com/kvmani/LabAxes/blob/main/AGENTS.md), [identity lifecycle](https://github.com/kvmani/LabAxes/blob/main/docs/workflows/identity-lifecycle.rst), and [offline manifest decision](https://github.com/kvmani/LabAxes/blob/main/docs/adr/2026-07-26-offline-release-manifest.md) | Keep a resumable checkpoint, check scoped roles and revocation in the real backend, and verify the whole release against a platform-aware manifest. |
+| [ML Server deployment repository](https://github.com/kvmani/ml_server_deploy) | Build and rehearse a transferable archive, verify before activation, and separate release rollback from recovery of persistent data. |
+| [OpenAI AGENTS.md guidance](https://learn.chatgpt.com/docs/agent-configuration/agents-md) and [review rule guidance](https://developers.openai.com/blog/custom-code-review-rules-for-codex) | Keep the root instructions concise. Put detailed workflows in linked documents, and give reviewers concrete invariants they can test. |
+| [Anthropic Claude Code project instructions](https://code.claude.com/docs/en/memory#agents-md) | Keep one canonical AGENTS.md. Direct loading requires Claude Code 2.1.277 or newer with compatible settings. Check the session's loaded instructions when a local or parent CLAUDE.md takes precedence. For clients without direct support, an operator can explicitly instruct the agent to read AGENTS.md or use an import-only CLAUDE.md in their checkout. |

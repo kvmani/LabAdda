@@ -1,0 +1,27 @@
+# LabAdd intranet deployment design
+
+## Target and isolation
+
+Target Ubuntu 24.04 LTS on an office VM with Python 3.12, PostgreSQL, an Nginx reverse proxy, and user-scoped systemd services where available. Nginx terminates TLS using the site's internal CA and serves built frontend assets. The ASGI app binds to loopback. Run one app process initially. Serve same-origin API, media, and WebSocket traffic through the proxy. Restrict trusted forwarded headers to the proxy and validate host and origin. Provision operator-owned config and credentials independently of releases.
+
+Support both dedicated-host root deployment and a configurable prefix such as `/labadd-staging`. Use one configured public base path to generate client routes and API/socket/media links. Static bundles use relative or prefix-safe asset paths. Give instances distinct cookie names and scope paths to the instance. Keep the application port, PostgreSQL database and role, assets, secrets, logs, and backup destinations separate for staging and pilot. Exercise TLS, redirects, upload limits, cache behavior, and WebSocket forwarding in integration tests. Cache hashed static assets. Use private/no-store behavior for protected content and revalidate the app shell on upgrades.
+
+Keep release code, configuration, database, uploads, logs, and backups in separate locations. Run without elevated rights. Use a user service and approved service persistence or an administrator-managed service if site policy requires it. Keep PostgreSQL migration permissions separate from normal runtime permissions where the host permits. Never allow fixture/reset commands against a staging or pilot instance.
+
+## Build, transfer, and activation
+
+Build on a connected Ubuntu 24.04 x86-64 runner. Pin runtime and build dependencies and resolve/test them against the target Python and OS. Produce one versioned archive with built frontend, application and migrations, runtime wheelhouse, sample config, and operator instructions. Include a versioned manifest covering artifact hashes, build commit, platform, dependency inventory and license information. Supply a separately verified SHA-256 digest using the approved transfer process. Record provenance and scan dependencies and artifacts in the connected environment. Internal Ubuntu, PyPI, or npm mirrors can support host setup and development. The installed runtime and normal upgrade must operate without public network or Node tooling on the VM. Document OS prerequisites and their internal installation source.
+
+1. Transfer via the approved channel. Verify release provenance and archive digest, then validate the manifest, member paths, symlinks, platform, required files, and disk capacity before extraction or activation.
+2. Check config, permissions, prefix, instance identity, database/schema compatibility, writable state paths, service session, proxy route, and availability of the verified backup destination.
+3. Rehearse on separate staging state. For the real upgrade, take a consistent recovery point. Quiesce writers for the pilot upgrade and backup procedure, including the reminder runner and socket mutations. Apply migrations once, from the candidate release.
+4. Activate the staged code using an atomic current-release pointer and restart services. Verify liveness, readiness, static assets, sign-in with a designated synthetic probe where allowed, WebSocket upgrade, and authenticated authorized/denied request behavior through the real proxy.
+5. If health checks fail, use the previous release only when schema compatibility is proven. Otherwise hold the service in maintenance and follow the operator-approved database and asset recovery plan. Retain the failing candidate and sanitized evidence. Never silently rewind user data.
+
+## Backups, observability, and site acceptance
+
+Back up the database and asset store at the same recovery point. For the pilot, pause writers and verify the pause before taking both copies. Include a manifest and release/schema identifier. Restore to an isolated instance first. Verify membership, recent posts and chat, board replay, personal note access, and asset hashes, and revoke restored sessions before exposure. Record restore time, recovery point, and missing data if any. Keep copies outside the release tree and one off the application VM through the approved process.
+
+Use structured operational logs with event type, request ID, status and timing. Record security changes in a restricted audit trail. Monitor app/proxy health, DB and disk usage, socket connections, error rates, reminder backlog, and backup age. Exclude content bodies, session credentials, private notes and upload contents. Liveness reveals process health only. Readiness fails on required dependency or migration incompatibility and exposes minimal detail. Use an approved internal relay only if a later release adds email.
+
+Before real pilot activation the operator confirms the base URL, certificate trust, available internal services and identity policy, account provisioning/reset, storage quotas and content retention, backup destination and recovery objectives, browser/device support and touch session timeouts, and who stewards each space. Keep actual site settings outside the public repository. Use local accounts, placeholder DNS, fictional users, a disposable DB, and configurable pilot limits during development. Record who owns operational incidents and the decision to proceed.
