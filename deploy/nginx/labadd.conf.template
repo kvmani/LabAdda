@@ -1,0 +1,44 @@
+# LabAdd reverse proxy template. Replace placeholders; keep site values outside the repository.
+#   __SERVER_NAME__   e.g. labadd.intranet.example
+#   __PREFIX__        "" for a dedicated host, or e.g. /labadd-staging
+#   __APP_PORT__      loopback port of this instance's ASGI process
+#   __RELEASE__       path to the active release (contains frontend/dist)
+# TLS uses the site's internal CA. Uploads are limited at the proxy as well as in the app.
+
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+server {
+    listen 443 ssl;
+    server_name __SERVER_NAME__;
+    ssl_certificate     /etc/ssl/labadd/server.crt;
+    ssl_certificate_key /etc/ssl/labadd/server.key;
+
+    client_max_body_size 25m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; frame-ancestors 'none'" always;
+
+    # Hashed static assets: long cache.
+    location __PREFIX__/assets/ {
+        alias __RELEASE__/frontend/dist/assets/;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location __PREFIX__/ws/ {
+        proxy_pass http://127.0.0.1:__APP_PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $http_host;
+        proxy_read_timeout 1h;
+    }
+
+    # API, file downloads and the app shell (with injected base path).
+    location __PREFIX__/ {
+        proxy_pass http://127.0.0.1:__APP_PORT__;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-ID $request_id;
+    }
+}

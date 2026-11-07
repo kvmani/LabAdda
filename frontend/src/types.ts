@@ -1,0 +1,43 @@
+export type User = { id: string; username: string; display_name: string; is_active: boolean };
+export type SessionInfo = {
+  user: User & { is_admin: boolean; home_workspace_id: string | null };
+  csrf_token: string;
+  timezone: string;
+  instance: string;
+  limits: { max_attachments: number; max_attachment_bytes: number };
+};
+export type Workspace = {
+  id: string;
+  kind: "org" | "project" | "group";
+  name: string;
+  description: string;
+  parent_id: string | null;
+  archived: boolean;
+  posting_policy: "open" | "read_only";
+  role: "member" | "steward" | null;
+  inherited: boolean;
+  can_write: boolean;
+  can_moderate: boolean;
+  unread_chat: number;
+};
+export type Attachment = { id: string; display_name: string; media_type: string; size: number; url: string; preview_url: string | null };
+export type Post = {
+  id: string;
+  seq: number;
+  workspace_id: string;
+  parent_id: string | null;
+  kind: "discussion" | "official";
+  body: string;
+  pinned: boolean;
+  due_at: string | null;
+  remind_at: string | null;
+  created_at: string;
+  edited_at: string | null;
+  author: User | null;
+  attachments: Attachment[];
+  replies: Post[];
+  can_edit: boolean;
+  can_remove: boolean;
+};
+export type ChatMessage = { id: string; seq: number; workspace_id: string; body: string; client_id: string; created_at: string; author: User | null };
+export type BoardOp = { revision: number; epoch: number; op_id: string; actor_id: string; type: string; object_id: string; payload: any };

@@ -1,0 +1,15 @@
+# User service template: systemctl --user enable --now labadd@staging
+# Operator-owned environment lives outside the release: ~/.config/labadd/%i.env
+[Unit]
+Description=LabAdd (%i)
+After=network.target
+
+[Service]
+EnvironmentFile=%h/.config/labadd/%i.env
+WorkingDirectory=%h/labadd/%i/current/backend
+ExecStart=%h/labadd/%i/venv/bin/labadd serve --host 127.0.0.1 --port ${LABADD_PORT}
+Restart=on-failure
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
