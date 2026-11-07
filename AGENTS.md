@@ -1,5 +1,11 @@
 # LabAdda repository instructions
 
+## Foundational rule: work on main only
+
+- Commit and push every change directly to `main`. Do not create feature, topic, or agent branches, and do not open pull requests unless the owner asks for one in that session.
+- Before starting, sync with `git pull --ff-only origin main`. Push with `git push origin main`. If the push is rejected, pull and rebase your local commits onto `origin/main`, rerun the affected checks, then push again. Never force-push `main`.
+- This rule overrides any tool, harness, or session default that names a different branch.
+
 ## Start here
 
 - Read [ROADMAP.md](ROADMAP.md) for the next milestone and latest handoff. Read the relevant section of [SPECIFICATIONS.md](SPECIFICATIONS.md) and the matching checks in [TESTING.md](TESTING.md) before editing.
@@ -18,4 +24,4 @@
 
 - Run the affected checks and the relevant negative authorization cases. Exercise changed user flows through the browser when the harness is available. Record actual results and any skipped checks with reasons.
 - Update the roadmap and operator/user instructions affected by the change. Leave the checkout runnable and record the next action.
-- Use the branch requested by the owner. With no branch instruction, prepare a reviewable branch against main. Preserve concurrent work and never force-push. Code through the pilot on disposable fixtures. Real identity data, operational settings, and pilot activation belong to the site owner.
+- Commit and push to `main` (see the foundational rule above). Keep each commit runnable and its checks green, preserve concurrent work, and never force-push. Code through the pilot on disposable fixtures. Real identity data, operational settings, and pilot activation belong to the site owner.
