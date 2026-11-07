@@ -19,7 +19,7 @@ from .models import AuthSession, User
 
 _hasher = PasswordHasher()
 # Used to equalize timing when the username is unknown.
-_DUMMY_HASH = _hasher.hash("labadd-dummy-password")
+_DUMMY_HASH = _hasher.hash("labadda-dummy-password")
 
 MIN_PASSWORD_LENGTH = 10
 

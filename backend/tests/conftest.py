@@ -10,15 +10,15 @@ from alembic import command
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
-from labadd.app import create_app
-from labadd.cli import alembic_config
-from labadd.config import load_settings
-from labadd.db import session_factory
-from labadd.fixtures import fixture_password, reset_database, seed
-from labadd.security import login_limiter
+from labadda.app import create_app
+from labadda.cli import alembic_config
+from labadda.config import load_settings
+from labadda.db import session_factory
+from labadda.fixtures import fixture_password, reset_database, seed
+from labadda.security import login_limiter
 
-TEST_DB = os.environ.get("LABADD_TEST_DATABASE_URL",
-                         "postgresql+psycopg://labadd:labadd-dev@localhost:5432/labadd_test")
+TEST_DB = os.environ.get("LABADDA_TEST_DATABASE_URL",
+                         "postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test")
 
 
 def recreate_schema(url: str) -> None:
@@ -40,7 +40,7 @@ def migrated():
 def settings(migrated, tmp_path):
     base = load_settings()
     return replace(base, database_url=migrated, environment="test", run_scheduler=False,
-                   asset_dir=tmp_path / "assets", base_path=os.environ.get("LABADD_TEST_BASE_PATH", ""),
+                   asset_dir=tmp_path / "assets", base_path=os.environ.get("LABADDA_TEST_BASE_PATH", ""),
                    instance="test", frontend_dist=None)
 
 

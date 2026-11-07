@@ -107,7 +107,7 @@ def upgrade() -> None:
     op.create_foreign_key('fk_workspaces_created_by', 'workspaces', 'users', ['created_by'], ['id'])
     # Defence in depth for S2: reject parent assignments that would form a cycle.
     op.execute("""
-CREATE FUNCTION labadd_reject_workspace_cycle() RETURNS trigger AS $$
+CREATE FUNCTION labadda_reject_workspace_cycle() RETURNS trigger AS $$
 BEGIN
   IF NEW.parent_id IS NOT NULL AND EXISTS (
     WITH RECURSIVE up(id) AS (
@@ -123,13 +123,13 @@ END $$ LANGUAGE plpgsql;
 """)
     op.execute("""
 CREATE TRIGGER trg_workspace_cycle BEFORE INSERT OR UPDATE OF parent_id ON workspaces
-FOR EACH ROW EXECUTE FUNCTION labadd_reject_workspace_cycle();
+FOR EACH ROW EXECUTE FUNCTION labadda_reject_workspace_cycle();
 """)
 
 
 def downgrade() -> None:
     op.execute('DROP TRIGGER IF EXISTS trg_workspace_cycle ON workspaces')
-    op.execute('DROP FUNCTION IF EXISTS labadd_reject_workspace_cycle()')
+    op.execute('DROP FUNCTION IF EXISTS labadda_reject_workspace_cycle()')
     op.drop_constraint('fk_workspaces_created_by', 'workspaces', type_='foreignkey')
     op.drop_table('audit_events')
     op.drop_table('memberships')

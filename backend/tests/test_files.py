@@ -5,9 +5,9 @@ from datetime import timedelta
 
 from PIL import Image
 
-from labadd.api.files import cleanup_provisional
-from labadd.models import Asset
-from labadd.security import utcnow
+from labadda.api.files import cleanup_provisional
+from labadda.models import Asset
+from labadda.security import utcnow
 
 
 def png_bytes(trailer: bytes = b"") -> bytes:

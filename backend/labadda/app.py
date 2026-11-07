@@ -25,7 +25,7 @@ from .errors import ApiError
 from .realtime import Hub
 from .storage import AssetStore
 
-log = logging.getLogger("labadd")
+log = logging.getLogger("labadda")
 MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
 
 
@@ -54,7 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if task:
             task.cancel()
 
-    app = FastAPI(title="LabAdd", version="0.1.0", lifespan=lifespan, docs_url=None, redoc_url=None,
+    app = FastAPI(title="LabAdda", version="0.1.0", lifespan=lifespan, docs_url=None, redoc_url=None,
                   openapi_url=f"{settings.api_prefix}/openapi.json")
     app.state.settings = settings
     app.state.session_factory = factory
@@ -122,11 +122,11 @@ def _mount_frontend(app: FastAPI, settings: Settings) -> None:
 
     def shell() -> HTMLResponse:
         if dist is None or not (dist / "index.html").exists():
-            return HTMLResponse("<!doctype html><title>LabAdd</title><p>Frontend not built. "
+            return HTMLResponse("<!doctype html><title>LabAdda</title><p>Frontend not built. "
                                 "Run <code>npm run build</code> in frontend/.</p>", status_code=503)
         html = (dist / "index.html").read_text()
         config = json.dumps({"base": base, "instance": settings.instance})
-        inject = f'<base href="{base}/"><script>window.__LABADD__={config}</script>'
+        inject = f'<base href="{base}/"><script>window.__LABADDA__={config}</script>'
         return HTMLResponse(html.replace("<head>", "<head>" + inject, 1),
                             headers={"Cache-Control": "no-cache"})
 

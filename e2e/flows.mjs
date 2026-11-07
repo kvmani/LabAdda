@@ -1,5 +1,5 @@
 // Browser flows through the real proxy for a root and a prefixed instance.
-// Usage: node e2e/flows.mjs [origin] [base...]   e.g. node e2e/flows.mjs http://127.0.0.1:8080 "" /labadd-staging
+// Usage: node e2e/flows.mjs [origin] [base...]   e.g. node e2e/flows.mjs http://127.0.0.1:8080 "" /labadda-staging
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,9 +8,9 @@ import { join } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 const origin = process.argv[2] ?? "http://127.0.0.1:8080";
-const bases = process.argv.length > 3 ? process.argv.slice(3) : ["", "/labadd-staging"];
-const password = process.env.LABADD_FIXTURE_PASSWORD ?? "fixture-pass-123";
-const shots = process.env.LABADD_E2E_SHOTS ?? join(tmpdir(), "labadd-e2e");
+const bases = process.argv.length > 3 ? process.argv.slice(3) : ["", "/labadda-staging"];
+const password = process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123";
+const shots = process.env.LABADDA_E2E_SHOTS ?? join(tmpdir(), "labadda-e2e");
 mkdirSync(shots, { recursive: true });
 const results = [];
 

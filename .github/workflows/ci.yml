@@ -10,14 +10,14 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: labadd
-          POSTGRES_PASSWORD: labadd-dev
-          POSTGRES_DB: labadd_test
+          POSTGRES_USER: labadda
+          POSTGRES_PASSWORD: labadda-dev
+          POSTGRES_DB: labadda_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U labadd" --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U labadda" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      LABADD_TEST_DATABASE_URL: postgresql+psycopg://labadd:labadd-dev@localhost:5432/labadd_test
+      LABADDA_TEST_DATABASE_URL: postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

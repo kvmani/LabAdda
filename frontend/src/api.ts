@@ -40,7 +40,7 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
   try {
     res = await fetch(url, { method, headers, body, credentials: "same-origin" });
   } catch {
-    throw new ApiError(0, "offline", "Cannot reach LabAdd. Check your connection and try again.");
+    throw new ApiError(0, "offline", "Cannot reach LabAdda. Check your connection and try again.");
   }
   const data = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
   if (!res.ok) {

@@ -2,8 +2,8 @@
 
 import pytest
 
-from labadd import policy
-from labadd.models import User
+from labadda import policy
+from labadda.models import User
 
 
 def readable_names(as_user, username):
@@ -71,7 +71,7 @@ def test_policy_resolve_inactive_user_gets_nothing(db_factory, ids):
 def test_eligible_readers_include_descendants(db_factory, ids):
     import uuid
 
-    from labadd.models import Workspace
+    from labadda.models import Workspace
     with db_factory() as db:
         division = db.get(Workspace, uuid.UUID(ids["workspaces"]["division"]))
         readers = policy.eligible_reader_ids(db, division)
@@ -122,7 +122,7 @@ def test_db_trigger_rejects_cycle(db_factory, ids):
 
     import sqlalchemy
 
-    from labadd.models import Workspace
+    from labadda.models import Workspace
     with db_factory() as db:
         root = db.get(Workspace, uuid.UUID(ids["workspaces"]["root"]))
         root.parent_id = uuid.UUID(ids["workspaces"]["section_b"])

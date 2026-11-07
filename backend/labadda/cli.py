@@ -1,4 +1,4 @@
-"""Operator and developer commands: ``labadd <command>``."""
+"""Operator and developer commands: ``labadda <command>``."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def alembic_config(url: str) -> Config:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="labadd")
+    parser = argparse.ArgumentParser(prog="labadda")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("migrate", help="apply schema migrations to head")
     seed = sub.add_parser("seed", help="load the fictional fixture (development/test only)")
@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "seed":
         if not settings.fixtures_allowed:
-            print("Refusing to load fixtures: LABADD_ENV must be development or test.", file=sys.stderr)
+            print("Refusing to load fixtures: LABADDA_ENV must be development or test.", file=sys.stderr)
             return 2
         from .fixtures import reset_database, seed as run_seed
 
@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         import uvicorn
 
         logging.basicConfig(level=logging.INFO, format="%(message)s")
-        uvicorn.run("labadd.app:create_app", factory=True, host=args.host, port=args.port, proxy_headers=True,
+        uvicorn.run("labadda.app:create_app", factory=True, host=args.host, port=args.port, proxy_headers=True,
                     forwarded_allow_ips="127.0.0.1", ws_max_size=64 * 1024)
         return 0
     if args.cmd == "create-admin":

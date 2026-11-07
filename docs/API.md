@@ -1,10 +1,10 @@
-# LabAdd API contract (v1)
+# LabAdda API contract (v1)
 
-All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>/ws/`. `<base>` is empty for a dedicated host or a prefix such as `/labadd-staging`. The server derives the actor from the session cookie and never accepts a client-supplied user ID.
+All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>/ws/`. `<base>` is empty for a dedicated host or a prefix such as `/labadda-staging`. The server derives the actor from the session cookie and never accepts a client-supplied user ID.
 
 ## Conventions
 
-- **Session.** `POST /auth/login` sets an HttpOnly, `SameSite=Strict` cookie scoped to the instance path and returns a `csrf_token`. Send it as `X-CSRF-Token` on every `POST`, `PUT`, `PATCH`, and `DELETE`. A browser `Origin` must match the host or `LABADD_TRUSTED_ORIGINS`.
+- **Session.** `POST /auth/login` sets an HttpOnly, `SameSite=Strict` cookie scoped to the instance path and returns a `csrf_token`. Send it as `X-CSRF-Token` on every `POST`, `PUT`, `PATCH`, and `DELETE`. A browser `Origin` must match the host or `LABADDA_TRUSTED_ORIGINS`.
 - **Errors.** The body is `{"error": {"code", "message", "fields?"}}`. `401` means unauthenticated or expired. `404 not_found` is identical for unknown and out-of-scope IDs. `403` is a visible but forbidden action. `409` is a conflict or idempotency mismatch. `422` is validation. `429` is rate limited.
 - **Times.** Times are ISO 8601 with an offset. The server stores UTC and rejects naive values (`timezone_required`).
 - **Idempotency.** Posts and replies accept an optional `client_id`, chat requires `client_id`, and board ops require `op_id`. A retry with the same content returns the committed result. Reuse with different content returns `409` (`client_id_reused` / `op_id_reused`).

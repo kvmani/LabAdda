@@ -1,4 +1,4 @@
-# LabAdd repository instructions
+# LabAdda repository instructions
 
 ## Start here
 

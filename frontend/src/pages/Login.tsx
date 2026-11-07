@@ -28,7 +28,7 @@ export function Login({ next }: { next: string }) {
   return (
     <main className="auth">
       <form className="card" onSubmit={submit} aria-labelledby="signin-title">
-        <h1 id="signin-title">LabAdd</h1>
+        <h1 id="signin-title">LabAdda</h1>
         <p className="muted">Sign in to your research workspace{INSTANCE !== "pilot" ? ` · ${INSTANCE}` : ""}</p>
         {expired && <p className="notice">Your session ended. Sign in again to continue.</p>}
         <label>

@@ -1,8 +1,8 @@
 # Design sources
 
-The LabAdd specifications and tests are self-contained. Some source repositories require access. The references below show where the engineering patterns came from. Deployment templates and all test fixtures should use fictional data and placeholders.
+The LabAdda specifications and tests are self-contained. Some source repositories require access. The references below show where the engineering patterns came from. Deployment templates and all test fixtures should use fictional data and placeholders.
 
-| Source | Pattern applied to LabAdd |
+| Source | Pattern applied to LabAdda |
 | --- | --- |
 | [Project management air-gap deployment](https://github.com/kvmani/project_management_software/blob/main/docs/deployment_airgap.md) and [testing strategy](https://github.com/kvmani/project_management_software/blob/main/specifications/testing_strategy.md) | Keep deployment state outside source, support separate prefixed instances and internal mirrors, and verify browser interactions through persistence and reload. |
 | [ML Server Ubuntu intranet guide](https://github.com/kvmani/ml_server/blob/main/docs/DEPLOYMENT_UBUNTU_INTRANET.md) and [service configuration](https://github.com/kvmani/ml_server/blob/main/docs/DEPLOYMENT_INTRANET.md) | Serve local assets and dependencies, bind services behind the intranet proxy, and use site-configurable service units. |

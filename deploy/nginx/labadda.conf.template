@@ -1,6 +1,6 @@
-# LabAdd reverse proxy template. Replace placeholders; keep site values outside the repository.
-#   __SERVER_NAME__   e.g. labadd.intranet.example
-#   __PREFIX__        "" for a dedicated host, or e.g. /labadd-staging
+# LabAdda reverse proxy template. Replace placeholders; keep site values outside the repository.
+#   __SERVER_NAME__   e.g. labadda.intranet.example
+#   __PREFIX__        "" for a dedicated host, or e.g. /labadda-staging
 #   __APP_PORT__      loopback port of this instance's ASGI process
 #   __RELEASE__       path to the active release (contains frontend/dist)
 # TLS uses the site's internal CA. Uploads are limited at the proxy as well as in the app.
@@ -10,8 +10,8 @@ map $http_upgrade $connection_upgrade { default upgrade; '' close; }
 server {
     listen 443 ssl;
     server_name __SERVER_NAME__;
-    ssl_certificate     /etc/ssl/labadd/server.crt;
-    ssl_certificate_key /etc/ssl/labadd/server.key;
+    ssl_certificate     /etc/ssl/labadda/server.crt;
+    ssl_certificate_key /etc/ssl/labadda/server.key;
 
     client_max_body_size 25m;
     add_header X-Content-Type-Options nosniff always;

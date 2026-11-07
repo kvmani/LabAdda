@@ -1,0 +1,15 @@
+# User service template: systemctl --user enable --now labadda@staging
+# Operator-owned environment lives outside the release: ~/.config/labadda/%i.env
+[Unit]
+Description=LabAdda (%i)
+After=network.target
+
+[Service]
+EnvironmentFile=%h/.config/labadda/%i.env
+WorkingDirectory=%h/labadda/%i/current/backend
+ExecStart=%h/labadda/%i/venv/bin/labadda serve --host 127.0.0.1 --port ${LABADDA_PORT}
+Restart=on-failure
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

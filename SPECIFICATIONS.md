@@ -1,8 +1,8 @@
-# LabAdd specification
+# LabAdda specification
 
 ## S1. Product and pilot scope
 
-LabAdd gives research groups a common noticeboard, a live writing surface, and a group message stream. One sign-in gives an employee access to their home workspace and eligible parent units. Personal notes have their own entry in the shell. The intranet runtime runs on a single Ubuntu VM and serves desktop browsers and an office touch panel.
+LabAdda gives research groups a common noticeboard, a live writing surface, and a group message stream. One sign-in gives an employee access to their home workspace and eligible parent units. Personal notes have their own entry in the shell. The intranet runtime runs on a single Ubuntu VM and serves desktop browsers and an office touch panel.
 
 Pilot with a fictional root, group, division, and two sibling sections, plus an invite-only project space and a user-created collaborative group spanning both sections. Then rehearse with two real sibling sections and their parent division after the site gates in [Deployment](docs/DEPLOYMENT.md) pass. The pilot includes local accounts, membership administration, user-created collaborative groups, posts and replies, approved attachments, dated reminders, live whiteboards, board snapshots, group chat, personal notes, and touch sessions. Internal identity federation is optional until the site confirms a provider. Later scope includes direct messages, recurring reminders, rich collaborative document editing, full-text indexing across workspaces, SMTP delivery, and cross-site federation.
 

@@ -67,7 +67,7 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <Link to="/" className="brand">LabAdd</Link>
+        <Link to="/" className="brand">LabAdda</Link>
         {INSTANCE !== "pilot" && <span className="tag instance">{INSTANCE}</span>}
         <label className="switcher">
           <span className="sr-only">Switch workspace</span>

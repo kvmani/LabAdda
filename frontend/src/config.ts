@@ -1,10 +1,10 @@
 declare global {
   interface Window {
-    __LABADD__?: { base: string; instance: string };
+    __LABADDA__?: { base: string; instance: string };
   }
 }
 
-const injected = typeof window === "undefined" ? undefined : window.__LABADD__;
+const injected = typeof window === "undefined" ? undefined : window.__LABADDA__;
 export const BASE = injected?.base ?? "";
 export const INSTANCE = injected?.instance ?? "dev";
 export const API = `${BASE}/api/v1`;

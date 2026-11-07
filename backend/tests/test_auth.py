@@ -3,8 +3,8 @@
 import threading
 from datetime import timedelta
 
-from labadd.models import AuthSession
-from labadd.security import utcnow
+from labadda.models import AuthSession
+from labadda.security import utcnow
 
 
 def test_login_session_logout(make_client):

@@ -1,4 +1,4 @@
-# LabAdd test plan
+# LabAdda test plan
 
 Use generated fixtures and disposable PostgreSQL databases and asset directories. Seed the same recognizable synthetic tree across API and browser suites. Keep credentials test-only and supply them through the harness. Record exact commands, commit, environment, pass/fail/skip totals, and evidence paths or CI links. Add runnable commands to README in P1 and evolve the same entry points for CI and staging. Use pytest for policy, API, migrations and concurrency, frontend unit/component tests for state, and Playwright for browser flows. PostgreSQL-backed transaction and race cases are release gates.
 

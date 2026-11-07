@@ -23,7 +23,7 @@ from .deps import origin_allowed
 from .models import AuthSession, User
 from .security import digest, session_valid
 
-log = logging.getLogger("labadd.realtime")
+log = logging.getLogger("labadda.realtime")
 MAX_PREVIEW_BYTES = 16_000
 MAX_MESSAGE_BYTES = 32_000
 

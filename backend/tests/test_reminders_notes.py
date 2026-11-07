@@ -3,8 +3,8 @@
 import threading
 from datetime import timedelta
 
-from labadd.scheduler import process_due_reminders
-from labadd.security import utcnow
+from labadda.scheduler import process_due_reminders
+from labadda.security import utcnow
 
 
 def iso(dt):

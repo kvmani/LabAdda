@@ -44,7 +44,7 @@ HOMES = {"asha": "section_a", "ben": "section_a", "chen": "section_b", "dana": "
 
 
 def fixture_password() -> str:
-    return os.environ.get("LABADD_FIXTURE_PASSWORD", "fixture-pass-123")
+    return os.environ.get("LABADDA_FIXTURE_PASSWORD", "fixture-pass-123")
 
 
 def reset_database(db: Session) -> None:

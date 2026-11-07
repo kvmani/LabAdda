@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "labadd"
+name = "labadda"
 version = "0.1.0"
-description = "LabAdd intranet collaboration workspace"
+description = "LabAdda intranet collaboration workspace"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.115.6",
@@ -22,10 +22,10 @@ dependencies = [
 test = ["pytest==8.3.4", "httpx==0.28.1"]
 
 [project.scripts]
-labadd = "labadd.cli:main"
+labadda = "labadda.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["labadd*"]
+include = ["labadda*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

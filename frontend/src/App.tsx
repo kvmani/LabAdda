@@ -27,7 +27,7 @@ function Home() {
 export function App() {
   const { session, loading } = useSession();
   const location = useLocation();
-  if (loading) return <p className="state">Loading LabAdd…</p>;
+  if (loading) return <p className="state">Loading LabAdda…</p>;
   if (!session) {
     return (
       <Routes>

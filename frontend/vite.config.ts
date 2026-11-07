@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Relative asset URLs plus the server-injected <base href> keep the bundle
-// prefix-safe: the same build serves "/" and "/labadd-staging/".
+// prefix-safe: the same build serves "/" and "/labadda-staging/".
 export default defineConfig({
   base: "./",
   plugins: [react()],

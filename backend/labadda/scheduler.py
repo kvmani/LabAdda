@@ -13,7 +13,7 @@ from . import notify, policy
 from .models import Note, Post, Workspace
 from .security import utcnow
 
-log = logging.getLogger("labadd.scheduler")
+log = logging.getLogger("labadda.scheduler")
 
 
 def process_due_reminders(db: Session, now: datetime | None = None, batch: int = 100) -> int:

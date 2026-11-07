@@ -3,8 +3,8 @@ from __future__ import annotations
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-from labadd.config import load_settings
-from labadd.models import Base
+from labadda.config import load_settings
+from labadda.models import Base
 
 config = context.config
 target_metadata = Base.metadata

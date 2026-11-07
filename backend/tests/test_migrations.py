@@ -5,7 +5,7 @@ import sqlalchemy
 from alembic import command
 from sqlalchemy import create_engine, text
 
-from labadd.cli import alembic_config
+from labadda.cli import alembic_config
 
 from .conftest import recreate_schema
 

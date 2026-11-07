@@ -1,4 +1,4 @@
-# LabAdd review plan
+# LabAdda review plan
 
 Review the candidate commit against the relevant specification sections and test IDs. Use an independent reviewer for the authorization, realtime, and deployment milestones. Review changes in a disposable environment with synthetic data. Compare the candidate to its actual base and reproduce the highest-impact failure paths.
 
