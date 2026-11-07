@@ -8,3 +8,4 @@ frontend/dist/
 var/
 *.log
 .env
+*.tsbuildinfo
