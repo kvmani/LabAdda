@@ -1,4 +1,4 @@
-import { API } from "./config";
+import { API, PANEL } from "./config";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public fields?: { field: string; message: string }[]) {
@@ -22,6 +22,8 @@ type Options = { method?: string; body?: unknown; form?: FormData; params?: Reco
 export async function api<T = any>(path: string, opts: Options = {}): Promise<T> {
   const method = opts.method ?? (opts.body || opts.form ? "POST" : "GET");
   const headers: Record<string, string> = { Accept: "application/json" };
+  // A panel never falls back to a desktop session that might exist in the same browser.
+  if (PANEL) headers["X-LabAdda-Panel"] = "1";
   if (method !== "GET" && csrfToken) headers["X-CSRF-Token"] = csrfToken;
   let body: BodyInit | undefined;
   if (opts.form) body = opts.form;
@@ -45,7 +47,7 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
   const data = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
   if (!res.ok) {
     const err = data?.error ?? {};
-    if (res.status === 401 && path !== "/auth/login" && path !== "/auth/session") onUnauthenticated?.();
+    if (res.status === 401 && !["/auth/login", "/auth/session", "/panel/session", "/panel/claim"].includes(path)) onUnauthenticated?.();
     throw new ApiError(res.status, err.code ?? "error", err.message ?? `Request failed (${res.status})`, err.fields);
   }
   return data as T;

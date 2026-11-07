@@ -94,8 +94,31 @@ class AuthSession(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Board-only (touch panel) sessions are bound to one workspace board.
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_auth_sessions_workspace")
+    )
+    end_reason: Mapped[str | None] = mapped_column(String(32))
 
-    __table_args__ = (Index("ix_auth_sessions_user", "user_id"),)
+    __table_args__ = (
+        Index("ix_auth_sessions_user", "user_id"),
+        CheckConstraint("(kind = 'normal' and workspace_id is null) or (kind = 'board' and workspace_id is not null)",
+                        name="ck_auth_session_kind"),
+    )
+
+
+class PanelPairing(Base):
+    """One-time code a signed-in user creates to open one board on a shared touch panel."""
+
+    __tablename__ = "panel_pairings"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created()
 
 
 class Workspace(Base):

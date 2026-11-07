@@ -57,6 +57,8 @@ Fixture accounts all use the development-only password `fixture-pass-123` (overr
 
 For a prefixed instance, set `LABADDA_BASE_PATH=/labadda-staging` and a distinct `LABADDA_COOKIE_NAME`. All settings are listed in [deploy/labadda.env.example](deploy/labadda.env.example).
 
+**Touch panel.** Open `<base>/panel` in a separate browser profile or kiosk window on the panel. On a desktop, open a whiteboard, choose **📺 Open on touch panel**, and type the code on the panel. Timing is set by `LABADDA_PANEL_IDLE_SECONDS` (300), `LABADDA_PANEL_ABSOLUTE_MINUTES` (60) and `LABADDA_PANEL_PAIRING_SECONDS` (120).
+
 For frontend development with hot reload, run `npm run dev` in `frontend/`. It proxies `/api` and `/ws` to port 8000.
 
 ## Test

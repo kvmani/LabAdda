@@ -66,6 +66,8 @@ def session_valid(sess: AuthSession, settings: Settings, now: datetime | None = 
     now = now or utcnow()
     if sess.revoked_at is not None or sess.expires_at <= now:
         return False
+    if sess.kind == "board":
+        return now - sess.last_seen_at <= timedelta(seconds=settings.panel_idle_seconds)
     return now - sess.last_seen_at <= timedelta(minutes=settings.session_idle_minutes)
 
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, useParams } from "react-router-dom";
 import { api } from "../api";
 import { kindLabel } from "../format";
+import { useSession } from "../session";
 import { useWorkspaces } from "../workspaces";
 import type { Workspace } from "../types";
 import { Noticeboard } from "./Noticeboard";
@@ -27,6 +28,7 @@ export function accessLabel(ws: Workspace): string {
 export function WorkspaceView() {
   const { workspaceId = "", tab = "noticeboard" } = useParams();
   const { workspaces } = useWorkspaces();
+  const { session } = useSession();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [missing, setMissing] = useState(false);
   const listed = workspaces.find((w) => w.id === workspaceId);
@@ -82,7 +84,7 @@ export function WorkspaceView() {
       </header>
       {tab === "noticeboard" && <Noticeboard ws={ws} key={ws.id} />}
       {tab === "chat" && <Chat ws={ws} key={ws.id} />}
-      {tab === "board" && <Board ws={ws} key={ws.id} />}
+      {tab === "board" && <Board ws={ws} key={ws.id} userId={session?.user.id} />}
       {tab === "members" && <Members ws={ws} key={ws.id} />}
     </div>
   );

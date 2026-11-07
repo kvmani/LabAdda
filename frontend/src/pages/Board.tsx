@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, newId } from "../api";
-import { API } from "../config";
+import { API, BASE } from "../config";
 import { useWorkspaces } from "../workspaces";
 import { realtime } from "../realtime";
-import { useSession } from "../session";
 import type { BoardOp, Workspace } from "../types";
 
 type Obj = { kind: "stroke" | "text" | "sticky" | "image"; data: any; author: string; alive: boolean; rev: number; dx: number; dy: number };
@@ -62,8 +61,9 @@ function hit(o: Obj, x: number, y: number, tol: number): boolean {
   return o.data.points.some((p: number[]) => Math.hypot(p[0] + o.dx - x, p[1] + o.dy - y) < tol + o.data.width);
 }
 
-export function Board({ ws }: { ws: Workspace }) {
-  const { session } = useSession();
+/** Whiteboard. With ``panel`` set it runs as a board-only touch panel: no images, publishing or restore. */
+export function Board({ ws, userId, panel = false, onActivity }: { ws: Workspace; userId?: string; panel?: boolean; onActivity?: () => void }) {
+  const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ops, setOps] = useState<BoardOp[]>([]);
   const [base, setBase] = useState<Record<string, Obj> | null>(null);
@@ -204,7 +204,7 @@ export function Board({ ws }: { ws: Workspace }) {
         if (!img) {
           img = new Image();
           img.onload = () => force((n) => n + 1);
-          img.src = `${API}/files/${id}/preview`;
+          img.src = `${API}/files/${id}/preview${panel ? "?panel=1" : ""}`;
           images.current.set(id, img);
         }
         if (img.complete && img.naturalWidth) ctx.drawImage(img, o.data.x + o.dx, o.data.y + o.dy, o.data.w, o.data.h);
@@ -337,6 +337,14 @@ export function Board({ ws }: { ws: Workspace }) {
     }
   }
 
+  async function openOnPanel() {
+    try {
+      setPairing(await api("/panel/pairings", { body: { workspace_id: ws.id } }));
+    } catch (e: any) {
+      setMessage(e.message);
+    }
+  }
+
   async function restore() {
     const answer = window.prompt("Restore the board to which revision? (0 clears the board)", "0");
     if (answer === null) return;
@@ -348,21 +356,34 @@ export function Board({ ws }: { ws: Workspace }) {
     }
   }
 
-  const mine = ops.some((o) => o.actor_id === session?.user.id && o.type !== "undo");
+  const mine = ops.some((o) => o.actor_id === userId && o.type !== "undo");
   const typed = [...objects.entries()].filter(([, o]) => o.alive && o.kind !== "stroke" && o.kind !== "image");
   const imageCount = [...objects.values()].filter((o) => o.alive && o.kind === "image").length;
 
   return (
-    <section className="whiteboard" aria-label={`Whiteboard for ${ws.name}`}>
+    <section className={"whiteboard" + (panel ? " panel-board" : "")} aria-label={`Whiteboard for ${ws.name}`} onPointerDownCapture={() => onActivity?.()}>
+      {pairing && (
+        <div className="dialog card" role="dialog" aria-label="Touch panel code">
+          <h2>Open this board on a touch panel</h2>
+          <p>On the panel, open <strong>{window.location.origin}{BASE}/panel</strong> and enter:</p>
+          <p className="pair-code" aria-label="Pairing code">{pairing.code}</p>
+          <p className="muted small">Single use. Expires at {new Date(pairing.expires_at).toLocaleTimeString()}. The panel can use only this board, as you, and locks when idle.</p>
+          <button onClick={() => setPairing(null)}>Done</button>
+        </div>
+      )}
       <div className="toolbar" role="toolbar" aria-label="Drawing tools">
         {(["pen", "eraser", "text", "sticky", "pan"] as Tool[]).map((t) => (
           <button key={t} className={"tool" + (tool === t ? " active" : "")} aria-pressed={tool === t} onClick={() => setTool(t)} disabled={!ws.can_write && t !== "pan"}>
             {t === "pen" ? "✏️ Pen" : t === "eraser" ? "🧽 Eraser" : t === "text" ? "🔤 Text" : t === "sticky" ? "🗒 Sticky" : "✋ Pan"}
           </button>
         ))}
-        <button className="tool" onClick={() => fileRef.current?.click()} disabled={!ws.can_write}>🖼 Image</button>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg" hidden aria-label="Image to place on the board" onChange={(e) => { placeImage(e.target.files?.[0]); e.target.value = ""; }} />
-        <button className={"tool" + (tool === "snapshot" ? " active" : "")} aria-pressed={tool === "snapshot"} onClick={() => { setTool("snapshot"); setSelection(null); }}>📷 Publish snapshot</button>
+        {!panel && (
+          <>
+            <button className="tool" onClick={() => fileRef.current?.click()} disabled={!ws.can_write}>🖼 Image</button>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg" hidden aria-label="Image to place on the board" onChange={(e) => { placeImage(e.target.files?.[0]); e.target.value = ""; }} />
+            <button className={"tool" + (tool === "snapshot" ? " active" : "")} aria-pressed={tool === "snapshot"} onClick={() => { setTool("snapshot"); setSelection(null); }}>📷 Publish snapshot</button>
+          </>
+        )}
         <span className="swatches" role="radiogroup" aria-label="Colour">
           {PEN_COLORS.map((c) => (
             <button key={c} role="radio" aria-checked={color === c} aria-label={`Colour ${c}`} className={"swatch" + (color === c ? " active" : "")} style={{ background: c }} onClick={() => setColor(c)} />
@@ -373,7 +394,8 @@ export function Board({ ws }: { ws: Workspace }) {
         <button className="tool" onClick={() => setView((v) => ({ ...v, scale: Math.max(0.1, v.scale / 1.25) }))} aria-label="Zoom out">－</button>
         <button className="tool" onClick={fit}>Fit</button>
         <button className="tool" onClick={() => setShowList((v) => !v)} aria-expanded={showList}>List view</button>
-        {ws.can_moderate && ws.can_write && <button className="tool" onClick={restore}>Restore…</button>}
+        {!panel && ws.can_moderate && ws.can_write && <button className="tool" onClick={restore}>Restore…</button>}
+        {!panel && <button className="tool" onClick={openOnPanel}>📺 Open on touch panel</button>}
         <span className={"save-state" + (save === "Saved" ? " ok" : "")} role="status">{save}</span>
         <span className="muted small">Epoch {epoch} · rev {state.current.revision} · {presence.length} here: {presence.map((p) => p.display_name).join(", ")}</span>
       </div>

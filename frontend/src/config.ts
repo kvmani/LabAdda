@@ -9,7 +9,10 @@ export const BASE = injected?.base ?? "";
 export const INSTANCE = injected?.instance ?? "dev";
 export const API = `${BASE}/api/v1`;
 
+/** True when this tab is a shared touch panel (board-only session). */
+export const PANEL = typeof window !== "undefined" && window.location.pathname.slice(BASE.length).startsWith("/panel");
+
 export function socketUrl(): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}${BASE}/ws/`;
+  return `${proto}//${window.location.host}${BASE}/ws/${PANEL ? "?panel=1" : ""}`;
 }

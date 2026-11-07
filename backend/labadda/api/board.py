@@ -25,8 +25,8 @@ from sqlalchemy.orm import Session
 
 from .. import audit, policy
 from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target
-from ..deps import Actor, current_actor, get_db
-from ..errors import Conflict, Invalid, NotFound
+from ..deps import Actor, board_actor, current_actor, get_db
+from ..errors import Conflict, Forbidden, Invalid, NotFound
 from ..models import Asset, Board, BoardOp, Post, Workspace
 from ..serialize import iso
 from ..storage import AssetStore
@@ -132,7 +132,7 @@ def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: d
 
 @router.get("/workspaces/{workspace_id}/board")
 def get_board(workspace_id: uuid.UUID, epoch: int | None = None, after: int | None = None,
-              actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+              actor: Actor = Depends(board_actor), db: Session = Depends(get_db)):
     access = policy.require_read(db, actor.user, workspace_id)
     board = db.get(Board, workspace_id)
     current_epoch, revision, base = (board.epoch, board.revision, board.base_revision) if board else (1, 0, 0)
@@ -146,13 +146,16 @@ def get_board(workspace_id: uuid.UUID, epoch: int | None = None, after: int | No
     ops = epoch_ops(db, workspace_id, current_epoch, after=after if replay else base)
     return {"epoch": current_epoch, "revision": revision, "base_revision": base, "reset": not replay,
             "snapshot": snapshot, "ops": [op_json(o) for o in ops],
-            "can_write": access.can_write, "can_moderate": access.can_moderate}
+            "can_write": access.can_write, "can_moderate": access.can_moderate and not actor.is_panel}
 
 
 @router.post("/workspaces/{workspace_id}/board/ops")
-def submit_op(workspace_id: uuid.UUID, body: OpBody, request: Request, actor: Actor = Depends(current_actor),
+def submit_op(workspace_id: uuid.UUID, body: OpBody, request: Request, actor: Actor = Depends(board_actor),
               db: Session = Depends(get_db)):
     policy.require_write(db, actor.user, workspace_id)
+    if actor.is_panel and body.type == "add" and (body.payload or {}).get("kind") == "image":
+        # Shared panels have no file picker; images are placed from a desktop session.
+        raise Forbidden("panel_not_allowed", "Images can be added from a desktop session.")
     board = _ensure_board(db, workspace_id)  # row lock serializes sequencing per board
     intent = {"type": body.type, "object_id": body.object_id, "payload": body.payload,
               "base_revision": body.base_revision}

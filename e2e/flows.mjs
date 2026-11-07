@@ -189,6 +189,62 @@ async function run(base) {
     await ben.page.screenshot({ path: join(shots, `${tag}-board-image.png`) });
     await chen.page.screenshot({ path: join(shots, `${tag}-snapshot-in-division.png`) });
 
+    // P4: board-only touch panel (T11, browser-simulated touch).
+    await ben.page.goto(`${origin}${base}/w/${sectionA}/board`);
+    await ben.page.getByRole("button", { name: "📺 Open on touch panel" }).click();
+    const code = (await ben.page.locator(".pair-code").innerText()).trim();
+    await ben.page.getByRole("button", { name: "Done" }).click();
+    const kiosk = await browser.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true });
+    const panel = await kiosk.newPage();
+    const panelExternal = [];
+    panel.on("request", (r) => { if (!r.url().startsWith(origin) && !r.url().startsWith("data:")) panelExternal.push(r.url()); });
+    await panel.goto(`${origin}${base}/panel`);
+    await panel.getByLabel("Panel code").fill(code);
+    await panel.getByRole("button", { name: "Open board" }).click();
+    await panel.getByRole("button", { name: "End session" }).waitFor();
+    check(await seen(panel.getByText("Drawing as Ben Okafor")), `${tag}: panel opens the chosen board as the pairing user`);
+    check(await panel.getByRole("button", { name: "📷 Publish snapshot" }).count() === 0 &&
+          await panel.getByRole("button", { name: "🖼 Image" }).count() === 0, `${tag}: panel hides publishing and file picker`);
+    await panel.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    const revBefore = await ben.page.evaluate(() => Number((document.querySelector(".toolbar")?.textContent ?? "").match(/rev (\d+)/)?.[1] ?? 0));
+    const pbox = await panel.locator(".canvas").boundingBox();
+    const cdp = await kiosk.newCDPSession(panel);
+    const pt = (i) => ({ x: pbox.x + 200 + i * 25, y: pbox.y + 150 + i * 10 });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [pt(0)] });
+    for (let i = 1; i <= 12; i++) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [pt(i)] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await panel.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    await ben.page.waitForFunction((r) => Number((document.querySelector(".toolbar")?.textContent ?? "").match(/rev (\d+)/)?.[1] ?? 0) > r, revBefore, { timeout: 8000 });
+    check(true, `${tag}: touch stroke on the panel reaches the desktop board`);
+    await panel.screenshot({ path: join(shots, `${tag}-panel.png`) });
+    const probes = await panel.evaluate(async ([b, div]) => {
+      const st = async (u, h = {}) => (await fetch(u, { headers: h })).status;
+      const P = { "X-LabAdda-Panel": "1" };
+      return [await st(`${b}/api/v1/notes`), await st(`${b}/api/v1/notes`, P), await st(`${b}/api/v1/workspaces`, P),
+              await st(`${b}/api/v1/admin/users`, P), await st(`${b}/api/v1/workspaces/${div}/board`, P)];
+    }, [base, divisionId]);
+    check(JSON.stringify(probes) === JSON.stringify([401, 401, 401, 401, 404]), `${tag}: panel cannot reach notes, workspaces, admin or other boards (${probes})`);
+    await panel.goto(`${origin}${base}/w/${sectionA}/noticeboard`);
+    check(await seen(panel.getByLabel("Username")), `${tag}: desktop pages on the panel ask for a normal sign-in`);
+    await panel.goto(`${origin}${base}/panel`);
+    await panel.getByRole("button", { name: "End session" }).click();
+    await panel.getByText("Session ended. The board was cleared").waitFor();
+    check(await panel.locator(".canvas").count() === 0, `${tag}: ending clears the board from the panel`);
+    const after = await panel.evaluate(async (b) => (await fetch(`${b}/api/v1/panel/session`, { headers: { "X-LabAdda-Panel": "1" } })).status, base);
+    check(after === 401, `${tag}: ended panel session is unusable (${after})`);
+    // Idle lock (test stack uses a 35 s idle window).
+    await ben.page.getByRole("button", { name: "📺 Open on touch panel" }).click();
+    const code2 = (await ben.page.locator(".pair-code").innerText()).trim();
+    await ben.page.getByRole("button", { name: "Done" }).click();
+    await panel.getByLabel("Panel code").fill(code2);
+    await panel.getByRole("button", { name: "Open board" }).click();
+    await panel.getByRole("button", { name: "End session" }).waitFor();
+    await panel.getByText(/Locking in \d+ s/).waitFor({ timeout: 40000 });
+    await panel.getByText("Panel locked after inactivity").waitFor({ timeout: 40000 });
+    check(await panel.locator(".canvas").count() === 0, `${tag}: idle panel locks and clears the board`);
+    check(panelExternal.length === 0, `${tag}: panel makes no external requests`);
+    await kiosk.close();
+
     // My Notes stays private.
     await ben.page.goto(`${origin}${base}/notes`);
     await ben.page.getByLabel("Title").fill("Order argon cylinders");

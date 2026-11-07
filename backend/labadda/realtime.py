@@ -26,6 +26,9 @@ from .security import digest, session_valid
 log = logging.getLogger("labadda.realtime")
 MAX_PREVIEW_BYTES = 16_000
 MAX_MESSAGE_BYTES = 32_000
+# A board-only panel receives board activity only: no chat, feed or other content.
+PANEL_EVENTS = {"board.op", "board.epoch", "board.preview", "presence", "revoked", "access_changed",
+                "subscribed", "subscribe_failed", "session_ended", "hello", "pong", "error"}
 
 
 @dataclass(eq=False)
@@ -36,6 +39,7 @@ class Connection:
     display_name: str
     subscriptions: set[uuid.UUID] = field(default_factory=set)
     writable: set[uuid.UUID] = field(default_factory=set)
+    panel_workspace: uuid.UUID | None = None  # set for board-only touch-panel sessions
 
 
 class Hub:
@@ -89,6 +93,8 @@ class Hub:
             return True, readable, writable
 
     async def _send(self, conn: Connection, payload: dict) -> None:
+        if conn.panel_workspace is not None and payload.get("type") not in PANEL_EVENTS:
+            return
         try:
             await conn.ws.send_text(json.dumps(payload))
         except Exception:
@@ -146,17 +152,17 @@ class Hub:
             await self._send(c, payload)
 
     # ---- socket endpoint ------------------------------------------------
-    def _authenticate(self, token: str | None):
+    def _authenticate(self, token: str | None, kind: str):
         if not token:
             return None
         with self.factory() as db:
             sess = db.get(AuthSession, digest(token))
-            if sess is None or sess.kind != "normal" or not session_valid(sess, self.settings):
+            if sess is None or sess.kind != kind or not session_valid(sess, self.settings):
                 return None
             user = db.get(User, sess.user_id)
             if user is None or not user.is_active:
                 return None
-            return sess.id, user.id, user.display_name
+            return sess.id, user.id, user.display_name, sess.workspace_id
 
     async def serve(self, ws: WebSocket) -> None:
         self.loop = asyncio.get_running_loop()
@@ -164,12 +170,15 @@ class Hub:
         if not origin_allowed(ws.headers.get("origin"), host, self.settings):
             await ws.close(code=4403)
             return
-        ident = await asyncio.to_thread(self._authenticate, ws.cookies.get(self.settings.cookie_name))
+        panel = ws.query_params.get("panel") == "1"
+        cookie = self.settings.panel_cookie_name if panel else self.settings.cookie_name
+        ident = await asyncio.to_thread(self._authenticate, ws.cookies.get(cookie), "board" if panel else "normal")
         if ident is None:
             await ws.close(code=4401)
             return
         await ws.accept()
-        conn = Connection(ws=ws, session_id=ident[0], user_id=ident[1], display_name=ident[2])
+        conn = Connection(ws=ws, session_id=ident[0], user_id=ident[1], display_name=ident[2],
+                          panel_workspace=ident[3] if panel else None)
         self.connections.add(conn)
         await self._send(conn, {"type": "hello"})
         try:
@@ -196,6 +205,11 @@ class Hub:
             await self._send(conn, {"type": "pong"})
             return
         ws_id = uuid.UUID(str(msg["workspace_id"]))
+        if conn.panel_workspace is not None and ws_id != conn.panel_workspace:
+            # Same answer as for an unknown workspace.
+            if kind == "subscribe":
+                await self._send(conn, {"type": "subscribe_failed", "workspace_id": str(ws_id)})
+            return
         if kind == "subscribe":
             ok, readable, writable = await asyncio.to_thread(self._check, conn, {ws_id})
             if not ok:

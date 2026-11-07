@@ -52,6 +52,9 @@ class Settings:
     run_scheduler: bool = True
     max_groups_per_user: int = 20
     max_group_members: int = 200
+    panel_idle_seconds: int = 300  # board-only panel locks after this much inactivity
+    panel_absolute_minutes: int = 60  # hard expiry of a board-only panel session
+    panel_pairing_seconds: int = 120  # lifetime of a one-time panel pairing code
     board_compact_threshold: int = 2000  # compact when a board has this many uncompacted revisions
     board_keep_revisions: int = 500  # recent revisions kept for undo, restore and replay
     extra: dict = field(default_factory=dict)
@@ -59,6 +62,10 @@ class Settings:
     @property
     def api_prefix(self) -> str:
         return f"{self.base_path}/api/v1"
+
+    @property
+    def panel_cookie_name(self) -> str:
+        return f"{self.cookie_name}_panel"
 
     @property
     def cookie_path(self) -> str:
@@ -95,6 +102,9 @@ def load_settings() -> Settings:
         max_groups_per_user=int(env("LABADDA_MAX_GROUPS_PER_USER", "20")),
         max_group_members=int(env("LABADDA_MAX_GROUP_MEMBERS", "200")),
         board_compact_threshold=int(env("LABADDA_BOARD_COMPACT_THRESHOLD", "2000")),
+        panel_idle_seconds=int(env("LABADDA_PANEL_IDLE_SECONDS", "300")),
+        panel_absolute_minutes=int(env("LABADDA_PANEL_ABSOLUTE_MINUTES", "60")),
+        panel_pairing_seconds=int(env("LABADDA_PANEL_PAIRING_SECONDS", "120")),
         board_keep_revisions=int(env("LABADDA_BOARD_KEEP_REVISIONS", "500")),
     )
 

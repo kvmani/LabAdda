@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import policy
 from ..config import Settings
-from ..deps import Actor, current_actor, get_db, get_settings
+from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, panel_actor
 from ..errors import Invalid, NotFound
 from ..models import Asset, Post
 from ..security import utcnow
@@ -80,10 +80,24 @@ def discard_upload(asset_id: uuid.UUID, request: Request, actor: Actor = Depends
     return {"ok": True}
 
 
+def file_actor(request: Request, db: Session = Depends(get_db)) -> Actor:
+    """Desktop session, or (with the panel header) a board-only panel session."""
+    # <img> requests cannot send headers, so panels mark image URLs with ?panel=1 instead.
+    if request.headers.get(PANEL_HEADER) or request.query_params.get("panel") == "1":
+        return panel_actor(request, db)
+    return current_actor(request, db)
+
+
 def _authorized_asset(db: Session, actor: Actor, asset_id: uuid.UUID) -> Asset:
     asset = db.get(Asset, asset_id)
     if asset is None:
         raise NotFound()
+    if actor.is_panel:
+        # Panels see only images embedded on their own board.
+        if asset.board_workspace_id is None or asset.board_workspace_id != actor.session.workspace_id \
+                or not policy.can_read(db, actor.user, asset.board_workspace_id):
+            raise NotFound()
+        return asset
     if asset.status == "provisional":
         if asset.owner_id != actor.id:
             raise NotFound()
@@ -100,7 +114,7 @@ def _authorized_asset(db: Session, actor: Actor, asset_id: uuid.UUID) -> Asset:
 
 
 @router.get("/files/{asset_id}")
-def download(asset_id: uuid.UUID, request: Request, actor: Actor = Depends(current_actor),
+def download(asset_id: uuid.UUID, request: Request, actor: Actor = Depends(file_actor),
              db: Session = Depends(get_db)):
     asset = _authorized_asset(db, actor, asset_id)
     path = _store(request).path(asset.storage_key)
@@ -112,7 +126,7 @@ def download(asset_id: uuid.UUID, request: Request, actor: Actor = Depends(curre
 
 
 @router.get("/files/{asset_id}/preview")
-def preview(asset_id: uuid.UUID, request: Request, actor: Actor = Depends(current_actor),
+def preview(asset_id: uuid.UUID, request: Request, actor: Actor = Depends(file_actor),
             db: Session = Depends(get_db)):
     asset = _authorized_asset(db, actor, asset_id)
     if not asset.has_preview:

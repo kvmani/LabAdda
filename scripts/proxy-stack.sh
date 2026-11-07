@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Start a root instance and a prefixed instance behind a local nginx (T03).
+# The test stack uses a 35 s panel idle window so the browser flow can observe the idle lock.
 # Usage: scripts/proxy-stack.sh start|stop   (uses disposable databases)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,15 +13,22 @@ start_instance() { # name port prefix db
   mkdir -p "$RUN/$1"
   ( cd "$ROOT/backend"
     export LABADDA_ENV=test LABADDA_INSTANCE="$1" LABADDA_BASE_PATH="$3" LABADDA_DATABASE_URL="$PG/$4" \
-           LABADDA_COOKIE_NAME="labadda_$1" LABADDA_ASSET_DIR="$RUN/$1/assets" LABADDA_REMINDER_INTERVAL_SECONDS=2
+           LABADDA_COOKIE_NAME="labadda_$1" LABADDA_ASSET_DIR="$RUN/$1/assets" LABADDA_REMINDER_INTERVAL_SECONDS=2 LABADDA_PANEL_IDLE_SECONDS=35
     "$PY/labadda" migrate >/dev/null
     "$PY/labadda" seed --reset >/dev/null
     nohup "$PY/labadda" serve --port "$2" >"$RUN/$1/server.log" 2>&1 &
     echo $! >"$RUN/$1/pid" )
 }
 
+stop_stack() {
+  nginx -c "$RUN/nginx.conf" -p "$RUN" -s stop 2>/dev/null || true
+  for n in root staging; do [ -f "$RUN/$n/pid" ] && kill "$(cat "$RUN/$n/pid")" 2>/dev/null || true; done
+  sleep 1
+}
+
 case "${1:-start}" in
   start)
+    stop_stack  # a previous run may still hold the ports
     mkdir -p "$RUN/tmp"
     start_instance root 8001 "" labadda_e2e_root
     start_instance staging 8002 /labadda-staging labadda_e2e_prefix
@@ -32,6 +40,5 @@ case "${1:-start}" in
       curl -fsS "$url"; echo
     done ;;
   stop)
-    nginx -c "$RUN/nginx.conf" -p "$RUN" -s stop 2>/dev/null || true
-    for n in root staging; do [ -f "$RUN/$n/pid" ] && kill "$(cat "$RUN/$n/pid")" 2>/dev/null || true; done ;;
+    stop_stack ;;
 esac

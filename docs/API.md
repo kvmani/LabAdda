@@ -8,6 +8,7 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 - **Errors.** The body is `{"error": {"code", "message", "fields?"}}`. `401` means unauthenticated or expired. `404 not_found` is identical for unknown and out-of-scope IDs. `403` is a visible but forbidden action. `409` is a conflict or idempotency mismatch. `422` is validation. `429` is rate limited.
 - **Times.** Times are ISO 8601 with an offset. The server stores UTC and rejects naive values (`timezone_required`).
 - **Idempotency.** Posts and replies accept an optional `client_id`, chat requires `client_id`, and board ops require `op_id`. A retry with the same content returns the committed result. Reuse with different content returns `409` (`client_id_reused` / `op_id_reused`).
+- **Touch panels.** Panel requests carry `X-LabAdda-Panel: 1`. Image URLs use `?panel=1`, and the socket uses `<base>/ws/?panel=1`. A panel session works only on `GET .../board`, `POST .../board/ops` (no image placement) and `GET /files/{id}[/preview]` for images embedded on its own board. Everything else returns `401`, and another board returns `404`. Panel sockets subscribe only to their board and receive only board, presence and session events.
 - **Caching.** API responses are `Cache-Control: private, no-store`.
 
 ## Endpoints
@@ -42,6 +43,9 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | | `GET /workspaces/{id}/board/render?revision=&x=&y=&w=&h=` | PNG of a region at a committed revision (publish preview). |
 | | `GET /workspaces/{id}/board/snapshot-destinations` | The workspace itself plus writable ancestor units. Projects and groups: themselves only. |
 | | `POST /workspaces/{id}/board/snapshots` `{revision, region{x,y,w,h}, destination_id, summary, client_id, confirm_audience?}` | Creates a destination-owned post with a fixed PNG. A broader destination needs `confirm_audience` = destination ID (`confirmation_required`). An unlisted destination returns 404. |
+| Touch panel | `POST /panel/pairings` `{workspace_id}` | Desktop session with read access. Returns a single-use code `XXXX-XXXX` (default lifetime 120 s). |
+| | `POST /panel/claim` `{code}` | No session. Rate limited per client. Starts a board-only session bound to that board and sets the separate `<cookie>_panel` cookie. `code_invalid`. |
+| | `GET /panel/session`, `POST /panel/activity`, `POST /panel/end` `{reason: ended\|idle_lock}` | Panel cookie only. Reads do not reset the idle clock; writes and `activity` do. `end` is audited (`panel.end` / `panel.lock`). |
 | Admin | `GET/POST /admin/users`, `PATCH /admin/users/{id}`, `POST /admin/users/{id}/reset` | `last_admin` protection. Deactivation revokes sessions. |
 | | `GET/POST /admin/workspaces`, `PATCH /admin/workspaces/{id}` `{name?, move, parent_id?, archived?}` | Cycle and single-root checks (`cycle`, `invalid_parent`). |
 | | `GET/PUT /admin/workspaces/{id}/memberships`, `DELETE .../memberships/{user}` | Audited with optional reason. |
