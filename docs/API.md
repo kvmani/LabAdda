@@ -26,7 +26,7 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | | `PATCH /groups/{id}` `{name?, description?, archived?}` | Steward only. |
 | | `POST /groups/{id}/members` `{user_ids[], role}` | Steward only. |
 | | `PATCH /groups/{id}/members/{user}` `{role}`, `DELETE /groups/{id}/members/{user}` | Steward, or self to leave. `last_steward`. |
-| Noticeboard | `GET /workspaces/{id}/posts?before=&limit=` | Pinned first (first page), then by sequence. Includes replies and attachments. |
+| Noticeboard | `GET /workspaces/{id}/posts?before=&limit=` | Pinned first (first page), then by sequence. Includes replies and attachments. A published board snapshot has `snapshot {source_revision, source_name, source_workspace_id}`. The source fields are null for readers who cannot read the source. |
 | | `POST /workspaces/{id}/posts` `{body, kind, due_at?, remind_at?, attachment_ids[], client_id?}` | `official` needs steward. |
 | | `POST /posts/{id}/replies`, `PATCH /posts/{id}`, `DELETE /posts/{id}?reason=`, `POST /posts/{id}/pin` | Removing another user's post needs steward and reason (audited). |
 | | `GET /workspaces/{id}/upcoming`, `GET /workspaces/{id}/search?q=` | Scoped to the workspace only. |
@@ -35,9 +35,13 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | Notes | `GET/POST /notes`, `GET/PUT/DELETE /notes/{id}`, `GET /notes/upcoming` | Owner only, including for administrators. |
 | Notifications | `GET /notifications`, `POST /notifications/{id}/open`, `POST /notifications/read-all` | Eligibility rechecked on list and open. |
 | Chat | `GET /workspaces/{id}/chat?before=\|after=&limit=`, `POST .../chat` `{body, client_id}`, `POST .../chat/read` `{seq}` | Cursor replay via `after`. |
-| Board | `GET /workspaces/{id}/board?epoch=&after=` | Full state (`reset: true`) or replay since a revision. |
+| Board | `GET /workspaces/{id}/board?epoch=&after=` | Replay since a revision (`reset: false`), or full state (`reset: true`): the compacted `snapshot` `{revision, objects}`, if any, plus later ops. Replay below `base_revision` falls back to full state. |
 | | `POST /workspaces/{id}/board/ops` `{op_id, epoch, type, object_id?, payload, base_revision?}` | `add` (stroke/text/sticky), `erase`, `move`, `undo` (own latest). `stale_epoch`, `stale_object`, `object_gone`. |
-| | `POST /workspaces/{id}/board/restore` `{revision, reason?}` | Steward. Starts a new epoch. |
+| | `POST /workspaces/{id}/board/restore` `{revision, reason?}` | Steward. Starts a new epoch. `revision_compacted` if older than retained history and not a snapshot revision. |
+| | `add` with `payload.kind = "image"` `{x, y, w, h, asset_id}` | `asset_id` is the actor's provisional PNG/JPEG upload. It becomes owned by this board and readable by board readers only. |
+| | `GET /workspaces/{id}/board/render?revision=&x=&y=&w=&h=` | PNG of a region at a committed revision (publish preview). |
+| | `GET /workspaces/{id}/board/snapshot-destinations` | The workspace itself plus writable ancestor units. Projects and groups: themselves only. |
+| | `POST /workspaces/{id}/board/snapshots` `{revision, region{x,y,w,h}, destination_id, summary, client_id, confirm_audience?}` | Creates a destination-owned post with a fixed PNG. A broader destination needs `confirm_audience` = destination ID (`confirmation_required`). An unlisted destination returns 404. |
 | Admin | `GET/POST /admin/users`, `PATCH /admin/users/{id}`, `POST /admin/users/{id}/reset` | `last_admin` protection. Deactivation revokes sessions. |
 | | `GET/POST /admin/workspaces`, `PATCH /admin/workspaces/{id}` `{name?, move, parent_id?, archived?}` | Cycle and single-root checks (`cycle`, `invalid_parent`). |
 | | `GET/PUT /admin/workspaces/{id}/memberships`, `DELETE .../memberships/{user}` | Audited with optional reason. |

@@ -17,7 +17,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import text
 
-from . import scheduler
+from . import boardstate, scheduler
 from .api import admin, auth, board, chat, files, groups, notes, notifications, posts, workspaces
 from .config import Settings, get_settings
 from .db import session_factory
@@ -49,6 +49,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             def cleanup():
                 with factory() as db:
                     files.cleanup_provisional(db, store, settings)
+                with factory() as db:
+                    boardstate.compact_all(db, settings.board_compact_threshold, settings.board_keep_revisions)
             task = asyncio.create_task(scheduler.run_forever(factory, settings.reminder_interval_seconds, cleanup))
         yield
         if task:

@@ -153,6 +153,42 @@ async function run(base) {
     check(true, `${tag}: reconnecting session caught up to revision 2`);
     await chen.page.screenshot({ path: join(shots, `${tag}-board.png`) });
 
+    // P3: place an image, then publish a region snapshot from the section board to the parent division.
+    await ben.page.goto(`${origin}${base}/w/${sectionA}/board`);
+    await ben.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAHUlEQVR4nGP4z8BAEhrVMKphVMOohlENIxoGAAD4/H8BWrLzvAAAAABJRU5ErkJggg==", "base64");
+    await ben.page.locator('input[type="file"][aria-label="Image to place on the board"]').setInputFiles({ name: "spectrum.png", mimeType: "image/png", buffer: png });
+    await ben.page.waitForFunction(() => /rev 1\b/.test(document.querySelector(".toolbar")?.textContent ?? ""), null, { timeout: 8000 });
+    const sbox = await ben.page.locator(".canvas").boundingBox();
+    await ben.page.mouse.move(sbox.x + 80, sbox.y + 80);
+    await ben.page.mouse.down();
+    await ben.page.mouse.move(sbox.x + 260, sbox.y + 200);
+    await ben.page.mouse.up();
+    await ben.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    await ben.page.getByRole("button", { name: "📷 Publish snapshot" }).click();
+    const cbox = await ben.page.locator(".canvas").boundingBox();
+    await ben.page.mouse.move(cbox.x + 20, cbox.y + 20);
+    await ben.page.mouse.down();
+    await ben.page.mouse.move(cbox.x + cbox.width * 0.7, cbox.y + cbox.height * 0.7, { steps: 5 });
+    await ben.page.mouse.up();
+    const dialog = ben.page.getByRole("dialog", { name: "Publish board snapshot" });
+    await dialog.waitFor();
+    check(await dialog.locator("img.snapshot-preview").evaluate((img) => img.decode().then(() => img.naturalWidth > 0)), `${tag}: snapshot preview rendered`);
+    await dialog.getByLabel("Post to").selectOption({ label: "Surface Science Division (parent unit)" });
+    const publishBtn = dialog.getByRole("button", { name: /Publish to Surface Science Division/ });
+    check(await publishBtn.isDisabled(), `${tag}: parent publish blocked until audience confirmed`);
+    await dialog.getByRole("checkbox").check();
+    await publishBtn.click();
+    await dialog.waitFor({ state: "detached" });
+    const divisionId = await wsIdByName(ben.page, base, "Surface Science Division");
+    await chen.page.goto(`${origin}${base}/w/${divisionId}/noticeboard`);
+    await chen.page.getByText(/Board snapshot at revision 2\. Fixed copy/).waitFor();
+    check(await chen.page.getByText("Thin Films Section").count() === 0, `${tag}: sibling reader sees the copy without the source name`);
+    const snapImg = chen.page.locator(".attachments img").first();
+    check(await snapImg.evaluate((img) => img.decode().then(() => img.naturalWidth > 0)), `${tag}: sibling reader loads the published image`);
+    await ben.page.screenshot({ path: join(shots, `${tag}-board-image.png`) });
+    await chen.page.screenshot({ path: join(shots, `${tag}-snapshot-in-division.png`) });
+
     // My Notes stays private.
     await ben.page.goto(`${origin}${base}/notes`);
     await ben.page.getByLabel("Title").fill("Order argon cylinders");

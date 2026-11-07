@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, newId } from "../api";
+import { API } from "../config";
+import { useWorkspaces } from "../workspaces";
 import { realtime } from "../realtime";
 import { useSession } from "../session";
 import type { BoardOp, Workspace } from "../types";
 
-type Obj = { kind: "stroke" | "text" | "sticky"; data: any; author: string; alive: boolean; rev: number; dx: number; dy: number };
-type Tool = "pen" | "eraser" | "text" | "sticky" | "pan";
+type Obj = { kind: "stroke" | "text" | "sticky" | "image"; data: any; author: string; alive: boolean; rev: number; dx: number; dy: number };
+type Tool = "pen" | "eraser" | "text" | "sticky" | "image" | "snapshot" | "pan";
+type Region = { x: number; y: number; w: number; h: number };
 type SaveState = "Saved" | "Saving…" | "Reconnecting…" | "Conflict — reloaded" | "Read-only";
 type PendingOp = { op_id: string; epoch: number; type: string; object_id?: string; payload?: any; base_revision?: number };
 
 const PEN_COLORS = ["#1f2933", "#c62828", "#1565c0", "#2e7d32", "#ef6c00", "#6a1b9a"];
 const STICKY_COLORS = ["#fff59d", "#b3e5fc", "#c8e6c9", "#ffccbc"];
 
-export function fold(ops: BoardOp[]): Map<string, Obj> {
-  const objects = new Map<string, Obj>();
+export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<string, Obj> {
+  const objects = new Map<string, Obj>(Object.entries(base ?? {}).map(([k, v]) => [k, { ...v }]));
   const byRev = new Map<number, BoardOp>();
   for (const op of ops) {
     byRev.set(op.revision, op);
@@ -24,11 +27,15 @@ export function fold(ops: BoardOp[]): Map<string, Obj> {
     else if (op.type === "erase") Object.assign(obj, { alive: false, rev: op.revision });
     else if (op.type === "move") Object.assign(obj, { dx: obj.dx + op.payload.dx, dy: obj.dy + op.payload.dy, rev: op.revision });
     else if (op.type === "undo") {
+      // Undo payloads carry their effect, so they still apply after the target was compacted.
       const t = byRev.get(op.payload.target_revision);
-      if (!t) continue;
-      if (t.type === "add") obj.alive = false;
-      if (t.type === "erase") obj.alive = true;
-      if (t.type === "move") Object.assign(obj, { dx: obj.dx - t.payload.dx, dy: obj.dy - t.payload.dy });
+      const type = op.payload.target_type ?? t?.type;
+      const dx = op.payload.dx ?? t?.payload.dx ?? 0;
+      const dy = op.payload.dy ?? t?.payload.dy ?? 0;
+      if (!type) continue;
+      if (type === "add") obj.alive = false;
+      if (type === "erase") obj.alive = true;
+      if (type === "move") Object.assign(obj, { dx: obj.dx - dx, dy: obj.dy - dy });
       obj.rev = op.revision;
     }
   }
@@ -41,6 +48,7 @@ function bounds(o: Obj): [number, number, number, number] {
     const ys = o.data.points.map((p: number[]) => p[1] + o.dy);
     return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   }
+  if (o.kind === "image") return [o.data.x + o.dx, o.data.y + o.dy, o.data.x + o.dx + o.data.w, o.data.y + o.dy + o.data.h];
   const w = o.kind === "sticky" ? 180 : Math.max(40, o.data.text.length * 9);
   const h = o.kind === "sticky" ? 120 : 24;
   return [o.data.x + o.dx, o.data.y + o.dy, o.data.x + o.dx + w, o.data.y + o.dy + h];
@@ -58,6 +66,11 @@ export function Board({ ws }: { ws: Workspace }) {
   const { session } = useSession();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ops, setOps] = useState<BoardOp[]>([]);
+  const [base, setBase] = useState<Record<string, Obj> | null>(null);
+  const [selection, setSelection] = useState<Region | null>(null);
+  const selecting = useRef<{ x: number; y: number } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const images = useRef(new Map<string, HTMLImageElement>());
   const [epoch, setEpoch] = useState(1);
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState(PEN_COLORS[0]);
@@ -73,15 +86,18 @@ export function Board({ ws }: { ws: Workspace }) {
   const previews = useRef(new Map<string, { points: number[][]; color: string }>());
   const state = useRef({ revision: 0, epoch: 1 });
   const [, force] = useState(0);
-  const objects = fold(ops);
+  const objects = fold(ops, base);
 
   const load = useCallback(async (full = false) => {
     const r = await api(`/workspaces/${ws.id}/board`, { params: full ? {} : { epoch: state.current.epoch, after: state.current.revision } });
+    // A reset response starts from the compacted snapshot (if any) plus later operations.
+    if (r.reset) setBase(r.snapshot?.objects ?? null);
     setOps((prev) => {
-      const base = r.reset ? [] : prev;
-      const known = new Set(base.map((o) => o.revision));
-      const merged = [...base, ...r.ops.filter((o: BoardOp) => !known.has(o.revision))].sort((a, b) => a.revision - b.revision);
-      state.current = { epoch: r.epoch, revision: merged.length ? merged[merged.length - 1].revision : 0 };
+      const kept = r.reset ? [] : prev;
+      const known = new Set(kept.map((o) => o.revision));
+      const merged = [...kept, ...r.ops.filter((o: BoardOp) => !known.has(o.revision))].sort((a, b) => a.revision - b.revision);
+      const floor = r.reset ? (r.snapshot?.revision ?? r.base_revision ?? 0) : state.current.revision;
+      state.current = { epoch: r.epoch, revision: merged.length ? Math.max(floor, merged[merged.length - 1].revision) : floor };
       return merged;
     });
     setEpoch(r.epoch);
@@ -180,9 +196,23 @@ export function Board({ ws }: { ws: Workspace }) {
       if (pts.length === 1) ctx.lineTo(pts[0][0] + dx + 0.1, pts[0][1] + dy);
       ctx.stroke();
     };
-    for (const o of objects.values()) {
+    for (const o of [...objects.values()].sort((a, b) => a.rev - b.rev)) {
       if (!o.alive) continue;
-      if (o.kind === "stroke") line(o.data.points, o.data.color, o.data.width, o.dx, o.dy);
+      if (o.kind === "image") {
+        const id = o.data.asset_id;
+        let img = images.current.get(id);
+        if (!img) {
+          img = new Image();
+          img.onload = () => force((n) => n + 1);
+          img.src = `${API}/files/${id}/preview`;
+          images.current.set(id, img);
+        }
+        if (img.complete && img.naturalWidth) ctx.drawImage(img, o.data.x + o.dx, o.data.y + o.dy, o.data.w, o.data.h);
+        else {
+          ctx.strokeStyle = "#9aa5b1";
+          ctx.strokeRect(o.data.x + o.dx, o.data.y + o.dy, o.data.w, o.data.h);
+        }
+      } else if (o.kind === "stroke") line(o.data.points, o.data.color, o.data.width, o.dx, o.dy);
       else {
         const x = o.data.x + o.dx, y = o.data.y + o.dy;
         if (o.kind === "sticky") {
@@ -199,6 +229,13 @@ export function Board({ ws }: { ws: Workspace }) {
     }
     for (const p of previews.current.values()) line(p.points, p.color ?? "#999", 3);
     if (drawing.current) line(drawing.current.points, color, 3);
+    if (selection) {
+      ctx.setLineDash([8 / view.scale, 6 / view.scale]);
+      ctx.strokeStyle = "#1d4ed8";
+      ctx.lineWidth = 2 / view.scale;
+      ctx.strokeRect(selection.x, selection.y, selection.w, selection.h);
+      ctx.setLineDash([]);
+    }
   });
 
   const toWorld = (e: React.PointerEvent) => {
@@ -212,7 +249,14 @@ export function Board({ ws }: { ws: Workspace }) {
       panning.current = { x: e.clientX - view.x, y: e.clientY - view.y };
       return;
     }
+    if (tool === "snapshot") {
+      (e.target as Element).setPointerCapture(e.pointerId);
+      selecting.current = { x, y };
+      setSelection({ x, y, w: 0, h: 0 });
+      return;
+    }
     if (!ws.can_write) return;
+    if (tool === "image") return;
     if (tool === "pen") {
       (e.target as Element).setPointerCapture(e.pointerId);
       drawing.current = { id: newId("s"), points: [[x, y]], last: 0 };
@@ -230,6 +274,12 @@ export function Board({ ws }: { ws: Workspace }) {
       setView((v) => ({ ...v, x: e.clientX - panning.current!.x, y: e.clientY - panning.current!.y }));
       return;
     }
+    if (selecting.current) {
+      const [x, y] = toWorld(e);
+      const s0 = selecting.current;
+      setSelection({ x: Math.min(s0.x, x), y: Math.min(s0.y, y), w: Math.abs(x - s0.x), h: Math.abs(y - s0.y) });
+      return;
+    }
     const d = drawing.current;
     if (!d) return;
     const [x, y] = toWorld(e);
@@ -245,6 +295,11 @@ export function Board({ ws }: { ws: Workspace }) {
 
   function onUp() {
     panning.current = null;
+    if (selecting.current) {
+      selecting.current = null;
+      setSelection((sel) => (sel && sel.w > 4 && sel.h > 4 ? sel : null));
+      return;
+    }
     const d = drawing.current;
     drawing.current = null;
     if (!d) return;
@@ -263,6 +318,25 @@ export function Board({ ws }: { ws: Workspace }) {
     setView({ scale, x: -a * scale + 40, y: -b * scale + 40 });
   }
 
+  async function placeImage(file: File | undefined) {
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const asset = await api("/uploads", { form });
+      const probe = new Image();
+      probe.src = asset.preview_url;
+      await probe.decode().catch(() => undefined);
+      const ratio = probe.naturalWidth && probe.naturalHeight ? probe.naturalHeight / probe.naturalWidth : 0.75;
+      const r = canvasRef.current!.getBoundingClientRect();
+      const w = Math.min(320, (r.width / view.scale) * 0.5);
+      const cx = (r.width / 2 - view.x) / view.scale, cy = (r.height / 2 - view.y) / view.scale;
+      submit({ type: "add", object_id: newId("i"), payload: { kind: "image", data: { x: Math.round(cx - w / 2), y: Math.round(cy - (w * ratio) / 2), w: Math.round(w), h: Math.round(w * ratio), asset_id: asset.id } } });
+    } catch (e: any) {
+      setMessage(e.message);
+    }
+  }
+
   async function restore() {
     const answer = window.prompt("Restore the board to which revision? (0 clears the board)", "0");
     if (answer === null) return;
@@ -275,7 +349,8 @@ export function Board({ ws }: { ws: Workspace }) {
   }
 
   const mine = ops.some((o) => o.actor_id === session?.user.id && o.type !== "undo");
-  const typed = [...objects.entries()].filter(([, o]) => o.alive && o.kind !== "stroke");
+  const typed = [...objects.entries()].filter(([, o]) => o.alive && o.kind !== "stroke" && o.kind !== "image");
+  const imageCount = [...objects.values()].filter((o) => o.alive && o.kind === "image").length;
 
   return (
     <section className="whiteboard" aria-label={`Whiteboard for ${ws.name}`}>
@@ -285,6 +360,9 @@ export function Board({ ws }: { ws: Workspace }) {
             {t === "pen" ? "✏️ Pen" : t === "eraser" ? "🧽 Eraser" : t === "text" ? "🔤 Text" : t === "sticky" ? "🗒 Sticky" : "✋ Pan"}
           </button>
         ))}
+        <button className="tool" onClick={() => fileRef.current?.click()} disabled={!ws.can_write}>🖼 Image</button>
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg" hidden aria-label="Image to place on the board" onChange={(e) => { placeImage(e.target.files?.[0]); e.target.value = ""; }} />
+        <button className={"tool" + (tool === "snapshot" ? " active" : "")} aria-pressed={tool === "snapshot"} onClick={() => { setTool("snapshot"); setSelection(null); }}>📷 Publish snapshot</button>
         <span className="swatches" role="radiogroup" aria-label="Colour">
           {PEN_COLORS.map((c) => (
             <button key={c} role="radio" aria-checked={color === c} aria-label={`Colour ${c}`} className={"swatch" + (color === c ? " active" : "")} style={{ background: c }} onClick={() => setColor(c)} />
@@ -299,6 +377,10 @@ export function Board({ ws }: { ws: Workspace }) {
         <span className={"save-state" + (save === "Saved" ? " ok" : "")} role="status">{save}</span>
         <span className="muted small">Epoch {epoch} · rev {state.current.revision} · {presence.length} here: {presence.map((p) => p.display_name).join(", ")}</span>
       </div>
+      {tool === "snapshot" && !selection && <p className="notice">Drag on the board to select the region to publish.</p>}
+      {selection && tool === "snapshot" && (
+        <PublishSnapshot ws={ws} region={selection} revision={state.current.revision} onClose={(done) => { setSelection(null); if (done) setTool("pen"); }} />
+      )}
       {message && <p className="notice" role="alert">{message} <button className="ghost small" onClick={() => setMessage(null)}>Dismiss</button></p>}
       <canvas
         ref={canvasRef}
@@ -314,7 +396,7 @@ export function Board({ ws }: { ws: Workspace }) {
       {showList && (
         <div className="card board-list">
           <h2>Board items</h2>
-          <p className="muted small">{[...objects.values()].filter((o) => o.alive && o.kind === "stroke").length} drawn strokes</p>
+          <p className="muted small">{[...objects.values()].filter((o) => o.alive && o.kind === "stroke").length} drawn strokes · {imageCount} images</p>
           {typed.length === 0 ? <p className="muted">No text or sticky notes.</p> : (
             <ul className="plain">{typed.map(([id, o]) => (
               <li key={id}>{o.kind === "sticky" ? "Sticky" : "Text"}: {o.data.text}
@@ -325,5 +407,66 @@ export function Board({ ws }: { ws: Workspace }) {
         </div>
       )}
     </section>
+  );
+}
+
+type Destination = { id: string; name: string; same_workspace: boolean };
+
+function PublishSnapshot({ ws, region, revision, onClose }: { ws: Workspace; region: Region; revision: number; onClose: (done: boolean) => void }) {
+  const { reload } = useWorkspaces();
+  const [dests, setDests] = useState<Destination[]>([]);
+  const [dest, setDest] = useState(ws.id);
+  const [summary, setSummary] = useState("Whiteboard snapshot");
+  const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const clientId = useRef(newId("snap"));
+  const r = { x: Math.round(region.x), y: Math.round(region.y), w: Math.max(1, Math.round(region.w)), h: Math.max(1, Math.round(region.h)) };
+  const preview = `${API}/workspaces/${ws.id}/board/render?revision=${revision}&x=${r.x}&y=${r.y}&w=${r.w}&h=${r.h}`;
+  const target = dests.find((d) => d.id === dest);
+  const broader = dest !== ws.id;
+
+  useEffect(() => {
+    api(`/workspaces/${ws.id}/board/snapshot-destinations`).then((x) => setDests(x.destinations)).catch((e) => setError(e.message));
+  }, [ws.id]);
+
+  async function publish() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/workspaces/${ws.id}/board/snapshots`, {
+        body: { revision, region: r, destination_id: dest, summary, client_id: clientId.current, confirm_audience: broader ? dest : null },
+      });
+      reload();
+      onClose(true);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="dialog card" role="dialog" aria-label="Publish board snapshot">
+      <h2>Publish snapshot</h2>
+      <p className="muted small">A fixed image of the selected region at revision {revision}. Later board edits, erasing, or restoring will not change the published copy.</p>
+      <img className="snapshot-preview" src={preview} alt="Preview of the selected board region" />
+      <label>Post to
+        <select value={dest} onChange={(e) => { setDest(e.target.value); setConfirmed(false); }}>
+          {dests.map((d) => <option key={d.id} value={d.id}>{d.name}{d.same_workspace ? " (this workspace)" : " (parent unit)"}</option>)}
+        </select>
+      </label>
+      <label>Summary<textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={2} maxLength={2000} /></label>
+      {broader && (
+        <label className="warning">
+          <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /> Everyone who can read <strong>{target?.name}</strong> will see this image. That is a broader audience than {ws.name}.
+        </label>
+      )}
+      {error && <p className="error" role="alert">{error}</p>}
+      <div className="row">
+        <button onClick={publish} disabled={busy || !summary.trim() || (broader && !confirmed)}>{busy ? "Publishing…" : `Publish to ${target?.name ?? ws.name}`}</button>
+        <button className="ghost" onClick={() => onClose(false)}>Cancel</button>
+      </div>
+    </div>
   );
 }

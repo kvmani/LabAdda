@@ -179,6 +179,11 @@ class Post(Base):
     remind_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reminder_processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     client_id: Mapped[str | None] = mapped_column(String(64))
+    # Set on a published board snapshot: where and at which revision it was captured.
+    source_workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_posts_source_workspace")
+    )
+    source_revision: Mapped[int | None] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = _created()
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -206,13 +211,19 @@ class Asset(Base):
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="provisional")
     post_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("posts.id"))
+    board_workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_assets_board_workspace")
+    )
     has_preview: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (
         CheckConstraint("status in ('provisional','committed')", name="ck_asset_status"),
-        CheckConstraint("status = 'provisional' or post_id is not null", name="ck_asset_committed_owner"),
+        CheckConstraint("status = 'provisional' or post_id is not null or board_workspace_id is not null",
+                        name="ck_asset_committed_owner"),
+        CheckConstraint("post_id is null or board_workspace_id is null", name="ck_asset_single_owner"),
         Index("ix_assets_post", "post_id"),
+        Index("ix_assets_board", "board_workspace_id"),
     )
 
 
@@ -285,6 +296,20 @@ class Board(Base):
     )
     epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    # Operations at or below this revision live only in board_snapshots.
+    base_revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0", default=0)
+
+
+class BoardSnapshot(Base):
+    __tablename__ = "board_snapshots"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id"), primary_key=True
+    )
+    epoch: Mapped[int] = mapped_column(Integer, primary_key=True)
+    revision: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    state: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _created()
 
 
 class BoardOp(Base):

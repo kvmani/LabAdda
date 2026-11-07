@@ -38,6 +38,7 @@ export type Post = {
   replies: Post[];
   can_edit: boolean;
   can_remove: boolean;
+  snapshot?: { source_revision: number; source_name: string | null; source_workspace_id: string | null } | null;
 };
 export type ChatMessage = { id: string; seq: number; workspace_id: string; body: string; client_id: string; created_at: string; author: User | null };
 export type BoardOp = { revision: number; epoch: number; op_id: string; actor_id: string; type: string; object_id: string; payload: any };

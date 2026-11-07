@@ -52,6 +52,8 @@ class Settings:
     run_scheduler: bool = True
     max_groups_per_user: int = 20
     max_group_members: int = 200
+    board_compact_threshold: int = 2000  # compact when a board has this many uncompacted revisions
+    board_keep_revisions: int = 500  # recent revisions kept for undo, restore and replay
     extra: dict = field(default_factory=dict)
 
     @property
@@ -92,6 +94,8 @@ def load_settings() -> Settings:
         reminder_interval_seconds=int(env("LABADDA_REMINDER_INTERVAL_SECONDS", "30")),
         max_groups_per_user=int(env("LABADDA_MAX_GROUPS_PER_USER", "20")),
         max_group_members=int(env("LABADDA_MAX_GROUP_MEMBERS", "200")),
+        board_compact_threshold=int(env("LABADDA_BOARD_COMPACT_THRESHOLD", "2000")),
+        board_keep_revisions=int(env("LABADDA_BOARD_KEEP_REVISIONS", "500")),
     )
 
 

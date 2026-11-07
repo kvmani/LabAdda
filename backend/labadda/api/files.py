@@ -88,6 +88,11 @@ def _authorized_asset(db: Session, actor: Actor, asset_id: uuid.UUID) -> Asset:
         if asset.owner_id != actor.id:
             raise NotFound()
         return asset
+    if asset.board_workspace_id is not None:
+        # Board images are readable by anyone who can read that board.
+        if not policy.can_read(db, actor.user, asset.board_workspace_id):
+            raise NotFound()
+        return asset
     post = db.get(Post, asset.post_id)
     if post is None or post.deleted_at is not None or not policy.can_read(db, actor.user, post.workspace_id):
         raise NotFound()

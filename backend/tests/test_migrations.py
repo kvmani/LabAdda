@@ -5,6 +5,7 @@ import sqlalchemy
 from alembic import command
 from sqlalchemy import create_engine, text
 
+from labadda.app import expected_schema_head
 from labadda.cli import alembic_config
 
 from .conftest import recreate_schema
@@ -39,7 +40,7 @@ def test_round_trip_and_group_guard(scratch_url):
         command.downgrade(cfg, "0002")
     with engine.connect() as conn:
         assert conn.execute(text("select count(*) from workspaces where name = 'Kept group'")).scalar() == 1
-        assert conn.execute(text("select version_num from alembic_version")).scalar() == "0003"
+        assert conn.execute(text("select version_num from alembic_version")).scalar() == expected_schema_head()
     engine.dispose()
 
 

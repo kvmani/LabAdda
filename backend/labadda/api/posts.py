@@ -14,7 +14,7 @@ from .. import audit, notify, policy
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Forbidden, Invalid, NotFound
-from ..models import Asset, ChatMessage, Post
+from ..models import Asset, ChatMessage, Post, Workspace
 from ..security import utcnow
 from ..serialize import iso, post_json, user_brief, users_by_id
 
@@ -64,12 +64,25 @@ def _render(db: Session, posts: list[Post], actor: Actor, can_moderate: bool, ba
                         .order_by(Asset.created_at)):
         assets.setdefault(a.post_id, []).append(a)
     authors = users_by_id(db, [p.author_id for p in posts] + [r.author_id for r in replies])
+    readable = policy.readable_workspace_ids(db, actor.user)
+    sources = {p.source_workspace_id for p in posts if p.source_workspace_id}
+    source_names = dict(db.execute(select(Workspace.id, Workspace.name).where(Workspace.id.in_(sources))).all()) \
+        if sources else {}
+
+    def snapshot_info(p: Post) -> dict | None:
+        if p.source_workspace_id is None:
+            return None
+        # Name the source only to readers who can see it; others just see a fixed copy.
+        visible = p.source_workspace_id in readable
+        return {"source_revision": p.source_revision,
+                "source_name": source_names.get(p.source_workspace_id) if visible else None,
+                "source_workspace_id": str(p.source_workspace_id) if visible else None}
     by_parent: dict[uuid.UUID, list[dict]] = {}
     for r in replies:
         by_parent.setdefault(r.parent_id, []).append(
             post_json(r, authors, assets.get(r.id, []), base, actor_id=actor.id, can_moderate=can_moderate))
-    return [post_json(p, authors, assets.get(p.id, []), base, by_parent.get(p.id, []), actor.id, can_moderate)
-            for p in posts]
+    return [{**post_json(p, authors, assets.get(p.id, []), base, by_parent.get(p.id, []), actor.id, can_moderate),
+             "snapshot": snapshot_info(p)} for p in posts]
 
 def _load_post(db: Session, actor: Actor, post_id: uuid.UUID):
     post = db.get(Post, post_id)

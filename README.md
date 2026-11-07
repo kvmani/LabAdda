@@ -66,8 +66,16 @@ scripts/verify.sh          # pytest on PostgreSQL, alembic drift check, typechec
 scripts/verify.sh --e2e    # also starts root + /labadda-staging instances behind nginx and runs browser flows
 ```
 
+Drawing soak (8 drawers). It measures committed-update latency and checks for lost or duplicated edits. Run it against a freshly started test stack, because it creates accounts and activation is rate limited:
+
+```bash
+scripts/proxy-stack.sh start
+.venv/bin/python scripts/soak.py --drawers 8 --seconds 120
+scripts/proxy-stack.sh stop
+```
+
 `LABADDA_TEST_DATABASE_URL` selects the disposable test database. The default is `labadda_test` on localhost. The e2e stack uses `labadda_e2e_root` and `labadda_e2e_prefix`. Create both like `labadda_test`. CI (`.github/workflows/ci.yml`) runs `scripts/verify.sh` on the same locked dependencies.
 
 ## Operator commands
 
-`labadda migrate` applies migrations. `labadda create-admin <username>` prints a one-time activation code. `labadda reminders` processes due reminders once (the server also runs them every 30 s). The service template and proxy template are in [deploy/](deploy/).
+`labadda migrate` applies migrations. `labadda create-admin <username>` prints a one-time activation code. `labadda reminders` processes due reminders once. The server also runs reminders, provisional-upload cleanup and board compaction every 30 s (`LABADDA_BOARD_COMPACT_THRESHOLD`, `LABADDA_BOARD_KEEP_REVISIONS`). The service template and proxy template are in [deploy/](deploy/).

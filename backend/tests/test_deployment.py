@@ -4,7 +4,7 @@ from dataclasses import replace
 
 from fastapi.testclient import TestClient
 
-from labadda.app import create_app
+from labadda.app import create_app, expected_schema_head
 from labadda.fixtures import fixture_password
 
 
@@ -57,7 +57,7 @@ def test_readiness_fails_on_schema_mismatch(settings, ids, db_factory):
             assert c.get(f"{settings.base_path}/readyz").status_code == 503
     finally:
         with db_factory() as db:
-            db.execute(text("update alembic_version set version_num = '0003'"))
+            db.execute(text("update alembic_version set version_num = :v"), {"v": expected_schema_head()})
             db.commit()
 
 

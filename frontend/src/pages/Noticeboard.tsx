@@ -91,6 +91,12 @@ function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChange
       ) : (
         <p className="body">{post.body}</p>
       )}
+      {post.snapshot && (
+        <p className="muted small">
+          📷 Board snapshot at revision {post.snapshot.source_revision}
+          {post.snapshot.source_name ? <> from <Link to={`/w/${post.snapshot.source_workspace_id}/board`}>{post.snapshot.source_name}</Link></> : ""}. Fixed copy: later board changes do not affect it.
+        </p>
+      )}
       {post.due_at && <p className="due">Due {fmtTime(post.due_at)}{post.remind_at ? ` · reminder ${fmtTime(post.remind_at)}` : ""}</p>}
       <Attachments items={post.attachments} />
       {post.replies.length > 0 && (

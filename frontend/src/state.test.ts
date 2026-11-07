@@ -22,3 +22,13 @@ describe("workspace tree order", () => {
     expect(out.map((o) => [o.ws.name, o.depth])).toEqual([["Orphan", 0], ["Root", 0], ["Division", 1], ["Section", 2]]);
   });
 });
+
+describe("board fold from a compacted snapshot", () => {
+  it("starts from the snapshot and applies undo effects without the compacted target", () => {
+    const base = { a: { kind: "sticky", data: { x: 0, y: 0, text: "kept", color: "#fff59d" }, author: "u1", alive: true, rev: 3, dx: 0, dy: 0 } } as any;
+    const objs = fold([op(21, "undo", "a", { target_revision: 3, target_type: "add" }), op(22, "add", "b", { kind: "stroke", data: { points: [[0, 0]], color: "#1f2933", width: 3 } })], base);
+    expect(objs.get("a")!.alive).toBe(false);
+    expect(objs.get("b")!.alive).toBe(true);
+    expect(base.a.alive).toBe(true); // snapshot object is not mutated
+  });
+});

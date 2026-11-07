@@ -1,10 +1,12 @@
 """Persistent workspace whiteboard with sequenced, idempotent operations (S3, S4).
 
-State is the fold of committed operations in the current epoch. Each
-operation has a client-chosen ``op_id``; identity is (workspace, epoch,
-actor, op_id). A retry with the same payload returns the committed result;
-reuse with a different payload fails with 409. A restore starts a new epoch,
-so pending operations against the old epoch are rejected.
+State is the fold of committed operations in the current epoch, starting
+from the latest compacted snapshot. Each operation has a client-chosen
+``op_id``; identity is (workspace, epoch, actor, op_id). A retry with the same
+payload returns the committed result; reuse with a different payload fails
+with 409. A restore starts a new epoch, so pending operations against the old
+epoch are rejected. ``POST .../board/snapshots`` publishes a selected region
+at a committed revision as an immutable, destination-owned noticeboard post.
 """
 
 from __future__ import annotations
@@ -13,23 +15,30 @@ import hashlib
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import Response
+from PIL import Image
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from .. import audit, policy
+from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target
 from ..deps import Actor, current_actor, get_db
-from ..errors import Conflict, Invalid
-from ..models import Board, BoardOp
+from ..errors import Conflict, Invalid, NotFound
+from ..models import Asset, Board, BoardOp, Post, Workspace
 from ..serialize import iso
+from ..storage import AssetStore
 
 router = APIRouter(tags=["board"])
 MAX_POINTS = 4000
 MAX_TEXT = 1000
+MAX_IMAGE_SIDE = 4000
 COLORS = {"#1f2933", "#c62828", "#1565c0", "#2e7d32", "#ef6c00", "#6a1b9a", "#fff59d", "#b3e5fc", "#c8e6c9",
           "#ffccbc"}
+PNG_HEADERS = {"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+               "Content-Security-Policy": "default-src 'none'; sandbox"}
 
 
 class OpBody(BaseModel):
@@ -46,6 +55,23 @@ class RestoreBody(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class Region(BaseModel):
+    x: float
+    y: float
+    w: float = Field(gt=0)
+    h: float = Field(gt=0)
+
+
+class SnapshotBody(BaseModel):
+    revision: int = Field(ge=0)
+    region: Region
+    destination_id: uuid.UUID
+    summary: str = Field(min_length=1, max_length=2000)
+    client_id: str = Field(min_length=8, max_length=64)
+    # Required when the destination differs from the source: the destination ID the user confirmed.
+    confirm_audience: uuid.UUID | None = None
+
+
 def _hash(payload: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
@@ -56,50 +82,9 @@ def op_json(op: BoardOp) -> dict:
 
 
 def _ensure_board(db: Session, workspace_id: uuid.UUID) -> Board:
-    db.execute(insert(Board).values(workspace_id=workspace_id, epoch=1, revision=0)
+    db.execute(insert(Board).values(workspace_id=workspace_id, epoch=1, revision=0, base_revision=0)
                .on_conflict_do_nothing(index_elements=["workspace_id"]))
     return db.scalar(select(Board).where(Board.workspace_id == workspace_id).with_for_update())
-
-
-def fold(ops: list[BoardOp], upto: int | None = None) -> dict[str, dict]:
-    """Fold operations into live objects: object_id -> {kind, data, author, alive, rev, dx, dy}."""
-    objects: dict[str, dict] = {}
-    by_rev: dict[int, BoardOp] = {}
-    for op in ops:
-        if upto is not None and op.revision > upto:
-            break
-        by_rev[op.revision] = op
-        obj = objects.get(op.object_id)
-        if op.op_type == "add":
-            objects[op.object_id] = {"kind": op.payload["kind"], "data": op.payload["data"],
-                                     "author": op.payload.get("author", str(op.actor_id)), "alive": True,
-                                     "rev": op.revision, "dx": 0.0, "dy": 0.0}
-        elif obj is None:
-            continue
-        elif op.op_type == "erase":
-            obj["alive"], obj["rev"] = False, op.revision
-        elif op.op_type == "move":
-            obj["dx"] += op.payload["dx"]
-            obj["dy"] += op.payload["dy"]
-            obj["rev"] = op.revision
-        elif op.op_type == "undo":
-            target = by_rev.get(op.payload["target_revision"])
-            if target is None:
-                continue
-            if target.op_type == "add":
-                obj["alive"] = False
-            elif target.op_type == "erase":
-                obj["alive"] = True
-            elif target.op_type == "move":
-                obj["dx"] -= target.payload["dx"]
-                obj["dy"] -= target.payload["dy"]
-            obj["rev"] = op.revision
-    return objects
-
-
-def _epoch_ops(db: Session, workspace_id, epoch: int) -> list[BoardOp]:
-    return list(db.scalars(select(BoardOp).where(BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch)
-                           .order_by(BoardOp.revision)))
 
 
 def _num(v, lo=-1e6, hi=1e6) -> float:
@@ -108,9 +93,24 @@ def _num(v, lo=-1e6, hi=1e6) -> float:
     return float(v)
 
 
-def _validate_add(payload: dict) -> dict:
+def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: dict) -> dict:
     kind = payload.get("kind")
     data = payload.get("data") or {}
+    if kind == "image":
+        try:
+            asset_id = uuid.UUID(str(data.get("asset_id")))
+        except ValueError:
+            raise Invalid("invalid_board_op", "Unknown image.")
+        asset = db.get(Asset, asset_id, with_for_update=True)
+        reusable = asset is not None and asset.board_workspace_id == workspace_id
+        fresh = asset is not None and asset.status == "provisional" and asset.owner_id == actor.id
+        if not (reusable or fresh) or not asset.media_type.startswith("image/"):
+            raise Invalid("invalid_board_op", "Upload a PNG or JPEG image before placing it on the board.")
+        if fresh:
+            asset.status, asset.board_workspace_id = "committed", workspace_id
+        return {"kind": kind, "data": {"x": _num(data.get("x")), "y": _num(data.get("y")),
+                                       "w": _num(data.get("w"), 1, MAX_IMAGE_SIDE),
+                                       "h": _num(data.get("h"), 1, MAX_IMAGE_SIDE), "asset_id": str(asset_id)}}
     color = data.get("color", "#1f2933")
     if color not in COLORS:
         raise Invalid("invalid_board_op", "Unsupported colour.")
@@ -135,14 +135,18 @@ def get_board(workspace_id: uuid.UUID, epoch: int | None = None, after: int | No
               actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
     access = policy.require_read(db, actor.user, workspace_id)
     board = db.get(Board, workspace_id)
-    current_epoch, revision = (board.epoch, board.revision) if board else (1, 0)
-    stmt = select(BoardOp).where(BoardOp.workspace_id == workspace_id, BoardOp.epoch == current_epoch)
-    replay = epoch == current_epoch and after is not None
-    if replay:
-        stmt = stmt.where(BoardOp.revision > after)
-    ops = db.scalars(stmt.order_by(BoardOp.revision)).all()
-    return {"epoch": current_epoch, "revision": revision, "reset": not replay,
-            "ops": [op_json(o) for o in ops], "can_write": access.can_write, "can_moderate": access.can_moderate}
+    current_epoch, revision, base = (board.epoch, board.revision, board.base_revision) if board else (1, 0, 0)
+    # Replay is possible only within the epoch and above the compacted base.
+    replay = epoch == current_epoch and after is not None and after >= base
+    snapshot = None
+    if not replay and base > 0:
+        snap = latest_snapshot(db, workspace_id, current_epoch, upto=base)
+        if snap is not None:
+            snapshot = {"revision": snap.revision, "objects": snap.state}
+    ops = epoch_ops(db, workspace_id, current_epoch, after=after if replay else base)
+    return {"epoch": current_epoch, "revision": revision, "base_revision": base, "reset": not replay,
+            "snapshot": snapshot, "ops": [op_json(o) for o in ops],
+            "can_write": access.can_write, "can_moderate": access.can_moderate}
 
 
 @router.post("/workspaces/{workspace_id}/board/ops")
@@ -163,13 +167,12 @@ def submit_op(workspace_id: uuid.UUID, body: OpBody, request: Request, actor: Ac
     if body.epoch != board.epoch:
         db.rollback()
         raise Conflict("stale_epoch", "The board was restored. Reload to continue.")
-    ops = _epoch_ops(db, workspace_id, board.epoch)
-    objects = fold(ops)
+    objects = state_cache.objects(db, board)  # read-only here; advanced only after commit
     if body.type == "add":
         object_id = body.object_id or ""
         if not object_id or object_id in objects:
             raise Conflict("object_exists", "That board object already exists.")
-        payload = _validate_add(body.payload)
+        payload = _validate_add(db, actor, workspace_id, body.payload)
         payload["author"] = str(actor.id)
     elif body.type in ("erase", "move"):
         obj = objects.get(body.object_id or "")
@@ -183,12 +186,14 @@ def submit_op(workspace_id: uuid.UUID, body: OpBody, request: Request, actor: Ac
             payload = {}
         object_id = body.object_id
     elif body.type == "undo":
-        undone = {o.payload["target_revision"] for o in ops if o.op_type == "undo"}
-        target = next((o for o in reversed(ops) if o.actor_id == actor.id and o.op_type != "undo"
-                       and o.revision not in undone and o.op_id[:8] != "restore-"), None)
+        # Own most recent eligible operation still in history (compacted ops cannot be undone).
+        target = undo_target(db, board, actor.id)
         if target is None:
             raise Conflict("nothing_to_undo", "You have nothing to undo on this board.")
-        object_id, payload = target.object_id, {"target_revision": target.revision}
+        object_id = target.object_id
+        payload = {"target_revision": target.revision, "target_type": target.op_type}
+        if target.op_type == "move":
+            payload.update(dx=target.payload["dx"], dy=target.payload["dy"])
     else:
         raise Invalid("invalid_board_op", "Unknown operation type.")
     board.revision += 1
@@ -196,7 +201,9 @@ def submit_op(workspace_id: uuid.UUID, body: OpBody, request: Request, actor: Ac
                  actor_id=actor.id, op_type=body.type, object_id=object_id, payload=payload,
                  payload_hash=intent_hash)
     db.add(op)
+    base_revision = board.base_revision
     db.commit()
+    state_cache.committed(workspace_id, base_revision, op)
     committed = op_json(op)
     request.app.state.hub.publish(workspace_id, {"type": "board.op", "workspace_id": str(workspace_id),
                                                  "op": committed})
@@ -212,9 +219,10 @@ def restore(workspace_id: uuid.UUID, body: RestoreBody, request: Request, actor:
     board = _ensure_board(db, workspace_id)
     if body.revision > board.revision:
         raise Invalid("invalid_revision", "That revision does not exist yet.")
-    objects = fold(_epoch_ops(db, workspace_id, board.epoch), upto=body.revision)
+    objects = state_at(db, board, body.revision) if body.revision else {}
     old_epoch = board.epoch
     board.epoch += 1
+    board.base_revision = board.revision
     for object_id, obj in objects.items():
         if not obj["alive"]:
             continue
@@ -234,3 +242,99 @@ def restore(workspace_id: uuid.UUID, body: RestoreBody, request: Request, actor:
     request.app.state.hub.publish(workspace_id, {"type": "board.epoch", "workspace_id": str(workspace_id),
                                                  "epoch": board.epoch})
     return {"epoch": board.epoch, "revision": board.revision}
+
+
+# ---- rendering and snapshot publishing -------------------------------------
+
+def _image_loader(db: Session, store: AssetStore, workspace_id: uuid.UUID):
+    def load(asset_id: uuid.UUID):
+        asset = db.get(Asset, asset_id)
+        # Only images owned by this board are rendered; anything else is skipped.
+        if asset is None or asset.board_workspace_id != workspace_id or not asset.has_preview:
+            return None
+        try:
+            return Image.open(store.path(asset.storage_key, preview=True))
+        except (FileNotFoundError, OSError):
+            return None
+    return load
+
+
+def _render(db: Session, request: Request, workspace_id: uuid.UUID, revision: int, region: Region) -> bytes:
+    board = db.get(Board, workspace_id)
+    if board is None or not 0 <= revision <= board.revision:
+        raise Invalid("invalid_revision", "That revision does not exist.")
+    objects = state_at(db, board, revision)
+    return render_png(objects, (region.x, region.y, region.w, region.h),
+                      _image_loader(db, request.app.state.assets, workspace_id))
+
+
+@router.get("/workspaces/{workspace_id}/board/render")
+def render_preview(workspace_id: uuid.UUID, request: Request, revision: int, x: float, y: float,
+                   w: float = Query(gt=0), h: float = Query(gt=0), actor: Actor = Depends(current_actor),
+                   db: Session = Depends(get_db)):
+    """PNG of a region at a committed revision, for the publish preview."""
+    policy.require_read(db, actor.user, workspace_id)
+    png = _render(db, request, workspace_id, revision, Region(x=x, y=y, w=w, h=h))
+    return Response(png, media_type="image/png", headers=PNG_HEADERS)
+
+
+def snapshot_destinations(db: Session, actor: Actor, source: Workspace) -> list[Workspace]:
+    """The source itself plus readable, writable ancestors in the organization tree."""
+    out = [source]
+    if source.kind == "org":
+        parents = dict(db.execute(select(Workspace.id, Workspace.parent_id).where(Workspace.kind == "org")).all())
+        for anc in policy.ancestors(parents, source.id):
+            access = policy.resolve(db, actor.user, anc)
+            if access is not None and access.can_write:
+                out.append(access.workspace)
+    return out
+
+
+@router.get("/workspaces/{workspace_id}/board/snapshot-destinations")
+def list_destinations(workspace_id: uuid.UUID, actor: Actor = Depends(current_actor),
+                      db: Session = Depends(get_db)):
+    access = policy.require_read(db, actor.user, workspace_id)
+    dests = snapshot_destinations(db, actor, access.workspace)
+    return {"destinations": [{"id": str(w.id), "name": w.name, "same_workspace": w.id == workspace_id,
+                              "can_write": policy.resolve(db, actor.user, w.id).can_write} for w in dests]}
+
+
+@router.post("/workspaces/{workspace_id}/board/snapshots", status_code=201)
+def publish_snapshot(workspace_id: uuid.UUID, body: SnapshotBody, request: Request,
+                     actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+    # Fresh authorization on both ends at publish time.
+    source = policy.require_read(db, actor.user, workspace_id).workspace
+    existing = db.scalar(select(Post).where(Post.author_id == actor.id, Post.client_id == body.client_id))
+    if existing is not None:
+        if existing.source_workspace_id != workspace_id or existing.workspace_id != body.destination_id \
+                or existing.source_revision != body.revision or existing.body != body.summary:
+            raise Conflict("client_id_reused", "This request ID was already used for different content.")
+        return {"post_id": str(existing.id), "workspace_id": str(existing.workspace_id), "duplicate": True}
+    allowed = {w.id for w in snapshot_destinations(db, actor, source)}
+    if body.destination_id not in allowed:
+        raise NotFound()
+    dest = policy.require_write(db, actor.user, body.destination_id).workspace
+    if dest.id != source.id and body.confirm_audience != dest.id:
+        raise Invalid("confirmation_required",
+                      f"Confirm that everyone who can read {dest.name} will see this snapshot.")
+    png = _render(db, request, workspace_id, body.revision, body.region)
+    store: AssetStore = request.app.state.assets
+    stored = store.save(png, "image/png")
+    try:
+        post = Post(workspace_id=dest.id, author_id=actor.id, kind="discussion", body=body.summary,
+                    client_id=body.client_id, source_workspace_id=source.id, source_revision=body.revision)
+        db.add(post)
+        db.flush()
+        db.add(Asset(owner_id=actor.id, storage_key=stored.storage_key, media_type="image/png",
+                     display_name=f"board-snapshot-r{body.revision}.png", size=stored.size, sha256=stored.sha256,
+                     has_preview=stored.has_preview, status="committed", post_id=post.id))
+        audit.record(db, actor=actor.user, action="board.snapshot_publish", scope_type="workspace",
+                     scope_id=dest.id, target_id=post.id, source=source.id, revision=body.revision,
+                     broader=dest.id != source.id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        store.delete(stored.storage_key)
+        raise
+    request.app.state.hub.publish(dest.id, {"type": "noticeboard.changed", "workspace_id": str(dest.id)})
+    return {"post_id": str(post.id), "workspace_id": str(dest.id), "duplicate": False}

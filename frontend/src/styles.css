@@ -133,3 +133,5 @@ tr.selected { background: #eef2ff; }
   .board-layout, .grid2 { grid-template-columns: 1fr; }
   .conn { margin-left: 0; }
 }
+.snapshot-preview { max-width: 100%; max-height: 240px; border: 1px solid var(--line); background: #fff; display: block; margin: 0.5rem 0; }
+.whiteboard .dialog { z-index: 40; }
