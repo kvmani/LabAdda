@@ -236,7 +236,7 @@ def install_snapshot(archive_path: Path, expected_digest: str, instance: Path) -
         run(python, "-m", "pip", "install", "--no-index", "--only-binary=:all:", "--find-links", target / "wheelhouse",
             "-r", target / "backend/requirements.lock", env=offline)
         # Source layout retains migrations beside the package, as required by the CLI.
-        site = subprocess.check_output([str(python), "-c", "import site; print(site.getsitepackages()[0])"], text=True).strip()
+        site = subprocess.check_output([str(python), "-I", "-c", "import site; print(site.getsitepackages()[0])"], text=True, env=offline).strip()
         Path(site, "labadda.pth").write_text(str(target / "backend") + "\n")
         run(python, "-c", "import labadda.app, psycopg, PIL; from labadda.app import expected_schema_head; " + "\nif expected_schema_head() != " + repr(manifest["schema"]) + ": raise RuntimeError('Schema mismatch')", env=offline)
     except BaseException:

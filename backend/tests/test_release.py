@@ -214,3 +214,21 @@ def test_wheel_inventory_handles_license_directories(tmp_path):
     assert inventory[0]["license"] == "MIT"
     assert len(inventory[0]["license_files"]) == 1
     assert (tmp_path / inventory[0]["license_files"][0]).read_text() == "Example license"
+
+
+def test_site_lookup_uses_isolated_candidate_environment(tmp_path, monkeypatch):
+    archive, sha = candidate(tmp_path)
+    monkeypatch.setenv("PYTHONHOME", "/untrusted")
+    monkeypatch.setenv("PYTHONPATH", "/untrusted")
+    monkeypatch.setattr(release.venv.EnvBuilder, "create", lambda *args: None)
+    monkeypatch.setattr(release, "run", lambda *args, **kwargs: None)
+    site = tmp_path / "site-packages"
+    site.mkdir()
+    def inspect_lookup(command, **kwargs):
+        assert "-I" in command
+        assert "PYTHONHOME" not in kwargs["env"]
+        assert "PYTHONPATH" not in kwargs["env"]
+        return str(site)
+    monkeypatch.setattr(release.subprocess, "check_output", inspect_lookup)
+    target = release.install(archive, sha, tmp_path / "instance")
+    assert (site / "labadda.pth").read_text().strip() == str(target / "backend")
