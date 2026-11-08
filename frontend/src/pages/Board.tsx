@@ -4,6 +4,8 @@ import { API, BASE } from "../config";
 import { useWorkspaces } from "../workspaces";
 import { realtime } from "../realtime";
 import type { BoardOp, Workspace } from "../types";
+import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
+import type { UploadedAsset } from "../uploads";
 
 type Obj = { kind: "stroke" | "text" | "sticky" | "image"; data: any; author: string; alive: boolean; rev: number; dx: number; dy: number };
 type Tool = "pen" | "eraser" | "text" | "sticky" | "image" | "snapshot" | "pan";
@@ -62,7 +64,7 @@ function hit(o: Obj, x: number, y: number, tol: number): boolean {
 }
 
 /** Whiteboard. With ``panel`` set it runs as a board-only touch panel: no images, publishing or restore. */
-export function Board({ ws, userId, panel = false, onActivity }: { ws: Workspace; userId?: string; panel?: boolean; onActivity?: () => void }) {
+export function Board({ ws, userId, panel = false, onActivity, maxUploadBytes = 20 * 1048576 }: { ws: Workspace; userId?: string; panel?: boolean; onActivity?: () => void; maxUploadBytes?: number }) {
   const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ops, setOps] = useState<BoardOp[]>([]);
@@ -76,6 +78,7 @@ export function Board({ ws, userId, panel = false, onActivity }: { ws: Workspace
   const [color, setColor] = useState(PEN_COLORS[0]);
   const [save, setSave] = useState<SaveState>(ws.can_write ? "Saved" : "Read-only");
   const [message, setMessage] = useState<string | null>(null);
+  const uploads = useUploadQueue(maxUploadBytes, asset => { void placeImage(asset); });
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
   const [showList, setShowList] = useState(false);
   const [presence, setPresence] = useState<{ id: string; display_name: string }[]>([]);
@@ -318,17 +321,15 @@ export function Board({ ws, userId, panel = false, onActivity }: { ws: Workspace
     setView({ scale, x: -a * scale + 40, y: -b * scale + 40 });
   }
 
-  async function placeImage(file: File | undefined) {
-    if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
+  async function placeImage(asset: UploadedAsset) {
     try {
-      const asset = await api("/uploads", { form });
       const probe = new Image();
-      probe.src = asset.preview_url;
+      probe.src = asset.preview_url ?? asset.url;
       await probe.decode().catch(() => undefined);
       const ratio = probe.naturalWidth && probe.naturalHeight ? probe.naturalHeight / probe.naturalWidth : 0.75;
-      const r = canvasRef.current!.getBoundingClientRect();
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const r = canvas.getBoundingClientRect();
       const w = Math.min(320, (r.width / view.scale) * 0.5);
       const cx = (r.width / 2 - view.x) / view.scale, cy = (r.height / 2 - view.y) / view.scale;
       submit({ type: "add", object_id: newId("i"), payload: { kind: "image", data: { x: Math.round(cx - w / 2), y: Math.round(cy - (w * ratio) / 2), w: Math.round(w), h: Math.round(w * ratio), asset_id: asset.id } } });
@@ -379,8 +380,12 @@ export function Board({ ws, userId, panel = false, onActivity }: { ws: Workspace
         ))}
         {!panel && (
           <>
-            <button className="tool" onClick={() => fileRef.current?.click()} disabled={!ws.can_write}>🖼 Image</button>
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg" hidden aria-label="Image to place on the board" onChange={(e) => { placeImage(e.target.files?.[0]); e.target.value = ""; }} />
+            <button className="tool" onClick={() => fileRef.current?.click()} disabled={!ws.can_write || uploads.attempts.length > 0}>🖼 Image</button>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg" hidden aria-label="Image to place on the board" onChange={(e) => {
+              try { uploads.queue.add(Array.from(e.target.files ?? []), 1); }
+              catch (error: any) { setMessage(error.message); }
+              e.target.value = "";
+            }} />
             <button className={"tool" + (tool === "snapshot" ? " active" : "")} aria-pressed={tool === "snapshot"} onClick={() => { setTool("snapshot"); setSelection(null); }}>📷 Publish snapshot</button>
           </>
         )}
@@ -404,6 +409,7 @@ export function Board({ ws, userId, panel = false, onActivity }: { ws: Workspace
         <PublishSnapshot ws={ws} region={selection} revision={state.current.revision} onClose={(done) => { setSelection(null); if (done) setTool("pen"); }} />
       )}
       {message && <p className="notice" role="alert">{message} <button className="ghost small" onClick={() => setMessage(null)}>Dismiss</button></p>}
+      {!panel && <UploadRecovery queue={uploads.queue} />}
       <canvas
         ref={canvasRef}
         className={`canvas tool-${tool}`}

@@ -53,7 +53,7 @@ async function wsIdByName(page, base, name) {
 async function run(base) {
   const tag = base || "root";
   console.log(`\n== Instance ${tag} ==`);
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: process.env.LABADDA_CHROMIUM });
   try {
     // P1: home → division, sibling denied, coherent empty state.
     const ben = await signIn(browser, base, "ben");
@@ -265,7 +265,7 @@ async function run(base) {
 
 async function crossInstance() {
   if (bases.length < 2) return;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: process.env.LABADDA_CHROMIUM });
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   for (const base of bases) {

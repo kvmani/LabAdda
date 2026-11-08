@@ -84,7 +84,7 @@ export function WorkspaceView() {
       </header>
       {tab === "noticeboard" && <Noticeboard ws={ws} key={ws.id} />}
       {tab === "chat" && <Chat ws={ws} key={ws.id} />}
-      {tab === "board" && <Board ws={ws} key={ws.id} userId={session?.user.id} />}
+      {tab === "board" && <Board ws={ws} key={ws.id} userId={session?.user.id} maxUploadBytes={session?.limits.max_attachment_bytes} />}
       {tab === "members" && <Members ws={ws} key={ws.id} />}
     </div>
   );

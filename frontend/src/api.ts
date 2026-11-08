@@ -17,11 +17,12 @@ export function setUnauthenticatedHandler(fn: () => void) {
   onUnauthenticated = fn;
 }
 
-type Options = { method?: string; body?: unknown; form?: FormData; params?: Record<string, string | number | undefined | null> };
+type Options = { method?: string; body?: unknown; form?: FormData; uploadKey?: string; params?: Record<string, string | number | undefined | null> };
 
 export async function api<T = any>(path: string, opts: Options = {}): Promise<T> {
   const method = opts.method ?? (opts.body || opts.form ? "POST" : "GET");
   const headers: Record<string, string> = { Accept: "application/json" };
+  if (opts.uploadKey) headers["Idempotency-Key"] = opts.uploadKey;
   // A panel never falls back to a desktop session that might exist in the same browser.
   if (PANEL) headers["X-LabAdda-Panel"] = "1";
   if (method !== "GET" && csrfToken) headers["X-CSRF-Token"] = csrfToken;
@@ -44,7 +45,13 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
   } catch {
     throw new ApiError(0, "offline", "Cannot reach LabAdda. Check your connection and try again.");
   }
-  const data = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
+  let data: any = null;
+  try {
+    if (res.headers.get("content-type")?.includes("json")) data = await res.json();
+    else if (res.ok && res.status !== 204) throw new Error("Unexpected response type");
+  } catch {
+    throw new ApiError(0, "response_unconfirmed", "The server response could not be read. Check the result before trying again.");
+  }
   if (!res.ok) {
     const err = data?.error ?? {};
     if (res.status === 401 && !["/auth/login", "/auth/session", "/panel/session", "/panel/claim"].includes(path)) onUnauthenticated?.();

@@ -5,6 +5,7 @@ import { fmtTime, localToIso } from "../format";
 import { realtime } from "../realtime";
 import { useSession } from "../session";
 import type { Attachment, Post, Workspace } from "../types";
+import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 
 type Feed = { pinned: Post[]; posts: Post[]; next_before: number | null };
 type Upcoming = { id: string; title: string; due_at: string; kind?: string };
@@ -136,6 +137,9 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
   const [saved, setSaved] = useState(false);
   const clientId = useRef(newId("p"));
   const limits = session!.limits;
+  const uploads = useUploadQueue(limits.max_attachment_bytes, asset => {
+    setFiles(prev => prev.some(f => f.id === asset.id) ? prev : [...prev, asset]);
+  });
 
   const setBody = (v: string) => {
     setBodyState(v);
@@ -143,25 +147,16 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
     setSaved(false);
   };
 
-  async function addFiles(list: FileList | null) {
+  function addFiles(list: FileList | null) {
     if (!list) return;
     setError(null);
-    for (const f of Array.from(list)) {
-      if (files.length >= limits.max_attachments) return setError(`Attach up to ${limits.max_attachments} files.`);
-      if (f.size > limits.max_attachment_bytes) return setError(`${f.name} is larger than ${limits.max_attachment_bytes / 1048576} MiB.`);
-      const form = new FormData();
-      form.append("file", f);
-      try {
-        const a = await api<Attachment>("/uploads", { form });
-        setFiles((prev) => [...prev, a]);
-      } catch (e: any) {
-        setError(`${f.name}: ${e.message}`);
-      }
-    }
+    try { uploads.queue.add(Array.from(list), limits.max_attachments - files.length); }
+    catch (e: any) { setError(e.message); }
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (uploads.attempts.length) return setError("Resolve or dismiss pending uploads before posting.");
     setBusy(true);
     setError(null);
     try {
@@ -199,7 +194,7 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
       <div className="row wrap">
         <label className="inline">Due <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} /></label>
         <label className="inline">Remind <input type="datetime-local" value={remind} onChange={(e) => setRemind(e.target.value)} /></label>
-        <label className="inline">Attach <input type="file" accept="application/pdf,image/png,image/jpeg" multiple onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} /></label>
+        <label className="inline">Attach <input type="file" accept="application/pdf,image/png,image/jpeg" multiple disabled={busy} onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} /></label>
         {ws.can_moderate && <label className="inline"><input type="checkbox" checked={official} onChange={(e) => setOfficial(e.target.checked)} /> Official notice</label>}
       </div>
       {files.length > 0 && (
@@ -211,9 +206,10 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
           ))}
         </ul>
       )}
+      <UploadRecovery queue={uploads.queue} />
       {error && <p className="error" role="alert">{error}</p>}
       <div className="row">
-        <button type="submit" disabled={busy}>{busy ? "Posting…" : "Post"}</button>
+        <button type="submit" disabled={busy || uploads.attempts.length > 0}>{busy ? "Posting…" : "Post"}</button>
         {saved && <span className="ok" role="status">Posted</span>}
       </div>
     </form>
