@@ -6,6 +6,7 @@ import { Activate, Login } from "./pages/Login";
 import { WorkspaceView } from "./pages/WorkspaceView";
 import { Notes } from "./pages/Notes";
 import { NewGroup } from "./pages/NewGroup";
+import { Usage } from "./pages/Usage";
 import { Admin } from "./pages/Admin";
 
 function Home() {
@@ -46,6 +47,7 @@ export function App() {
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
           <Route path="/notes" element={<Notes />} />
+          <Route path="/usage" element={<Usage />} />
           <Route path="/groups/new" element={<NewGroup />} />
           <Route path="/admin" element={session.user.is_admin ? <Admin /> : <Navigate to="/" replace />} />
           <Route path="*" element={<section className="state"><h1>Page not found</h1><Link to="/">Go to your home workspace</Link></section>} />

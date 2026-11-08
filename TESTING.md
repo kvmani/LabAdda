@@ -63,3 +63,5 @@ These are **requirements for future tests**, not checks claimed to have passed o
 | T36 | Backfill/observation precede enforcement/purge; migrations/rollback preserve accounting/provenance; independent review and operator exercises diagnose quota, reserve, purge, backup and collector failures from UI | DL-28; AC-21 | Each gate/P5.8 |
 
 No implementation is accepted based on a formatter, zero-test run, static mock dashboard, unchecked backup checkbox or unexecuted dry run. T15–T36 supplement rather than replace T01–T14, offline release/recovery evidence and site/device gates.
+
+P5.1 current foundation checks: `test_governance.py` exercises strict draft validation, audit/conflict behavior, queued authority loss and downgrade refusal; `test_usage.py` exercises original-byte scope/privacy and bounded partial observations. `e2e/governance.mjs` runs against a fresh local disposable proxy stack and checks root/prefix forms, conflict preservation, non-activation, usage visibility and mobile navigation. These validate the implemented subset, not completion of T15–T36. See [P5 status](docs/P5-PROGRESS.md).

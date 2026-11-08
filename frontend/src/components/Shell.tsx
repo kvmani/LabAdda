@@ -71,12 +71,13 @@ export function Shell({ children }: { children: ReactNode }) {
         {INSTANCE !== "pilot" && <span className="tag instance">{INSTANCE}</span>}
         <label className="switcher">
           <span className="sr-only">Switch workspace</span>
-          <select value={currentId ?? ""} onChange={(e) => e.target.value && navigate(e.target.value === "notes" ? "/notes" : `/w/${e.target.value}/noticeboard`)}>
+          <select value={currentId ?? ""} onChange={(e) => e.target.value && navigate(["notes", "usage"].includes(e.target.value) ? `/${e.target.value}` : `/w/${e.target.value}/noticeboard`)}>
             <option value="">Choose workspace…</option>
             {tree.map(({ ws, depth }) => <option key={ws.id} value={ws.id}>{"· ".repeat(depth) + ws.name}</option>)}
             {projects.map((w) => <option key={w.id} value={w.id}>Project: {w.name}</option>)}
             {groups.map((w) => <option key={w.id} value={w.id}>Group: {w.name}</option>)}
             <option value="notes">My Notes</option>
+            <option value="usage">My storage usage</option>
           </select>
         </label>
         <span className={`conn conn-${conn}`} role="status">● {connLabel[conn]}</span>
@@ -89,6 +90,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
       {showNotifications && <Notifications onClose={() => setShowNotifications(false)} onChange={setUnread} />}
       <nav className="rail" aria-label="Workspaces">
+        <NavLink to="/usage" className={({ isActive }) => "rail-link" + (isActive ? " active" : "")}>My storage usage</NavLink>
         <NavLink to="/notes" className={({ isActive }) => "rail-link notes-link" + (isActive ? " active" : "")}>My Notes <span className="muted small">private</span></NavLink>
         {error && <p className="error small">{error}</p>}
         {tree.length > 0 && <h2 className="rail-heading">Organization</h2>}

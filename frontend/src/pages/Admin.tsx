@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Governance } from "../components/Governance";
 import { api } from "../api";
 import { kindLabel } from "../format";
 
@@ -60,6 +61,7 @@ export function Admin() {
       <p className="muted">Manage accounts, the organization tree and memberships. Administration does not grant access to workspace content or personal notes.</p>
       {error && <p className="error" role="alert">{error}</p>}
       {token && <p className="notice" role="status">{token} <button className="ghost small" onClick={() => setToken(null)}>Hide</button></p>}
+      <Governance />
       <div className="grid2">
         <div className="card">
           <h2>Accounts</h2>

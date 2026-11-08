@@ -1,0 +1,71 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { api } from '../api';
+import { fmtBytes as bytes } from '../format';
+import type { PolicyDrafts, SiteUsage, Observation } from '../governance-types';
+
+const MiB = 1024 * 1024;
+export function Governance() {
+  const [policy, setPolicy] = useState<PolicyDrafts | null>(null);
+  const [usage, setUsage] = useState<SiteUsage | null>(null);
+  const [history, setHistory] = useState<Observation[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState('');
+  const [fileLimit, setFileLimit] = useState(20);
+  const [userLimit, setUserLimit] = useState(500);
+  const [workspaceLimit, setWorkspaceLimit] = useState(2048);
+  async function load() {
+    const [p, u, h] = await Promise.all([api<PolicyDrafts>('/admin/policy-drafts'), api<SiteUsage>('/admin/usage'), api<{observations: Observation[]}>('/admin/usage-observations')]);
+    setPolicy(p); setUsage(u); setHistory(h.observations);
+  }
+  useEffect(() => { load().catch(e => setError(e.message)); }, []);
+  async function run(action: () => Promise<any>, success: string) {
+    setBusy(true); setError(null); setMessage('');
+    try { await action(); await load(); setMessage(success); }
+    catch (e: any) { setError(e.fields?.length ? e.fields.map((f: {field: string; message: string}) => `${f.field}: ${f.message}`).join("; ") : e.message); }
+    finally { setBusy(false); }
+  }
+  async function propose(e: FormEvent) {
+    e.preventDefault();
+    await run(() => api('/admin/policy-drafts', { body: {
+      base_revision: policy!.latest_revision, reason,
+      profile: { schema_version: 1, mode: 'observation', max_attachment_bytes: fileLimit * MiB,
+        user_quota_bytes: userLimit * MiB, workspace_quota_bytes: workspaceLimit * MiB }
+    }}), 'Proposal saved. No limits or retention rules were activated.');
+  }
+  return <div className="card">
+    <h2>Storage observations and policy proposals</h2>
+    <p>Foundation preview: saving proposals cannot activate enforcement or delete data. Current pilot limits remain environment-controlled.</p>
+    {error && <p className="error" role="alert">{error} Reload observations before retrying a conflicted proposal.</p>}
+    {message && <p role="status">{message}</p>}
+    <button disabled={busy} onClick={() => run(async () => {}, 'Observations refreshed.')}>Reload observations</button>
+    {!policy && !error && <p role="status">Loading governance information…</p>}
+    {usage && <>
+      <h3>Site measurements (partial)</h3>
+      <dl>
+        <dt>Tracked original file bytes</dt><dd>{bytes(usage.assets.tracked_original_bytes)} · {usage.assets.tracked_files} files</dd>
+        <dt>Asset filesystem free space</dt><dd>{bytes(usage.filesystem.free_bytes)} · {usage.filesystem.state}</dd>
+        <dt>Configured site budget</dt><dd>Not configured</dd>
+        <dt>Observed</dt><dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
+      </dl>
+      <p className="notice">Filesystem capacity may be shared with other services. Derivatives, text/boards, reservations, trash and archive storage are unmeasured. These totals cannot approve enforcement or deletion.</p>
+      <button disabled={busy} onClick={() => run(() => api('/admin/usage-observations', {body: {}}), 'Partial observation recorded.')}>Record partial observation</button>
+      <p>{history.length} recent samples displayed; at most 100 operational samples retained.</p>
+      {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}
+    </>}
+    {policy && <>
+      <h3>Site proposal revision {policy.latest_revision}</h3>
+      <p>Current pilot file limit: {bytes(policy.runtime_limits.max_attachment_bytes)}. Current pilot user limit: {bytes(policy.runtime_limits.user_quota_bytes)}.</p>
+      <form onSubmit={propose} className="governance-form">
+        <label>Proposed file limit (MiB)<input type="number" min="1" max="100" step="1" required value={fileLimit} onChange={e => setFileLimit(Number(e.target.value))} /></label>
+        <label>Proposed user limit (MiB)<input type="number" min="1" max="102400" step="1" required value={userLimit} onChange={e => setUserLimit(Number(e.target.value))} /></label>
+        <label>Proposed workspace limit (MiB)<input type="number" min="1" max="1024000" step="1" required value={workspaceLimit} onChange={e => setWorkspaceLimit(Number(e.target.value))} /></label>
+        <label>Proposal reason<textarea required minLength={3} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>
+        <button disabled={busy}>Save non-enforcing proposal</button>
+      </form>
+      <table><caption>Recent immutable proposals</caption><thead><tr><th>Revision</th><th>Proposed file / user / workspace limits</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>{policy.drafts.map((d) => <tr key={d.id}><td>{d.revision}</td><td>{bytes(d.profile.max_attachment_bytes)} / {bytes(d.profile.user_quota_bytes)} / {bytes(d.profile.workspace_quota_bytes)}</td><td>{d.reason}</td><td>Draft only</td></tr>)}</tbody></table>
+    </>}
+  </div>;
+}
