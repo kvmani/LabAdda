@@ -1,0 +1,76 @@
+{
+  "title": "Aurora: oxygen vacancies at a catalyst interface",
+  "checks": [
+    "dedicated instance has no previous research scenario",
+    "five separate browser sessions signed in",
+    "retry keeps the same board operation instead of duplicating ink",
+    "all handwritten strokes and native stickies committed",
+    "board history attributes edits to all five researchers",
+    "offline researcher catches up after reconnect",
+    "raw SVG remains rejected by the application upload boundary",
+    "private group, PDF and personal note excluded from colleagues, division steward and administrator",
+    "sibling sections remain isolated, grants flow upward to the shared division only",
+    "named colleague can download the private handoff PDF",
+    "no browser errors or external asset requests ()"
+  ],
+  "shots": [
+    {
+      "file": "board-asha.png",
+      "caption": "asha: shared five-person research board",
+      "actor": "asha"
+    },
+    {
+      "file": "board-ben.png",
+      "caption": "ben: shared five-person research board",
+      "actor": "ben"
+    },
+    {
+      "file": "board-mira.png",
+      "caption": "mira: shared five-person research board",
+      "actor": "mira"
+    },
+    {
+      "file": "board-chen.png",
+      "caption": "chen: shared five-person research board",
+      "actor": "chen"
+    },
+    {
+      "file": "board-dana.png",
+      "caption": "dana: shared five-person research board",
+      "actor": "dana"
+    },
+    {
+      "file": "group-chat.png",
+      "caption": "Chen: cross-section research discussion",
+      "actor": "chen"
+    },
+    {
+      "file": "division-notice.png",
+      "caption": "Dana: division-level review notice",
+      "actor": "dana"
+    },
+    {
+      "file": "private-handoff.png",
+      "caption": "Ben: private two-person group with PDF attachment",
+      "actor": "ben"
+    },
+    {
+      "file": "section-thin-films.png",
+      "caption": "Asha: section-only preparation log",
+      "actor": "asha"
+    },
+    {
+      "file": "section-catalysis.png",
+      "caption": "Mira: sibling-section GC queue",
+      "actor": "mira"
+    },
+    {
+      "file": "personal-notes.png",
+      "caption": "Ben: owner-only reminder and note",
+      "actor": "ben"
+    }
+  ],
+  "objects": 663,
+  "group": "90781ced-57db-43ff-a5a1-cb09dbbaf141",
+  "privateGroup": "842172ba-cc50-4364-b639-046750b52bdf"
+}
