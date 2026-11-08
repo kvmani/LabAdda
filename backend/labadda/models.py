@@ -245,6 +245,7 @@ class Asset(Base):
         CheckConstraint("status = 'provisional' or post_id is not null or board_workspace_id is not null",
                         name="ck_asset_committed_owner"),
         CheckConstraint("post_id is null or board_workspace_id is null", name="ck_asset_single_owner"),
+        Index("ix_assets_owner", "owner_id"),
         Index("ix_assets_post", "post_id"),
         Index("ix_assets_board", "board_workspace_id"),
     )

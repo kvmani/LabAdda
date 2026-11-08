@@ -13,8 +13,11 @@ try {
     await page.getByLabel('Password').fill(process.env.LABADDA_FIXTURE_PASSWORD ?? 'fixture-pass-123');
     await page.getByRole('button',{name:'Sign in',exact:true}).click();
     await page.getByRole('heading',{name:'Referenced file inspections'}).waitFor();
-    await page.getByText(/completed · 1 asset rows checked · 0 issues/).first().waitFor();
     const data=await (await ctx.request.get('http://127.0.0.1:8080'+base+'/api/v1/admin/storage-inspections')).json();
+    const checked=data.inspections[0].summary.checked_assets;
+    assert.ok(checked > 0);
+    assert.equal(data.inspections[0].summary.issue_count,0);
+    await page.getByText(new RegExp(`completed · ${checked} asset rows checked · 0 issues`)).first().waitFor();
     assert.equal(data.inspections[0].summary.preview_integrity,'unverified');
     assert.equal(data.inspections[0].summary.complete_for_enforcement,false);
     await page.screenshot({path:out+(base?'/admin-prefix.png':'/admin-root.png'),fullPage:true});

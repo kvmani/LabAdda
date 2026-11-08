@@ -1,6 +1,6 @@
 # Data lifecycle, quotas and retention — future implementation contract
 
-Status: **specified, not implemented**, 2026-11-08. This is the normative extension of S2–S4 for P5. Requirements use MUST for release gates and SHOULD for defaults that may change only with recorded justification. [Archive format](ARCHIVE-FORMAT.md), [admin console](ADMIN-CONSOLE.md) and the acceptance matrix in TESTING.md are part of this contract. Existing pilot configuration remains unchanged until a tested migration activates the new policy engine.
+Status: **normative P5 requirements**, 2026-11-08. Partial implemented foundations are tracked in [P5-PROGRESS.md](P5-PROGRESS.md); the full lifecycle contract is not implemented. This is the normative extension of S2–S4 for P5. Requirements use MUST for release gates and SHOULD for defaults that may change only with recorded justification. [Archive format](ARCHIVE-FORMAT.md), [admin console](ADMIN-CONSOLE.md) and the acceptance matrix in TESTING.md are part of this contract. Existing pilot configuration remains unchanged until a tested migration activates the new policy engine.
 
 ## Purpose and boundaries
 

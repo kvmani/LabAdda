@@ -25,8 +25,11 @@ from sqlalchemy.orm import Session
 
 from .. import audit, policy
 from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target
-from ..deps import Actor, board_actor, current_actor, get_db
-from ..errors import Conflict, Forbidden, Invalid, NotFound
+from ..deps import Actor, board_actor, current_actor, get_db, get_settings
+from ..errors import ApiError, Conflict, Forbidden, Invalid, NotFound
+from ..config import Settings
+from ..identity_locks import lock_identity
+from ..reservations import check_original_capacity
 from ..models import Asset, Board, BoardOp, Post, Workspace
 from ..serialize import iso
 from ..storage import AssetStore
@@ -304,7 +307,13 @@ def list_destinations(workspace_id: uuid.UUID, actor: Actor = Depends(current_ac
 
 @router.post("/workspaces/{workspace_id}/board/snapshots", status_code=201)
 def publish_snapshot(workspace_id: uuid.UUID, body: SnapshotBody, request: Request,
-                     actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+                     actor: Actor = Depends(current_actor), db: Session = Depends(get_db),
+                     settings: Settings = Depends(get_settings)):
+    from types import SimpleNamespace
+    identity = SimpleNamespace(id=actor.id, session=SimpleNamespace(id=actor.session.id))
+    # Generated originals share the same user serialization as upload admission.
+    # This synchronous endpoint already runs in a worker thread.
+    lock_identity(db, identity, settings)
     # Fresh authorization on both ends at publish time.
     source = policy.require_read(db, actor.user, workspace_id).workspace
     existing = db.scalar(select(Post).where(Post.author_id == actor.id, Post.client_id == body.client_id))
@@ -312,6 +321,7 @@ def publish_snapshot(workspace_id: uuid.UUID, body: SnapshotBody, request: Reque
         if existing.source_workspace_id != workspace_id or existing.workspace_id != body.destination_id \
                 or existing.source_revision != body.revision or existing.body != body.summary:
             raise Conflict("client_id_reused", "This request ID was already used for different content.")
+        policy.require_read(db, actor.user, existing.workspace_id)
         return {"post_id": str(existing.id), "workspace_id": str(existing.workspace_id), "duplicate": True}
     allowed = {w.id for w in snapshot_destinations(db, actor, source)}
     if body.destination_id not in allowed:
@@ -321,10 +331,16 @@ def publish_snapshot(workspace_id: uuid.UUID, body: SnapshotBody, request: Reque
         raise Invalid("confirmation_required",
                       f"Confirm that everyone who can read {dest.name} will see this snapshot.")
     png = _render(db, request, workspace_id, body.revision, body.region)
+    check_original_capacity(db, identity, settings, len(png))
     store: AssetStore = request.app.state.assets
     stored = store.save(png, "image/png")
+    candidate_id = uuid.uuid4()
+    commit_started = False
     try:
-        post = Post(workspace_id=dest.id, author_id=actor.id, kind="discussion", body=body.summary,
+        # Time-based session expiry can pass while render/storage runs even
+        # though revocation updates are serialized by the held row locks.
+        lock_identity(db, identity, settings)
+        post = Post(id=candidate_id, workspace_id=dest.id, author_id=actor.id, kind="discussion", body=body.summary,
                     client_id=body.client_id, source_workspace_id=source.id, source_revision=body.revision)
         db.add(post)
         db.flush()
@@ -334,10 +350,30 @@ def publish_snapshot(workspace_id: uuid.UUID, body: SnapshotBody, request: Reque
         audit.record(db, actor=actor.user, action="board.snapshot_publish", scope_type="workspace",
                      scope_id=dest.id, target_id=post.id, source=source.id, revision=body.revision,
                      broader=dest.id != source.id)
+        db.flush()
+        lock_identity(db, identity, settings)
+        commit_started = True
         db.commit()
     except Exception:
         db.rollback()
-        store.delete(stored.storage_key)
-        raise
-    request.app.state.hub.publish(dest.id, {"type": "noticeboard.changed", "workspace_id": str(dest.id)})
-    return {"post_id": str(post.id), "workspace_id": str(dest.id), "duplicate": False}
+        if not commit_started:
+            store.delete(stored.storage_key)
+            raise
+        confirmed = False
+        try:
+            with request.app.state.session_factory() as fresh:
+                durable = fresh.get(Post, candidate_id)
+                if durable is not None:
+                    user = lock_identity(fresh, identity, settings)
+                    policy.require_read(fresh, user, workspace_id)
+                    policy.require_read(fresh, user, body.destination_id)
+                    confirmed = True
+        except ApiError:
+            raise
+        except Exception:
+            pass
+        if not confirmed:
+            raise ApiError('snapshot_commit_unknown', 'Snapshot outcome is uncertain. Storage was retained for inspection; check the noticeboard before retrying.', status=503)
+    destination_id = body.destination_id
+    request.app.state.hub.publish(destination_id, {"type": "noticeboard.changed", "workspace_id": str(destination_id)})
+    return {"post_id": str(candidate_id), "workspace_id": str(destination_id), "duplicate": False}

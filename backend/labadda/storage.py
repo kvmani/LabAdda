@@ -70,6 +70,11 @@ class AssetStore:
             has_preview = True
         key = secrets.token_urlsafe(24)
         target = self.path(key)
+        missing_directories = []
+        directory = target.parent
+        while not directory.exists():
+            missing_directories.append(directory)
+            directory = directory.parent
         target.parent.mkdir(parents=True, exist_ok=True)
         tmp = target.with_suffix(".tmp")
         owned = []
@@ -89,11 +94,15 @@ class AssetStore:
                 owned.append(preview)
                 with os.fdopen(fd, "wb") as stream:
                     stream.write(preview_bytes); stream.flush(); os.fsync(stream.fileno())
-            directory = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY)
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
+            # Sync both file entries and each newly created directory's entry
+            # in its parent, up through the previously existing ancestor.
+            directories = [target.parent, *(path.parent for path in missing_directories)]
+            for path in dict.fromkeys(directories):
+                directory = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
         except Exception:
             for path in reversed(owned):
                 try:

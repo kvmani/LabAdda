@@ -14,8 +14,8 @@ from .security import utcnow
 RESERVATION_SECONDS = 600
 
 
-def reserve_upload(db, actor, settings, size):
-    lock_identity(db, actor, settings)
+def check_original_capacity(db, actor, settings, size):
+    """Caller must hold the user identity lock through its Asset commit."""
     now = utcnow()
     # Only metadata expires here; do not guess which filesystem paths are safe
     # to delete after an interrupted worker. Orphan reconciliation is separate.
@@ -25,7 +25,13 @@ def reserve_upload(db, actor, settings, size):
     pending = db.scalar(select(func.coalesce(func.sum(UploadReservation.bytes),0)).where(
         UploadReservation.user_id == actor.id, UploadReservation.expires_at > now))
     if used + pending + size > settings.user_quota_bytes:
-        raise Invalid('quota_exceeded', 'Your upload allowance is exhausted, including pending uploads. Retry after they finish or contact an administrator.')
+        raise Invalid('quota_exceeded', 'Your original-file allowance is exhausted, including pending uploads. Retry after they finish or contact an administrator.')
+
+
+def reserve_upload(db, actor, settings, size):
+    lock_identity(db, actor, settings)
+    check_original_capacity(db, actor, settings, size)
+    now = utcnow()
     row = UploadReservation(user_id=actor.id, bytes=size, created_at=now,
                             expires_at=now+timedelta(seconds=RESERVATION_SECONDS))
     db.add(row); db.flush(); reservation_id = row.id

@@ -74,6 +74,7 @@ def _persist_upload(request, db, actor, settings, data, content_type, filename):
                       sha256=stored.sha256, has_preview=stored.has_preview)
         db.add(asset)
         db.flush()
+        lock_identity(db, identity, settings)
         commit_started = True
         db.commit()
         return asset_json(asset, settings.api_prefix)
