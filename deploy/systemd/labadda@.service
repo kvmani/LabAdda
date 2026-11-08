@@ -7,7 +7,7 @@ After=network.target
 [Service]
 EnvironmentFile=%h/.config/labadda/%i.env
 WorkingDirectory=%h/labadda/%i/current/backend
-ExecStart=%h/labadda/%i/venv/bin/labadda serve --host 127.0.0.1 --port ${LABADDA_PORT}
+ExecStart=%h/labadda/%i/current/venv/bin/python -m labadda.cli serve --host 127.0.0.1 --port ${LABADDA_PORT}
 Restart=on-failure
 NoNewPrivileges=true
 
