@@ -9,6 +9,7 @@ import { Noticeboard } from "./Noticeboard";
 import { Chat } from "./Chat";
 import { Board } from "./Board";
 import { Members } from "./Members";
+import { WorkspaceUsage } from "./WorkspaceUsage";
 
 type Detail = Workspace & { ancestors: { id: string; name: string }[] };
 const TABS = [
@@ -16,6 +17,7 @@ const TABS = [
   ["board", "Whiteboard"],
   ["chat", "Chat"],
   ["members", "Members"],
+  ["usage", "Storage"],
 ] as const;
 
 export function accessLabel(ws: Workspace): string {
@@ -86,6 +88,7 @@ export function WorkspaceView() {
       {tab === "chat" && <Chat ws={ws} key={ws.id} />}
       {tab === "board" && <Board ws={ws} key={ws.id} userId={session?.user.id} maxUploadBytes={session?.limits.max_attachment_bytes} />}
       {tab === "members" && <Members ws={ws} key={ws.id} />}
+      {tab === "usage" && <WorkspaceUsage workspaceId={ws.id} key={ws.id} />}
     </div>
   );
 }

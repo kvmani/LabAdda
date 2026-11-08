@@ -78,7 +78,7 @@ label.inline input:not([type="checkbox"]) { width: auto; }
 .ws-header { margin-bottom: 1rem; }
 .crumbs { display: flex; gap: 0.75rem; font-size: 0.85rem; margin-bottom: 0.25rem; }
 .crumbs a::after { content: " ›"; color: var(--muted); }
-.tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); margin-top: 0.75rem; }
+.tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; border-bottom: 1px solid var(--line); margin-top: 0.75rem; }
 .tab { padding: 0.5rem 0.9rem; text-decoration: none; color: var(--muted); border-bottom: 3px solid transparent; }
 .tab.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 

@@ -4,6 +4,8 @@ LabAdda is a browser-based collaboration workspace for research teams on an air-
 
 Users can also create **collaborative groups** with chosen colleagues from any unit. A group has the same noticeboard, whiteboard and chat as a section, without hierarchy.
 
+Each readable workspace has a **Storage** tab with shared file and logical-content observations. It covers that workspace's content only; personal notes and parent/child totals are separate. These partial counters do not activate workspace quotas or retention.
+
 The repository holds a runnable application (FastAPI + PostgreSQL backend, React + Vite frontend) with fictional fixture data. See [ROADMAP.md](ROADMAP.md) for what is complete and what comes next.
 
 | Document | Use it for |

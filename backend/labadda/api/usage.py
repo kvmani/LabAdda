@@ -1,18 +1,20 @@
 """Truthful partial measurement; neither reconciliation nor admission enforcement."""
 import os
+import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import case, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .. import audit, charges
+from .. import audit, charges, policy
 from ..config import Settings
-from ..deps import Actor, current_actor, get_db, get_settings, require_admin
-from ..errors import ApiError
+from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, require_admin
+from ..errors import ApiError, Unauthenticated
 from ..models import Asset, StorageInspection, UploadReservation, UsageObservation
 from ..security import utcnow
 from ..serialize import iso
+from ..workspace_usage import workspace_observation
 
 from .capabilities import require_usage_reader
 
@@ -36,6 +38,26 @@ DATABASE_SIZES = text("""
 SELECT c.relname, pg_total_relation_size(c.oid) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relkind = 'r' AND n.nspname = current_schema() AND c.relname = ANY(:names)
 """)
+
+
+@router.get('/workspaces/{workspace_id}/usage')
+def workspace_usage(workspace_id: uuid.UUID, request: Request, actor: Actor = Depends(current_actor),
+                    db: Session = Depends(get_db)):
+    if request.headers.get(PANEL_HEADER) or request.query_params.get('panel') == '1':
+        raise Unauthenticated()
+    policy.require_read(db, actor.user, workspace_id)
+    try:
+        db.execute(text("set local statement_timeout = '2s'"))
+        result = workspace_observation(db, workspace_id)
+        # Refresh identity/session and grants after measurement as well. A
+        # slow read must not deliver counters under an already revoked grant.
+        db.expire_all()
+        refreshed = current_actor(request, db)
+        policy.require_read(db, refreshed.user, workspace_id)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise ApiError('measurement_unavailable', 'Usage measurement is unavailable. Retry later.', status=503) from exc
+    return result
 
 
 def originals(db, user_id=None):
