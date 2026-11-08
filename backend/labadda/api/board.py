@@ -24,7 +24,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from .. import audit, policy
-from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target
+from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target, with_op
+from ..charges import charge_board_object, recharge_board
 from ..deps import Actor, board_actor, current_actor, get_db, get_settings
 from ..errors import ApiError, Conflict, Forbidden, Invalid, NotFound
 from ..config import Settings
@@ -85,7 +86,8 @@ def op_json(op: BoardOp) -> dict:
 
 
 def _ensure_board(db: Session, workspace_id: uuid.UUID) -> Board:
-    db.execute(insert(Board).values(workspace_id=workspace_id, epoch=1, revision=0, base_revision=0)
+    # A new board is empty, so its charges are trivially complete for epoch 1.
+    db.execute(insert(Board).values(workspace_id=workspace_id, epoch=1, revision=0, base_revision=0, charges_epoch=1)
                .on_conflict_do_nothing(index_elements=["workspace_id"]))
     return db.scalar(select(Board).where(Board.workspace_id == workspace_id).with_for_update())
 
@@ -207,6 +209,12 @@ def submit_op(workspace_id: uuid.UUID, body: OpBody, request: Request, actor: Ac
                  actor_id=actor.id, op_type=body.type, object_id=object_id, payload=payload,
                  payload_hash=intent_hash)
     db.add(op)
+    # Logical charge (DL-07) commits atomically with the operation.
+    after = with_op(objects, op)
+    if board.charges_epoch == board.epoch:
+        charge_board_object(db, workspace_id, object_id, after.get(object_id))
+    else:
+        recharge_board(db, board, after)  # first write to a historical board completes its ledger
     base_revision = board.base_revision
     db.commit()
     state_cache.committed(workspace_id, base_revision, op)
@@ -229,6 +237,7 @@ def restore(workspace_id: uuid.UUID, body: RestoreBody, request: Request, actor:
     old_epoch = board.epoch
     board.epoch += 1
     board.base_revision = board.revision
+    restored: dict[str, dict] = {}
     for object_id, obj in objects.items():
         if not obj["alive"]:
             continue
@@ -239,11 +248,13 @@ def restore(workspace_id: uuid.UUID, body: RestoreBody, request: Request, actor:
             data["x"], data["y"] = data["x"] + obj["dx"], data["y"] + obj["dy"]
         board.revision += 1
         payload = {"kind": obj["kind"], "data": data, "author": obj["author"]}
+        restored[object_id] = {**payload, "alive": True}
         db.add(BoardOp(workspace_id=workspace_id, epoch=board.epoch, revision=board.revision,
                        op_id=f"restore-{board.epoch}-{object_id}"[:64], actor_id=actor.id, op_type="add",
                        object_id=object_id, payload=payload, payload_hash=_hash(payload)))
     audit.record(db, actor=actor.user, action="board.restore", scope_type="workspace", scope_id=workspace_id,
                  reason=body.reason, from_epoch=old_epoch, to_revision=body.revision)
+    recharge_board(db, board, restored)
     db.commit()
     request.app.state.hub.publish(workspace_id, {"type": "board.epoch", "workspace_id": str(workspace_id),
                                                  "epoch": board.epoch})

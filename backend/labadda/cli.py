@@ -58,8 +58,35 @@ def main(argv: list[str] | None = None) -> int:
     reconcile.add_argument("--apply", action="store_true")
     reconcile.add_argument("--expected-plan")
     reconcile.add_argument("--writers-quiesced", action="store_true")
+    charges = sub.add_parser("reconcile-charges",
+                             help="dry-run or explicitly apply text/board logical-charge ledger corrections")
+    charges.add_argument("--max-items", type=int, default=10_000)
+    charges.add_argument("--max-boards", type=int, default=50)
+    charges.add_argument("--max-board-objects", type=int, default=200_000)
+    charges.add_argument("--max-seconds", type=float, default=30)
+    charges.add_argument("--after-item", help="cursor from a previous receipt, e.g. post:<id>")
+    charges.add_argument("--after-board", type=uuid.UUID)
+    charges.add_argument("--apply", action="store_true")
+    charges.add_argument("--expected-plan")
+    charges.add_argument("--writers-quiesced", action="store_true")
     args = parser.parse_args(argv)
     settings = load_settings()
+
+    if args.cmd == "reconcile-charges":
+        from .charge_reconciliation import reconcile_content_charges
+        try:
+            result = reconcile_content_charges(
+                session_factory(settings.database_url), max_items=args.max_items, max_boards=args.max_boards,
+                max_board_objects=args.max_board_objects, max_seconds=args.max_seconds,
+                after_item=args.after_item, after_board=args.after_board, apply=args.apply,
+                expected_plan=args.expected_plan, writers_quiesced=args.writers_quiesced)
+            print(json.dumps(result))
+            clean = result["status"] == "completed" and (args.apply or result["summary"]["issue_count"] == 0)
+            return 0 if clean else 2
+        except Exception:
+            print("Charge reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the "
+                  "reviewed plan. Only ledger rows are ever corrected; no content is changed.", file=sys.stderr)
+            return 2
 
     if args.cmd == "reconcile-previews":
         from .preview_reconciliation import reconcile_previews

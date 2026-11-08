@@ -329,6 +329,8 @@ class Board(Base):
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     # Operations at or below this revision live only in board_snapshots.
     base_revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0", default=0)
+    # Epoch whose board-object charges are complete; null or older means "unknown" (DL-07).
+    charges_epoch: Mapped[int | None] = mapped_column(Integer)
 
 
 class BoardSnapshot(Base):
@@ -438,3 +440,28 @@ class UploadReceipt(Base):
     created_at: Mapped[datetime] = _created()
     __table_args__ = (UniqueConstraint('user_id','request_key',name='uq_upload_receipt_user_key'),
                      CheckConstraint("state in ('pending','complete','failed') and expires_at > created_at",name='ck_upload_receipt_state'))
+
+
+class ContentCharge(Base):
+    """Logical text/board charge per item under a versioned canonical rule (DL-07).
+
+    Text rows are maintained by database triggers; board-object rows by the board writers.
+    Derived data: reconcilable from source content, never an access grant.
+    """
+    __tablename__ = 'content_charges'
+    item_type: Mapped[str] = mapped_column(String(16), primary_key=True)
+    item_key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('workspaces.id'))
+    method: Mapped[str] = mapped_column(String(32), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[datetime] = _created()
+    __table_args__ = (
+        CheckConstraint("item_type in ('post','chat','note','board_object')", name='ck_content_charge_type'),
+        CheckConstraint("state in ('live','removed')", name='ck_content_charge_state'),
+        CheckConstraint('bytes >= 0', name='ck_content_charge_bytes'),
+        CheckConstraint("(item_type = 'note') = (workspace_id is null)", name='ck_content_charge_scope'),
+        Index('ix_content_charges_user', 'user_id', 'item_type'),
+        Index('ix_content_charges_workspace', 'workspace_id', 'item_type'),
+    )

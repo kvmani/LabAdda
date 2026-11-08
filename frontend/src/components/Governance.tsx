@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { LogicalCharges } from './LogicalCharges';
 import { api } from '../api';
 import { fmtBytes as bytes } from '../format';
 import type { PolicyDrafts, SiteUsage, Observation } from '../governance-types';
@@ -11,6 +12,7 @@ type StorageReceipt = {
     verified_previews?: number; unknown_previews?: number;
     scope?: string; mode?: string; candidate_count?: number;
     applied_count?: number; stop_reason?: string;
+    checked_items?: number; checked_boards?: number; correction_count?: number;
   };
 };
 const reconciliationStops: Record<string, string> = {
@@ -19,6 +21,7 @@ const reconciliationStops: Record<string, string> = {
   time_budget_exhausted: 'Time budget reached; reduce the batch size.',
   reconciliation_busy: 'Another reconciliation is running.',
   asset_root_unavailable: 'Asset storage is unavailable; check host storage.',
+  board_object_budget_exhausted: 'Whiteboard object budget reached; reduce the batch size.',
 };
 export function Governance() {
   const [policy, setPolicy] = useState<PolicyDrafts | null>(null);
@@ -69,15 +72,18 @@ export function Governance() {
         <dt>Configured site budget</dt><dd>Not configured</dd>
         <dt>Observed</dt><dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
       </dl>
-      <p className="notice">Filesystem capacity may be shared with other services. Historical previews without expected measurements, other derivatives, text/boards, non-upload reservations, trash and archive storage are not fully measured. Preview metadata is not a current disk inspection. These totals cannot approve enforcement or deletion.</p>
+      <LogicalCharges charges={usage.logical_charges} scope="site" />
+      <p className="notice">Filesystem capacity may be shared with other services. Historical previews without expected measurements, other derivatives, whiteboard history, database size, non-upload reservations, trash and archive storage are not fully measured. Preview metadata is not a current disk inspection. These totals cannot approve enforcement or deletion.</p>
       <button disabled={busy} onClick={() => run(() => api('/admin/usage-observations', {body: {}}), 'Partial observation recorded.')}>Record partial observation</button>
       <p>{Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.</p>
       {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}
     </>}
-    <h3>Referenced file inspections</h3>
+    <h3>Referenced file inspections and reconciliations</h3>
     <p>Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original hashes and preview hashes where expected measurements exist. Historical preview integrity remains unknown without those measurements. The scan time budget is cooperative, not a hard filesystem timeout. Inspections never repair files or authorize enforcement. A running record may be stale after an operator process stops.</p>
-    {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status} · {r.summary.checked_assets ?? 'Not reported'} asset rows checked · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}
-      {r.summary.scope === 'preview_metadata_reconciliation'
+    {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status}{r.summary.scope === 'content_charge_reconciliation' ? '' : ` · ${r.summary.checked_assets ?? 'Not reported'} asset rows checked`} · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}
+      {r.summary.scope === 'content_charge_reconciliation'
+        ? <span className="muted small"> · Text/whiteboard charge reconciliation {r.summary.mode === 'dry_run' ? 'Dry run' : r.summary.mode === 'apply' ? 'Apply' : 'Unknown mode'}: {r.summary.checked_items ?? 'Not reported'} text items · {r.summary.checked_boards ?? 'Not reported'} boards · {r.summary.correction_count ?? 'Not reported'} ledger corrections planned · {r.summary.applied_count ?? 'Unconfirmed'} applied{r.summary.stop_reason && ` · ${reconciliationStops[r.summary.stop_reason] ?? 'Host operator inspection required.'}`}</span>
+        : r.summary.scope === 'preview_metadata_reconciliation'
         ? <span className="muted small"> · Preview reconciliation {r.summary.mode === 'dry_run' ? 'Dry run' : r.summary.mode === 'apply' ? 'Apply' : 'Unknown mode'}: {r.summary.candidate_count ?? 'Not reported'} candidates · {r.summary.applied_count ?? 'Unconfirmed'} metadata updates{r.summary.stop_reason && ` · ${reconciliationStops[r.summary.stop_reason] ?? 'Host operator inspection required.'}`}</span>
         : <span className="muted small"> · Preview checks: {r.summary.verified_previews ?? 'Not reported'} verified · {r.summary.unknown_previews ?? 'Not reported'} unknown expected measurements</span>}
     </li>)}</ul>}

@@ -6,7 +6,7 @@ from sqlalchemy import case, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .. import audit
+from .. import audit, charges
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, require_admin
 from ..errors import ApiError
@@ -17,8 +17,8 @@ from ..serialize import iso
 from .capabilities import require_usage_reader
 
 router = APIRouter(tags=['usage'])
-UNMEASURED = ['other_or_historical_derivative_bytes', 'text_and_board_logical_bytes', 'non_upload_reservations', 'trash',
-              'temporary_archives', 'reference_reconciliation']
+UNMEASURED = ['other_or_historical_derivative_bytes', 'board_history_and_snapshot_bytes', 'database_physical_size',
+              'non_upload_reservations', 'trash', 'temporary_archives', 'reference_reconciliation']
 
 
 def originals(db, user_id=None):
@@ -45,12 +45,24 @@ def originals(db, user_id=None):
             'unmeasured': UNMEASURED, 'complete_for_enforcement': False}
 
 
+def logical_charges(db, user_id=None):
+    """Versioned text/board logical charges (DL-07); separate from original-file bytes."""
+    try:
+        db.execute(text("set local statement_timeout = '2s'"))
+        measured = charges.summary(db, user_id)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise ApiError('measurement_unavailable', 'Usage measurement is unavailable. Retry later.', status=503) from exc
+    return {**measured, 'source': 'content_charges_ledger', 'observed_at': iso(utcnow()),
+            'complete_for_enforcement': False}
+
+
 @router.get('/usage')
 def user_usage(actor: Actor = Depends(current_actor), db: Session = Depends(get_db),
                settings: Settings = Depends(get_settings)):
     measured = originals(db, actor.id)
     limit = settings.user_quota_bytes
-    return {'scope': 'current_user', 'measurement': measured,
+    return {'scope': 'current_user', 'measurement': measured, 'logical_charges': logical_charges(db, actor.id),
             'runtime_limit': {'bytes': limit, 'source': 'environment', 'policy_proposals_enforced': False},
             'tracked_original_percent': round(measured['tracked_original_bytes'] / limit * 100, 1) if limit > 0 else None,
             'available_features': {'archives': False, 'quota_exceptions': False, 'retention': False}}
@@ -68,6 +80,7 @@ def site_payload(db, settings):
         pass
     filesystem['observed_at'] = iso(utcnow())
     return {'schema_version': 1, 'scope': 'site', 'state': 'partial', 'assets': measured,
+            'logical_charges': logical_charges(db),
             'filesystem': filesystem, 'note': 'Filesystem capacity is shared; it is not a configured site quota.',
             'policy_enforcement_changed': False}
 

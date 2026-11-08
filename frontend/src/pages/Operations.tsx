@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LogicalCharges } from '../components/LogicalCharges';
 import { api } from '../api';
 import type { SiteUsage } from '../governance-types';
 import { fmtBytes } from '../format';
@@ -24,7 +25,8 @@ export function Operations() {
         <dt>Pending original-byte reservations</dt><dd>{fmtBytes(data.assets.pending_upload_original_bytes)}</dd>
         <dt>Asset filesystem free space</dt><dd>{fmtBytes(data.filesystem.free_bytes)} · {data.filesystem.state}</dd>
         <dt>Observed</dt><dd>{new Date(data.assets.observed_at).toLocaleString()}</dd></dl>
-      <p>Historical previews without expected measurements, other derivatives, text/boards, non-upload reservations, trash and temporary archives are not fully measured. Preview metadata is not a current disk inspection. No configured site budget or enforcement authority.</p>
+      <LogicalCharges charges={data.logical_charges} scope="site" />
+      <p>Historical previews without expected measurements, other derivatives, whiteboard history, database size, non-upload reservations, trash and temporary archives are not fully measured. Preview metadata is not a current disk inspection. No configured site budget or enforcement authority.</p>
     </div>}
   </section>;
 }

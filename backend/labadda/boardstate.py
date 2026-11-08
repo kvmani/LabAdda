@@ -80,6 +80,13 @@ def _apply_copy(objects: dict[str, dict], op: BoardOp) -> None:
     apply_op(objects, op)
 
 
+def with_op(objects: dict[str, dict], op: BoardOp) -> dict[str, dict]:
+    """A new state with ``op`` applied; ``objects`` and its object dicts are left untouched."""
+    result = dict(objects)
+    _apply_copy(result, op)
+    return result
+
+
 class StateCache:
     """Per-process cache of each board's latest state, so a write does not refold history.
 

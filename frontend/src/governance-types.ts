@@ -4,12 +4,22 @@ export type OriginalMeasurement = {
   tracked_preview_bytes?: number; unknown_preview_files?: number;
   unmeasured: string[]; complete_for_enforcement: false;
 };
+export type ChargeBucket = {live_bytes: number; live_items: number; removed_bytes: number; removed_items: number};
+export type LogicalCharges = {
+  methods: {text: string; board: string};
+  by_type: {post: ChargeBucket; chat: ChargeBucket; note: ChargeBucket; board_object: ChargeBucket};
+  live_logical_bytes: number; removed_logical_bytes: number;
+  board_charges: 'complete' | 'incomplete'; unreconciled_boards: number | null;
+  observed_at: string; complete_for_enforcement: false;
+};
 export type UserUsage = {
   measurement: OriginalMeasurement;
+  logical_charges?: LogicalCharges;
   runtime_limit: {bytes: number; source: string; policy_proposals_enforced: false};
 };
 export type SiteUsage = {
   assets: OriginalMeasurement;
+  logical_charges?: LogicalCharges;
   filesystem: {state: string; free_bytes: number | null; total_bytes: number | null; free_inodes: number | null};
 };
 export type ProposedProfile = {

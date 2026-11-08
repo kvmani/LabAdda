@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LogicalCharges } from '../components/LogicalCharges';
 import type { UserUsage } from '../governance-types';
 import { fmtBytes as bytes } from '../format';
 import { api } from '../api';
@@ -14,7 +15,7 @@ export function Usage() {
   useEffect(() => { load(); }, []);
   return <section>
     <h1>My storage usage</h1>
-    <p>These counters cover tracked originals and previews with recorded measurements. They are not a complete storage ledger.</p>
+    <p>These counters cover tracked originals, previews with recorded measurements and the text and whiteboard content you contributed. They are not a complete storage ledger.</p>
     <button onClick={load}>Refresh usage</button>
     {error && <p className="error" role="alert">{error}</p>}
     {!data && !error && <p role="status">Loading usage…</p>}
@@ -29,7 +30,8 @@ export function Usage() {
         <dt>Current pilot limit</dt><dd>{bytes(data.runtime_limit.bytes)} (environment setting)</dd>
         <dt>Observed</dt><dd>{new Date(data.measurement.observed_at).toLocaleString()}</dd>
       </dl>
-      <p className="notice">Partial measurement: historical previews without expected measurements, other derivatives, text and drawing storage, non-upload reservations, trash and temporary archives are not fully measured here. Preview metadata is not a current disk inspection. Your current pilot limit charges originals only; proposed policies do not change it.</p>
+      <LogicalCharges charges={data.logical_charges} scope="user" />
+      <p className="notice">Partial measurement: historical previews without expected measurements, other derivatives, whiteboard history, non-upload reservations, trash and temporary archives are not fully measured here. Preview metadata is not a current disk inspection. Your current pilot limit charges originals only; proposed policies do not change it.</p>
       <p>Archive downloads, quota exceptions and retention management are planned. Existing file downloads remain available on their posts. Contact your site administrator about the current pilot limit.</p>
     </div>}
   </section>;
