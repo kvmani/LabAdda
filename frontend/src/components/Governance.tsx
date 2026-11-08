@@ -46,11 +46,12 @@ export function Governance() {
       <h3>Site measurements (partial)</h3>
       <dl>
         <dt>Tracked original file bytes</dt><dd>{bytes(usage.assets.tracked_original_bytes)} · {usage.assets.tracked_files} files</dd>
+        <dt>Pending original-byte reservations</dt><dd>{bytes(usage.assets.pending_upload_original_bytes)}</dd>
         <dt>Asset filesystem free space</dt><dd>{bytes(usage.filesystem.free_bytes)} · {usage.filesystem.state}</dd>
         <dt>Configured site budget</dt><dd>Not configured</dd>
         <dt>Observed</dt><dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
       </dl>
-      <p className="notice">Filesystem capacity may be shared with other services. Derivatives, text/boards, reservations, trash and archive storage are unmeasured. These totals cannot approve enforcement or deletion.</p>
+      <p className="notice">Filesystem capacity may be shared with other services. Derivatives, text/boards, non-upload reservations, trash and archive storage are unmeasured. These totals cannot approve enforcement or deletion.</p>
       <button disabled={busy} onClick={() => run(() => api('/admin/usage-observations', {body: {}}), 'Partial observation recorded.')}>Record partial observation</button>
       <p>{Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.</p>
       {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}

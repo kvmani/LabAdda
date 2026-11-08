@@ -10,14 +10,14 @@ from .. import audit
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, require_admin
 from ..errors import ApiError
-from ..models import Asset, StorageInspection, UsageObservation
+from ..models import Asset, StorageInspection, UploadReservation, UsageObservation
 from ..security import utcnow
 from ..serialize import iso
 
 from .capabilities import require_usage_reader
 
 router = APIRouter(tags=['usage'])
-UNMEASURED = ['derivative_bytes', 'text_and_board_logical_bytes', 'reservations', 'trash',
+UNMEASURED = ['derivative_bytes', 'text_and_board_logical_bytes', 'non_upload_reservations', 'trash',
               'temporary_archives', 'reference_reconciliation']
 
 
@@ -26,15 +26,19 @@ def originals(db, user_id=None):
         func.coalesce(func.sum(case((Asset.status == 'provisional', Asset.size), else_=0)), 0))
     if user_id is not None:
         query = query.where(Asset.owner_id == user_id)
+    pending = select(func.coalesce(func.sum(UploadReservation.bytes),0)).where(UploadReservation.expires_at > utcnow())
+    if user_id is not None:
+        pending = pending.where(UploadReservation.user_id == user_id)
+    query = query.add_columns(pending.scalar_subquery())
     try:
         db.execute(text("set local statement_timeout = '2s'"))
-        count, total, provisional = db.execute(query).one()
+        count, total, provisional, reserved = db.execute(query).one()
     except SQLAlchemyError as exc:
         db.rollback()
         raise ApiError('measurement_unavailable', 'Usage measurement is unavailable. Retry later.', status=503) from exc
     return {'state': 'partial', 'source': 'asset_metadata', 'observed_at': iso(utcnow()),
             'tracked_files': count, 'tracked_original_bytes': int(total),
-            'provisional_original_bytes': int(provisional), 'committed_original_bytes': int(total-provisional),
+            'pending_upload_original_bytes': int(reserved), 'provisional_original_bytes': int(provisional), 'committed_original_bytes': int(total-provisional),
             'unmeasured': UNMEASURED, 'complete_for_enforcement': False}
 
 

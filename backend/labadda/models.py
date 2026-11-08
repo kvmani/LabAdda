@@ -403,3 +403,14 @@ class UsageReaderGrant(Base):
     reason: Mapped[str] = mapped_column(String(500), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _created()
+
+
+class UploadReservation(Base):
+    """Pending original-byte admission. Durable assets replace these on commit."""
+    __tablename__ = 'upload_reservations'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False, index=True)
+    bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = _created()
+    __table_args__ = (CheckConstraint('bytes > 0 and expires_at > created_at', name='ck_upload_reservation_bounds'),)

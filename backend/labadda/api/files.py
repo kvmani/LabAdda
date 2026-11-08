@@ -7,16 +7,19 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import policy
+from ..reservations import consume_upload, release_upload, reserve_upload
 from ..config import Settings
 from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, panel_actor
-from ..errors import Invalid, NotFound
+from ..errors import ApiError, Invalid, NotFound
 from ..models import Asset, Post
 from ..security import utcnow
 from ..serialize import asset_json
+from ..identity_locks import lock_identity
 from ..storage import AssetStore, safe_display_name
 
 router = APIRouter(tags=["files"])
@@ -50,21 +53,53 @@ async def _read_limited(upload: UploadFile, limit: int) -> bytes:
 async def upload(request: Request, file: UploadFile = File(...), actor: Actor = Depends(current_actor),
                  db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
     data = await _read_limited(file, settings.max_attachment_bytes)
-    used = db.scalar(select(func.coalesce(func.sum(Asset.size), 0)).where(Asset.owner_id == actor.id)) or 0
-    if used + len(data) > settings.user_quota_bytes:
-        raise Invalid("quota_exceeded", "Your storage quota is full. Remove old attachments or ask an administrator.")
-    stored = _store(request).save(data, file.content_type)
-    asset = Asset(owner_id=actor.id, storage_key=stored.storage_key, media_type=stored.media_type,
-                  display_name=safe_display_name(file.filename, stored.media_type), size=stored.size,
-                  sha256=stored.sha256, has_preview=stored.has_preview)
-    db.add(asset)
+    return await run_in_threadpool(_persist_upload, request, db, actor, settings,
+                                  data, file.content_type, file.filename)
+
+
+def _persist_upload(request, db, actor, settings, data, content_type, filename):
+    from types import SimpleNamespace
+    # Immutable references avoid consulting expired request-ORM objects during
+    # failure resolution through a fresh connection.
+    identity = SimpleNamespace(id=actor.id, session=SimpleNamespace(id=actor.session.id))
+    reservation_id = reserve_upload(db, identity, settings, len(data))
+    stored = None
+    candidate_id = uuid.uuid4()
+    commit_started = False
     try:
+        stored = _store(request).save(data, content_type)
+        consume_upload(db, identity, settings, reservation_id)
+        asset = Asset(id=candidate_id, owner_id=identity.id, storage_key=stored.storage_key, media_type=stored.media_type,
+                      display_name=safe_display_name(filename, stored.media_type), size=stored.size,
+                      sha256=stored.sha256, has_preview=stored.has_preview)
+        db.add(asset)
+        db.flush()
+        commit_started = True
         db.commit()
+        return asset_json(asset, settings.api_prefix)
     except Exception:
         db.rollback()
-        _store(request).delete(stored.storage_key)
+        if commit_started:
+            # A lost COMMIT response is not evidence of rollback. Never unlink
+            # potentially committed bytes. A fresh confirmed row can complete
+            # this request; absence/unavailable verification remains uncertain.
+            try:
+                with request.app.state.session_factory() as fresh:
+                    confirmed = fresh.get(Asset, candidate_id)
+                    if confirmed is not None and confirmed.storage_key == stored.storage_key:
+                        lock_identity(fresh, identity, settings)
+                        return asset_json(confirmed, settings.api_prefix)
+            except ApiError:
+                raise
+            except Exception:
+                pass
+            raise ApiError('upload_commit_unknown', 'Upload outcome is uncertain. Storage was retained for inspection; do not retry blindly.', status=503)
+        try:
+            if stored is not None:
+                _store(request).delete(stored.storage_key)
+        finally:
+            release_upload(db, identity.id, reservation_id)
         raise
-    return asset_json(asset, settings.api_prefix)
 
 
 @router.delete("/uploads/{asset_id}")

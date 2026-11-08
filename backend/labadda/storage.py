@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import os
 import re
 import secrets
@@ -71,10 +72,35 @@ class AssetStore:
         target = self.path(key)
         target.parent.mkdir(parents=True, exist_ok=True)
         tmp = target.with_suffix(".tmp")
-        tmp.write_bytes(data)
-        os.replace(tmp, target)
-        if preview_bytes is not None:
-            self.path(key, preview=True).write_bytes(preview_bytes)
+        owned = []
+        try:
+            # Exclusive creation and no-clobber publication prevent a collision
+            # from replacing/deleting somebody else's existing object.
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            owned.append(tmp)
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(data); stream.flush(); os.fsync(stream.fileno())
+            os.link(tmp, target)
+            owned.append(target)
+            tmp.unlink()
+            if preview_bytes is not None:
+                preview = self.path(key, preview=True)
+                fd = os.open(preview, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                owned.append(preview)
+                with os.fdopen(fd, "wb") as stream:
+                    stream.write(preview_bytes); stream.flush(); os.fsync(stream.fileno())
+            directory = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        except Exception:
+            for path in reversed(owned):
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    logging.getLogger("labadda").error("asset_partial_write_cleanup_failed")
+            raise
         return StoredFile(key, media_type, len(data), hashlib.sha256(data).hexdigest(), has_preview)
 
     @staticmethod

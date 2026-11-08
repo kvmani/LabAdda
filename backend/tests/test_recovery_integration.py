@@ -44,6 +44,14 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
         'hours':24,'reason':'Synthetic recovery observer','password':fixture_password()})
     assert granted.status_code == 201
     assert ben.get('/admin/usage').status_code == 200
+    from labadda.models import UploadReservation
+    from labadda.db import session_factory
+    from labadda.security import utcnow
+    from datetime import timedelta
+    with session_factory(settings.database_url)() as db:
+        db.add(UploadReservation(user_id=ids['users']['ben'],bytes=123,
+            created_at=utcnow(),expires_at=utcnow()+timedelta(minutes=10)))
+        db.commit()
     bundle = tmp_path / 'backup'
     sha = backup(settings.database_url, settings.asset_dir, bundle, 'synthetic-release', writers_quiesced=True)
     target_name = 'labadda_restore_test_' + uuid.uuid4().hex
@@ -70,6 +78,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             api = Api(client, '/api/v1')
             assert api.login('ben').status_code == 200
             assert api.get('/admin/usage').status_code == 403
+            assert api.get('/usage').json()['measurement']['pending_upload_original_bytes'] == 0
             assert any(p["id"] == post.json()["id"] and p["body"] == "Recovery post" for p in api.get(f"/workspaces/{workspace}/posts").json()["posts"])
             assert api.get(f"/notes/{note.json()['id']}").json()['title'] == 'Private recovery note'
             assert api.get(f"/files/{asset['id']}").content == pdf

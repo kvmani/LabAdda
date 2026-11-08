@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from .. import audit
 from ..config import Settings
 from ..deps import Actor, get_db, get_settings, require_admin
-from ..errors import Conflict, Forbidden, Unauthenticated
-from ..models import AuthSession, PolicyDraft, User
-from ..security import session_valid
+from ..errors import Conflict, Forbidden
+from ..models import PolicyDraft
+from ..identity_locks import lock_identity
 from ..serialize import iso
 
 router = APIRouter(tags=['governance'])
@@ -73,13 +73,7 @@ def lock_drafts(db):
 
 
 def lock_authority(db, actor, settings):
-    # Lock in the same user → session order used by deactivation/reset. Refresh
-    # cached ORM identities after any lock wait; hold authorization through commit.
-    # NO KEY UPDATE blocks role/password writes while allowing FK key-share checks.
-    user = db.scalar(select(User).where(User.id == actor.id).with_for_update(key_share=True).execution_options(populate_existing=True))
-    session = db.scalar(select(AuthSession).where(AuthSession.id == actor.session.id).with_for_update().execution_options(populate_existing=True))
-    if user is None or not user.is_active or session is None or not session_valid(session, settings):
-        raise Unauthenticated()
+    user = lock_identity(db, actor, settings)
     if not user.is_admin:
         raise Forbidden('admin_required', 'Administrator access is required.')
 

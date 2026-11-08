@@ -19,9 +19,10 @@ export function Operations() {
     {!data && !error && <p role="status">Loading observations…</p>}
     {data && <div className="card"><h2>Partial site measurement</h2>
       <dl><dt>Tracked original files</dt><dd>{data.assets.tracked_files} · {fmtBytes(data.assets.tracked_original_bytes)}</dd>
+        <dt>Pending original-byte reservations</dt><dd>{fmtBytes(data.assets.pending_upload_original_bytes)}</dd>
         <dt>Asset filesystem free space</dt><dd>{fmtBytes(data.filesystem.free_bytes)} · {data.filesystem.state}</dd>
         <dt>Observed</dt><dd>{new Date(data.assets.observed_at).toLocaleString()}</dd></dl>
-      <p>Unmeasured: derivatives, text/boards, reservations, trash and temporary archives. No configured site budget or enforcement authority.</p>
+      <p>Unmeasured: derivatives, text/boards, non-upload reservations, trash and temporary archives. No configured site budget or enforcement authority.</p>
     </div>}
   </section>;
 }
