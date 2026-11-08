@@ -41,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("destination", type=Path)
     backup.add_argument("--release", required=True)
     backup.add_argument("--writers-quiesced", action="store_true", required=True)
+    restore = sub.add_parser("restore", help="restore to a distinct empty, isolated database")
+    restore.add_argument("bundle", type=Path)
+    restore.add_argument("--manifest-sha256", required=True)
+    restore.add_argument("--isolated-target", action="store_true", required=True)
     args = parser.parse_args(argv)
     settings = load_settings()
 
@@ -53,6 +57,21 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except Exception:
             print("Backup failed; no readiness claim. Check stopped writers, paths, database access and PostgreSQL clients.", file=sys.stderr)
+            return 2
+
+    if args.cmd == "restore":
+        from .recovery import restore as restore_backup
+        import os
+        target_url = os.environ.get("LABADDA_RESTORE_DATABASE_URL")
+        if not target_url:
+            print("Set LABADDA_RESTORE_DATABASE_URL to a distinct empty target.", file=sys.stderr)
+            return 2
+        try:
+            print(json.dumps(restore_backup(args.bundle, args.manifest_sha256, target_url,
+                                           settings.asset_dir, isolated_target=args.isolated_target)))
+            return 0
+        except Exception:
+            print("Restore failed. Keep target isolated; inspect integrity, empty target, clients and access. Never activate a partial restore.", file=sys.stderr)
             return 2
 
     if args.cmd == "migrate":

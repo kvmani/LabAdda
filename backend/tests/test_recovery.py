@@ -80,3 +80,32 @@ def test_failed_dump_leaves_no_published_backup(tmp_path, migrated, monkeypatch)
         recovery.backup(migrated, assets, target, 'fixture', writers_quiesced=True)
     assert not target.exists()
     assert not list(tmp_path.glob('.recovery-*'))
+
+
+def test_restore_requires_isolation_before_access(tmp_path):
+    from labadda.recovery import restore
+    with pytest.raises(RecoveryError, match='isolated'):
+        restore(tmp_path, 'unused', 'unused', tmp_path / 'assets', isolated_target=False)
+
+
+def test_restore_refuses_wrong_manifest_digest_before_database_access(tmp_path):
+    from labadda.recovery import restore
+    root = bundle(tmp_path)
+    with pytest.raises(RecoveryError, match='digest'):
+        restore(root, '0' * 64, 'unused', tmp_path / 'assets', isolated_target=True)
+
+
+def test_restore_does_not_overwrite_assets(tmp_path):
+    from labadda.recovery import restore, file_hash
+    root = bundle(tmp_path)
+    assets = tmp_path / 'assets'
+    assets.mkdir()
+    with pytest.raises(RecoveryError, match='must not exist'):
+        restore(root, file_hash(root / 'manifest.json'), 'unused', assets, isolated_target=True)
+
+
+def test_restore_cli_requires_explicit_target(monkeypatch, capsys):
+    from labadda.cli import main
+    monkeypatch.delenv('LABADDA_RESTORE_DATABASE_URL', raising=False)
+    assert main(['restore', 'unused', '--manifest-sha256', '0'*64, '--isolated-target']) == 2
+    assert 'LABADDA_RESTORE_DATABASE_URL' in capsys.readouterr().err

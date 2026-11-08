@@ -70,6 +70,9 @@ def postgres_environment(url: str) -> dict:
     parsed = make_url(url)
     if parsed.get_backend_name() != 'postgresql' or parsed.query:
         raise RecoveryError('Use a PostgreSQL URL without query options; configure TLS through PGSSL*')
+    import re
+    if not parsed.database or not re.fullmatch(r'[A-Za-z0-9_-]+', parsed.database):
+        raise RecoveryError('Use a simple explicit database name')
     env = {k: v for k, v in os.environ.items() if not k.startswith('PG')}
     # Retain explicit libpq TLS configuration, never a stale connection selector.
     env.update({k: v for k, v in os.environ.items() if k.startswith('PGSSL')})
@@ -145,5 +148,67 @@ def backup(url: str, assets: Path, destination: Path, release: str, *, writers_q
             finally:
                 os.close(fd)
         return file_hash(destination / 'manifest.json')
+    finally:
+        engine.dispose()
+
+
+def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: Path, *,
+            isolated_target: bool, pg_restore: str = 'pg_restore') -> dict:
+    from sqlalchemy import create_engine, text
+    from .app import expected_schema_head
+    from .storage import AssetStore
+    if not isolated_target:
+        raise RecoveryError('Restore requires an isolated target kept off traffic')
+    if file_hash(bundle / 'manifest.json') != expected_manifest_hash:
+        raise RecoveryError('Manifest digest mismatch')
+    if assets.exists() or assets.is_symlink():
+        raise RecoveryError('Target asset directory must not exist')
+    assets.parent.mkdir(parents=True, exist_ok=True)
+    engine = create_engine(target_url, connect_args={'connect_timeout': 10})
+    try:
+        with tempfile.TemporaryDirectory(prefix='.restore-') as temporary:
+            snapshot = Path(temporary) / 'bundle'
+            # Copy privately, then validate that exact snapshot before touching DB.
+            inventory(bundle)
+            shutil.copytree(bundle, snapshot, symlinks=True)
+            if file_hash(snapshot / 'manifest.json') != expected_manifest_hash:
+                raise RecoveryError('Manifest changed during restore')
+            manifest = verify_bundle(snapshot)
+            if manifest['schema'] != expected_schema_head():
+                raise RecoveryError('Recovery schema does not match this application')
+            if not manifest.get('source_database') or engine.url.database == manifest['source_database']:
+                raise RecoveryError('Use a distinct empty target database')
+            with tempfile.TemporaryDirectory(prefix='.restore-assets-', dir=assets.parent) as staged:
+                staged_assets = Path(staged) / 'assets'
+                copy_assets(snapshot / 'assets', staged_assets)
+                with engine.connect() as guard:
+                    if not guard.scalar(text("select pg_try_advisory_lock(hashtext('labadda_restore'))")):
+                        raise RecoveryError('Another restore owns this target')
+                    try:
+                        objects = guard.scalar(text("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname not like 'pg_%' and n.nspname <> 'information_schema'"))
+                        if objects:
+                            raise RecoveryError('Target database must be empty; never overwrite existing data')
+                        pg_command(pg_restore, target_url, '--dbname', postgres_environment(target_url)['PGDATABASE'], '--single-transaction', '--exit-on-error',
+                                   '--no-owner', '--no-acl', snapshot / 'database.dump')
+                        with engine.begin() as conn:
+                            if conn.scalar(text('select version_num from alembic_version')) != manifest['schema']:
+                                raise RecoveryError('Restored schema mismatch; keep target isolated')
+                            store = AssetStore(staged_assets)
+                            for row in conn.execute(text("select storage_key, size, sha256, has_preview from assets where status = 'committed'")):
+                                path = store.path(row.storage_key)
+                                if not path.is_file() or path.stat().st_size != row.size or file_hash(path) != row.sha256:
+                                    raise RecoveryError('Restored asset reference mismatch; keep target isolated')
+                                if row.has_preview and not store.path(row.storage_key, preview=True).is_file():
+                                    raise RecoveryError('Restored preview missing; keep target isolated')
+                            conn.execute(text("update auth_sessions set revoked_at = coalesce(revoked_at, now()), end_reason = 'restore'"))
+                            conn.execute(text('delete from panel_pairings'))
+                            conn.execute(text('delete from credential_tokens'))
+                        sync_tree(staged_assets)
+                        os.rename(staged_assets, assets)
+                    finally:
+                        guard.execute(text("select pg_advisory_unlock(hashtext('labadda_restore'))"))
+        return {'schema': manifest['schema'], 'release': manifest['release'],
+                'recovery_point': manifest['recovery_point'], 'sessions_revoked': True,
+                'status': 'isolated; functional verification required'}
     finally:
         engine.dispose()
