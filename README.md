@@ -6,6 +6,8 @@ Users can also create **collaborative groups** with chosen colleagues from any u
 
 Each readable workspace has a **Storage** tab with shared file and logical-content observations. It covers that workspace's content only; personal notes and parent/child totals are separate. These partial counters do not activate workspace quotas or retention.
 
+Administrators can save observation-only site capacity proposals and preview asset-budget/reserve scenarios. Previews show incomplete measurements and upper bounds; saving or previewing does not activate limits. See [API and current boundaries](docs/API.md#p51-site-capacity-proposals-and-previews).
+
 The repository holds a runnable application (FastAPI + PostgreSQL backend, React + Vite frontend) with fictional fixture data. See [ROADMAP.md](ROADMAP.md) for what is complete and what comes next.
 
 | Document | Use it for |

@@ -24,7 +24,7 @@ def test_draft_revisions_conflicts_and_observation(as_user):
 
 
 @pytest.mark.parametrize('profile', [{'mode':'enforced'}, {'unknown':1}, {'user_quota_bytes':True},
-    {'max_attachment_bytes':0}, {'max_attachment_bytes':30,'user_quota_bytes':20}, {'schema_version':2}])
+    {'max_attachment_bytes':0}, {'max_attachment_bytes':30,'user_quota_bytes':20}, {'schema_version':3}])
 def test_invalid_policy_never_saved(as_user, profile):
     admin = as_user('admin')
     assert admin.post('/admin/policy-drafts', json=payload(**profile)).status_code == 422

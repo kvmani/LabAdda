@@ -1,16 +1,20 @@
 """P5 foundation: immutable draft proposals. No activation or retention mutation."""
-from fastapi import APIRouter, Depends, Query
+import hashlib
+import json
+
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from .. import audit
 from ..config import Settings
-from ..deps import Actor, get_db, get_settings, require_admin
-from ..errors import Conflict, Forbidden
+from ..deps import PANEL_HEADER, Actor, get_db, get_settings, require_admin
+from ..errors import Conflict, Forbidden, Unauthenticated
 from ..models import PolicyDraft
 from ..identity_locks import lock_identity
 from ..serialize import iso
+from ..capacity import forecast_capacity
 
 router = APIRouter(tags=['governance'])
 GiB = 1024**3
@@ -33,11 +37,24 @@ class ProposedProfile(BaseModel):
         return self
 
 
+class CapacityProfile(ProposedProfile):
+    schema_version: int = Field(default=2, ge=2, le=2)
+    site_asset_budget_bytes: int | None = Field(default=None, ge=1, le=10*1024*GiB)
+    filesystem_reserve_bytes: int = Field(default=2*GiB, ge=1, le=100*GiB)
+    filesystem_reserve_percent: int = Field(default=10, ge=1, le=50)
+
+    @model_validator(mode='after')
+    def capacity_constraints(self):
+        if self.site_asset_budget_bytes is not None and self.max_attachment_bytes > self.site_asset_budget_bytes:
+            raise ValueError('File limit must fit within the proposed site asset budget')
+        return self
+
+
 class DraftRequest(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
     base_revision: int = Field(ge=0)
     reason: str = Field(min_length=3, max_length=500)
-    profile: ProposedProfile
+    profile: ProposedProfile | CapacityProfile
 
     @model_validator(mode='after')
     def reason_present(self):
@@ -65,7 +82,8 @@ def list_drafts(limit: int = Query(default=20, ge=1, le=100), before: int | None
             'scope': 'site', 'activation_supported': False,
             'runtime_limits': {'source': 'environment', 'max_attachment_bytes': settings.max_attachment_bytes,
                                'user_quota_bytes': settings.user_quota_bytes},
-            'supported_schema': ProposedProfile().model_dump()}
+            'supported_schema': ProposedProfile().model_dump(), 'supported_schemas': [1, 2],
+            'supported_capacity_schema': CapacityProfile().model_dump()}
 
 
 def lock_drafts(db):
@@ -87,7 +105,7 @@ def create_draft(body: DraftRequest, actor: Actor = Depends(require_admin), db: 
     latest = db.scalar(select(func.coalesce(func.max(PolicyDraft.revision), 0)))
     if body.base_revision != latest:
         raise Conflict('policy_conflict', 'A newer proposal exists. Reload and compare before saving.')
-    row = PolicyDraft(revision=latest + 1, base_revision=latest, schema_version=1,
+    row = PolicyDraft(revision=latest + 1, base_revision=latest, schema_version=body.profile.schema_version,
                       document=body.profile.model_dump(), reason=body.reason, created_by=actor.id)
     db.add(row)
     db.flush()
@@ -95,3 +113,26 @@ def create_draft(body: DraftRequest, actor: Actor = Depends(require_admin), db: 
                  revision=row.revision)
     db.commit()
     return draft_json(row)
+
+
+class CapacityForecastRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    profile: CapacityProfile
+
+
+@router.post('/admin/capacity-forecasts')
+def capacity_forecast(body: CapacityForecastRequest, request: Request, actor: Actor = Depends(require_admin),
+                      db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+    # Import locally to keep usage/capability/governance dependency wiring acyclic.
+    from .usage import filesystem_capacity, originals
+    if request.headers.get(PANEL_HEADER) or request.query_params.get('panel') == '1':
+        raise Unauthenticated()
+    assets = originals(db)
+    filesystem = filesystem_capacity(settings)
+    result = forecast_capacity(body.profile, assets, filesystem)
+    lock_authority(db, actor, settings)
+    digest = hashlib.sha256(json.dumps(body.profile.model_dump(), sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    audit.record(db, actor=actor.user, action='policy.capacity_forecast', scope_type='site',
+                 profile_digest=digest, state='incomplete')
+    db.commit()
+    return result

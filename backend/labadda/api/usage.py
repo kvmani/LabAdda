@@ -130,8 +130,7 @@ def database_physical(db) -> dict:
             'attribution': 'site_overhead_not_charged_to_users'}
 
 
-def site_payload(db, settings):
-    measured = originals(db)
+def filesystem_capacity(settings):
     filesystem = {'state': 'unknown', 'free_bytes': None, 'total_bytes': None, 'free_inodes': None,
                   'scope': 'filesystem_containing_asset_directory', 'site_budget': None}
     try:
@@ -141,6 +140,12 @@ def site_payload(db, settings):
     except OSError:
         pass
     filesystem['observed_at'] = iso(utcnow())
+    return filesystem
+
+
+def site_payload(db, settings):
+    measured = originals(db)
+    filesystem = filesystem_capacity(settings)
     return {'schema_version': 1, 'scope': 'site', 'state': 'partial', 'assets': measured,
             'logical_charges': logical_charges(db),
             'database': database_physical(db),

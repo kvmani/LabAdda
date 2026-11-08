@@ -380,7 +380,7 @@ class PolicyDraft(Base):
     reason: Mapped[str] = mapped_column(String(500), nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = _created()
-    __table_args__ = (CheckConstraint("revision > 0 and base_revision >= 0 and schema_version = 1", name="ck_policy_draft_version"),)
+    __table_args__ = (CheckConstraint("revision > 0 and base_revision >= 0 and schema_version in (1,2)", name="ck_policy_draft_version"),)
 
 
 class UsageObservation(Base):

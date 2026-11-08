@@ -41,6 +41,18 @@ export type SiteUsage = {
 export type ProposedProfile = {
   schema_version: number; mode: 'observation'; max_attachment_bytes: number;
   user_quota_bytes: number; workspace_quota_bytes: number;
+  site_asset_budget_bytes?: number | null; filesystem_reserve_bytes?: number; filesystem_reserve_percent?: number;
+};
+export type CapacityProfile = ProposedProfile & {
+  schema_version: 2; site_asset_budget_bytes: number | null;
+  filesystem_reserve_bytes: number; filesystem_reserve_percent: number;
+};
+export type CapacityForecast = {
+  state: 'incomplete'; known_asset_lower_bound_bytes: number; unknown_preview_files: number; asset_observed_at: string;
+  site_asset_budget: {proposed_bytes: number | null; maximum_possible_headroom_bytes: number | null};
+  filesystem: {state: 'ready' | 'unknown'; observed_at: string; proposed_reserve_bytes: number | null;
+    maximum_growth_above_reserve_bytes: number | null; reserve_shortfall_bytes: number | null};
+  warnings: string[]; complete_for_enforcement: false; activation_supported: false;
 };
 export type Draft = {id: string; revision: number; profile: ProposedProfile; reason: string};
 export type PolicyDrafts = {

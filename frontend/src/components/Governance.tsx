@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DatabaseStorage } from './DatabaseStorage';
 import { LogicalCharges } from './LogicalCharges';
 import { api } from '../api';
 import { fmtBytes as bytes } from '../format';
-import type { PolicyDrafts, SiteUsage, Observation } from '../governance-types';
+import type { CapacityForecast as Forecast, CapacityProfile, PolicyDrafts, SiteUsage, Observation } from '../governance-types';
+import { CapacityForecast } from './CapacityForecast';
 
 const MiB = 1024 * 1024;
 type StorageReceipt = {
@@ -36,7 +37,30 @@ export function Governance() {
   const [fileLimit, setFileLimit] = useState(20);
   const [userLimit, setUserLimit] = useState(500);
   const [workspaceLimit, setWorkspaceLimit] = useState(2048);
+  const [siteLimit, setSiteLimit] = useState('');
+  const [reserve, setReserve] = useState(2048);
+  const [reservePercent, setReservePercent] = useState(10);
+  const [forecast, setForecast] = useState<Forecast | null>(null);
+  const forecastGeneration = useRef(0);
+  function invalidateForecast() { forecastGeneration.current++; setForecast(null); }
+  function proposedProfile(): CapacityProfile {
+    return {schema_version:2, mode:'observation', max_attachment_bytes:fileLimit*MiB,
+      user_quota_bytes:userLimit*MiB, workspace_quota_bytes:workspaceLimit*MiB,
+      site_asset_budget_bytes:siteLimit === '' ? null : Number(siteLimit)*MiB,
+      filesystem_reserve_bytes:reserve*MiB, filesystem_reserve_percent:reservePercent};
+  }
+  async function preview() {
+    const generation = ++forecastGeneration.current;
+    setForecast(null); setError(null); setMessage(''); setBusy(true);
+    try {
+      const result = await api<Forecast>('/admin/capacity-forecasts', {body:{profile:proposedProfile()}});
+      if (generation === forecastGeneration.current) setForecast(result);
+    } catch(e: any) {
+      if (generation === forecastGeneration.current) setError(e.fields?.map((f: {message:string})=>f.message).join('; ') || e.message);
+    } finally { setBusy(false); }
+  }
   async function load() {
+    invalidateForecast();
     const [p, u, h, inspections] = await Promise.all([api<PolicyDrafts>('/admin/policy-drafts'), api<SiteUsage>('/admin/usage'), api<{observations: Observation[]}>('/admin/usage-observations'), api('/admin/storage-inspections')]);
     setPolicy(p); setUsage(u); setHistory(h.observations); setInspections(inspections.inspections);
   }
@@ -49,10 +73,10 @@ export function Governance() {
   }
   async function propose(e: FormEvent) {
     e.preventDefault();
+    invalidateForecast();
     await run(() => api('/admin/policy-drafts', { body: {
       base_revision: policy!.latest_revision, reason,
-      profile: { schema_version: 1, mode: 'observation', max_attachment_bytes: fileLimit * MiB,
-        user_quota_bytes: userLimit * MiB, workspace_quota_bytes: workspaceLimit * MiB }
+      profile: proposedProfile()
     }}), 'Proposal saved. No limits or retention rules were activated.');
   }
   return <div className="card">
@@ -93,14 +117,20 @@ export function Governance() {
       <h3>Site proposal revision {policy.latest_revision}</h3>
       <p>Current pilot file limit: {bytes(policy.runtime_limits.max_attachment_bytes)}. Current pilot user limit: {bytes(policy.runtime_limits.user_quota_bytes)}.</p>
       <form onSubmit={propose} className="governance-form">
-        <label>Proposed file limit (MiB)<input type="number" min="1" max="100" step="1" required value={fileLimit} onChange={e => setFileLimit(Number(e.target.value))} /></label>
-        <label>Proposed user limit (MiB)<input type="number" min="1" max="102400" step="1" required value={userLimit} onChange={e => setUserLimit(Number(e.target.value))} /></label>
-        <label>Proposed workspace limit (MiB)<input type="number" min="1" max="1024000" step="1" required value={workspaceLimit} onChange={e => setWorkspaceLimit(Number(e.target.value))} /></label>
+        <label>Proposed file limit (MiB)<input type="number" min="1" max="100" step="1" required value={fileLimit} onChange={e => {invalidateForecast(); setFileLimit(Number(e.target.value));}} /></label>
+        <label>Proposed user limit (MiB)<input type="number" min="1" max="102400" step="1" required value={userLimit} onChange={e => {invalidateForecast(); setUserLimit(Number(e.target.value));}} /></label>
+        <label>Proposed workspace limit (MiB)<input type="number" min="1" max="1024000" step="1" required value={workspaceLimit} onChange={e => {invalidateForecast(); setWorkspaceLimit(Number(e.target.value));}} /></label>
+        <label>Proposed site asset budget (MiB; blank means not configured)<input type="number" min="1" max="10485760" step="1" value={siteLimit} onChange={e => {invalidateForecast(); setSiteLimit(e.target.value);}} /></label>
+        <label>Proposed filesystem reserve floor (MiB)<input type="number" min="1" max="102400" step="1" required value={reserve} onChange={e => {invalidateForecast(); setReserve(Number(e.target.value));}} /></label>
+        <label>Proposed filesystem reserve (%)<input type="number" min="1" max="50" step="1" required value={reservePercent} onChange={e => {invalidateForecast(); setReservePercent(Number(e.target.value));}} /></label>
+        <p>The proposed reserve is the greater of its floor and percentage of observed filesystem capacity. Preview estimates use originals, recorded previews and pending originals; other storage remains unmeasured.</p>
+        <button type="button" disabled={busy} onClick={preview}>Preview proposed capacity</button>
+        {forecast && <CapacityForecast forecast={forecast} />}
         <label>Proposal reason<textarea required minLength={3} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>
         <button disabled={busy}>Save non-enforcing proposal</button>
       </form>
-      <table><caption>Recent immutable proposals</caption><thead><tr><th>Revision</th><th>Proposed file / user / workspace limits</th><th>Reason</th><th>Status</th></tr></thead>
-        <tbody>{policy.drafts.map((d) => <tr key={d.id}><td>{d.revision}</td><td>{bytes(d.profile.max_attachment_bytes)} / {bytes(d.profile.user_quota_bytes)} / {bytes(d.profile.workspace_quota_bytes)}</td><td>{d.reason}</td><td>Draft only</td></tr>)}</tbody></table>
+      <div className="table-scroll" role="region" aria-label="Policy proposal history" tabIndex={0}><table><caption>Recent immutable proposals</caption><thead><tr><th>Revision</th><th>Proposed file / user / workspace limits</th><th>Proposed site assets / reserve</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>{policy.drafts.map((d) => <tr key={d.id}><td>{d.revision}</td><td>{bytes(d.profile.max_attachment_bytes)} / {bytes(d.profile.user_quota_bytes)} / {bytes(d.profile.workspace_quota_bytes)}</td><td>{d.profile.schema_version === 2 ? <>{d.profile.site_asset_budget_bytes === null ? 'Not configured' : bytes(d.profile.site_asset_budget_bytes ?? null)} / {bytes(d.profile.filesystem_reserve_bytes ?? null)} or {d.profile.filesystem_reserve_percent}% (greater)</> : 'Not recorded in version 1'}</td><td>{d.reason}</td><td>Draft only</td></tr>)}</tbody></table></div>
     </>}
   </div>;
 }

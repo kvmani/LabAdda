@@ -122,9 +122,12 @@ label.inline input:not([type="checkbox"]) { width: auto; }
 .notification .snippet { display: block; margin: 0.2rem 0; }
 
 table { width: 100%; border-collapse: collapse; }
+.table-scroll { overflow-x: auto; max-width: 100%; }
 th, td { text-align: left; padding: 0.35rem; border-bottom: 1px solid #eef0f3; vertical-align: middle; }
 tr.selected { background: #eef2ff; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid2 > .card { min-width: 0; }
+td.row { flex-wrap: wrap; }
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }

@@ -73,7 +73,7 @@ export function Admin() {
             <label className="inline"><input type="checkbox" checked={form.is_admin} onChange={(e) => setForm({ ...form, is_admin: e.target.checked })} /> Admin</label>
             <button type="submit">Create</button>
           </form>
-          <table>
+          <div className="table-scroll" role="region" aria-label="Account administration table" tabIndex={0}><table>
             <thead><tr><th>User</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {users.map((u) => (
@@ -87,7 +87,7 @@ export function Admin() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
         <div className="card">
           <h2>Workspaces</h2>
@@ -102,7 +102,7 @@ export function Admin() {
             )}
             <button type="submit">Add</button>
           </form>
-          <table>
+          <div className="table-scroll" role="region" aria-label="Workspace administration table" tabIndex={0}><table>
             <thead><tr><th>Name</th><th>Kind</th><th>Parent</th><th>Members</th></tr></thead>
             <tbody>
               {spaces.map((s) => (
@@ -114,7 +114,7 @@ export function Admin() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
       {selected && (
