@@ -50,3 +50,33 @@ def test_symlink_directory_refused(tmp_path):
     (tmp_path / 'link').symlink_to('/tmp', target_is_directory=True)
     with pytest.raises(RecoveryError):
         inventory(tmp_path)
+
+
+def test_backup_requires_quiescence_before_access(tmp_path):
+    from labadda.recovery import backup
+    with pytest.raises(RecoveryError, match='Stop app'):
+        backup('unused', tmp_path, tmp_path / 'backup', 'fixture', writers_quiesced=False)
+
+
+def test_libpq_connection_environment_excludes_stale_selectors(monkeypatch):
+    from labadda.recovery import postgres_environment
+    monkeypatch.setenv('PGSERVICE', 'unrelated')
+    monkeypatch.setenv('PGSSLMODE', 'verify-full')
+    env = postgres_environment('postgresql+psycopg://fixture:fixture@localhost:5432/fixture')
+    assert 'PGSERVICE' not in env
+    assert env['PGSSLMODE'] == 'verify-full'
+    assert env['PGDATABASE'] == 'fixture'
+
+
+def test_failed_dump_leaves_no_published_backup(tmp_path, migrated, monkeypatch):
+    from labadda import recovery
+    assets = tmp_path / 'assets'
+    assets.mkdir()
+    def failed(*args):
+        raise RecoveryError('injected dump failure')
+    monkeypatch.setattr(recovery, 'pg_command', failed)
+    target = tmp_path / 'backup'
+    with pytest.raises(RecoveryError, match='injected'):
+        recovery.backup(migrated, assets, target, 'fixture', writers_quiesced=True)
+    assert not target.exists()
+    assert not list(tmp_path.glob('.recovery-*'))

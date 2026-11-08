@@ -37,8 +37,23 @@ def main(argv: list[str] | None = None) -> int:
     admin.add_argument("username")
     admin.add_argument("--display-name", default=None)
     sub.add_parser("reminders", help="process due reminders once")
+    backup = sub.add_parser("backup", help="snapshot a writer-quiesced database and assets")
+    backup.add_argument("destination", type=Path)
+    backup.add_argument("--release", required=True)
+    backup.add_argument("--writers-quiesced", action="store_true", required=True)
     args = parser.parse_args(argv)
     settings = load_settings()
+
+    if args.cmd == "backup":
+        from .recovery import backup as create_backup
+        try:
+            sha = create_backup(settings.database_url, settings.asset_dir, args.destination,
+                                args.release, writers_quiesced=args.writers_quiesced)
+            print(f"Recovery manifest SHA-256: {sha}")
+            return 0
+        except Exception:
+            print("Backup failed; no readiness claim. Check stopped writers, paths, database access and PostgreSQL clients.", file=sys.stderr)
+            return 2
 
     if args.cmd == "migrate":
         command.upgrade(alembic_config(settings.database_url), "head")
