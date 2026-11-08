@@ -154,8 +154,14 @@ def test_preflight_refuses_tampering_before_executing_candidate(tmp_path, monkey
 def test_preflight_checks_survive_optimization(tmp_path, monkeypatch):
     import sys
     target = installed(tmp_path, "candidate")
-    (target / "venv/bin").mkdir(parents=True)
-    (target / "venv/bin/python").symlink_to(sys.executable)
+    (target / "venv").symlink_to(sys.prefix, target_is_directory=True)
+    real_run = release.subprocess.run
+    def optimized_run(command, **kwargs):
+        result = real_run([command[0], "-O", *command[1:]], **kwargs)
+        assert "Set LABADDA_ENV to staging or pilot" in result.stderr
+        assert "ModuleNotFoundError" not in result.stderr
+        return result
+    monkeypatch.setattr(release.subprocess, "run", optimized_run)
     monkeypatch.setenv("PYTHONOPTIMIZE", "1")
     monkeypatch.setenv("LABADDA_ENV", "development")
     monkeypatch.setenv("LABADDA_ASSET_DIR", "/does-not-exist")
@@ -176,3 +182,21 @@ def test_archive_resource_limit(tmp_path, monkeypatch):
     monkeypatch.setattr(release, "MAX_FILES", 2)
     with pytest.raises(release.ReleaseError, match="limits"):
         release.verify(archive, sha)
+
+
+def test_offline_install_scrubs_ambient_package_sources(tmp_path, monkeypatch):
+    archive, sha = candidate(tmp_path)
+    monkeypatch.setenv("PIP_FIND_LINKS", "https://untrusted.example/wheels")
+    monkeypatch.setenv("PYTHONPATH", "/untrusted")
+    monkeypatch.setattr(release.venv.EnvBuilder, "create", lambda *args: None)
+    def inspect_pip(*args, **kwargs):
+        env = kwargs["env"]
+        assert "PIP_FIND_LINKS" not in env
+        assert "PYTHONPATH" not in env
+        assert env["PIP_NO_INDEX"] == "1"
+        assert env["PIP_CONFIG_FILE"] == release.os.devnull
+        raise RuntimeError("checked isolated pip")
+    monkeypatch.setattr(release, "run", inspect_pip)
+    with pytest.raises(RuntimeError, match="checked isolated pip"):
+        release.install(archive, sha, tmp_path / "instance")
+    assert not (tmp_path / "instance/releases/candidate").exists()
