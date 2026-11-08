@@ -22,3 +22,7 @@ Use generated fixtures and disposable PostgreSQL databases and asset directories
 For changed workflows, inspect normal, empty, slow, and failure states. Use separate browser contexts for each actor. Test denied cases directly through APIs and sockets as well as through the UI. Exercise an actual pen/finger and the target browser on the panel before pilot approval. Synthetic touch automation supplies regression coverage but cannot establish device acceptance.
 
 CI runs deterministic tests and the production build on pinned dependencies using fictional data. Deployment rehearsal installs the release without public network, uses a fresh browser cache, and inspects client requests and VM egress. Save sanitized results separately from live data. Failed authorization, data durability, restore, or offline install checks block a pilot. A skipped mandatory gate leaves it unverified.
+
+## Offline release checks (T12)
+
+`backend/tests/test_release.py` runs in the normal `scripts/verify.sh` suite. It covers unsafe and duplicate archive paths, links and special members, resource limits, digest/payload/platform/manifest failures, transfer replacement isolation, install cleanup, pip environment isolation, optimized preflight, and atomic activation/rollback with schema mismatch, tampering and external-state preservation. The real target-platform build, no-network install and installed root/prefix functional checks are recorded in [release evidence](docs/RELEASE-EVIDENCE.md). Site TLS, recovery and pilot acceptance remain separate gates.

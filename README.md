@@ -81,3 +81,7 @@ scripts/proxy-stack.sh stop
 ## Operator commands
 
 `labadda migrate` applies migrations. `labadda create-admin <username>` prints a one-time activation code. `labadda reminders` processes due reminders once. The server also runs reminders, provisional-upload cleanup and board compaction every 30 s (`LABADDA_BOARD_COMPACT_THRESHOLD`, `LABADDA_BOARD_KEEP_REVISIONS`). The service template and proxy template are in [deploy/](deploy/).
+
+## Offline release tooling
+
+See [the release procedure](docs/RELEASES.md) for connected builds, verified offline installation, runtime preflight, atomic activation and the conservative schema rollback rule. [P4 step 2 evidence](docs/RELEASE-EVIDENCE.md) records the clean Ubuntu 24.04 offline installation and current limitations. Backup/restore and site pilot qualification are the next work.
