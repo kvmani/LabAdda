@@ -371,3 +371,14 @@ class PolicyDraft(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = _created()
     __table_args__ = (CheckConstraint("revision > 0 and base_revision >= 0 and schema_version = 1", name="ck_policy_draft_version"),)
+
+
+class UsageObservation(Base):
+    """Bounded retained site observations, never a complete quota ledger."""
+    __tablename__ = 'usage_observations'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    created_at: Mapped[datetime] = _created()
+    __table_args__ = (CheckConstraint('schema_version = 1', name='ck_usage_observation_version'),)

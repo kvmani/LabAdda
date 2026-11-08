@@ -72,11 +72,7 @@ def lock_drafts(db):
     db.execute(text("select pg_advisory_xact_lock(hashtext('labadda_policy_drafts'))"))
 
 
-@router.post('/admin/policy-drafts', status_code=201)
-def create_draft(body: DraftRequest, actor: Actor = Depends(require_admin), db: Session = Depends(get_db),
-                 settings: Settings = Depends(get_settings)):
-    # Serialize proposal revisions. Never infer approval/activation from saving a draft.
-    lock_drafts(db)
+def lock_authority(db, actor, settings):
     # Lock in the same user → session order used by deactivation/reset. Refresh
     # cached ORM identities after any lock wait; hold authorization through commit.
     user = db.scalar(select(User).where(User.id == actor.id).with_for_update().execution_options(populate_existing=True))
@@ -85,6 +81,14 @@ def create_draft(body: DraftRequest, actor: Actor = Depends(require_admin), db: 
         raise Unauthenticated()
     if not user.is_admin:
         raise Forbidden('admin_required', 'Administrator access is required.')
+
+
+@router.post('/admin/policy-drafts', status_code=201)
+def create_draft(body: DraftRequest, actor: Actor = Depends(require_admin), db: Session = Depends(get_db),
+                 settings: Settings = Depends(get_settings)):
+    # Serialize proposal revisions. Never infer approval/activation from saving a draft.
+    lock_drafts(db)
+    lock_authority(db, actor, settings)
     latest = db.scalar(select(func.coalesce(func.max(PolicyDraft.revision), 0)))
     if body.base_revision != latest:
         raise Conflict('policy_conflict', 'A newer proposal exists. Reload and compare before saving.')
