@@ -214,6 +214,7 @@ def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: 
                             # Delegated operational access may have been revoked after
                             # this backup. Require fresh grants after isolated recovery.
                             conn.execute(text('delete from usage_reader_grants'))
+                            conn.execute(text('delete from upload_receipts'))
                             conn.execute(text('delete from upload_reservations'))
                         sync_tree(staged_assets)
                         os.rename(staged_assets, assets)

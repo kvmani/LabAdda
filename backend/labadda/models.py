@@ -415,3 +415,19 @@ class UploadReservation(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _created()
     __table_args__ = (CheckConstraint('bytes > 0 and expires_at > created_at', name='ck_upload_reservation_bounds'),)
+
+
+class UploadReceipt(Base):
+    """Owner-scoped 24-hour request identity; never an access grant."""
+    __tablename__ = 'upload_receipts'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    request_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    reservation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('upload_reservations.id', ondelete='SET NULL'), index=True)
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('assets.id', ondelete='SET NULL'), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = _created()
+    __table_args__ = (UniqueConstraint('user_id','request_key',name='uq_upload_receipt_user_key'),
+                     CheckConstraint("state in ('pending','complete','failed') and expires_at > created_at",name='ck_upload_receipt_state'))

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Header, Path, Request, UploadFile
 from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy import func, select
@@ -16,7 +18,7 @@ from ..reservations import consume_upload, release_upload, reserve_upload
 from ..config import Settings
 from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, panel_actor
 from ..errors import ApiError, Invalid, NotFound
-from ..models import Asset, Post
+from ..models import Asset, Post, UploadReceipt, UploadReservation
 from ..security import utcnow
 from ..serialize import asset_json
 from ..identity_locks import lock_identity
@@ -28,6 +30,7 @@ PROTECTED_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy": "default-src 'none'; sandbox",
 }
+REQUEST_KEY_PATTERN = r"^[A-Za-z0-9_-]{8,64}$"
 
 
 def _store(request: Request) -> AssetStore:
@@ -51,28 +54,39 @@ async def _read_limited(upload: UploadFile, limit: int) -> bytes:
 
 @router.post("/uploads", status_code=201)
 async def upload(request: Request, file: UploadFile = File(...), actor: Actor = Depends(current_actor),
-                 db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+                 db: Session = Depends(get_db), settings: Settings = Depends(get_settings),
+                 idempotency_key: str | None = Header(default=None, pattern=REQUEST_KEY_PATTERN)):
     data = await _read_limited(file, settings.max_attachment_bytes)
     return await run_in_threadpool(_persist_upload, request, db, actor, settings,
-                                  data, file.content_type, file.filename)
+                                  data, file.content_type, file.filename, idempotency_key)
 
 
-def _persist_upload(request, db, actor, settings, data, content_type, filename):
+def _persist_upload(request, db, actor, settings, data, content_type, filename, request_key=None):
     from types import SimpleNamespace
     # Immutable references avoid consulting expired request-ORM objects during
     # failure resolution through a fresh connection.
     identity = SimpleNamespace(id=actor.id, session=SimpleNamespace(id=actor.session.id))
-    reservation_id = reserve_upload(db, identity, settings, len(data))
+    # Bind the key to measured content AND submitted metadata, with an explicit
+    # version. A different name/type is a different intent, even for equal bytes.
+    fingerprint = hashlib.sha256(json.dumps(
+        [1, hashlib.sha256(data).hexdigest(), len(data), content_type, filename],
+        ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
+    admission = reserve_upload(db, identity, settings, len(data), request_key, fingerprint)
+    if admission.asset_id is not None:
+        return asset_json(_authorized_asset(db, actor, admission.asset_id), settings.api_prefix)
+    reservation_id = admission.reservation_id
     stored = None
     candidate_id = uuid.uuid4()
     commit_started = False
     try:
         stored = _store(request).save(data, content_type)
-        consume_upload(db, identity, settings, reservation_id)
+        lock_identity(db, identity, settings)
         asset = Asset(id=candidate_id, owner_id=identity.id, storage_key=stored.storage_key, media_type=stored.media_type,
                       display_name=safe_display_name(filename, stored.media_type), size=stored.size,
                       sha256=stored.sha256, has_preview=stored.has_preview)
         db.add(asset)
+        db.flush()
+        consume_upload(db, identity, settings, reservation_id, admission.receipt_id, candidate_id)
         db.flush()
         lock_identity(db, identity, settings)
         commit_started = True
@@ -88,8 +102,9 @@ def _persist_upload(request, db, actor, settings, data, content_type, filename):
                 with request.app.state.session_factory() as fresh:
                     confirmed = fresh.get(Asset, candidate_id)
                     if confirmed is not None and confirmed.storage_key == stored.storage_key:
-                        lock_identity(fresh, identity, settings)
-                        return asset_json(confirmed, settings.api_prefix)
+                        user = lock_identity(fresh, identity, settings)
+                        reader = SimpleNamespace(id=identity.id, user=user, is_panel=False)
+                        return asset_json(_authorized_asset(fresh, reader, candidate_id), settings.api_prefix)
             except ApiError:
                 raise
             except Exception:
@@ -99,8 +114,32 @@ def _persist_upload(request, db, actor, settings, data, content_type, filename):
             if stored is not None:
                 _store(request).delete(stored.storage_key)
         finally:
-            release_upload(db, identity.id, reservation_id)
+            release_upload(db, identity.id, reservation_id, admission.receipt_id)
         raise
+
+
+@router.get("/uploads/requests/{request_key}")
+def upload_receipt(request_key: str = Path(pattern=REQUEST_KEY_PATTERN),
+                   actor: Actor = Depends(current_actor), db: Session = Depends(get_db),
+                   settings: Settings = Depends(get_settings)):
+    receipt = db.scalar(select(UploadReceipt).where(
+        UploadReceipt.user_id == actor.id, UploadReceipt.request_key == request_key,
+        UploadReceipt.expires_at > utcnow()))
+    if receipt is None:
+        raise NotFound()
+    state = receipt.state
+    asset = None
+    if state == 'complete':
+        if receipt.asset_id is None:
+            raise ApiError('upload_result_unavailable', 'The original upload is no longer available.', status=410)
+        asset = asset_json(_authorized_asset(db, actor, receipt.asset_id), settings.api_prefix)
+    elif state == 'pending':
+        reservation = db.get(UploadReservation, receipt.reservation_id) if receipt.reservation_id else None
+        if reservation is None or reservation.expires_at <= utcnow():
+            state = 'expired'
+    return {'request_key': receipt.request_key, 'state': state,
+            'created_at': receipt.created_at.isoformat(), 'expires_at': receipt.expires_at.isoformat(),
+            'asset': asset}
 
 
 @router.delete("/uploads/{asset_id}")

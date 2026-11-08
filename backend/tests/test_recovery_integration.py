@@ -23,7 +23,8 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
     workspace = ids['workspaces']['section_a']
     ben = as_user('ben')
     pdf = b'%PDF-1.4\nSynthetic recovery document\n%%EOF'
-    upload = ben.post('/uploads', files={'file': ('fixture.pdf', pdf, 'application/pdf')})
+    upload = ben.post('/uploads', headers={'Idempotency-Key': 'recovery-request-01'},
+                      files={'file': ('fixture.pdf', pdf, 'application/pdf')})
     assert upload.status_code == 201
     asset = upload.json()
     post = ben.post(f'/workspaces/{workspace}/posts', json={'body': 'Recovery post', 'attachment_ids': [asset['id']]})
@@ -79,6 +80,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             assert api.login('ben').status_code == 200
             assert api.get('/admin/usage').status_code == 403
             assert api.get('/usage').json()['measurement']['pending_upload_original_bytes'] == 0
+            assert api.get('/uploads/requests/recovery-request-01').status_code == 404
             assert any(p["id"] == post.json()["id"] and p["body"] == "Recovery post" for p in api.get(f"/workspaces/{workspace}/posts").json()["posts"])
             assert api.get(f"/notes/{note.json()['id']}").json()['title'] == 'Private recovery note'
             assert api.get(f"/files/{asset['id']}").content == pdf
