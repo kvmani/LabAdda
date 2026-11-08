@@ -346,7 +346,8 @@ def publish_snapshot(workspace_id: uuid.UUID, body: SnapshotBody, request: Reque
         db.flush()
         db.add(Asset(owner_id=actor.id, storage_key=stored.storage_key, media_type="image/png",
                      display_name=f"board-snapshot-r{body.revision}.png", size=stored.size, sha256=stored.sha256,
-                     has_preview=stored.has_preview, status="committed", post_id=post.id))
+                     has_preview=stored.has_preview, preview_size=stored.preview_size,
+                     preview_sha256=stored.preview_sha256, status="committed", post_id=post.id))
         audit.record(db, actor=actor.user, action="board.snapshot_publish", scope_type="workspace",
                      scope_id=dest.id, target_id=post.id, source=source.id, revision=body.revision,
                      broader=dest.id != source.id)

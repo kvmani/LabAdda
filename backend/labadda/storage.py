@@ -32,6 +32,8 @@ class StoredFile:
     size: int
     sha256: str
     has_preview: bool
+    preview_size: int
+    preview_sha256: str | None
 
 
 def safe_display_name(name: str | None, media_type: str) -> str:
@@ -110,7 +112,9 @@ class AssetStore:
                 except OSError:
                     logging.getLogger("labadda").error("asset_partial_write_cleanup_failed")
             raise
-        return StoredFile(key, media_type, len(data), hashlib.sha256(data).hexdigest(), has_preview)
+        return StoredFile(key, media_type, len(data), hashlib.sha256(data).hexdigest(), has_preview,
+                          len(preview_bytes) if preview_bytes is not None else 0,
+                          hashlib.sha256(preview_bytes).hexdigest() if preview_bytes is not None else None)
 
     @staticmethod
     def _sanitized_preview(data: bytes) -> bytes:

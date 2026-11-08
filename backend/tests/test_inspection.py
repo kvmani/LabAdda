@@ -66,7 +66,8 @@ def test_preview_bytes_are_distinct_from_original_bytes(as_user, settings, db_fa
     assert result['summary']['verified_original_bytes'] == len(stream.getvalue())
     assert result['summary']['readable_preview_bytes'] > 0
     assert result['summary']['checked_files'] == 2
-    assert result['summary']['preview_integrity'] == 'unverified'
+    assert result['summary']['preview_integrity'] == 'verified_selected'
+    assert result['summary']['verified_preview_bytes'] == result['summary']['readable_preview_bytes']
     assert result['summary']['state'] == 'partial'
 
 

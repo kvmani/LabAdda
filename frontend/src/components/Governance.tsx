@@ -7,7 +7,7 @@ const MiB = 1024 * 1024;
 export function Governance() {
   const [policy, setPolicy] = useState<PolicyDrafts | null>(null);
   const [usage, setUsage] = useState<SiteUsage | null>(null);
-  const [inspections, setInspections] = useState<{id: string; status: string; finished_at: string | null; summary: {checked_assets?: number; issue_count?: number; state?: string}}[]>([]);
+  const [inspections, setInspections] = useState<{id: string; status: string; finished_at: string | null; summary: {checked_assets?: number; issue_count?: number; state?: string; verified_previews?: number; unknown_previews?: number}}[]>([]);
   const [history, setHistory] = useState<Observation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -47,18 +47,22 @@ export function Governance() {
       <dl>
         <dt>Tracked original file bytes</dt><dd>{bytes(usage.assets.tracked_original_bytes)} · {usage.assets.tracked_files} files</dd>
         <dt>Pending original-byte reservations</dt><dd>{bytes(usage.assets.pending_upload_original_bytes)}</dd>
+        <dt>Previews with recorded measurements</dt><dd>{bytes(usage.assets.tracked_preview_bytes ?? null)}</dd>
+        <dt>Previews with unknown measurements</dt><dd>{usage.assets.unknown_preview_files ?? 'Unknown'}</dd>
         <dt>Asset filesystem free space</dt><dd>{bytes(usage.filesystem.free_bytes)} · {usage.filesystem.state}</dd>
         <dt>Configured site budget</dt><dd>Not configured</dd>
         <dt>Observed</dt><dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
       </dl>
-      <p className="notice">Filesystem capacity may be shared with other services. Derivatives, text/boards, non-upload reservations, trash and archive storage are unmeasured. These totals cannot approve enforcement or deletion.</p>
+      <p className="notice">Filesystem capacity may be shared with other services. Historical previews without expected measurements, other derivatives, text/boards, non-upload reservations, trash and archive storage are not fully measured. Preview metadata is not a current disk inspection. These totals cannot approve enforcement or deletion.</p>
       <button disabled={busy} onClick={() => run(() => api('/admin/usage-observations', {body: {}}), 'Partial observation recorded.')}>Record partial observation</button>
       <p>{Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.</p>
       {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}
     </>}
     <h3>Referenced file inspections</h3>
-    <p>Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original file hashes and measure readable preview bytes; preview integrity remains unverified. The scan time budget is cooperative, not a hard filesystem timeout. Inspections never repair files or authorize enforcement. A running record may be stale after an operator process stops.</p>
-    {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status} · {r.summary.checked_assets ?? 'Not reported'} asset rows checked · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}</li>)}</ul>}
+    <p>Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original hashes and preview hashes where expected measurements exist. Historical preview integrity remains unknown without those measurements. The scan time budget is cooperative, not a hard filesystem timeout. Inspections never repair files or authorize enforcement. A running record may be stale after an operator process stops.</p>
+    {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status} · {r.summary.checked_assets ?? 'Not reported'} asset rows checked · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}
+      <span className="muted small"> · Preview checks: {r.summary.verified_previews ?? 'Not reported'} verified · {r.summary.unknown_previews ?? 'Not reported'} unknown expected measurements</span>
+    </li>)}</ul>}
     {policy && <>
       <h3>Site proposal revision {policy.latest_revision}</h3>
       <p>Current pilot file limit: {bytes(policy.runtime_limits.max_attachment_bytes)}. Current pilot user limit: {bytes(policy.runtime_limits.user_quota_bytes)}.</p>

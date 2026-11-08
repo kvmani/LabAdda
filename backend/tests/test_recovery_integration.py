@@ -27,7 +27,15 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
                       files={'file': ('fixture.pdf', pdf, 'application/pdf')})
     assert upload.status_code == 201
     asset = upload.json()
-    post = ben.post(f'/workspaces/{workspace}/posts', json={'body': 'Recovery post', 'attachment_ids': [asset['id']]})
+    from io import BytesIO
+    from PIL import Image
+    image = BytesIO()
+    Image.new('RGB', (12, 9), 'blue').save(image, format='PNG')
+    picture = ben.post('/uploads', files={'file': ('recovery.png', image.getvalue(), 'image/png')})
+    assert picture.status_code == 201
+    picture_id = picture.json()['id']
+    preview = ben.get(f'/files/{picture_id}/preview').content
+    post = ben.post(f'/workspaces/{workspace}/posts', json={'body': 'Recovery post', 'attachment_ids': [asset['id'], picture_id]})
     assert post.status_code == 201
     note = ben.post('/notes', json={'title': 'Private recovery note', 'body': 'fixture'})
     assert note.status_code == 201
@@ -84,6 +92,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             assert any(p["id"] == post.json()["id"] and p["body"] == "Recovery post" for p in api.get(f"/workspaces/{workspace}/posts").json()["posts"])
             assert api.get(f"/notes/{note.json()['id']}").json()['title'] == 'Private recovery note'
             assert api.get(f"/files/{asset['id']}").content == pdf
+            assert api.get(f'/files/{picture_id}/preview').content == preview
             assert api.get(f'/workspaces/{workspace}/chat').json()['messages'][0]['body'] == 'Recovery chat'
             board = api.get(f'/workspaces/{workspace}/board').json()
             assert any(op['object_id'] == 'recovered-line' for op in board['ops'])

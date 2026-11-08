@@ -83,7 +83,8 @@ def _persist_upload(request, db, actor, settings, data, content_type, filename, 
         lock_identity(db, identity, settings)
         asset = Asset(id=candidate_id, owner_id=identity.id, storage_key=stored.storage_key, media_type=stored.media_type,
                       display_name=safe_display_name(filename, stored.media_type), size=stored.size,
-                      sha256=stored.sha256, has_preview=stored.has_preview)
+                      sha256=stored.sha256, has_preview=stored.has_preview,
+                      preview_size=stored.preview_size, preview_sha256=stored.preview_sha256)
         db.add(asset)
         db.flush()
         consume_upload(db, identity, settings, reservation_id, admission.receipt_id, candidate_id)

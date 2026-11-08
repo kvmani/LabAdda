@@ -1,6 +1,7 @@
 export type OriginalMeasurement = {
   state: 'partial'; source: 'asset_metadata'; observed_at: string; tracked_files: number;
   pending_upload_original_bytes: number; tracked_original_bytes: number; provisional_original_bytes: number; committed_original_bytes: number;
+  tracked_preview_bytes?: number; unknown_preview_files?: number;
   unmeasured: string[]; complete_for_enforcement: false;
 };
 export type UserUsage = {

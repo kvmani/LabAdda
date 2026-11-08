@@ -18,7 +18,9 @@ try {
     assert.ok(checked > 0);
     assert.equal(data.inspections[0].summary.issue_count,0);
     await page.getByText(new RegExp(`completed · ${checked} asset rows checked · 0 issues`)).first().waitFor();
-    assert.equal(data.inspections[0].summary.preview_integrity,'unverified');
+    const summary=data.inspections[0].summary;
+    assert.equal(summary.preview_integrity,summary.selected_previews > 0 && summary.unknown_previews === 0 ? 'verified_selected' : 'unverified');
+    await page.getByText(new RegExp(`Preview checks: ${summary.verified_previews} verified`)).first().waitFor();
     assert.equal(data.inspections[0].summary.complete_for_enforcement,false);
     await page.screenshot({path:out+(base?'/admin-prefix.png':'/admin-root.png'),fullPage:true});
     console.log('PASS '+base+': original inspection receipt shown without enforcement authority');

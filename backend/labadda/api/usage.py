@@ -17,13 +17,15 @@ from ..serialize import iso
 from .capabilities import require_usage_reader
 
 router = APIRouter(tags=['usage'])
-UNMEASURED = ['derivative_bytes', 'text_and_board_logical_bytes', 'non_upload_reservations', 'trash',
+UNMEASURED = ['other_or_historical_derivative_bytes', 'text_and_board_logical_bytes', 'non_upload_reservations', 'trash',
               'temporary_archives', 'reference_reconciliation']
 
 
 def originals(db, user_id=None):
     query = select(func.count(Asset.id), func.coalesce(func.sum(Asset.size), 0),
-        func.coalesce(func.sum(case((Asset.status == 'provisional', Asset.size), else_=0)), 0))
+        func.coalesce(func.sum(case((Asset.status == 'provisional', Asset.size), else_=0)), 0),
+        func.coalesce(func.sum(Asset.preview_size), 0),
+        func.count(case((Asset.has_preview & Asset.preview_size.is_(None), 1))))
     if user_id is not None:
         query = query.where(Asset.owner_id == user_id)
     pending = select(func.coalesce(func.sum(UploadReservation.bytes),0)).where(UploadReservation.expires_at > utcnow())
@@ -32,12 +34,13 @@ def originals(db, user_id=None):
     query = query.add_columns(pending.scalar_subquery())
     try:
         db.execute(text("set local statement_timeout = '2s'"))
-        count, total, provisional, reserved = db.execute(query).one()
+        count, total, provisional, preview_bytes, unknown_previews, reserved = db.execute(query).one()
     except SQLAlchemyError as exc:
         db.rollback()
         raise ApiError('measurement_unavailable', 'Usage measurement is unavailable. Retry later.', status=503) from exc
     return {'state': 'partial', 'source': 'asset_metadata', 'observed_at': iso(utcnow()),
             'tracked_files': count, 'tracked_original_bytes': int(total),
+            'tracked_preview_bytes': int(preview_bytes), 'unknown_preview_files': unknown_previews,
             'pending_upload_original_bytes': int(reserved), 'provisional_original_bytes': int(provisional), 'committed_original_bytes': int(total-provisional),
             'unmeasured': UNMEASURED, 'complete_for_enforcement': False}
 

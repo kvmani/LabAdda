@@ -238,6 +238,8 @@ class Asset(Base):
         UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_assets_board_workspace")
     )
     has_preview: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    preview_size: Mapped[int | None] = mapped_column(BigInteger)
+    preview_sha256: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (
@@ -245,6 +247,11 @@ class Asset(Base):
         CheckConstraint("status = 'provisional' or post_id is not null or board_workspace_id is not null",
                         name="ck_asset_committed_owner"),
         CheckConstraint("post_id is null or board_workspace_id is null", name="ck_asset_single_owner"),
+        CheckConstraint("(preview_size is null and preview_sha256 is null) or "
+                        "(preview_size is not null and "
+                        "((has_preview and preview_size > 0 and preview_sha256 is not null and length(preview_sha256) = 64) or "
+                        "(not has_preview and preview_size = 0 and preview_sha256 is null)))",
+                        name="ck_asset_preview_integrity"),
         Index("ix_assets_owner", "owner_id"),
         Index("ix_assets_post", "post_id"),
         Index("ix_assets_board", "board_workspace_id"),

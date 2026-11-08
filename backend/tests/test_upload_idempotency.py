@@ -214,7 +214,9 @@ def test_panel_cookie_cannot_read_or_replay_receipts(as_user, make_client, ids):
 
 
 def test_populated_receipt_history_blocks_downgrade(as_user, settings):
-    assert upload(as_user('ben')).status_code == 201
+    # A failed request still has identity history, independently of later
+    # integrity migrations that protect populated Asset measurements.
+    assert upload(as_user('ben'), data=b'<svg/>', media='image/svg+xml').status_code == 422
     with pytest.raises(RuntimeError, match='request identity history'):
         command.downgrade(alembic_config(settings.database_url), '0011')
 

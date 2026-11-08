@@ -18,6 +18,18 @@ def file_hash(path: Path) -> str:
         return hashlib.file_digest(source, 'sha256').hexdigest()
 
 
+def _verify_asset_reference(store, row):
+    path = store.path(row.storage_key)
+    if not path.is_file() or path.stat().st_size != row.size or file_hash(path) != row.sha256:
+        raise RecoveryError('Restored asset reference mismatch; keep target isolated')
+    if row.has_preview:
+        preview = store.path(row.storage_key, preview=True)
+        if not preview.is_file():
+            raise RecoveryError('Restored preview missing; keep target isolated')
+        if row.preview_size is not None and (preview.stat().st_size != row.preview_size or file_hash(preview) != row.preview_sha256):
+            raise RecoveryError('Restored preview integrity mismatch; keep target isolated')
+
+
 def inventory(root: Path) -> dict:
     if root.is_symlink() or not root.is_dir():
         raise RecoveryError('Expected a regular directory')
@@ -202,12 +214,8 @@ def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: 
                             if conn.scalar(text('select version_num from alembic_version')) != manifest['schema']:
                                 raise RecoveryError('Restored schema mismatch; keep target isolated')
                             store = AssetStore(staged_assets)
-                            for row in conn.execute(text("select storage_key, size, sha256, has_preview from assets where status = 'committed'")):
-                                path = store.path(row.storage_key)
-                                if not path.is_file() or path.stat().st_size != row.size or file_hash(path) != row.sha256:
-                                    raise RecoveryError('Restored asset reference mismatch; keep target isolated')
-                                if row.has_preview and not store.path(row.storage_key, preview=True).is_file():
-                                    raise RecoveryError('Restored preview missing; keep target isolated')
+                            for row in conn.execute(text("select storage_key, size, sha256, has_preview, preview_size, preview_sha256 from assets where status = 'committed'")):
+                                _verify_asset_reference(store, row)
                             conn.execute(text("update auth_sessions set revoked_at = coalesce(revoked_at, now()), end_reason = 'restore'"))
                             conn.execute(text('delete from panel_pairings'))
                             conn.execute(text('delete from credential_tokens'))
