@@ -17,6 +17,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U labadda" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      LABADDA_RECOVERY_TESTS: "1"
       LABADDA_TEST_DATABASE_URL: postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +29,8 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Install PostgreSQL recovery clients
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client-16
       - name: Install locked dependencies
         run: |
           python -m venv .venv

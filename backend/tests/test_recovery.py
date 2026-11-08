@@ -62,6 +62,9 @@ def test_libpq_connection_environment_excludes_stale_selectors(monkeypatch):
     from labadda.recovery import postgres_environment
     monkeypatch.setenv('PGSERVICE', 'unrelated')
     monkeypatch.setenv('PGSSLMODE', 'verify-full')
+    with pytest.raises(RecoveryError, match='ambient'):
+        postgres_environment('postgresql+psycopg://fixture:fixture@localhost:5432/fixture')
+    monkeypatch.delenv('PGSERVICE')
     env = postgres_environment('postgresql+psycopg://fixture:fixture@localhost:5432/fixture')
     assert 'PGSERVICE' not in env
     assert env['PGSSLMODE'] == 'verify-full'
@@ -109,3 +112,19 @@ def test_restore_cli_requires_explicit_target(monkeypatch, capsys):
     monkeypatch.delenv('LABADDA_RESTORE_DATABASE_URL', raising=False)
     assert main(['restore', 'unused', '--manifest-sha256', '0'*64, '--isolated-target']) == 2
     assert 'LABADDA_RESTORE_DATABASE_URL' in capsys.readouterr().err
+
+
+def test_restore_refuses_asset_overlap_without_modifying_bundle(tmp_path):
+    from labadda.recovery import restore, file_hash
+    root = bundle(tmp_path)
+    before = inventory(root)
+    with pytest.raises(RecoveryError, match='separate'):
+        restore(root, file_hash(root / 'manifest.json'), 'unused', root / 'nested/assets', isolated_target=True)
+    assert inventory(root) == before
+
+
+@pytest.mark.parametrize('url', ['postgresql:///fixture', 'postgresql://user:pass@localhost/fixture'])
+def test_implicit_connection_selectors_refused(url):
+    from labadda.recovery import postgres_environment
+    with pytest.raises(RecoveryError, match='explicit'):
+        postgres_environment(url)

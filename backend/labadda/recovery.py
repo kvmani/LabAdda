@@ -70,6 +70,10 @@ def postgres_environment(url: str) -> dict:
     parsed = make_url(url)
     if parsed.get_backend_name() != 'postgresql' or parsed.query:
         raise RecoveryError('Use a PostgreSQL URL without query options; configure TLS through PGSSL*')
+    if not parsed.host or not parsed.username or parsed.port is None or parsed.password is None:
+        raise RecoveryError('Use an explicit host, port, username and password in the database URL')
+    if any(k.startswith('PG') and not k.startswith('PGSSL') for k in os.environ):
+        raise RecoveryError('Remove ambient PG connection selectors; use the explicit database URL')
     import re
     if not parsed.database or not re.fullmatch(r'[A-Za-z0-9_-]+', parsed.database):
         raise RecoveryError('Use a simple explicit database name')
@@ -116,6 +120,7 @@ def backup(url: str, assets: Path, destination: Path, release: str, *, writers_q
     if destination.resolve().is_relative_to(assets.resolve()) or assets.resolve().is_relative_to(destination.resolve()):
         raise RecoveryError('Backup and asset roots must be separate')
     destination.parent.mkdir(parents=True, exist_ok=True)
+    postgres_environment(url)
     engine = create_engine(url, connect_args={'connect_timeout': 10})
     try:
         with tempfile.TemporaryDirectory(prefix='.recovery-', dir=destination.parent) as temporary:
@@ -159,10 +164,13 @@ def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: 
     from .storage import AssetStore
     if not isolated_target:
         raise RecoveryError('Restore requires an isolated target kept off traffic')
+    if assets.resolve().is_relative_to(bundle.resolve()) or bundle.resolve().is_relative_to(assets.resolve()):
+        raise RecoveryError('Recovery bundle and target assets must be separate')
     if file_hash(bundle / 'manifest.json') != expected_manifest_hash:
         raise RecoveryError('Manifest digest mismatch')
     if assets.exists() or assets.is_symlink():
         raise RecoveryError('Target asset directory must not exist')
+    postgres_environment(target_url)
     assets.parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(target_url, connect_args={'connect_timeout': 10})
     try:
@@ -205,6 +213,11 @@ def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: 
                             conn.execute(text('delete from credential_tokens'))
                         sync_tree(staged_assets)
                         os.rename(staged_assets, assets)
+                        fd = os.open(assets.parent, os.O_RDONLY | os.O_DIRECTORY)
+                        try:
+                            os.fsync(fd)
+                        finally:
+                            os.close(fd)
                     finally:
                         guard.execute(text("select pg_advisory_unlock(hashtext('labadda_restore'))"))
         return {'schema': manifest['schema'], 'release': manifest['release'],
