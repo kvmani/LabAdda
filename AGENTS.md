@@ -1,5 +1,10 @@
 # LabAdda repository instructions
 
+## Foundational rule: exceptional engineering quality
+
+- Maintain or exceed the standard expected of the world's top 1% of engineers. Treat this as a founding principle: favor clear designs, small cohesive modules, explicit contracts, secure defaults, and maintainable implementations over shortcuts.
+- Prove behavior with meaningful tests, including failure and recovery paths. Investigate failures, document evidence and limitations honestly, and leave each committed slice runnable. Performance, operational safety, accessibility, and reviewer clarity are part of correctness.
+
 ## Foundational rule: work on main only
 
 - Commit and push every change directly to `main`. Do not create feature, topic, or agent branches, and do not open pull requests unless the owner asks for one in that session.
