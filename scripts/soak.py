@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import json
 import os
+import platform
 import random
 import secrets
 import statistics
@@ -31,6 +32,18 @@ def pct(values: list[float], p: float) -> float:
         return float("nan")
     values = sorted(values)
     return values[min(len(values) - 1, int(round(p / 100 * (len(values) - 1))))]
+
+
+def report_passes(report: dict, *, enforce_targets: bool) -> bool:
+    """Zero samples or partial socket delivery cannot qualify a rehearsal."""
+    integrity = (report['ops_acknowledged'] > 0 and report['ops_seen_by_observer'] == report['ops_acknowledged']
+                 and not report['lost'] and not report['duplicates'] and not report['revision_gaps']
+                 and report['error_count'] == 0)
+    return integrity and (not enforce_targets or all(report['targets'].values()))
+
+
+def metric(values: list[float], percentile: float) -> float | None:
+    return round(pct(values, percentile), 1) if values else None
 
 
 async def login(client: httpx.AsyncClient, api: str, username: str, password: str) -> str:
@@ -122,7 +135,10 @@ async def main() -> None:
     ap.add_argument("--interval", type=float, default=0.25, help="pause between strokes per drawer")
     ap.add_argument("--workspace", default="Thin Films Section")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--enforce-targets", action="store_true", help="fail when update/list p95 exceeds S4 targets")
     args = ap.parse_args()
+    if args.drawers < 1 or args.seconds <= 0 or args.interval < 0:
+        ap.error("drawers and seconds must be positive; interval must be nonnegative")
     api = f"{args.base}/api/v1"
     ws_id, names = await make_drawers(args.origin, api, args.drawers, args.workspace)
     async with httpx.AsyncClient(base_url=args.origin) as c:
@@ -132,7 +148,8 @@ async def main() -> None:
     ready, stop = asyncio.Event(), asyncio.Event()
     obs = asyncio.create_task(observer(args.origin, args.base, api, ws_id, seen, ready, stop))
     await asyncio.wait_for(ready.wait(), 10)
-    until = time.perf_counter() + args.seconds
+    started = time.perf_counter()
+    until = started + args.seconds
     await asyncio.gather(*(drawer(args.origin, api, ws_id, n, start_state["epoch"], until, args.interval, sent,
                                   acks, acked_objects, errors, list_latency) for n in names))
     await asyncio.sleep(2)
@@ -150,26 +167,31 @@ async def main() -> None:
     missing = [r for r in acked_objects if r not in present]
     latency = [(seen[k] - sent[k]) * 1000 for k in sent if k in seen]
     report = {
+        "environment": {"python": platform.python_version(), "system": platform.system(),
+                        "machine": platform.machine(), "logical_cpus": os.cpu_count(),
+                        "tls": args.origin.startswith("https://")},
+        "elapsed_seconds": round(time.perf_counter() - started, 2),
+        "latency_samples": len(latency), "list_samples": len(list_latency),
         "drawers": args.drawers, "seconds": args.seconds, "interval_s": args.interval,
         "ops_acknowledged": len(acks), "ops_retained": len(revisions),
         "compacted_through": final.get("base_revision", 0),
         "ops_seen_by_observer": len(latency),
         "lost": len(missing), "duplicates": len(revisions) - len(set(revisions)) + len(acked_objects) - len(set(acked_objects)),
         "revision_gaps": revisions != expected, "errors": errors[:10], "error_count": len(errors),
-        "update_latency_ms": {"p50": round(pct(latency, 50), 1), "p95": round(pct(latency, 95), 1),
+        "update_latency_ms": {"p50": metric(latency, 50), "p95": metric(latency, 95),
                               "max": round(max(latency), 1) if latency else None,
                               "mean": round(statistics.mean(latency), 1) if latency else None},
-        "list_latency_ms": {"p50": round(pct(list_latency, 50), 1), "p95": round(pct(list_latency, 95), 1)},
-        "targets": {"update_p95_lt_500ms": pct(latency, 95) < 500, "list_p95_lt_1000ms": pct(list_latency, 95) < 1000},
+        "list_latency_ms": {"p50": metric(list_latency, 50), "p95": metric(list_latency, 95)},
+        "targets": {"update_p95_lt_500ms": bool(latency) and pct(latency, 95) < 500, "list_p95_lt_1000ms": bool(list_latency) and pct(list_latency, 95) < 1000},
     }
-    text = json.dumps(report, indent=2)
+    report["passed"] = report_passes(report, enforce_targets=args.enforce_targets)
+    report["targets_enforced"] = args.enforce_targets
+    text = json.dumps(report, indent=2, allow_nan=False)
     print(text)
     if args.out:
         with open(args.out, "w") as f:
             f.write(text)
-    ok = (not report["lost"] and not report["duplicates"] and not report["revision_gaps"] and not errors
-          and len(latency) == len(acks))
-    raise SystemExit(0 if ok else 1)
+    raise SystemExit(0 if report["passed"] else 1)
 
 
 if __name__ == "__main__":

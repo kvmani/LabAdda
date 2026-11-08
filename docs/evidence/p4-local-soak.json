@@ -1,0 +1,40 @@
+{
+  "environment": {
+    "python": "3.12.14",
+    "system": "Linux",
+    "machine": "x86_64",
+    "logical_cpus": 5,
+    "tls": false
+  },
+  "elapsed_seconds": 123.54,
+  "latency_samples": 3371,
+  "list_samples": 678,
+  "drawers": 8,
+  "seconds": 120.0,
+  "interval_s": 0.25,
+  "ops_acknowledged": 3371,
+  "ops_retained": 1757,
+  "compacted_through": 1614,
+  "ops_seen_by_observer": 3371,
+  "lost": 0,
+  "duplicates": 0,
+  "revision_gaps": false,
+  "errors": [],
+  "error_count": 0,
+  "update_latency_ms": {
+    "p50": 27.2,
+    "p95": 66.0,
+    "max": 529.1,
+    "mean": 33.9
+  },
+  "list_latency_ms": {
+    "p50": 14.5,
+    "p95": 37.5
+  },
+  "targets": {
+    "update_p95_lt_500ms": true,
+    "list_p95_lt_1000ms": true
+  },
+  "passed": true,
+  "targets_enforced": true
+}

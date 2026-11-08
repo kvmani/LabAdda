@@ -12,7 +12,7 @@ Use a clean committed checkout on **Ubuntu 24.04 x86-64, Python 3.12 and Node 22
 
 The archive includes committed application source, migrations, built frontend, a binary-only wheelhouse from `backend/requirements.lock`, deployment templates, operator documentation, and the release tool. No Node runtime is needed after installation. The complete lock currently includes test dependencies as well as runtime dependencies. Python wheel and bundled frontend dependency metadata and license/notice texts are inventoried under `licenses/` and in `manifest.json`; review missing or ambiguous license declarations before distribution. This inventory is not a legal clearance or vulnerability scan. Scan the candidate on the connected builder and retain approved provenance and scan evidence independently.
 
-The manifest records the full build commit, actual OS/version, architecture, Python minor version, schema head, dependency inventory, sizes and SHA-256 hashes. The installer requires an exact platform match; a Debian development build is not an Ubuntu release. OS packages are not bundled: provision Python 3.12 with venv/ensurepip, PostgreSQL 16, nginx and site CA trust through an approved internal Ubuntu mirror before disconnecting. Keep PostgreSQL, writable assets and operator config outside releases.
+The manifest records the full build commit, actual OS/version, architecture, Python minor version, schema head, dependency inventory, sizes and SHA-256 hashes. The installer requires an exact platform match; a Debian development build is not an Ubuntu release. OS packages are not bundled: provision Python 3.12 with venv/ensurepip, PostgreSQL 16 with its pg_dump/pg_restore clients, nginx and site CA trust through an approved internal Ubuntu mirror before disconnecting. Keep PostgreSQL, writable assets and operator config outside releases.
 
 Transfer the archive through the approved process. Deliver its `.sha256` digest through a separately authenticated channel. A digest beside an untrusted archive proves no publisher identity. Use a trusted local copy of `scripts/release.py` to inspect/install; do not execute tools extracted from an unverified archive.
 
@@ -64,3 +64,5 @@ python3.12 /trusted/release.py rollback --instance /srv/labadda/staging \
 ```
 
 Restart and repeat the same probes. If schemas differ, the tool refuses the pointer change. Do not automatically downgrade migrations or rewind user data. Use the operator-approved database-and-assets restore procedure (P4 step 3), or repair forward, while remaining in maintenance. The tool switches code only and makes no automatic recovery claim.
+
+For writer-quiesced backups and isolated restores before activation, follow [RECOVERY.md](RECOVERY.md). New release builds include that procedure.

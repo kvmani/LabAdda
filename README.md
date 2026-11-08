@@ -84,4 +84,4 @@ scripts/proxy-stack.sh stop
 
 ## Offline release tooling
 
-See [the release procedure](docs/RELEASES.md) for connected builds, verified offline installation, runtime preflight, atomic activation and the conservative schema rollback rule. [P4 step 2 evidence](docs/RELEASE-EVIDENCE.md) records the clean Ubuntu 24.04 offline installation and current limitations. Backup/restore and site pilot qualification are the next work.
+See [the release procedure](docs/RELEASES.md) for connected builds, verified offline installation, runtime preflight, atomic activation and the conservative schema rollback rule. [P4 step 2 evidence](docs/RELEASE-EVIDENCE.md) records the clean Ubuntu 24.04 offline installation and current limitations. Backup and isolated restore are implemented; see [the recovery procedure](docs/RECOVERY.md). Site pilot qualification remains open.

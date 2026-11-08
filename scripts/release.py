@@ -123,7 +123,7 @@ def build(root: Path, output: Path, release_id: str) -> Path:
         for name in filter(None, paths):
             include = (name.startswith(("backend/labadda/", "backend/migrations/", "deploy/"))
                        or name in ("backend/alembic.ini", "backend/requirements.lock", "backend/pyproject.toml",
-                                   "scripts/release.py", "docs/DEPLOYMENT.md", "docs/RELEASES.md"))
+                                   "scripts/release.py", "docs/DEPLOYMENT.md", "docs/RELEASES.md", "docs/RECOVERY.md"))
             if include:
                 source = root / name
                 if source.is_symlink() or not source.is_file():
