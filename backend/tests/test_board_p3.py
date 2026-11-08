@@ -304,3 +304,87 @@ def test_state_cache_matches_rebuild_under_concurrency(as_user, ids, db_factory)
     with db_factory() as db:
         board = db.get(Board, uuid.UUID(w))
         assert state_cache.objects(db, board) == {} == state_at(db, board)
+
+
+def _paused_fold(monkeypatch):
+    """Make compaction's fold signal that it started, then wait until released."""
+    from labadda import boardstate
+    started, release = threading.Event(), threading.Event()
+    real = boardstate.state_at
+
+    def paused(db, board, revision=None):
+        started.set()
+        assert release.wait(10)
+        return real(db, board, revision)
+
+    monkeypatch.setattr(boardstate, "state_at", paused)
+    return started, release, real
+
+
+def test_drawing_continues_while_compaction_folds(as_user, ids, db_factory, monkeypatch):
+    from labadda import boardstate
+    ben = as_user("ben")
+    w = ws(ids)
+    for i in range(12):
+        ben.post(f"/workspaces/{w}/board/ops", json=stroke(f"op-ben-{i:03d}", f"s{i}"))
+    started, release, real = _paused_fold(monkeypatch)
+    result = {}
+    worker = threading.Thread(target=lambda: result.update(n=boardstate.compact_all(db_factory(), threshold=10,
+                                                                                     keep=4)))
+    worker.start()
+    assert started.wait(5)
+    # The fold is in progress; the board row is not locked, so a new stroke commits immediately.
+    monkeypatch.setattr(boardstate, "state_at", real)  # the API's own reads must not pause
+    t0 = time.monotonic()
+    r = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-during", "during"))
+    assert r.status_code == 200 and time.monotonic() - t0 < 2
+    release.set()
+    worker.join(10)
+    assert result["n"] == 1
+    board = ben.get(f"/workspaces/{w}/board").json()
+    assert board["base_revision"] == 8
+    alive = set(board["snapshot"]["objects"]) | {o["object_id"] for o in board["ops"]}
+    assert {f"s{i}" for i in range(12)} | {"during"} <= alive
+
+
+def test_compaction_skips_a_board_restored_during_the_fold(as_user, ids, db_factory, monkeypatch):
+    from labadda import boardstate
+    ben, asha = as_user("ben"), as_user("asha")
+    w = ws(ids)
+    for i in range(12):
+        ben.post(f"/workspaces/{w}/board/ops", json=stroke(f"op-ben-{i:03d}", f"s{i}"))
+    started, release, real = _paused_fold(monkeypatch)
+    result = {}
+    worker = threading.Thread(target=lambda: result.update(n=boardstate.compact_all(db_factory(), threshold=10,
+                                                                                     keep=4)))
+    worker.start()
+    assert started.wait(5)
+    monkeypatch.setattr(boardstate, "state_at", real)
+    assert asha.post(f"/workspaces/{w}/board/restore", json={"revision": 0}).status_code == 200
+    release.set()
+    worker.join(10)
+    assert result["n"] == 0  # stale epoch: no snapshot written from the old fold
+    board = ben.get(f"/workspaces/{w}/board").json()
+    assert board["epoch"] == 2 and board["snapshot"] is None and board["ops"] == []
+
+
+def test_state_cache_survives_compaction_without_refold(as_user, ids, db_factory, monkeypatch):
+    import uuid
+
+    from labadda import boardstate
+    from labadda.boardstate import compact_all, state_cache
+    ben = as_user("ben")
+    w = ws(ids)
+    for i in range(12):
+        ben.post(f"/workspaces/{w}/board/ops", json=stroke(f"op-ben-{i:03d}", f"s{i}"))
+    with db_factory() as db:
+        assert compact_all(db, threshold=10, keep=4) == 1
+
+    def refold(*_args, **_kwargs):
+        raise AssertionError("cache should not refold after compaction")
+
+    monkeypatch.setattr(boardstate, "state_at", refold)
+    assert ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-after", "after")).status_code == 200
+    with db_factory() as db:
+        board = db.get(Board, uuid.UUID(w))
+        assert "after" in state_cache.objects(db, board)

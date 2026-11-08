@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DatabaseStorage } from '../components/DatabaseStorage';
 import { LogicalCharges } from '../components/LogicalCharges';
 import { api } from '../api';
 import type { SiteUsage } from '../governance-types';
@@ -26,7 +27,8 @@ export function Operations() {
         <dt>Asset filesystem free space</dt><dd>{fmtBytes(data.filesystem.free_bytes)} · {data.filesystem.state}</dd>
         <dt>Observed</dt><dd>{new Date(data.assets.observed_at).toLocaleString()}</dd></dl>
       <LogicalCharges charges={data.logical_charges} scope="site" />
-      <p>Historical previews without expected measurements, other derivatives, whiteboard history, database size, non-upload reservations, trash and temporary archives are not fully measured. Preview metadata is not a current disk inspection. No configured site budget or enforcement authority.</p>
+      <DatabaseStorage storage={data.database} />
+      <p>Historical previews without expected measurements, other derivatives, non-upload reservations, trash and temporary archives are not fully measured. Preview metadata is not a current disk inspection. No configured site budget or enforcement authority.</p>
     </div>}
   </section>;
 }

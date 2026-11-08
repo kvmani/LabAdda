@@ -35,6 +35,6 @@ export function LogicalCharges({ charges, scope }: { charges?: Charges; scope: '
         ? <>{charges.unreconciled_boards} board{charges.unreconciled_boards === 1 ? '' : 's'} with older history {charges.unreconciled_boards === 1 ? 'has' : 'have'} not been reconciled yet. A host operator can run <code>labadda reconcile-charges</code>.</>
         : 'some boards with older history have not been reconciled yet.'}
     </p>}
-    <p className="muted small">Measured as UTF-8 bytes of {scope === 'user' ? 'the text you wrote' : 'user-written text'} ({charges.methods.text}) and of each live whiteboard object ({charges.methods.board}). These are logical charges, not disk usage; whiteboard history, database overhead and attachments are reported separately or not yet measured. They do not change any limit.</p>
+    <p className="muted small">Measured as UTF-8 bytes of {scope === 'user' ? 'the text you wrote' : 'user-written text'} ({charges.methods.text}) and of each live whiteboard object ({charges.methods.board}). These are logical charges, not disk usage. Attachments are counted separately; whiteboard history and database overhead are site storage, shown to operators and not charged to anyone. They do not change any limit.</p>
   </>;
 }

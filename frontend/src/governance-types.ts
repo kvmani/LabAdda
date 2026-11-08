@@ -17,9 +17,15 @@ export type UserUsage = {
   logical_charges?: LogicalCharges;
   runtime_limit: {bytes: number; source: string; policy_proposals_enforced: false};
 };
+export type DatabaseStorage = {
+  state: 'ready' | 'unknown'; observed_at: string; database_bytes: number | null; other_bytes: number | null;
+  categories: Record<'collaboration_text' | 'personal_notes' | 'board_history' | 'file_metadata' | 'identity_and_access' | 'audit_and_governance', number | null>;
+  board_history: {retained_operations: number | null; snapshots: number | null};
+};
 export type SiteUsage = {
   assets: OriginalMeasurement;
   logical_charges?: LogicalCharges;
+  database?: DatabaseStorage;
   filesystem: {state: string; free_bytes: number | null; total_bytes: number | null; free_inodes: number | null};
 };
 export type ProposedProfile = {

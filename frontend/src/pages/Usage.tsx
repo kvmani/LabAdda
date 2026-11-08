@@ -31,7 +31,7 @@ export function Usage() {
         <dt>Observed</dt><dd>{new Date(data.measurement.observed_at).toLocaleString()}</dd>
       </dl>
       <LogicalCharges charges={data.logical_charges} scope="user" />
-      <p className="notice">Partial measurement: historical previews without expected measurements, other derivatives, whiteboard history, non-upload reservations, trash and temporary archives are not fully measured here. Preview metadata is not a current disk inspection. Your current pilot limit charges originals only; proposed policies do not change it.</p>
+      <p className="notice">Partial measurement: historical previews without expected measurements, other derivatives, non-upload reservations, trash and temporary archives are not fully measured here. Whiteboard history is shared site storage and is not charged to you. Preview metadata is not a current disk inspection. Your current pilot limit charges originals only; proposed policies do not change it.</p>
       <p>Archive downloads, quota exceptions and retention management are planned. Existing file downloads remain available on their posts. Contact your site administrator about the current pilot limit.</p>
     </div>}
   </section>;

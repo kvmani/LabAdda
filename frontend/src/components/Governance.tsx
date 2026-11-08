@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { DatabaseStorage } from './DatabaseStorage';
 import { LogicalCharges } from './LogicalCharges';
 import { api } from '../api';
 import { fmtBytes as bytes } from '../format';
@@ -73,7 +74,8 @@ export function Governance() {
         <dt>Observed</dt><dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
       </dl>
       <LogicalCharges charges={usage.logical_charges} scope="site" />
-      <p className="notice">Filesystem capacity may be shared with other services. Historical previews without expected measurements, other derivatives, whiteboard history, database size, non-upload reservations, trash and archive storage are not fully measured. Preview metadata is not a current disk inspection. These totals cannot approve enforcement or deletion.</p>
+      <DatabaseStorage storage={usage.database} />
+      <p className="notice">Filesystem capacity may be shared with other services. Historical previews without expected measurements, other derivatives, non-upload reservations, trash and archive storage are not fully measured. Preview metadata is not a current disk inspection. These totals cannot approve enforcement or deletion.</p>
       <button disabled={busy} onClick={() => run(() => api('/admin/usage-observations', {body: {}}), 'Partial observation recorded.')}>Record partial observation</button>
       <p>{Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.</p>
       {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}

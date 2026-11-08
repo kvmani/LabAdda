@@ -17,8 +17,25 @@ from ..serialize import iso
 from .capabilities import require_usage_reader
 
 router = APIRouter(tags=['usage'])
-UNMEASURED = ['other_or_historical_derivative_bytes', 'board_history_and_snapshot_bytes', 'database_physical_size',
-              'non_upload_reservations', 'trash', 'temporary_archives', 'reference_reconciliation']
+UNMEASURED = ['other_or_historical_derivative_bytes', 'non_upload_reservations', 'trash', 'temporary_archives',
+              'reference_reconciliation']
+
+# Physical PostgreSQL storage by category (DL-07: measured separately from logical attribution).
+# Table names are fixed constants; sizes include indexes and TOAST.
+DATABASE_CATEGORIES = {
+    'collaboration_text': ('posts', 'chat_messages', 'chat_reads', 'notifications'),
+    'personal_notes': ('notes',),
+    'board_history': ('boards', 'board_ops', 'board_snapshots'),
+    'file_metadata': ('assets', 'upload_reservations', 'upload_receipts'),
+    'identity_and_access': ('users', 'credential_tokens', 'auth_sessions', 'panel_pairings', 'workspaces',
+                            'memberships', 'usage_reader_grants'),
+    'audit_and_governance': ('audit_events', 'policy_drafts', 'usage_observations', 'storage_inspections',
+                             'content_charges'),
+}
+DATABASE_SIZES = text("""
+SELECT c.relname, pg_total_relation_size(c.oid) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r' AND n.nspname = current_schema() AND c.relname = ANY(:names)
+""")
 
 
 def originals(db, user_id=None):
@@ -68,6 +85,29 @@ def user_usage(actor: Actor = Depends(current_actor), db: Session = Depends(get_
             'available_features': {'archives': False, 'quota_exceptions': False, 'retention': False}}
 
 
+def database_physical(db) -> dict:
+    """Site-wide physical database storage. Shared overhead: never attributed to users or workspaces."""
+    names = [t for tables in DATABASE_CATEGORIES.values() for t in tables]
+    unknown = {'state': 'unknown', 'database_bytes': None, 'categories': {k: None for k in DATABASE_CATEGORIES},
+               'other_bytes': None, 'board_history': {'retained_operations': None, 'snapshots': None}}
+    try:
+        db.execute(text("set local statement_timeout = '2s'"))
+        sizes = dict(db.execute(DATABASE_SIZES, {'names': names}).all())
+        total = int(db.scalar(text('select pg_database_size(current_database())')))
+        retained = db.scalar(text('select count(*) from board_ops'))
+        snapshots = db.scalar(text('select count(*) from board_snapshots'))
+    except SQLAlchemyError:
+        db.rollback()
+        return {**unknown, 'observed_at': iso(utcnow())}
+    categories = {k: sum(int(sizes.get(t, 0)) for t in tables) for k, tables in DATABASE_CATEGORIES.items()}
+    return {'state': 'ready', 'observed_at': iso(utcnow()), 'database_bytes': total, 'categories': categories,
+            # System catalogs, migration bookkeeping and free space inside the database files.
+            'other_bytes': max(0, total - sum(categories.values())),
+            'board_history': {'retained_operations': retained, 'snapshots': snapshots},
+            'scope': 'physical_postgresql_storage_including_indexes',
+            'attribution': 'site_overhead_not_charged_to_users'}
+
+
 def site_payload(db, settings):
     measured = originals(db)
     filesystem = {'state': 'unknown', 'free_bytes': None, 'total_bytes': None, 'free_inodes': None,
@@ -81,6 +121,7 @@ def site_payload(db, settings):
     filesystem['observed_at'] = iso(utcnow())
     return {'schema_version': 1, 'scope': 'site', 'state': 'partial', 'assets': measured,
             'logical_charges': logical_charges(db),
+            'database': database_physical(db),
             'filesystem': filesystem, 'note': 'Filesystem capacity is shared; it is not a configured site quota.',
             'policy_enforcement_changed': False}
 

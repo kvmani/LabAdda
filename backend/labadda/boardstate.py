@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import copy
 import io
+import json
+import logging
 import threading
+import time
 import uuid
 from collections.abc import Callable, Iterable
 
@@ -20,6 +23,7 @@ from sqlalchemy.orm import Session
 from .errors import Invalid
 from .models import Board, BoardOp, BoardSnapshot
 
+log = logging.getLogger("labadda.board")
 MAX_RENDER_PX = 1600
 MAX_REGION = 20_000
 STICKY_W, STICKY_H = 180, 120
@@ -90,47 +94,48 @@ def with_op(objects: dict[str, dict], op: BoardOp) -> dict[str, dict]:
 class StateCache:
     """Per-process cache of each board's latest state, so a write does not refold history.
 
-    Entries are trusted only when (epoch, revision, base) match the locked board row;
-    otherwise the state is rebuilt from the snapshot and operations.
+    Entries are keyed by (epoch, revision). Compaction does not change state, so an entry stays
+    valid across it and catches up incrementally as long as the operations after the cached
+    revision are still retained (cached revision >= compacted base). Otherwise the state is
+    rebuilt from the snapshot and operations.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._entries: dict[uuid.UUID, tuple[int, int, int, dict]] = {}
+        self._entries: dict[uuid.UUID, tuple[int, int, dict]] = {}
 
     def objects(self, db: Session, board: Board) -> dict[str, dict]:
         """Current state for a locked board row. Catches up incrementally when slightly behind."""
-        key = (board.epoch, board.revision, board.base_revision)
         with self._lock:
             entry = self._entries.get(board.workspace_id)
-        if entry and entry[0] == board.epoch and entry[2] == board.base_revision and entry[1] <= board.revision:
-            objects = entry[3]
+        if entry and entry[0] == board.epoch and board.base_revision <= entry[1] <= board.revision:
+            objects = entry[2]
             if entry[1] < board.revision:
                 objects = dict(objects)
                 for op in epoch_ops(db, board.workspace_id, board.epoch, after=entry[1], upto=board.revision):
                     _apply_copy(objects, op)
         else:
             objects = state_at(db, board)
-        self._store(board.workspace_id, key, objects)
+        self._store(board.workspace_id, board.epoch, board.revision, objects)
         return objects
 
     def committed(self, workspace_id: uuid.UUID, base_revision: int, op: BoardOp) -> None:
-        """Advance the cached state after ``op`` has committed (ignored if already applied)."""
+        """Advance the cached state after ``op`` has committed (ignored unless it is the next revision)."""
         with self._lock:
             entry = self._entries.get(workspace_id)
-            if not entry or entry[0] != op.epoch or entry[2] != base_revision or entry[1] != op.revision - 1:
+            if not entry or entry[0] != op.epoch or entry[1] != op.revision - 1:
                 return  # the next read catches up from the database
-            objects = dict(entry[3])
+            objects = dict(entry[2])
             _apply_copy(objects, op)
-            self._entries[workspace_id] = (op.epoch, op.revision, base_revision, objects)
+            self._entries[workspace_id] = (op.epoch, op.revision, objects)
 
-    def _store(self, workspace_id, key, objects) -> None:
+    def _store(self, workspace_id, epoch, revision, objects) -> None:
         with self._lock:
             current = self._entries.get(workspace_id)
-            # Never move an entry backwards within the same epoch and base.
-            if current and current[0] == key[0] and current[2] == key[2] and current[1] > key[1]:
+            # Never move an entry backwards within the same epoch.
+            if current and current[0] == epoch and current[1] > revision:
                 return
-            self._entries[workspace_id] = (*key, objects)
+            self._entries[workspace_id] = (epoch, revision, objects)
 
     def clear(self) -> None:
         with self._lock:
@@ -194,12 +199,41 @@ def compact(db: Session, board: Board, keep: int) -> int:
 
 
 def compact_all(db: Session, threshold: int, keep: int) -> int:
-    boards = db.scalars(select(Board).where(Board.revision - Board.base_revision > threshold)
-                        .with_for_update(skip_locked=True)).all()
-    for board in boards:
-        compact(db, board, keep)
+    """Compact boards with more than ``threshold`` uncompacted revisions, keeping the last ``keep``.
+
+    Two phases so drawing is not blocked: the expensive fold runs without any board lock, because
+    operations at or below the new base (and this epoch's snapshots) are immutable once committed.
+    The board row is then locked only to recheck that epoch and base are unchanged and to write the
+    snapshot. A board restored or compacted in between is skipped and retried on a later tick.
+    """
+    candidates = db.execute(select(Board.workspace_id, Board.epoch, Board.revision, Board.base_revision)
+                            .where(Board.revision - Board.base_revision > threshold)).all()
     db.commit()
-    return len(boards)
+    compacted = 0
+    for workspace_id, epoch, revision, base in candidates:
+        new_base = revision - keep
+        if new_base <= base:
+            continue
+        started = time.perf_counter()
+        observed = Board(workspace_id=workspace_id, epoch=epoch, revision=revision, base_revision=base)
+        state = state_at(db, observed, new_base)  # no lock held: reads only immutable history
+        db.commit()
+        folded = time.perf_counter()
+        board = db.scalar(select(Board).where(Board.workspace_id == workspace_id).with_for_update(skip_locked=True))
+        if board is None or board.epoch != epoch or board.base_revision != base:
+            db.rollback()
+            continue
+        db.add(BoardSnapshot(workspace_id=workspace_id, epoch=epoch, revision=new_base, state=state))
+        removed = db.execute(delete(BoardOp).where(BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch,
+                                                   BoardOp.revision <= new_base)).rowcount
+        board.base_revision = new_base
+        db.commit()
+        compacted += 1
+        # Operational timing only (no content): lock-held time is what can delay drawing.
+        log.info(json.dumps({"event": "board.compacted", "operations_removed": removed,
+                             "fold_ms": round((folded - started) * 1000, 1),
+                             "locked_ms": round((time.perf_counter() - folded) * 1000, 1)}))
+    return compacted
 
 
 def bounds(o: dict) -> tuple[float, float, float, float]:
