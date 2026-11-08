@@ -57,3 +57,18 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 Client to server: `subscribe` / `unsubscribe` `{workspace_id}`, `board.preview` `{workspace_id, preview_id, stroke, done?}` (transient, bounded, writers only), and `ping`.
 
 Server to client: `hello`, `subscribed`, `subscribe_failed` (unknown and forbidden look the same), `presence`, `chat.message`, `noticeboard.changed`, `board.op`, `board.epoch`, `board.preview`, `revoked` (subscription dropped after an access change), `access_changed`, and `session_ended` (socket then closes with code 4401). Every delivery rechecks the recipient's current access. After `subscribed`, clients catch up missed committed state through the API.
+
+## Future lifecycle and administration contract families (not implemented)
+
+S5–S7 and [DATA-LIFECYCLE.md](DATA-LIFECYCLE.md), [ARCHIVE-FORMAT.md](ARCHIVE-FORMAT.md), [ADMIN-CONSOLE.md](ADMIN-CONSOLE.md) govern later API design. Existing routes above do not imply these capabilities. Each implementation slice must publish concrete versioned request/response schemas and authorization/error tests before exposing routes.
+
+| Resource family | Mandatory contract |
+| --- | --- |
+| Effective policy / usage | Authorized scope, value/source revision, units, observation generation/time, logical/physical/reserved breakdown; no private-body metadata |
+| Policy drafts / plans / approvals | Base revision, validated patch, exact candidate/version selection, plan digest, preview completeness/expiry, reviewer and capability checks; conflict rather than silent overwrite |
+| Exceptions / holds / schedules | Scope, reason, effective/expiry/review dates, hard ceilings, auditable transitions and notifications |
+| Export / archive view / materialization | Selection and snapshot cutoff, current grants, bounded jobs, package digest, viewer TTL, provenance mappings, destination/audience, quota reservation and idempotency key |
+| Lifecycle / reconciliation jobs | Approved bounded plan, policy/inventory generation, leases/checkpoints, cancellation boundary, precise partial outcome and per-attempt failures |
+| Operational metrics / events / backup status | Scope/capability, time window, freshness/completeness, stable codes/correlation, protected paginated reports, explicit unsupported state; approved storage/target aliases only |
+
+Publish stable machine-readable reasons including `quota_exceeded`, `rate_limited`, `storage_reserve`, `policy_conflict`, `stale_plan`, `approval_required`, `held`, `archive_invalid`, `archive_unsupported`, `archive_expired`, `import_conflict` and `job_partial` when implemented. Preserve S2's 401/403/uniform-404 access semantics before returning scope-specific diagnostics; an error must not reveal an inaccessible resource. Quota errors include only authorized usage/limit/required-byte/action fields. Unsafe requests retain CSRF/origin checks. Downloads/range requests and every queued worker reauthorize; an idempotency key never substitutes for identity or current grants. No arbitrary shell command, database URL, secret or filesystem path is accepted from ordinary web policy/job inputs.

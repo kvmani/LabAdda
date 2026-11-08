@@ -15,6 +15,9 @@ The repository holds a runnable application (FastAPI + PostgreSQL backend, React
 | [REVIEW.md](REVIEW.md) | Independent review procedure and release decisions |
 | [Intranet deployment design](docs/DEPLOYMENT.md) | Runtime, offline release, staging, recovery, and site decisions |
 | [API contract](docs/API.md) | Endpoints, error codes, idempotency and socket messages |
+| [Data lifecycle requirements](docs/DATA-LIFECYCLE.md) | Future quotas, retention, user archives and safe re-import |
+| [Portable archive format](docs/ARCHIVE-FORMAT.md) | Future offline-readable packages, validation and round trips |
+| [Admin console requirements](docs/ADMIN-CONSOLE.md) | Future policy controls, analytics, logs and operational safety |
 | [Design sources](docs/REFERENCES.md) | Patterns taken from the four reference projects and agent guidance |
 
 The product display name and GitHub repository slug are both **LabAdda**. Use lowercase `labadda` for machine identifiers (package, CLI, environment variables, cookies, databases).
