@@ -64,6 +64,8 @@ def inventory(wheels: Path, licenses: Path) -> list[dict]:
             metadata = BytesParser().parsebytes(archive.read(metadata_names[0]))
             license_files = []
             for name in archive.namelist():
+                if archive.getinfo(name).is_dir():
+                    continue
                 if any(word in PurePosixPath(name).name.lower() for word in ("license", "copying", "notice")):
                     if not safe_path(name):
                         raise ReleaseError("Unsafe license path")

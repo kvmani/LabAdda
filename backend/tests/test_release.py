@@ -200,3 +200,17 @@ def test_offline_install_scrubs_ambient_package_sources(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="checked isolated pip"):
         release.install(archive, sha, tmp_path / "instance")
     assert not (tmp_path / "instance/releases/candidate").exists()
+
+
+def test_wheel_inventory_handles_license_directories(tmp_path):
+    import zipfile
+    wheels = tmp_path / "wheelhouse"
+    wheels.mkdir()
+    with zipfile.ZipFile(wheels / "example.whl", "w") as archive:
+        archive.writestr("example-1.dist-info/METADATA", "Name: example\nVersion: 1\nLicense-Expression: MIT\n")
+        archive.mkdir("example-1.dist-info/licenses/")
+        archive.writestr("example-1.dist-info/licenses/LICENSE", "Example license")
+    inventory = release.inventory(wheels, tmp_path / "licenses")
+    assert inventory[0]["license"] == "MIT"
+    assert len(inventory[0]["license_files"]) == 1
+    assert (tmp_path / inventory[0]["license_files"][0]).read_text() == "Example license"
