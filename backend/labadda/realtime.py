@@ -16,16 +16,18 @@ import uuid
 from dataclasses import dataclass, field
 
 from fastapi import WebSocket
+from sqlalchemy import select
 
 from . import policy
 from .config import Settings
 from .deps import origin_allowed
-from .models import AuthSession, User
+from .models import AuthSession, User, Workspace
 from .security import digest, session_valid
 
 log = logging.getLogger("labadda.realtime")
 MAX_PREVIEW_BYTES = 16_000
 MAX_MESSAGE_BYTES = 32_000
+SEND_TIMEOUT_SECONDS = 10.0  # per client and batch; bounds head-of-line blocking
 # A board-only panel receives board activity only: no chat, feed or other content.
 PANEL_EVENTS = {"board.op", "board.epoch", "board.preview", "presence", "revoked", "access_changed",
                 "subscribed", "subscribe_failed", "session_ended", "hello", "pong", "error"}
@@ -46,6 +48,9 @@ class Hub:
     def __init__(self, factory, settings: Settings):
         self.factory = factory
         self.settings = settings
+        # One FIFO and worker per workspace: ordered fanout, batched access rechecks.
+        self._queues: dict[uuid.UUID, asyncio.Queue] = {}
+        self._workers: dict[uuid.UUID, asyncio.Task] = {}
         self.connections: set[Connection] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
 
@@ -63,8 +68,9 @@ class Hub:
         else:
             asyncio.run_coroutine_threadsafe(coro_fn(*args), loop)
 
-    def publish(self, workspace_id: uuid.UUID, event: dict) -> None:
-        self._schedule(self._deliver, workspace_id, event)
+    def publish(self, workspace_id: uuid.UUID | str, event: dict) -> None:
+        # Normalize so a string ID can never silently miss UUID-keyed subscriptions.
+        self._schedule(self._enqueue, uuid.UUID(str(workspace_id)), event)
 
     def revalidate_user(self, user_id: uuid.UUID) -> None:
         self._schedule(self._revalidate, lambda c: c.user_id == user_id)
@@ -100,18 +106,92 @@ class Hub:
         except Exception:
             self.connections.discard(conn)
 
-    async def _deliver(self, workspace_id: uuid.UUID, event: dict) -> None:
+    def _check_many(self, conns: list[Connection], workspace_id: uuid.UUID) -> dict[Connection, tuple]:
+        """Batched form of ``_check`` for one workspace: (session_ok, readable, writable) per connection.
+
+        Uses the shared policy's eligible-reader set, which matches ``policy.resolve``: active users with
+        a direct grant on the workspace or (for org units) on a descendant. Writable follows the same
+        archive/posting-policy/direct-steward rule.
+        """
+        with self.factory() as db:
+            sessions = {s.id: s for s in db.scalars(select(AuthSession).where(
+                AuthSession.id.in_({c.session_id for c in conns})))}
+            workspace = db.get(Workspace, workspace_id)
+            readers = policy.eligible_reader_ids(db, workspace) if workspace is not None else set()
+            stewards = {uid for uid, role in policy.direct_grants_for_workspace(db, workspace_id).items()
+                        if role == "steward"}
+            result = {}
+            for conn in conns:
+                sess = sessions.get(conn.session_id)
+                if sess is None or sess.user_id != conn.user_id or not session_valid(sess, self.settings):
+                    result[conn] = (False, False, False)
+                    continue
+                readable = conn.user_id in readers  # eligible readers are already active users
+                writable = readable and not workspace.archived and (
+                    workspace.posting_policy == "open" or conn.user_id in stewards)
+                result[conn] = (True, readable, writable)
+            return result
+
+    async def _enqueue(self, workspace_id: uuid.UUID, event: dict) -> None:
+        queue = self._queues.get(workspace_id)
+        if queue is None:
+            queue = self._queues[workspace_id] = asyncio.Queue()
+        queue.put_nowait(event)
+        worker = self._workers.get(workspace_id)
+        if worker is None or worker.done():
+            self._workers[workspace_id] = asyncio.get_running_loop().create_task(self._worker(workspace_id))
+
+    async def _worker(self, workspace_id: uuid.UUID, batch_limit: int = 200) -> None:
+        """Deliver this workspace's events in commit order; exits when idle."""
+        queue = self._queues[workspace_id]
+        while True:
+            try:
+                batch = [await asyncio.wait_for(queue.get(), timeout=30)]
+            except TimeoutError:
+                if queue.empty():
+                    self._queues.pop(workspace_id, None)
+                    self._workers.pop(workspace_id, None)
+                    return
+                continue
+            while len(batch) < batch_limit and not queue.empty():
+                batch.append(queue.get_nowait())
+            try:
+                await self._deliver(workspace_id, batch)
+            except Exception:  # keep the worker alive; clients catch up from committed state
+                log.exception("realtime.delivery_failed")
+
+    async def _deliver(self, workspace_id: uuid.UUID, events: list[dict]) -> None:
         targets = [c for c in list(self.connections) if workspace_id in c.subscriptions]
+        if not targets:
+            return
+        # Recheck current access after commit and before sending, once per batch for all receivers.
+        decisions = await asyncio.to_thread(self._check_many, targets, workspace_id)
+        sends = []
         for conn in targets:
-            ok, readable, writable = await asyncio.to_thread(self._check, conn, {workspace_id})
+            ok, readable, writable = decisions[conn]
             if not ok:
                 await self._close(conn, "session_ended")
-                continue
-            if workspace_id not in readable:
+            elif not readable:
                 await self._drop(conn, workspace_id)
-                continue
-            conn.writable = (conn.writable - {workspace_id}) | writable
-            await self._send(conn, event)
+            else:
+                conn.writable = (conn.writable - {workspace_id}) | ({workspace_id} if writable else set())
+                sends.append(self._send_all(conn, events))
+        await asyncio.gather(*sends)
+
+    async def _send_all(self, conn: Connection, events: list[dict]) -> None:
+        """Send a batch to one client; a client that cannot keep up is closed rather than stalling the
+        workspace's ordered fanout. It reconnects and catches up from committed state."""
+        async def send() -> None:
+            for event in events:
+                if conn not in self.connections:
+                    return
+                await self._send(conn, event)
+
+        try:
+            await asyncio.wait_for(send(), timeout=SEND_TIMEOUT_SECONDS)
+        except TimeoutError:
+            log.warning("realtime.slow_client_closed")
+            await self._close(conn, "slow_client")
 
     async def _drop(self, conn: Connection, workspace_id: uuid.UUID) -> None:
         conn.subscriptions.discard(workspace_id)

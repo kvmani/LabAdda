@@ -40,3 +40,33 @@ The full verification suite ran concurrently for part of this rehearsal. This is
 Run the **15-minute** S4 rehearsal on the representative staging VM over the site's real TLS/proxy path, with 30 signed-in clients, eight drawers and two active sibling workspaces. Record VM resources, browser versions, path and evidence; the current harness supplies eight-drawer coverage but does not simulate the full 30-client/two-workspace workload. Add that workload before claiming the full S4 gate. Complete keyboard/accessibility and visual review, physical pen/finger and kiosk acceptance, verified off-host recovery transport and retention, and real service-persistence/restart checks. Then perform the final independent candidate review and site-owner acceptance in REVIEW.md and DEPLOYMENT.md. Do not activate real pilot data based on these synthetic results.
 
 The local logs are retained under `/workspace/setup/`: `five-step-verify.log`, `step5-soak.log`, `step5-soak.json`, and `step5-stack.log`. Hosted CI is configured for recovery testing but has not been observed completing in this session. No new release archive was built in these five steps; the previous archive remains historical evidence for its recorded source commit. Build a fresh target-platform release after the remaining candidate changes and checks.
+
+## Full S4 workload over TLS (local rehearsal, 2026-11-08)
+
+`scripts/rehearsal.py` adds the workload the eight-drawer soak did not cover. Thirty signed-in clients are split across two sibling workspaces (Thin Films and Catalysis). Eight draw; the other 22 read feeds and chat history and post chat messages. Every client holds a live socket. The run fails on any lost, duplicated or out-of-order board operation, any committed event a subscribed client did not receive, any event delivered to a client of the other workspace, or any request error, and on missed p95 targets when enforced. `LABADDA_PROXY_TLS=1 scripts/proxy-stack.sh start` now terminates TLS in nginx with a throwaway local CA and Secure cookies, so the rehearsal exercises https, wss and the proxy path.
+
+**Finding and fix.** The first 30-client run showed p50 5.5 s and p95 18.9 s live-update latency, with 1,695 of 12,630 deliveries still outstanding at the end. Isolation and integrity held. The hub ran a separate database access check per receiving connection, one after another, in a task per event. It now keeps one ordered queue and worker per workspace, rechecks access once per batch for all receivers with the shared policy's eligible-reader rule, sends to receivers concurrently, and closes a client whose sends do not complete within 10 s instead of stalling the workspace. Fanout is now in commit order per workspace. The per-delivery recheck is unchanged in substance: it still runs after commit and before every send, including for direct database access changes that bypass the revalidation signal (`test_batched_recheck_drops_only_the_revoked_subscriber`).
+
+[15-minute report](evidence/p4-tls-rehearsal.json), `--enforce-targets`, local TLS through nginx:
+
+| Measurement | Result |
+| --- | --- |
+| Workload | 30 clients (8 drawers, 22 readers), 2 sibling workspaces, 900 s window (928 s with drain) |
+| Host/path | Linux x86-64, 4 logical CPUs, loopback https/wss through nginx with a local CA |
+| Board operations / chat messages acknowledged | 13,860 / 1,246 |
+| Live deliveries expected / missing | 226,590 / 0 |
+| Cross-workspace deliveries | 0 |
+| Lost / duplicated / revision gaps / request errors | 0 / 0 / none / 0 |
+| Compaction during run | both boards (through revisions 6,050 and 6,066) |
+| Live update latency (every event × receiving client) | p50 26.2 ms, p95 48.9 ms, max 3,977.9 ms |
+| List latency (feed, chat history, workspace list) | p50 19.4 ms, p95 48.7 ms (3,769 samples) |
+
+The 15-minute run used the batched hub before two small follow-ups: the slow-client timeout and normalizing string workspace IDs in `publish`. A 120 s rerun on the final code also passed with targets enforced: 34,260 deliveries, none missing, p95 55.2 ms, max 439.5 ms. The single ~4 s maximum in the long run is unexplained; the likely suspect is board compaction holding the board lock, but this was not verified. It is recorded rather than averaged away and should be watched on the VM. Activation is rate limited per client address. The local stack raised `LABADDA_LOGIN_ATTEMPTS_PER_WINDOW` for the disposable run; against an unmodified server the harness waits the limit out.
+
+## Automated accessibility audit
+
+`e2e/accessibility.mjs` runs axe-core (WCAG 2.1 A/AA rule tags) on 12 views at both root and prefix, including mobile and the touch panel. It also checks the skip link, visible keyboard focus and phone-width overflow. The first run found one serious contrast failure (muted text on the active rail highlight); the shared muted colour was darkened. The final run passed 34 checks with no findings at any severity. [Evidence](evidence/accessibility/README.md). A shell skip link was added for keyboard users.
+
+## Still open for P4 step 4
+
+This is a local rehearsal on a shared development host, not the representative staging VM, the site's TLS certificates or its network path. Run the same command on the staging VM over the site proxy and record VM resources, path and browser versions. A manual screen-reader, zoom and visual review, the physical pen/finger panel test, off-host recovery and site-owner acceptance also remain. REVIEW.md asks for an independent reviewer for realtime changes; the hub restructuring above has been self-reviewed and regression-tested, but not independently reviewed.

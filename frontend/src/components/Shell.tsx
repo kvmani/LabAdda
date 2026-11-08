@@ -73,6 +73,8 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="shell">
+      {/* Moves focus programmatically: a "#main" href would resolve against <base href> under a prefix. */}
+      <a href="#main" className="skip-link" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>Skip to main content</a>
       <header className="topbar">
         <Link to="/" className="brand">LabAdda</Link>
         {INSTANCE !== "pilot" && <span className="tag instance">{INSTANCE}</span>}
@@ -110,7 +112,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <ul>{groups.map((w) => <RailItem key={w.id} ws={w} depth={0} current={w.id === currentId} />)}</ul>
         <Link to="/groups/new" className="rail-action">+ New group</Link>
       </nav>
-      <main className="content" id="main">{children}</main>
+      <main className="content" id="main" tabIndex={-1}>{children}</main>
     </div>
   );
 }

@@ -21,6 +21,13 @@ def _normalize_base(path: str) -> str:
     return path.rstrip("/")
 
 
+def _positive(value: str, name: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return number
+
+
 def _bool(value: str | None, default: bool) -> bool:
     if value is None:
         return default
@@ -101,6 +108,10 @@ def load_settings() -> Settings:
         reminder_interval_seconds=int(env("LABADDA_REMINDER_INTERVAL_SECONDS", "30")),
         max_groups_per_user=int(env("LABADDA_MAX_GROUPS_PER_USER", "20")),
         max_group_members=int(env("LABADDA_MAX_GROUP_MEMBERS", "200")),
+        # Sign-in/activation/pairing attempts per client and window. Operators may raise this
+        # temporarily for a supervised load rehearsal; it is never relaxed by web policy.
+        login_attempts_per_window=_positive(env("LABADDA_LOGIN_ATTEMPTS_PER_WINDOW", "10"), "LABADDA_LOGIN_ATTEMPTS_PER_WINDOW"),
+        login_window_seconds=_positive(env("LABADDA_LOGIN_WINDOW_SECONDS", "300"), "LABADDA_LOGIN_WINDOW_SECONDS"),
         board_compact_threshold=int(env("LABADDA_BOARD_COMPACT_THRESHOLD", "2000")),
         panel_idle_seconds=int(env("LABADDA_PANEL_IDLE_SECONDS", "300")),
         panel_absolute_minutes=int(env("LABADDA_PANEL_ABSOLUTE_MINUTES", "60")),

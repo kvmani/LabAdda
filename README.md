@@ -71,6 +71,17 @@ scripts/verify.sh          # pytest on PostgreSQL, alembic drift check, typechec
 scripts/verify.sh --e2e    # also starts root + /labadda-staging instances behind nginx and runs browser flows
 ```
 
+Full S4 workload rehearsal (30 signed-in clients, 8 drawers, two sibling workspaces). Every client holds a live socket; the run fails on any lost, duplicated, undelivered or cross-workspace event. Use the TLS mode of the local stack to exercise https/wss, Secure cookies and the proxy path. Raise the activation rate limit only for the disposable stack, or let the harness wait it out:
+
+```bash
+LABADDA_PROXY_TLS=1 LABADDA_LOGIN_ATTEMPTS_PER_WINDOW=100 scripts/proxy-stack.sh start
+cd scripts && ../.venv/bin/python rehearsal.py --origin https://127.0.0.1:8080 \
+  --cafile ../var/proxy-stack/tls/ca.crt --clients 30 --drawers 8 --seconds 900 --enforce-targets
+cd .. && scripts/proxy-stack.sh stop
+```
+
+Accessibility audit (axe-core WCAG 2.1 A/AA rules, keyboard skip link and focus visibility, phone-width overflow, touch panel), on a fresh HTTP stack: `node e2e/accessibility.mjs http://127.0.0.1:8080 /tmp/labadda-accessibility`.
+
 Drawing soak (8 drawers). It measures committed-update latency and checks for lost or duplicated edits. Run it against a freshly started test stack, because it creates accounts and activation is rate limited:
 
 ```bash

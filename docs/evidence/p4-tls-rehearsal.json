@@ -1,0 +1,59 @@
+{
+  "environment": {
+    "python": "3.12.3",
+    "system": "Linux",
+    "machine": "x86_64",
+    "logical_cpus": 4,
+    "tls": true,
+    "origin": "https://127.0.0.1:8080",
+    "base": ""
+  },
+  "workload": {
+    "clients": 30,
+    "drawers": 8,
+    "readers": 22,
+    "workspaces": 2,
+    "seconds": 900.0,
+    "drawer_interval_s": 0.5,
+    "clients_subscribed": 30
+  },
+  "elapsed_seconds": 928.11,
+  "board_ops_acknowledged": 13860,
+  "chat_messages_acknowledged": 1246,
+  "deliveries_expected": 226590,
+  "deliveries_missing": 0,
+  "isolation_violations": 0,
+  "lost": 0,
+  "duplicates": 0,
+  "revision_gaps": false,
+  "boards": {
+    "7364e8d0-25c4-4a98-b962-7e78fa38be8c": {
+      "ops_retained": 878,
+      "compacted_through": 6050
+    },
+    "c622373b-6be4-49fc-8dd0-567f595a8a67": {
+      "ops_retained": 866,
+      "compacted_through": 6066
+    }
+  },
+  "errors": [],
+  "error_count": 0,
+  "latency_samples": 226590,
+  "list_samples": 3769,
+  "update_latency_ms": {
+    "p50": 26.2,
+    "p95": 48.9,
+    "max": 3977.9,
+    "mean": 37.7
+  },
+  "list_latency_ms": {
+    "p50": 19.4,
+    "p95": 48.7
+  },
+  "targets": {
+    "update_p95_lt_500ms": true,
+    "list_p95_lt_1000ms": true
+  },
+  "passed": true,
+  "targets_enforced": true
+}

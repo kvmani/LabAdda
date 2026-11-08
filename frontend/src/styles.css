@@ -3,7 +3,7 @@
   --bg: #f4f5f7;
   --panel: #ffffff;
   --ink: #1f2933;
-  --muted: #5f6b7a;
+  --muted: #4b5563; /* >= 4.5:1 on white and on the active rail highlight (WCAG AA) */
   --line: #d9dee5;
   --accent: #1d4ed8;
   --accent-ink: #ffffff;
@@ -155,3 +155,10 @@ button.end-session { margin-left: auto; background: #b42318; border-color: #b423
 
 .governance-form { display: grid; gap: 0.75rem; max-width: 40rem; margin: 1rem 0; }
 .governance-form label { display: grid; gap: 0.3rem; }
+
+/* Keyboard users: first Tab stop; hidden until focused. */
+.skip-link { position: absolute; left: 0.5rem; top: -3rem; z-index: 100; background: var(--panel); color: var(--accent);
+  padding: 0.5rem 0.9rem; border: 2px solid var(--accent); border-radius: 6px; text-decoration: none; }
+.skip-link:focus { top: 0.5rem; }
+main:focus { outline: none; }
+main:focus-visible { outline: 3px solid #f59e0b; outline-offset: -3px; }
