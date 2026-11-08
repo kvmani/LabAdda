@@ -7,6 +7,7 @@ const MiB = 1024 * 1024;
 export function Governance() {
   const [policy, setPolicy] = useState<PolicyDrafts | null>(null);
   const [usage, setUsage] = useState<SiteUsage | null>(null);
+  const [inspections, setInspections] = useState<{id: string; status: string; finished_at: string | null; summary: {checked_assets?: number; issue_count?: number; state?: string}}[]>([]);
   const [history, setHistory] = useState<Observation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -16,8 +17,8 @@ export function Governance() {
   const [userLimit, setUserLimit] = useState(500);
   const [workspaceLimit, setWorkspaceLimit] = useState(2048);
   async function load() {
-    const [p, u, h] = await Promise.all([api<PolicyDrafts>('/admin/policy-drafts'), api<SiteUsage>('/admin/usage'), api<{observations: Observation[]}>('/admin/usage-observations')]);
-    setPolicy(p); setUsage(u); setHistory(h.observations);
+    const [p, u, h, inspections] = await Promise.all([api<PolicyDrafts>('/admin/policy-drafts'), api<SiteUsage>('/admin/usage'), api<{observations: Observation[]}>('/admin/usage-observations'), api('/admin/storage-inspections')]);
+    setPolicy(p); setUsage(u); setHistory(h.observations); setInspections(inspections.inspections);
   }
   useEffect(() => { load().catch(e => setError(e.message)); }, []);
   async function run(action: () => Promise<any>, success: string) {
@@ -51,9 +52,12 @@ export function Governance() {
       </dl>
       <p className="notice">Filesystem capacity may be shared with other services. Derivatives, text/boards, reservations, trash and archive storage are unmeasured. These totals cannot approve enforcement or deletion.</p>
       <button disabled={busy} onClick={() => run(() => api('/admin/usage-observations', {body: {}}), 'Partial observation recorded.')}>Record partial observation</button>
-      <p>{history.length} recent samples displayed; at most 100 operational samples retained.</p>
+      <p>{Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.</p>
       {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}
     </>}
+    <h3>Referenced file inspections</h3>
+    <p>Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original file hashes and measure readable preview bytes; preview integrity remains unverified. The scan time budget is cooperative, not a hard filesystem timeout. Inspections never repair files or authorize enforcement. A running record may be stale after an operator process stops.</p>
+    {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status} · {r.summary.checked_assets ?? 'Not reported'} asset rows checked · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}</li>)}</ul>}
     {policy && <>
       <h3>Site proposal revision {policy.latest_revision}</h3>
       <p>Current pilot file limit: {bytes(policy.runtime_limits.max_attachment_bytes)}. Current pilot user limit: {bytes(policy.runtime_limits.user_quota_bytes)}.</p>

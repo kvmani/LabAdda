@@ -45,8 +45,23 @@ def main(argv: list[str] | None = None) -> int:
     restore.add_argument("bundle", type=Path)
     restore.add_argument("--manifest-sha256", required=True)
     restore.add_argument("--isolated-target", action="store_true", required=True)
+    inspect = sub.add_parser("inspect-storage", help="bounded read-only inspection of referenced asset bytes")
+    inspect.add_argument("--max-files", type=int, default=10000)
+    inspect.add_argument("--max-bytes", type=int, default=1024**3)
+    inspect.add_argument("--max-seconds", type=float, default=30)
     args = parser.parse_args(argv)
     settings = load_settings()
+
+    if args.cmd == "inspect-storage":
+        from .inspection import inspect_storage
+        try:
+            result = inspect_storage(session_factory(settings.database_url), settings.asset_dir,
+                                     max_files=args.max_files, max_bytes=args.max_bytes, max_seconds=args.max_seconds)
+            print(json.dumps(result))
+            return 0 if result["status"] == "completed" and result["summary"]["issue_count"] == 0 else 2
+        except Exception:
+            print("Inspection failed. Check budgets, asset root and database access; no files were repaired or removed.", file=sys.stderr)
+            return 2
 
     if args.cmd == "backup":
         from .recovery import backup as create_backup

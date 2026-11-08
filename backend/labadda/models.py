@@ -382,3 +382,14 @@ class UsageObservation(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
     created_at: Mapped[datetime] = _created()
     __table_args__ = (CheckConstraint('schema_version = 1', name='ck_usage_observation_version'),)
+
+
+class StorageInspection(Base):
+    """Operator-triggered, read-only referenced-file reconciliation evidence."""
+    __tablename__ = 'storage_inspections'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    summary: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _created()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (CheckConstraint("status in ('running','completed','partial','failed')", name='ck_storage_inspection_status'),)

@@ -64,3 +64,14 @@ def test_usage_cannot_select_another_user(as_user, ids):
     assert upload(as_user('ben')).status_code == 201
     result = as_user('chen').get('/usage', params={'user_id': ids['users']['ben']}).json()
     assert result['measurement']['tracked_files'] == 0
+
+
+def test_record_timestamp_is_actual_observation_clock(as_user, monkeypatch):
+    from datetime import datetime, timezone
+    from labadda.api import usage
+    point = datetime(2032,1,1,tzinfo=timezone.utc)
+    monkeypatch.setattr(usage, 'utcnow', lambda: point)
+    admin = as_user('admin')
+    result = admin.post('/admin/usage-observations', json={}).json()
+    assert result['observed_at'].startswith('2032-01-01')
+    assert admin.get('/admin/usage-observations').json()['observations'][0]['observed_at'].startswith('2032-01-01')
