@@ -36,7 +36,9 @@ A separate container attached only to an internal Docker network used that insta
 
 With staging identity, TLS-cookie/origin and external asset settings, live preflight observed schema `0005`. Activation expecting `0004` failed and left `current` absent. Activation expecting `0005` atomically created the correct release pointer. Unit tests additionally switch between distinct candidate/previous releases, preserve external state, and refuse schema mismatch or tampering without altering `current`. No automatic database downgrade or data rollback was performed.
 
-Sanitized current-instance logs and the smoke harness are retained under `/workspace/setup/`: `final-verify.log`, `browser.log`, `release-build.log`, `offline-install.log`, `offline-smoke.log`, `activation.log`, and `offline-smoke.py`. The archive and digest are retained outside the checkout. Future-task snapshot restoration has not been independently tested.
+A follow-up installer hardening at `abd529d` isolates the intermediate site-packages query from ambient Python settings. The final `scripts/verify.sh` run at that code revision passed **152 backend tests**, including **30 release tests**, with no migration drift, all 3 frontend tests, typecheck and production build passing. A second clean `--network none` installation of the same candidate archive, using the hardened trusted installer, succeeded with deliberately invalid `PYTHONHOME`, `PYTHONPATH` and external `PIP_FIND_LINKS` values. This validates the final installer against the previously built archive; the archive's embedded source remains the recorded `f20e1d3` candidate.
+
+Sanitized current-instance logs and the smoke harness are retained under `/workspace/setup/`: `final-verify.log`, `browser.log`, `release-build.log`, `offline-install.log`, `offline-smoke.log`, `activation.log`, `offline-install-isolated.log`, `final-verify-isolated.log`, and `offline-smoke.py`. The archive and digest are retained outside the checkout. Future-task snapshot restoration has not been independently tested.
 
 ## Remaining gates
 
