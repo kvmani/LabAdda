@@ -39,6 +39,11 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
     activation_token = pending.json()['activation_token']
     old_cookies = dict(ben.client.cookies)
     old_panel_cookies = dict(panel.api.client.cookies)
+    from labadda.fixtures import fixture_password
+    granted = as_user('admin').post('/admin/usage-readers', json={'user_id':ids['users']['ben'],
+        'hours':24,'reason':'Synthetic recovery observer','password':fixture_password()})
+    assert granted.status_code == 201
+    assert ben.get('/admin/usage').status_code == 200
     bundle = tmp_path / 'backup'
     sha = backup(settings.database_url, settings.asset_dir, bundle, 'synthetic-release', writers_quiesced=True)
     target_name = 'labadda_restore_test_' + uuid.uuid4().hex
@@ -64,6 +69,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             assert client.post('/api/v1/auth/activate', json={'token': activation_token, 'password': 'fixture-pass-123'}).status_code == 422
             api = Api(client, '/api/v1')
             assert api.login('ben').status_code == 200
+            assert api.get('/admin/usage').status_code == 403
             assert any(p["id"] == post.json()["id"] and p["body"] == "Recovery post" for p in api.get(f"/workspaces/{workspace}/posts").json()["posts"])
             assert api.get(f"/notes/{note.json()['id']}").json()['title'] == 'Private recovery note'
             assert api.get(f"/files/{asset['id']}").content == pdf

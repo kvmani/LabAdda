@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { UsageReaders } from "../components/UsageReaders";
 import { Governance } from "../components/Governance";
 import { api } from "../api";
 import { kindLabel } from "../format";
@@ -62,6 +63,7 @@ export function Admin() {
       {error && <p className="error" role="alert">{error}</p>}
       {token && <p className="notice" role="status">{token} <button className="ghost small" onClick={() => setToken(null)}>Hide</button></p>}
       <Governance />
+      <UsageReaders users={users} />
       <div className="grid2">
         <div className="card">
           <h2>Accounts</h2>

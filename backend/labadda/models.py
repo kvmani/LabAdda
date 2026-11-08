@@ -393,3 +393,13 @@ class StorageInspection(Base):
     created_at: Mapped[datetime] = _created()
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (CheckConstraint("status in ('running','completed','partial','failed')", name='ck_storage_inspection_status'),)
+
+
+class UsageReaderGrant(Base):
+    """Time-limited site operational metadata access, not an administrator role."""
+    __tablename__ = 'usage_reader_grants'
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), primary_key=True)
+    granted_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = _created()

@@ -211,6 +211,9 @@ def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: 
                             conn.execute(text("update auth_sessions set revoked_at = coalesce(revoked_at, now()), end_reason = 'restore'"))
                             conn.execute(text('delete from panel_pairings'))
                             conn.execute(text('delete from credential_tokens'))
+                            # Delegated operational access may have been revoked after
+                            # this backup. Require fresh grants after isolated recovery.
+                            conn.execute(text('delete from usage_reader_grants'))
                         sync_tree(staged_assets)
                         os.rename(staged_assets, assets)
                         fd = os.open(assets.parent, os.O_RDONLY | os.O_DIRECTORY)

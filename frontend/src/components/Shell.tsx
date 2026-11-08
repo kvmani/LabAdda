@@ -39,8 +39,15 @@ export function Shell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [conn, setConn] = useState<ConnState>(realtime.state);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [operations, setOperations] = useState(false);
   const [unread, setUnread] = useState(0);
   const currentId = location.pathname.match(/^\/w\/([^/]+)/)?.[1];
+
+  useEffect(() => {
+    let live = true;
+    api<{"usage.read": boolean}>("/capabilities").then(c => {if (live) setOperations(c["usage.read"]);}).catch(()=>{if(live) setOperations(false);});
+    return ()=>{live=false;};
+  }, [location.pathname]);
 
   useEffect(() => realtime.onState(setConn) as () => void, []);
   useEffect(() => {
@@ -71,13 +78,14 @@ export function Shell({ children }: { children: ReactNode }) {
         {INSTANCE !== "pilot" && <span className="tag instance">{INSTANCE}</span>}
         <label className="switcher">
           <span className="sr-only">Switch workspace</span>
-          <select value={currentId ?? ""} onChange={(e) => e.target.value && navigate(["notes", "usage"].includes(e.target.value) ? `/${e.target.value}` : `/w/${e.target.value}/noticeboard`)}>
+          <select value={currentId ?? ""} onChange={(e) => e.target.value && navigate(["notes", "usage", "operations"].includes(e.target.value) ? `/${e.target.value}` : `/w/${e.target.value}/noticeboard`)}>
             <option value="">Choose workspace…</option>
             {tree.map(({ ws, depth }) => <option key={ws.id} value={ws.id}>{"· ".repeat(depth) + ws.name}</option>)}
             {projects.map((w) => <option key={w.id} value={w.id}>Project: {w.name}</option>)}
             {groups.map((w) => <option key={w.id} value={w.id}>Group: {w.name}</option>)}
             <option value="notes">My Notes</option>
             <option value="usage">My storage usage</option>
+            {operations && <option value="operations">Operational observations</option>}
           </select>
         </label>
         <span className={`conn conn-${conn}`} role="status">● {connLabel[conn]}</span>
@@ -90,6 +98,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
       {showNotifications && <Notifications onClose={() => setShowNotifications(false)} onChange={setUnread} />}
       <nav className="rail" aria-label="Workspaces">
+        {operations && <NavLink to="/operations" className="rail-link">Operational observations</NavLink>}
         <NavLink to="/usage" className={({ isActive }) => "rail-link" + (isActive ? " active" : "")}>My storage usage</NavLink>
         <NavLink to="/notes" className={({ isActive }) => "rail-link notes-link" + (isActive ? " active" : "")}>My Notes <span className="muted small">private</span></NavLink>
         {error && <p className="error small">{error}</p>}

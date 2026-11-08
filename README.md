@@ -88,3 +88,7 @@ scripts/proxy-stack.sh stop
 ## Offline release tooling
 
 See [the release procedure](docs/RELEASES.md) for connected builds, verified offline installation, runtime preflight, atomic activation and the conservative schema rollback rule. [P4 step 2 evidence](docs/RELEASE-EVIDENCE.md) records the clean Ubuntu 24.04 offline installation and current limitations. Backup and isolated restore are implemented; see [the recovery procedure](docs/RECOVERY.md). Site pilot qualification remains open.
+
+## P5 foundations in progress
+
+After migrations, users can open **My storage usage**. Administrators can save **non-enforcing** site proposals, inspect partial usage and configure time-limited operational readers with password confirmation. Authorized readers use `/operations`; they receive no administration or private-content access. The trusted operator can run `labadda inspect-storage` for bounded, non-destructive original-file checks. See [implemented status and limits](docs/P5-PROGRESS.md). Complete metering, archive export/import, policy activation and retention are still future work; do not enable destructive jobs based on these partial observations.

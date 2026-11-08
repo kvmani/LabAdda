@@ -14,6 +14,8 @@ from ..models import Asset, StorageInspection, UsageObservation
 from ..security import utcnow
 from ..serialize import iso
 
+from .capabilities import require_usage_reader
+
 router = APIRouter(tags=['usage'])
 UNMEASURED = ['derivative_bytes', 'text_and_board_logical_bytes', 'reservations', 'trash',
               'temporary_archives', 'reference_reconciliation']
@@ -64,7 +66,7 @@ def site_payload(db, settings):
 
 
 @router.get('/admin/usage')
-def site_usage(actor: Actor = Depends(require_admin), db: Session = Depends(get_db),
+def site_usage(actor: Actor = Depends(require_usage_reader), db: Session = Depends(get_db),
                settings: Settings = Depends(get_settings)):
     return site_payload(db, settings)
 
@@ -89,14 +91,14 @@ def record_observation(actor: Actor = Depends(require_admin), db: Session = Depe
 
 
 @router.get('/admin/usage-observations')
-def observations(actor: Actor = Depends(require_admin), db: Session = Depends(get_db)):
+def observations(actor: Actor = Depends(require_usage_reader), db: Session = Depends(get_db)):
     rows = db.scalars(select(UsageObservation).order_by(UsageObservation.created_at.desc(), UsageObservation.id.desc()).limit(20))
     return {'observations': [{'id': str(r.id), 'observed_at': iso(r.created_at), 'measurement': r.payload} for r in rows],
             'retention': {'maximum_samples': 100, 'returned_samples': 20}}
 
 
 @router.get('/admin/storage-inspections')
-def inspections(actor: Actor = Depends(require_admin), db: Session = Depends(get_db)):
+def inspections(actor: Actor = Depends(require_usage_reader), db: Session = Depends(get_db)):
     rows = db.scalars(select(StorageInspection).order_by(StorageInspection.created_at.desc(), StorageInspection.id.desc()).limit(20))
     return {'inspections': [{'id':str(r.id), 'status':r.status, 'started_at':iso(r.created_at),
                             'finished_at':iso(r.finished_at), 'summary':r.summary} for r in rows],
