@@ -357,3 +357,17 @@ class BoardOp(Base):
         UniqueConstraint("workspace_id", "revision", name="uq_board_op_revision"),
         CheckConstraint("op_type in ('add','erase','undo','move')", name="ck_board_op_type"),
     )
+
+
+class PolicyDraft(Base):
+    """Immutable, non-enforcing site policy proposals; activation is a later gate."""
+    __tablename__ = "policy_drafts"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    base_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    document: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = _created()
+    __table_args__ = (CheckConstraint("revision > 0 and base_revision >= 0 and schema_version = 1", name="ck_policy_draft_version"),)
