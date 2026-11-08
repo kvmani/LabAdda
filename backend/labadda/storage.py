@@ -121,6 +121,8 @@ class AssetStore:
         """Decode and re-encode as a fresh PNG; drops metadata and any trailing payload."""
         try:
             with Image.open(io.BytesIO(data)) as img:
+                if img.width * img.height > Image.MAX_IMAGE_PIXELS:
+                    raise Invalid("image_too_large", "The image exceeds the supported pixel limit.")
                 img.load()
                 img = img.convert("RGBA") if img.mode in ("P", "LA", "RGBA") else img.convert("RGB")
                 img.thumbnail((PREVIEW_MAX, PREVIEW_MAX))

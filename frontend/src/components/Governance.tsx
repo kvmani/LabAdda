@@ -4,10 +4,26 @@ import { fmtBytes as bytes } from '../format';
 import type { PolicyDrafts, SiteUsage, Observation } from '../governance-types';
 
 const MiB = 1024 * 1024;
+type StorageReceipt = {
+  id: string; status: string; finished_at: string | null;
+  summary: {
+    checked_assets?: number; issue_count?: number; state?: string;
+    verified_previews?: number; unknown_previews?: number;
+    scope?: string; mode?: string; candidate_count?: number;
+    applied_count?: number; stop_reason?: string;
+  };
+};
+const reconciliationStops: Record<string, string> = {
+  plan_changed: 'Plan changed; the host operator must run a new dry run.',
+  byte_budget_exhausted: 'Byte budget reached; reduce the batch size.',
+  time_budget_exhausted: 'Time budget reached; reduce the batch size.',
+  reconciliation_busy: 'Another reconciliation is running.',
+  asset_root_unavailable: 'Asset storage is unavailable; check host storage.',
+};
 export function Governance() {
   const [policy, setPolicy] = useState<PolicyDrafts | null>(null);
   const [usage, setUsage] = useState<SiteUsage | null>(null);
-  const [inspections, setInspections] = useState<{id: string; status: string; finished_at: string | null; summary: {checked_assets?: number; issue_count?: number; state?: string; verified_previews?: number; unknown_previews?: number}}[]>([]);
+  const [inspections, setInspections] = useState<StorageReceipt[]>([]);
   const [history, setHistory] = useState<Observation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -61,7 +77,9 @@ export function Governance() {
     <h3>Referenced file inspections</h3>
     <p>Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original hashes and preview hashes where expected measurements exist. Historical preview integrity remains unknown without those measurements. The scan time budget is cooperative, not a hard filesystem timeout. Inspections never repair files or authorize enforcement. A running record may be stale after an operator process stops.</p>
     {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status} · {r.summary.checked_assets ?? 'Not reported'} asset rows checked · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}
-      <span className="muted small"> · Preview checks: {r.summary.verified_previews ?? 'Not reported'} verified · {r.summary.unknown_previews ?? 'Not reported'} unknown expected measurements</span>
+      {r.summary.scope === 'preview_metadata_reconciliation'
+        ? <span className="muted small"> · Preview reconciliation {r.summary.mode === 'dry_run' ? 'Dry run' : r.summary.mode === 'apply' ? 'Apply' : 'Unknown mode'}: {r.summary.candidate_count ?? 'Not reported'} candidates · {r.summary.applied_count ?? 'Unconfirmed'} metadata updates{r.summary.stop_reason && ` · ${reconciliationStops[r.summary.stop_reason] ?? 'Host operator inspection required.'}`}</span>
+        : <span className="muted small"> · Preview checks: {r.summary.verified_previews ?? 'Not reported'} verified · {r.summary.unknown_previews ?? 'Not reported'} unknown expected measurements</span>}
     </li>)}</ul>}
     {policy && <>
       <h3>Site proposal revision {policy.latest_revision}</h3>

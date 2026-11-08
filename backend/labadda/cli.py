@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import sys
+import uuid
 from pathlib import Path
 
 from alembic import command
@@ -49,8 +50,29 @@ def main(argv: list[str] | None = None) -> int:
     inspect.add_argument("--max-files", type=int, default=10000)
     inspect.add_argument("--max-bytes", type=int, default=1024**3)
     inspect.add_argument("--max-seconds", type=float, default=30)
+    reconcile = sub.add_parser("reconcile-previews", help="dry-run or explicitly apply verified historical preview metadata")
+    reconcile.add_argument("--max-assets", type=int, default=100)
+    reconcile.add_argument("--max-bytes", type=int, default=100*1024**2)
+    reconcile.add_argument("--max-seconds", type=float, default=30)
+    reconcile.add_argument("--after-asset", type=uuid.UUID)
+    reconcile.add_argument("--apply", action="store_true")
+    reconcile.add_argument("--expected-plan")
+    reconcile.add_argument("--writers-quiesced", action="store_true")
     args = parser.parse_args(argv)
     settings = load_settings()
+
+    if args.cmd == "reconcile-previews":
+        from .preview_reconciliation import reconcile_previews
+        try:
+            result = reconcile_previews(session_factory(settings.database_url), settings.asset_dir,
+                max_assets=args.max_assets, max_bytes=args.max_bytes, max_seconds=args.max_seconds,
+                after_asset=args.after_asset,
+                apply=args.apply, expected_plan=args.expected_plan, writers_quiesced=args.writers_quiesced)
+            print(json.dumps(result))
+            return 0 if result['status'] == 'completed' and result['summary']['issue_count'] == 0 else 2
+        except Exception:
+            print('Preview reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the reviewed plan. No files are rewritten or deleted.', file=sys.stderr)
+            return 2
 
     if args.cmd == "inspect-storage":
         from .inspection import inspect_storage
