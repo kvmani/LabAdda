@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { InventoryJobs } from './InventoryJobs';
 import { DatabaseStorage } from './DatabaseStorage';
 import { LogicalCharges } from './LogicalCharges';
 import { api } from '../api';
@@ -105,6 +106,7 @@ export function Governance() {
       <p>{Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.</p>
       {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}
     </>}
+    <InventoryJobs />
     <h3>Storage inventories, inspections and reconciliations</h3>
     <p>Asset-directory inventory receipts come from <code>labadda inventory-storage</code>. They report bounded metadata observations, including temporary and unreferenced candidates, without reading file contents.</p>
     <p>Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original hashes and preview hashes where expected measurements exist. Historical preview integrity remains unknown without those measurements. The scan time budget is cooperative, not a hard filesystem timeout. Inspections never repair files or authorize enforcement. A running record may be stale after an operator process stops.</p>

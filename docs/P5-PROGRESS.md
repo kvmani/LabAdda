@@ -179,3 +179,19 @@ reporting and numbered attempt history. Request keys/paths are omitted; there ar
 no execution routes. Authority is refreshed after observation.27 focused API/job
 checks passed; independent authorization review found no substantive issue.
 The browser view follows separately. See [API contract](API.md#p51-inventory-job-observation).
+
+## Inventory job web visibility (2026-11-09)
+
+Admin and delegated-reader Operations pages now expose read-only job state filters,
+keyset paging, explicit expired-lease warnings, attempt histories and accepted
+receipt IDs with investigation guidance. Request generations prevent late responses
+from restoring obsolete details; denied refresh clears prior results. No web job
+execution controls were added. Final verification passed403 backend tests with
+real recovery and migration drift checks,31 frontend tests/typecheck/build and76
+browser checks (24 jobs,18 governance,34 accessibility). Independent UI review
+found no substantive issue. [Evidence](evidence/inventory-jobs/README.md).
+Development and research demos migrated to0016 and restarted healthy, with the
+checked user/workspace/post/chat/board/op/asset/note counts unchanged. The next
+unfinished foundations are resumable inventory generations and reconciliation,
+followed by remaining capability/approval prerequisites. P5.2 archives remain
+unimplemented; no new quota or retention policy has been activated.

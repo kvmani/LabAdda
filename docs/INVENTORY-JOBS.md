@@ -45,3 +45,10 @@ policy revision because this workflow activates no policy. Fine-grained progress
 resumable inventory generations, arbitrary job kinds, per-user requests, review
 capabilities and scheduled execution remain later work. All measurement caveats in
 [STORAGE-INVENTORY.md](STORAGE-INVENTORY.md) continue to apply.
+
+The web administration and Operations views now show read-only job histories.
+Filter by state, page through older jobs, and select a job to inspect attempts and
+accepted receipt IDs. An expired lease is labeled explicitly even while its stored
+state remains `running`. Refresh clears old data before fetching; a denied refresh
+hides it. Only administrators and current operational readers can use these views.
+Execution, retry and cancellation remain trusted-host commands.

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { InventoryJobs } from '../components/InventoryJobs';
 import { DatabaseStorage } from '../components/DatabaseStorage';
 import { LogicalCharges } from '../components/LogicalCharges';
 import { api } from '../api';
@@ -30,5 +31,6 @@ export function Operations() {
       <DatabaseStorage storage={data.database} />
       <p>Historical previews without expected measurements, other derivatives, non-upload reservations, trash and temporary archives are not fully measured. Preview metadata is not a current disk inspection. No configured site budget or enforcement authority.</p>
     </div>}
+    <InventoryJobs />
   </section>;
 }

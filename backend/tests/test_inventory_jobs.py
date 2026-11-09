@@ -173,3 +173,44 @@ def test_operator_cli_queue_run_and_replay(settings, db_factory, ids, monkeypatc
     assert cli.main(['run-inventory', job_id]) == 0
     assert json.loads(capsys.readouterr().out)['status'] == 'completed'
     assert cli.main(['run-inventory', job_id]) == 2
+
+
+def test_lost_completion_reply_is_resolved_from_durable_history(db_factory, settings, ids, monkeypatch):
+    from sqlalchemy.orm import Session
+    settings.asset_dir.mkdir()
+    job_id = jobs.enqueue(db_factory, 'lost-reply-key', {})
+    commit = Session.commit
+    lost = False
+    def lose_reply(db):
+        nonlocal lost
+        completing = any(isinstance(row, InventoryJob) and row.state == 'completed' for row in db.identity_map.values())
+        commit(db)
+        if completing and not lost:
+            lost = True
+            raise OSError('synthetic lost commit reply')
+    monkeypatch.setattr(Session, 'commit', lose_reply)
+    with pytest.raises(OSError):
+        jobs.run(db_factory, settings.asset_dir, job_id)
+    with db_factory() as db:
+        detail = jobs.describe(db, db.get(InventoryJob, job_id))
+        assert detail['state'] == 'completed'
+        assert detail['attempts'][0]['receipt_id'] is not None
+    with pytest.raises(jobs.JobConflict):
+        jobs.run(db_factory, settings.asset_dir, job_id, retry=True)
+
+
+def test_completion_audit_failure_preserves_unaccepted_receipt(db_factory, settings, ids, monkeypatch):
+    settings.asset_dir.mkdir()
+    job_id = jobs.enqueue(db_factory, 'finish-audit-key', {})
+    event = jobs._event
+    def fail_finish(db, job, action):
+        if action == 'finish':
+            raise RuntimeError('synthetic audit unavailable')
+        event(db, job, action)
+    monkeypatch.setattr(jobs, '_event', fail_finish)
+    with pytest.raises(RuntimeError):
+        jobs.run(db_factory, settings.asset_dir, job_id)
+    with db_factory() as db:
+        assert db.get(InventoryJob, job_id).state == 'running'
+        assert db.get(InventoryAttempt, (job_id, 1)).receipt_id is None
+        assert db.scalar(select(StorageInspection)).status == 'completed'

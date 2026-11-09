@@ -165,3 +165,5 @@ button.end-session { margin-left: auto; background: #b42318; border-color: #b423
 .skip-link:focus { top: 0.5rem; }
 main:focus { outline: none; }
 main:focus-visible { outline: 3px solid #f59e0b; outline-offset: -3px; }
+
+.inventory-job-id, [aria-label="Inventory jobs"] button { overflow-wrap: anywhere; }
