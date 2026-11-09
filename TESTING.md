@@ -93,3 +93,14 @@ T26 durable inventory jobs: `test_inventory_jobs.py` covers strict parameter/key
 T28/T30 inventory job API: `test_inventory_job_api.py` checks administrator/delegated-reader access, anonymous/non-reader/panel denial, absence of request keys/paths/write routes, keyset pages/filter validation, expired-lease truthfulness and post-measurement loss of admin role, delegation or session for both routes. Detail history is bounded by the100-attempt invariant; listing omits histories.
 
 T26/T35 job observation UI: `e2e/inventory-jobs.mjs` with `e2e/inventory-jobs-fixture.py` verifies root/prefix bounded paging, state filters, failed-to-completed attempt history, expired-lease warnings, absence of mutation controls, delayed detail suppression, observer access/revoked refresh, desktop/mobile axe and overflow. `test_inventory_jobs.py` also injects lost completion commit replies and completion audit failures. [Evidence](docs/evidence/inventory-jobs/README.md).
+
+## Collaboration track acceptance (C1–C5)
+
+| ID | Required evidence | Stage |
+| --- | --- | --- |
+| T37 | Personal owner-only lists; upward-only org reads; sibling/parent-only/admin/panel denial; project/group direct membership; write/read-only/archive/revocation matrix | C1 |
+| T38 | List/task persistence; checklist/Unicode/calendar dates/priority/completion/reopening; bounded pages/payloads; identical create replay vs changed intent; stale/concurrent revision protection; migration/recovery | C1 |
+| T39 | Root/prefix desktop/mobile lists/tasks, explicit audience, loading/failure/conflict draft recovery, denied refresh clearing, accessibility and no external requests | C1 |
+| T40 | Assignment grants no access; authorised My Tasks, comments/history/live convergence, revoked subscriptions and notification boundaries | C2 |
+| T41 | Post/chat conversion and board references preserve source permissions and explicit broader-audience confirmation | C3 |
+| T42 | Threaded chat/attachment retry/private conversations; five-user sibling-section/division scenario, fixture screenshots and qualification | C4–C5 |

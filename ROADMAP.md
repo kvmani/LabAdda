@@ -1,5 +1,24 @@
 # LabAdda roadmap and handoff
 
+## Current product priority — collaboration first
+
+Owner approved on 2026-11-09: implement C1–C5 below before additional archive,
+export, inventory-expansion and lifecycle work. P5 identifiers/specifications and
+completed evidence remain intact; unfinished P5 work is deferred by product
+priority. Existing authorization, storage safeguards, backup/recovery and P4
+site/device/manual acceptance gates continue to apply.
+
+| Stage | Deliverable | Exit evidence |
+| --- | --- | --- |
+| C1 · To-do lists everywhere | Owner-only personal lists; multiple shared lists in every org level, project and group; title/description/due date/priority/checklist; completion/reopening | Persistence, scope matrix, read-only/archive, revision conflicts, retry safety, migrations/recovery, root/prefix desktop/mobile flows |
+| C2 · Team task coordination | Eligible colleague assignment, comments, change history, live updates, To do/In progress/Blocked/Done, cross-workspace My Tasks | Assignment never grants access; current-grant delivery/revocation; concurrent changes converge |
+| C3 · Conversation to action | Create tasks from posts/chat; research-plan/discussion links and whiteboard references; explicit destination audience | Source permissions preserved; broader sharing explicit, without protected-source leaks |
+| C4 · Colleague communication | Chat threads/replies, validated chat attachments and private conversations built on private groups | Attachment recovery, private isolation and realistic cross-section workflows |
+| C5 · Daily dashboard and qualification | Assigned tasks/deadlines/mentions/unread views, configurable notification/reminder controls; keyboard/mobile/touch polish | Five-user sibling-section/division scenario, screenshots/fixtures, accessibility/load and required independent review |
+
+Immediate next action: deliver C1 in runnable backend and web slices, pushing each
+validated stage to main and updating the ledger. C2–C5 remain planned.
+
 ## Current checkpoint
 
 **P1, P2 (with collaborative groups) and P3 are verified on synthetic data. In P4, board-only touch sessions are done in software; a physical panel test is pending. P4 step 2 is verified on synthetic data, including a clean Ubuntu 24.04 install without network. P4 step 3 is verified on synthetic data. The full S4 workload (30 clients, two workspaces, 15 minutes) passes locally over TLS and the automated accessibility audit is clean. Next action: run the same rehearsal on the representative staging VM over the site TLS path, and complete the manual screen-reader/visual review and physical panel test; site/device gates remain open.** Each phase below is a runnable increment. Complete a phase's tests and record evidence before starting dependent work. Site-specific questions can remain open while implementing with disposable defaults.
@@ -35,7 +54,7 @@ Users create flat, invite-only workspaces with chosen colleagues. Groups get eve
 5. Then run the independent review in REVIEW.md and hand site-owner acceptance items to the operator.
 
 
-## P5 delivery sequence — specified, not implemented
+## P5 delivery sequence — remaining work deferred behind C1–C5
 
 S5–S7 and their linked requirement documents govern this phase. P4 site/device/qualification gates remain open and are not superseded by this plan. P5 work may be developed on synthetic state; real-site enforcement must wait for explicit acceptance. Requirement IDs and T15–T36 in TESTING.md are stable references for implementation slices.
 
@@ -106,3 +125,5 @@ Add an entry at the end of each meaningful tranche. Mark status as planned, acti
 | P5.1 · Authorized inventory job observation API · implemented | Normal admin/usage.read list/detail endpoints, bounded stable keyset pages/state filter, DB-clock stale-lease marker, sanitized attempt/receipt history and refreshed authority before response.27 focused job/API tests passed (11API cases), including mid-request admin/delegation/session loss and panel denial. Independent authorization review found no substantive issue. [Contract](docs/API.md#p51-inventory-job-observation). | Read-only live observations, no frozen pagination snapshot or web execution. API delivery precedes UI slice. | Connect admin/observer job view, browser-test filtering/attempts/revoked refresh and complete full final verification. |
 
 | P5.1 · Inventory job web visibility and failure evidence · verified | Admin/observer job state filters, bounded paging, attempt/receipt details and explicit expired-lease guidance; obsolete responses suppressed and denied refresh clears data. Lost-completion-reply and completion-audit-failure tests added. Final403 backend/recovery/drift,31 frontend/build and76 browser checks passed (24jobs,18governance,34accessibility); independent UI review found no substantive issue. [Evidence](docs/evidence/inventory-jobs/README.md). Dev/research migrated0016 and restarted healthy; checked content counts unchanged. | Host-only execution. No resumable enumeration/full generation, automatic worker, generalized capabilities/approvals, quota activation or retention. Site/device/manual acceptance still open. | Implement resumable inventory generations/reconciliation and remaining P5.1 capability prerequisites before dependent user archives. |
+
+| C1–C5 · Collaboration priority · approved/planned | Owner approved reprioritisation; task scope/permissions/retries/revision contracts added as S8/CT-01–05, with T37–T42 acceptance requirements. | Further archive/export/inventory/lifecycle expansion deferred; existing operational safeguards and site gates remain. | Implement C1 personal/shared task foundation, then browser delivery. |

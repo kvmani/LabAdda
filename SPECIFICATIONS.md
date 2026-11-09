@@ -80,3 +80,39 @@ Provisional rehearsal targets on a representative VM are 30 signed-in clients, 8
 ## S7. Administrative control and operational observability (future)
 
 [ADMIN-CONSOLE.md](docs/ADMIN-CONSOLE.md), requirements AC-01–AC-21, governs web policy configuration, safe dry runs/approval/activation, privacy-conscious site-wide usage/resource analytics, health, searchable actionable events and backup/recovery visibility. Operational completeness must not become a private-content access bypass. Destructive actions require current bounded plans, review, notice, verified prerequisites and auditable execution. Stale, unknown and unsupported observations must remain visibly distinct from healthy/zero. The acceptance matrix in TESTING.md and P5 delivery order in ROADMAP.md are mandatory release gates; this specification does not assert these features exist today.
+
+## S8. Collaboration priority and tasks
+
+The owner-approved C1–C5 track in ROADMAP.md now precedes unfinished P5 work.
+
+**CT-01 (C1).** Provide multiple named personal and shared workspace to-do lists.
+Personal lists are owner-only, including against administrators and colleagues.
+Shared lists belong to exactly one workspace (any org level, project or group)
+and inherit the existing upward-only read and workspace write policy. Division
+membership grants no access to child sections; assignment never grants access.
+Scope is immutable in C1: no moving a personal list into a shared audience.
+
+**CT-02 (C1).** Tasks have a title, plain-text description, optional calendar due
+date, priority (low/normal/high), ordered checklists, and open/done state with
+completion/reopening. Users can edit list names and task fields. C1 excludes
+assignment, comments, automatic reminders, file attachments and deletion; those
+require later explicit contracts. Workspace writers collaborate on shared lists;
+archived/read-only policy applies. Personal lists remain independent of workspaces.
+
+**CT-03 (C1).** Use bounded payloads/pages, stable ordering, durable operation IDs
+for creation and optimistic revisions for updates. Identical create retries return
+the original resource; changed intent with the same ID conflicts. Updates never
+silently overwrite concurrent edits. Show scope, pending/failed saves and conflict
+recovery without discarding the user's draft. Revalidate current identity/grants
+at authorization-sensitive write boundaries. No task access via panel sessions.
+Persist migrations and backup/restore data without exposing task bodies in logs.
+
+**CT-04 (C2–C3).** Add eligible-member assignment, task comments/history/live
+updates and My Tasks, then conversion from conversations and protected links.
+Cross-level sharing requires an explicit audience decision. Division dashboards
+aggregate only currently authorised content. Links never grant source access.
+
+**CT-05 (C4–C5).** Add threaded chat, validated chat attachments and private
+colleague conversations using private groups, followed by a daily collaboration
+dashboard and configurable notification controls. Preserve durable retry, current
+content permissions and browser/offline-asset invariants throughout.
