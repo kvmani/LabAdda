@@ -141,3 +141,19 @@ incorrectly assumed empty disposable asset directories; existing leftover files
 were correctly detected, and the check now compares the database-backed receipt.
 Frontend typecheck, 31 unit tests and build passed. Missing full generation/job
 protocol and existing site/device gates remain open.
+
+## Realtime review prerequisite closed (2026-11-09)
+
+Independent review of the earlier fanout/compaction work reproduced queued
+post-revocation delivery and unbounded slow-client closure. Corrections serialize
+bounded sends, invalidate batches by workspace subscription generation, isolate
+healthy fanout and preserve bounded cleanup after cancellation. A review follow-up
+found and fixed stale authorization decisions restoring writable state or dropping
+new subscriptions. Seven deterministic regressions cover these boundaries;
+the first two fail against the pre-fix source. Independent reviewer verified all
+seven. Full final validation: 374 backend tests/recovery/drift, 31 frontend tests,
+typecheck/build; 69 browser checks; 120-second local TLS 30-client run delivered
+33,960 expected events with zero loss/isolation errors and update p95 76.7 ms.
+[Details](P4-QUALIFICATION.md). The independent review gate is closed for this scope;
+site/device/long-duration acceptance and remaining P5.1 inventory generations,
+capability/approval/job prerequisites remain open before dependent archive work.

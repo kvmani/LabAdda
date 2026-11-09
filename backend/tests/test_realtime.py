@@ -152,10 +152,10 @@ def test_stalled_client_is_closed_without_blocking_others(as_user, ids, settings
         ben_conn = next(c for c in hub.connections if str(c.user_id) == ids["users"]["ben"])
         original = hub._send
 
-        async def stalled(conn, payload):
+        async def stalled(conn, payload, **kwargs):
             if conn is ben_conn and payload.get("type") == "chat.message":
                 await asyncio.sleep(5)  # simulates a client whose socket buffer never drains
-            await original(conn, payload)
+            await original(conn, payload, **kwargs)
 
         monkeypatch.setattr(hub, "_send", stalled)
         import time
@@ -169,3 +169,152 @@ def test_stalled_client_is_closed_without_blocking_others(as_user, ids, settings
         while ben_conn in hub.connections and time.monotonic() < deadline:
             time.sleep(0.05)
         assert ben_conn not in hub.connections  # the stalled client was closed, not waited on
+
+
+def test_revocation_during_batch_stops_remaining_content(settings, monkeypatch):
+    import asyncio
+    import json
+    import uuid
+    from labadda.realtime import Connection, Hub
+
+    async def scenario():
+        workspace = uuid.uuid4()
+        started, release = asyncio.Event(), asyncio.Event()
+        frames = []
+
+        class Socket:
+            async def send_text(self, raw):
+                message = json.loads(raw)
+                if message.get('seq') == 1:
+                    started.set()
+                    await release.wait()
+                frames.append(message)
+
+        hub = Hub(None, settings)
+        conn = Connection(Socket(), uuid.uuid4(), 'session', 'Synthetic', {workspace})
+        hub.connections.add(conn)
+        monkeypatch.setattr(hub, '_check_many', lambda *_: {conn: (True, True, True)})
+        delivery = asyncio.create_task(hub._deliver(workspace, [
+            {'type': 'chat.message', 'seq': 1}, {'type': 'chat.message', 'seq': 2}]))
+        await asyncio.wait_for(started.wait(), 1)
+        dropped = asyncio.create_task(hub._drop(conn, workspace))
+        await asyncio.sleep(0)  # run invalidation up to its first awaited socket operation
+        assert workspace not in conn.subscriptions
+        release.set()
+        await asyncio.wait_for(asyncio.gather(delivery, dropped), 1)
+        assert not any(frame.get('seq') == 2 for frame in frames)
+        revoked = next(i for i, frame in enumerate(frames) if frame['type'] == 'revoked')
+        assert not any(frame['type'] == 'chat.message' for frame in frames[revoked + 1:])
+
+    asyncio.run(scenario())
+
+
+def test_stalled_revocation_control_does_not_block_healthy_delivery(settings, monkeypatch):
+    import asyncio
+    import json
+    import uuid
+    from labadda import realtime
+
+    async def scenario():
+        workspace = uuid.uuid4()
+        received = asyncio.Event()
+
+        class Stalled:
+            async def send_text(self, raw):
+                await asyncio.Event().wait()
+            async def close(self, **kwargs):
+                await asyncio.Event().wait()
+
+        class Healthy:
+            async def send_text(self, raw):
+                if json.loads(raw)['type'] == 'chat.message':
+                    received.set()
+
+        hub = realtime.Hub(None, settings)
+        bad = realtime.Connection(Stalled(), uuid.uuid4(), 'bad', 'Synthetic', {workspace})
+        good = realtime.Connection(Healthy(), uuid.uuid4(), 'good', 'Synthetic', {workspace})
+        hub.connections.update([bad, good])
+        monkeypatch.setattr(realtime, 'SEND_TIMEOUT_SECONDS', .05)
+        monkeypatch.setattr(hub, '_check_many', lambda *_: {
+            bad: (False, False, False), good: (True, True, True)})
+        task = asyncio.create_task(hub._deliver(workspace, [{'type': 'chat.message'}]))
+        await asyncio.wait_for(received.wait(), .5)
+        await asyncio.wait_for(task, .5)
+        assert bad not in hub.connections and good in hub.connections
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('regrant', [False, True])
+@pytest.mark.parametrize('check_kind', ['batch', 'revalidation'])
+def test_stale_batch_decision_cannot_restore_write_or_drop_new_subscription(settings, monkeypatch, regrant, check_kind):
+    import asyncio
+    import threading
+    import uuid
+    from labadda.realtime import Connection, Hub
+
+    async def scenario():
+        workspace = uuid.uuid4()
+        started, release = threading.Event(), threading.Event()
+
+        class Socket:
+            async def send_text(self, raw):
+                pass
+
+        hub = Hub(None, settings)
+        conn = Connection(Socket(), uuid.uuid4(), 'session', 'Synthetic', {workspace}, {workspace})
+        hub.connections.add(conn)
+
+        def paused_check(*_):
+            started.set()
+            assert release.wait(2)
+            if check_kind == 'batch':
+                return {conn: (True, not regrant, not regrant)}
+            allowed = set() if regrant else {workspace}
+            return True, allowed, allowed
+
+        monkeypatch.setattr(hub, '_check_many' if check_kind == 'batch' else '_check', paused_check)
+        task = asyncio.create_task(hub._deliver(workspace, [{'type': 'board.op'}])
+                                   if check_kind == 'batch' else hub._revalidate(lambda c: True))
+        try:
+            assert await asyncio.to_thread(started.wait, 1)
+            await hub._drop(conn, workspace)
+            if regrant:
+                monkeypatch.setattr(hub, '_check', lambda *_: (True, {workspace}, {workspace}))
+                await hub._handle(conn, {'type': 'subscribe', 'workspace_id': str(workspace)})
+        finally:
+            release.set()
+        await asyncio.wait_for(task, 1)
+        assert (workspace in conn.subscriptions) is regrant
+        assert (workspace in conn.writable) is regrant
+
+    asyncio.run(scenario())
+
+
+def test_batch_timeout_does_not_cancel_transport_cleanup(settings, monkeypatch):
+    import asyncio
+    import json
+    import uuid
+    from labadda import realtime
+
+    async def scenario():
+        workspace = uuid.uuid4()
+        closed = asyncio.Event()
+
+        class Socket:
+            async def send_text(self, raw):
+                if json.loads(raw)['type'] == 'chat.message':
+                    raise OSError('synthetic failed transport')
+                await asyncio.Event().wait()
+            async def close(self, **kwargs):
+                closed.set()
+
+        hub = realtime.Hub(None, settings)
+        conn = realtime.Connection(Socket(), uuid.uuid4(), 'session', 'Synthetic', {workspace})
+        hub.connections.add(conn)
+        monkeypatch.setattr(realtime, 'SEND_TIMEOUT_SECONDS', .05)
+        await hub._send_all(conn, workspace, [{'type': 'chat.message'}], 0)
+        await asyncio.wait_for(closed.wait(), .5)
+        assert conn not in hub.connections
+
+    asyncio.run(scenario())

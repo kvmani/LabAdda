@@ -76,3 +76,45 @@ The ~4 s maximum suggested compaction stalls. Scheduled compaction folded the wh
 ## Still open for P4 step 4
 
 This is a local rehearsal on a shared development host, not the representative staging VM, the site's TLS certificates or its network path. Run the same command on the staging VM over the site proxy and record VM resources, path and browser versions. A manual screen-reader, zoom and visual review, the physical pen/finger panel test, off-host recovery and site-owner acceptance also remain. REVIEW.md asks for an independent reviewer for realtime changes; the hub restructuring above has been self-reviewed and regression-tested, but not independently reviewed.
+
+## Independent realtime/compaction review and corrections (2026-11-09)
+
+Independent read-only review examined the earlier ordered fanout and two-phase
+compaction work on baseline `384df25`. Compaction had no integrity finding:
+immutable-prefix folding, epoch/base rechecks and epoch/revision cache keys protect
+concurrent restore/compaction. Realtime required corrections:
+
+- A revoked workspace's remaining queued batch could still be delivered after the
+  `revoked` frame. Per-workspace subscription generations now invalidate batches,
+  with subscription/generation checks inside a serialized per-connection send.
+- Closing a stalled revoked client could block healthy recipients. Delivery starts
+  authorized sends and rejected-client handling concurrently; notification and
+  transport close each have a timeout. Presence fanout also runs concurrently.
+- A delayed positive authorization result could restore writable state after
+  revocation; a delayed negative result could drop a newly granted subscription.
+  Generation checks now protect decision application, explicit revalidation and
+  subscribe completion. Preview eligibility requires an active subscription too.
+
+An already-started transport send can finish before the serialized revocation
+frame; subsequent queued content is suppressed. Control sends and close are
+bounded individually by `SEND_TIMEOUT_SECONDS` (10 seconds); this is not a promise
+that all cleanup finishes within one shared ten-second deadline. Durable state
+remains available for authorized reconnect catch-up.
+
+The reviewer independently reproduced the original failures and verified the
+four initial correction regressions without using the shared database. The
+scoped independent realtime/compaction review is complete. This does not certify
+site readiness or renew the earlier 15-minute workload result: real-site TLS/load,
+manual screen-reader review, physical panel and owner acceptance remain open.
+
+Final correction validation: **374 backend tests** passed with real recovery,
+no skips and no model/migration drift; **31 frontend tests**, typecheck and build
+passed. Root/prefix collaboration/panel browser flow passed **69/69**. Seven new
+deterministic race/cleanup cases also passed independently in the review.
+A fresh **120-second local TLS** regression with 30 clients (8 drawers, 22 readers)
+across two sibling workspaces delivered **33,960/33,960** expected events, with zero
+missing, lost, duplicate or cross-workspace deliveries and no revision gaps.
+Update p95 **76.7 ms**, maximum **298.8 ms**; list p95 **70.6 ms**. Targets enforced.
+The shared environment reported 5 logical CPUs; backend tests ran concurrently.
+This short run did not trigger compaction and does not replace long-duration or
+site qualification. [Machine-readable result](evidence/realtime-revocation/tls-120s.json).

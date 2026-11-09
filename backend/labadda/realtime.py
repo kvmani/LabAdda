@@ -41,6 +41,8 @@ class Connection:
     display_name: str
     subscriptions: set[uuid.UUID] = field(default_factory=set)
     writable: set[uuid.UUID] = field(default_factory=set)
+    send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    subscription_generations: dict[uuid.UUID, int] = field(default_factory=dict)
     panel_workspace: uuid.UUID | None = None  # set for board-only touch-panel sessions
 
 
@@ -98,13 +100,22 @@ class Hub:
                         writable.add(ws_id)
             return True, readable, writable
 
-    async def _send(self, conn: Connection, payload: dict) -> None:
+    async def _send(self, conn: Connection, payload: dict, *,
+                    workspace_id: uuid.UUID | None = None, generation: int | None = None) -> None:
         if conn.panel_workspace is not None and payload.get("type") not in PANEL_EVENTS:
             return
         try:
-            await conn.ws.send_text(json.dumps(payload))
+            async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
+                async with conn.send_lock:
+                    if conn not in self.connections:
+                        return
+                    if workspace_id is not None and (workspace_id not in conn.subscriptions or
+                            (generation is not None and generation != conn.subscription_generations.get(workspace_id, 0))):
+                        return
+                    await conn.ws.send_text(json.dumps(payload))
         except Exception:
-            self.connections.discard(conn)
+            # A batch timeout must not cancel an already-started transport cleanup.
+            await asyncio.shield(self._close(conn, "send_failed"))
 
     def _check_many(self, conns: list[Connection], workspace_id: uuid.UUID) -> dict[Connection, tuple]:
         """Batched form of ``_check`` for one workspace: (session_ok, readable, writable) per connection.
@@ -165,27 +176,32 @@ class Hub:
         if not targets:
             return
         # Recheck current access after commit and before sending, once per batch for all receivers.
+        generations = {c: c.subscription_generations.get(workspace_id, 0) for c in targets}
         decisions = await asyncio.to_thread(self._check_many, targets, workspace_id)
         sends = []
         for conn in targets:
+            if (conn not in self.connections or workspace_id not in conn.subscriptions
+                    or generations[conn] != conn.subscription_generations.get(workspace_id, 0)):
+                continue
             ok, readable, writable = decisions[conn]
             if not ok:
-                await self._close(conn, "session_ended")
+                sends.append(self._close(conn, "session_ended"))
             elif not readable:
-                await self._drop(conn, workspace_id)
+                sends.append(self._drop(conn, workspace_id))
             else:
                 conn.writable = (conn.writable - {workspace_id}) | ({workspace_id} if writable else set())
-                sends.append(self._send_all(conn, events))
+                sends.append(self._send_all(conn, workspace_id, events, generations[conn]))
         await asyncio.gather(*sends)
 
-    async def _send_all(self, conn: Connection, events: list[dict]) -> None:
+    async def _send_all(self, conn: Connection, workspace_id: uuid.UUID, events: list[dict], generation: int) -> None:
         """Send a batch to one client; a client that cannot keep up is closed rather than stalling the
         workspace's ordered fanout. It reconnects and catches up from committed state."""
         async def send() -> None:
             for event in events:
-                if conn not in self.connections:
+                if (conn not in self.connections or workspace_id not in conn.subscriptions
+                        or generation != conn.subscription_generations.get(workspace_id, 0)):
                     return
-                await self._send(conn, event)
+                await self._send(conn, event, workspace_id=workspace_id, generation=generation)
 
         try:
             await asyncio.wait_for(send(), timeout=SEND_TIMEOUT_SECONDS)
@@ -194,17 +210,28 @@ class Hub:
             await self._close(conn, "slow_client")
 
     async def _drop(self, conn: Connection, workspace_id: uuid.UUID) -> None:
+        conn.subscription_generations[workspace_id] = conn.subscription_generations.get(workspace_id, 0) + 1
         conn.subscriptions.discard(workspace_id)
         conn.writable.discard(workspace_id)
         await self._send(conn, {"type": "revoked", "workspace_id": str(workspace_id)})
         await self._presence(workspace_id)
 
     async def _close(self, conn: Connection, reason: str) -> None:
+        if conn not in self.connections:
+            return
         subs = set(conn.subscriptions)
         self.connections.discard(conn)
+        conn.subscriptions.clear()
+        conn.writable.clear()
         try:
-            await conn.ws.send_text(json.dumps({"type": "session_ended", "reason": reason}))
-            await conn.ws.close(code=4401)
+            async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
+                async with conn.send_lock:
+                    await conn.ws.send_text(json.dumps({"type": "session_ended", "reason": reason}))
+        except Exception:
+            pass
+        try:
+            async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
+                await conn.ws.close(code=4401)
         except Exception:
             pass
         for ws_id in subs:
@@ -212,13 +239,21 @@ class Hub:
 
     async def _revalidate(self, predicate) -> None:
         for conn in [c for c in list(self.connections) if predicate(c)]:
-            ok, readable, writable = await asyncio.to_thread(self._check, conn, set(conn.subscriptions))
+            generations = {ws: conn.subscription_generations.get(ws, 0) for ws in conn.subscriptions}
+            ok, readable, writable = await asyncio.to_thread(self._check, conn, set(generations))
             if not ok:
                 await self._close(conn, "session_ended")
                 continue
-            for ws_id in set(conn.subscriptions) - readable:
-                await self._drop(conn, ws_id)
-            conn.writable = writable
+            for ws_id, generation in generations.items():
+                if (conn not in self.connections or ws_id not in conn.subscriptions
+                        or generation != conn.subscription_generations.get(ws_id, 0)):
+                    continue
+                if ws_id not in readable:
+                    await self._drop(conn, ws_id)
+                elif ws_id in writable:
+                    conn.writable.add(ws_id)
+                else:
+                    conn.writable.discard(ws_id)
             await self._send(conn, {"type": "access_changed"})
 
     async def _presence(self, workspace_id: uuid.UUID) -> None:
@@ -228,8 +263,8 @@ class Hub:
                 present[str(c.user_id)] = c.display_name
         payload = {"type": "presence", "workspace_id": str(workspace_id),
                    "users": [{"id": k, "display_name": v} for k, v in sorted(present.items(), key=lambda kv: kv[1])]}
-        for c in [c for c in list(self.connections) if workspace_id in c.subscriptions]:
-            await self._send(c, payload)
+        await asyncio.gather(*(self._send(c, payload, workspace_id=workspace_id)
+                               for c in list(self.connections) if workspace_id in c.subscriptions))
 
     # ---- socket endpoint ------------------------------------------------
     def _authenticate(self, token: str | None, kind: str):
@@ -291,7 +326,10 @@ class Hub:
                 await self._send(conn, {"type": "subscribe_failed", "workspace_id": str(ws_id)})
             return
         if kind == "subscribe":
+            generation = conn.subscription_generations.get(ws_id, 0)
             ok, readable, writable = await asyncio.to_thread(self._check, conn, {ws_id})
+            if conn not in self.connections or generation != conn.subscription_generations.get(ws_id, 0):
+                return
             if not ok:
                 await self._close(conn, "session_ended")
                 return
@@ -299,20 +337,23 @@ class Hub:
                 # Same answer for unknown and out-of-scope IDs.
                 await self._send(conn, {"type": "subscribe_failed", "workspace_id": str(ws_id)})
                 return
+            conn.subscription_generations[ws_id] = conn.subscription_generations.get(ws_id, 0) + 1
             conn.subscriptions.add(ws_id)
             conn.writable = (conn.writable - {ws_id}) | writable
             await self._send(conn, {"type": "subscribed", "workspace_id": str(ws_id)})
             await self._presence(ws_id)
         elif kind == "unsubscribe":
+            conn.subscription_generations[ws_id] = conn.subscription_generations.get(ws_id, 0) + 1
             conn.subscriptions.discard(ws_id)
             conn.writable.discard(ws_id)
             await self._presence(ws_id)
         elif kind == "board.preview":
             # Transient stroke preview: bounded, never stored, only from writers.
-            if ws_id not in conn.writable or len(json.dumps(msg.get("stroke", {}))) > MAX_PREVIEW_BYTES:
+            if (conn not in self.connections or ws_id not in conn.subscriptions or ws_id not in conn.writable
+                    or len(json.dumps(msg.get("stroke", {}))) > MAX_PREVIEW_BYTES):
                 return
             event = {"type": "board.preview", "workspace_id": str(ws_id), "actor_id": str(conn.user_id),
                      "stroke": msg.get("stroke"), "preview_id": str(msg.get("preview_id", ""))[:64],
                      "done": bool(msg.get("done"))}
             for other in [c for c in list(self.connections) if ws_id in c.subscriptions and c is not conn]:
-                await self._send(other, event)
+                await self._send(other, event, workspace_id=ws_id)
