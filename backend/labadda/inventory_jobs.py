@@ -163,11 +163,11 @@ def pause_restored_jobs(conn):
     conn.execute(text("update inventory_jobs set state='paused', lease_until=null, updated_at=clock_timestamp() where state in ('queued','running')"))
 
 
-def describe(db, job, *, now=None):
+def describe(db, job, *, now=None, include_attempts=True):
     from .serialize import iso
     now = _now(db) if now is None else now
     attempts = db.scalars(select(InventoryAttempt).where(InventoryAttempt.job_id == job.id)
-                          .order_by(InventoryAttempt.number)).all()
+                          .order_by(InventoryAttempt.number)).all() if include_attempts else []
     return {'id': str(job.id), 'kind': 'asset_directory_inventory', 'state': job.state,
             'source': 'operator_cli', 'scope': 'site', 'policy_revision': None,
             'plan_digest': job.plan_digest, 'parameters': job.parameters,

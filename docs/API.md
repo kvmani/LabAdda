@@ -154,3 +154,19 @@ The result always reports `state: incomplete`, `complete_for_enforcement:false`,
 `filesystem` reports an independently observed timestamp and valid free/total bytes, with proposed reserve `max(floor_bytes, ceil(total_bytes × percent / 100))`, using integer arithmetic. `maximum_growth_above_reserve_bytes` and `reserve_shortfall_bytes` are nonnegative; unavailable or invalid capacity yields unknown/nulls. Warnings explain a known lower bound over budget, unknown previews, unconfigured budget, missing filesystem observation or reserve shortfall/excess. The filesystem may be shared with other services; these observations are not atomic with the asset snapshot, a future growth prediction or a safe-admission decision. Database physical size is not added to asset bytes or assumed to reside on this filesystem.
 
 The admin form previews capacity without saving, clears results after any profile edit or observation refresh, and ignores late responses for edited inputs. Saving still uses the existing revision conflict/reason/audit rules and cannot activate limits. History labels version-one capacity fields as not recorded. Proposal/account/workspace tables support keyboard-accessible horizontal scrolling on small screens. General approval, scheduling, exception and enforcement workflows remain later gates.
+
+## P5.1 inventory job observation
+
+`GET /admin/inventory-jobs` requires a normal administrator session or current
+`usage.read` delegation. Optional `state` filters one supported job state;
+`limit` is 1–25 (default20); `before` is the previous response's `next_cursor`
+job UUID. Ordering is created-at descending then ID descending. This is a live
+keyset listing, not a frozen snapshot; concurrent state changes can alter filtered
+pages. Missing cursor IDs return404. Counts are returned-page counts, not site totals.
+Listings omit attempt history; `GET /admin/inventory-jobs/{id}` returns at most100
+numbered attempts. Both routes recheck identity/session/capability after reading,
+reject panel markers/cookies, omit request keys and filesystem paths, and expose
+no write routes. Lease expiration is observed using the database clock; reporting
+an expired running job does not mutate its state or start a retry. Accepted receipt
+IDs allow correlation with inspection history. CLI `show-inventory` exposes the
+same sanitized detail. These observations authorize neither enforcement nor deletion.

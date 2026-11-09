@@ -170,3 +170,12 @@ including real recovery and drift,31 frontend tests/typecheck/build passed;30
 focused job/inventory checks passed. Independent operational review found no
 substantive issue. [Procedure](INVENTORY-JOBS.md). This is not resumable enumeration,
 a full inventory generation, general worker/capability framework or web execution.
+
+## Authorized inventory job API (2026-11-09)
+
+Added read-only normal-session admin/delegated operational-reader list and detail
+routes with bounded keyset pagination, state filters, database-clock expired-lease
+reporting and numbered attempt history. Request keys/paths are omitted; there are
+no execution routes. Authority is refreshed after observation.27 focused API/job
+checks passed; independent authorization review found no substantive issue.
+The browser view follows separately. See [API contract](API.md#p51-inventory-job-observation).
