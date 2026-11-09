@@ -104,3 +104,5 @@ T26/T35 job observation UI: `e2e/inventory-jobs.mjs` with `e2e/inventory-jobs-fi
 | T40 | Assignment grants no access; authorised My Tasks, comments/history/live convergence, revoked subscriptions and notification boundaries | C2 |
 | T41 | Post/chat conversion and board references preserve source permissions and explicit broader-audience confirmation | C3 |
 | T42 | Threaded chat/attachment retry/private conversations; five-user sibling-section/division scenario, fixture screenshots and qualification | C4–C5 |
+
+C1 backend evidence: `test_todos.py` covers personal/admin isolation, upward/sibling/parent boundaries, direct group/project membership, read-only/archive, create intent binding, calendar/checklist/completion/reopening persistence, invalid bounds, cursor pages, CSRF/panel refusal, revocation, two-writer revision conflicts and downgrade protection. A PostgreSQL blocking test reproduces workspace row-writer ordering; expiry during a scope wait cannot commit. Real recovery integration preserves personal tasks/checklists. The previous job downgrade assertion now uses the actual schema head rather than a stale0016 literal.

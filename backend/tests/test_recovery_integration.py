@@ -64,6 +64,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
     from labadda import inventory_jobs
     job_id = inventory_jobs.enqueue(session_factory(settings.database_url), 'recovery-inventory', {})
     inventory_jobs.claim(session_factory(settings.database_url), job_id)
+    todo = ben.post('/todos/lists', json={'client_id':str(uuid.uuid4()), 'title':'Recovery tasks'}).json()
+    todo_task = ben.post(f"/todos/lists/{todo['id']}/tasks", json={
+        'client_id':str(uuid.uuid4()), 'title':'Recovered task', 'checklist':[{'title':'Check replay','done':True}]}).json()
     bundle = tmp_path / 'backup'
     sha = backup(settings.database_url, settings.asset_dir, bundle, 'synthetic-release', writers_quiesced=True)
     target_name = 'labadda_restore_test_' + uuid.uuid4().hex
@@ -94,6 +97,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             assert client.post('/api/v1/auth/activate', json={'token': activation_token, 'password': 'fixture-pass-123'}).status_code == 422
             api = Api(client, '/api/v1')
             assert api.login('ben').status_code == 200
+            recovered_tasks = api.get(f"/todos/lists/{todo['id']}/tasks").json()['items']
+            assert recovered_tasks[0]['id'] == todo_task['id']
+            assert recovered_tasks[0]['checklist'][0]['done'] is True
             assert api.get('/admin/usage').status_code == 403
             assert api.get('/usage').json()['measurement']['pending_upload_original_bytes'] == 0
             assert api.get('/uploads/requests/recovery-request-01').status_code == 404

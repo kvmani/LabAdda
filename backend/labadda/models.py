@@ -7,12 +7,13 @@ Schema changes are applied only through Alembic migrations in
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Identity,
@@ -498,4 +499,46 @@ class InventoryAttempt(Base):
     __table_args__ = (
         CheckConstraint("state in ('running','completed','partial','failed','expired','paused','cancelled')", name='ck_inventory_attempt_state'),
         CheckConstraint('number > 0 and number <= 100', name='ck_inventory_attempt_number'),
+    )
+
+
+class TodoList(Base):
+    __tablename__ = 'todo_lists'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'))
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('workspaces.id'))
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    create_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = _created()
+    __table_args__ = (
+        CheckConstraint('(owner_id is null) <> (workspace_id is null)', name='ck_todo_list_scope'),
+        CheckConstraint('revision > 0', name='ck_todo_list_revision'),
+        UniqueConstraint('created_by', 'client_id', name='uq_todo_list_request'),
+        Index('ix_todo_list_owner', 'owner_id', 'id'), Index('ix_todo_list_workspace', 'workspace_id', 'id'),
+    )
+
+
+class TodoTask(Base):
+    __tablename__ = 'todo_tasks'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    list_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_lists.id'), nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    create_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    priority: Mapped[str] = mapped_column(String(8), nullable=False)
+    checklist: Mapped[list] = mapped_column(JSONB, nullable=False)
+    done: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = _created()
+    updated_at: Mapped[datetime] = _created()
+    __table_args__ = (
+        CheckConstraint("priority in ('low','normal','high') and revision > 0", name='ck_todo_task_values'),
+        UniqueConstraint('created_by', 'client_id', name='uq_todo_task_request'),
+        Index('ix_todo_task_list', 'list_id', 'id'),
     )

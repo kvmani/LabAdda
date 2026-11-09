@@ -20,7 +20,7 @@ from .capabilities import require_usage_reader
 
 router = APIRouter(tags=['usage'])
 UNMEASURED = ['other_or_historical_derivative_bytes', 'non_upload_reservations', 'trash', 'temporary_archives',
-              'reference_reconciliation']
+              'reference_reconciliation', 'todo_logical_bytes']
 
 # Physical PostgreSQL storage by category (DL-07: measured separately from logical attribution).
 # Table names are fixed constants; sizes include indexes and TOAST.

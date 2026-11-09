@@ -170,3 +170,42 @@ no write routes. Lease expiration is observed using the database clock; reportin
 an expired running job does not mutate its state or start a retry. Accepted receipt
 IDs allow correlation with inspection history. CLI `show-inventory` exposes the
 same sanitized detail. These observations authorize neither enforcement nor deletion.
+
+## C1 to-do lists
+
+Normal sessions only; explicit panel requests are refused. Personal lists are
+owner-only. Shared list scope is one immutable workspace, governed by existing
+upward-only read and write/archive policy. Administrator status supplies no content
+grant. No deletion, assignment, reminders or task sockets in C1.
+
+- `GET /todos/lists?workspace_id=<uuid>&after=<uuid>&limit=25`: omit workspace for
+  personal lists. `GET /todos/lists/{list}/tasks` uses the same cursor/limit.
+  Results are `{items,next_cursor}`, ordered by UUID ascending, limits 1–50.
+  Pages are live observations, not frozen snapshots.
+- `POST /todos/lists`: `{client_id: UUID,title,workspace_id?: UUID|null}`.
+- `PUT /todos/lists/{list}`: `{title,revision}`.
+- `POST /todos/lists/{list}/tasks`: `{client_id: UUID,title,description?,due_date?,
+  priority?,checklist?,done?}`. Date is a calendar `YYYY-MM-DD`; priority is
+  low/normal/high; checklist items are `{title,done}`. Defaults: empty description,
+  no due date, normal priority, empty checklist, open task.
+- `GET /todos/lists/{list}/tasks/{task}`: current task after current scope checks.
+- `PUT /todos/lists/{list}/tasks/{task}`: full task fields plus expected `revision`.
+  `revision_conflict`409 preserves committed content; fetch/review before resaving.
+
+Titles are trimmed, nonempty and at most200 characters, description at most10,000,
+checklists at most50 entries. Bootstrap safety ceilings are100 lists per scope and
+2,000 tasks per list, not an activated configurable quota policy. Unknown fields
+are rejected. Creation IDs are unique per creator/resource kind and bound to the
+normalized complete intent and destination: identical retries return the current
+resource; changed intent returns `request_reused`409. Current write authorization
+is still required on replay. Scope cannot be changed by editing.
+
+Writes serialize identity/session changes, then shared authorization against
+membership/tree/policy changes using short table SHARE locks, preceded by target
+workspace KEY SHARE to avoid conflicting workspace row writers/FK cycles. Task
+writers serialize through the list row; list-count admission uses a scope advisory
+lock. Session time validity is checked again immediately before commits/replays.
+This deliberately favours correctness for the single-process pilot; table locks
+must be revisited with evidence before broader write throughput is required.
+C1 task text is not included in the earlier text-charge ledger: usage marks
+`todo_logical_bytes` unmeasured. Physical database totals still include these tables.

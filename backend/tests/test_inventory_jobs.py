@@ -161,7 +161,8 @@ def test_migration_refuses_to_drop_job_history(db_factory, settings, ids):
     with pytest.raises(RuntimeError, match='Inventory jobs exist'):
         command.downgrade(alembic_config(settings.database_url), '0015')
     with db_factory() as db:
-        assert db.scalar(text('select version_num from alembic_version')) == '0016'
+        from labadda.app import expected_schema_head
+        assert db.scalar(text('select version_num from alembic_version')) == expected_schema_head()
 
 
 def test_operator_cli_queue_run_and_replay(settings, db_factory, ids, monkeypatch, capsys):
