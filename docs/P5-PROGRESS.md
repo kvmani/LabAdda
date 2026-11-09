@@ -129,3 +129,15 @@ See [operator procedure](STORAGE-INVENTORY.md). Validation: full 365-test backen
 suite with recovery and drift checks, 31 frontend tests/build; 14 focused inventory
 cases after adding race/time regressions. Independent operational review found no
 substantive safety issue. Full web receipt presentation is the next slice.
+
+## Admin inventory presentation (2026-11-09)
+
+The governance view now presents actual operator inventory receipts with per-class
+counts, file allocation caveats, scan-stop explanations and investigation guidance.
+The view provides no scan or deletion action. Root/prefix desktop/mobile browser
+validation passed 18 checks, including axe and horizontal overflow; screenshots
+were captured in `/tmp/labadda-storage-inventory`. The initial browser assertion
+incorrectly assumed empty disposable asset directories; existing leftover files
+were correctly detected, and the check now compares the database-backed receipt.
+Frontend typecheck, 31 unit tests and build passed. Missing full generation/job
+protocol and existing site/device gates remain open.

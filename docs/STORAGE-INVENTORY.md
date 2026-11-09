@@ -37,4 +37,6 @@ receipts always carry `complete_for_enforcement: false` and
 owner identities appear in inventory receipts.
 
 Inspect aggregate receipts using the existing authorized administration API
-`GET /admin/storage-inspections`. UI presentation is a separate delivery slice.
+`GET /admin/storage-inspections`. The admin governance view presents these receipts with aggregate class totals,
+allocation caveats and actionable scan/issue guidance. It offers no web scan or
+cleanup action.

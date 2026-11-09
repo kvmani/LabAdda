@@ -5,11 +5,12 @@ import { api } from '../api';
 import { fmtBytes as bytes } from '../format';
 import type { CapacityForecast as Forecast, CapacityProfile, PolicyDrafts, SiteUsage, Observation } from '../governance-types';
 import { CapacityForecast } from './CapacityForecast';
+import { StorageInventory, type InventorySummary } from './StorageInventory';
 
 const MiB = 1024 * 1024;
 type StorageReceipt = {
   id: string; status: string; finished_at: string | null;
-  summary: {
+  summary: InventorySummary & {
     checked_assets?: number; issue_count?: number; state?: string;
     verified_previews?: number; unknown_previews?: number;
     scope?: string; mode?: string; candidate_count?: number;
@@ -104,10 +105,13 @@ export function Governance() {
       <p>{Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.</p>
       {history.length > 0 && <ul>{history.slice(0, 5).map(h => <li key={h.id}>{new Date(h.observed_at).toLocaleString()} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals</li>)}</ul>}
     </>}
-    <h3>Referenced file inspections and reconciliations</h3>
+    <h3>Storage inventories, inspections and reconciliations</h3>
+    <p>Asset-directory inventory receipts come from <code>labadda inventory-storage</code>. They report bounded metadata observations, including temporary and unreferenced candidates, without reading file contents.</p>
     <p>Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original hashes and preview hashes where expected measurements exist. Historical preview integrity remains unknown without those measurements. The scan time budget is cooperative, not a hard filesystem timeout. Inspections never repair files or authorize enforcement. A running record may be stale after an operator process stops.</p>
-    {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status}{r.summary.scope === 'content_charge_reconciliation' ? '' : ` · ${r.summary.checked_assets ?? 'Not reported'} asset rows checked`} · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}
-      {r.summary.scope === 'content_charge_reconciliation'
+    {inspections.length === 0 ? <p>No inspection receipts available.</p> : <ul>{inspections.map(r => <li key={r.id}>{r.status}{['content_charge_reconciliation', 'asset_directory_inventory'].includes(r.summary.scope ?? '') ? '' : ` · ${r.summary.checked_assets ?? 'Not reported'} asset rows checked`} · {r.summary.issue_count ?? 'Not reported'} issues · {r.finished_at ? new Date(r.finished_at).toLocaleString() : 'No completion receipt'}
+      {r.summary.scope === 'asset_directory_inventory'
+        ? <StorageInventory summary={r.summary} />
+        : r.summary.scope === 'content_charge_reconciliation'
         ? <span className="muted small"> · Text/whiteboard charge reconciliation {r.summary.mode === 'dry_run' ? 'Dry run' : r.summary.mode === 'apply' ? 'Apply' : 'Unknown mode'}: {r.summary.checked_items ?? 'Not reported'} text items · {r.summary.checked_boards ?? 'Not reported'} boards · {r.summary.correction_count ?? 'Not reported'} ledger corrections planned · {r.summary.applied_count ?? 'Unconfirmed'} applied{r.summary.stop_reason && ` · ${reconciliationStops[r.summary.stop_reason] ?? 'Host operator inspection required.'}`}</span>
         : r.summary.scope === 'preview_metadata_reconciliation'
         ? <span className="muted small"> · Preview reconciliation {r.summary.mode === 'dry_run' ? 'Dry run' : r.summary.mode === 'apply' ? 'Apply' : 'Unknown mode'}: {r.summary.candidate_count ?? 'Not reported'} candidates · {r.summary.applied_count ?? 'Unconfirmed'} metadata updates{r.summary.stop_reason && ` · ${reconciliationStops[r.summary.stop_reason] ?? 'Host operator inspection required.'}`}</span>
