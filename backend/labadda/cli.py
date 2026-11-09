@@ -50,6 +50,10 @@ def main(argv: list[str] | None = None) -> int:
     inspect.add_argument("--max-files", type=int, default=10000)
     inspect.add_argument("--max-bytes", type=int, default=1024**3)
     inspect.add_argument("--max-seconds", type=float, default=30)
+    inventory = sub.add_parser("inventory-storage", help="bounded metadata-only asset-directory inventory")
+    inventory.add_argument("--max-entries", type=int, default=10000)
+    inventory.add_argument("--max-assets", type=int, default=10000)
+    inventory.add_argument("--max-seconds", type=float, default=30)
     reconcile = sub.add_parser("reconcile-previews", help="dry-run or explicitly apply verified historical preview metadata")
     reconcile.add_argument("--max-assets", type=int, default=100)
     reconcile.add_argument("--max-bytes", type=int, default=100*1024**2)
@@ -99,6 +103,19 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if result['status'] == 'completed' and result['summary']['issue_count'] == 0 else 2
         except Exception:
             print('Preview reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the reviewed plan. No files are rewritten or deleted.', file=sys.stderr)
+            return 2
+
+    if args.cmd == "inventory-storage":
+        from .inventory import inventory_storage
+        try:
+            result = inventory_storage(session_factory(settings.database_url), settings.asset_dir,
+                                       max_entries=args.max_entries, max_assets=args.max_assets,
+                                       max_seconds=args.max_seconds)
+            print(json.dumps(result))
+            return 0 if result['summary']['selected_pass_complete'] else 2
+        except Exception:
+            print("Inventory unconfirmed. Check its receipt, budgets, asset root and database access. "
+                  "No files were changed or deleted.", file=sys.stderr)
             return 2
 
     if args.cmd == "inspect-storage":

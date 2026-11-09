@@ -116,3 +116,16 @@ The form clears previews on every profile edit and observation refresh and ignor
 Validation passed **353 backend tests**, real PostgreSQL recovery, migration drift, **31 frontend tests**, typecheck and build. The focused capacity/governance suite covers 36 cases, including an exact V1 proposal migration round trip. **26 capacity + 18 governance + 34 existing accessibility browser checks** passed at root/prefix; mobile admin axe scans had no findings. [Screenshots](evidence/capacity-proposals/README.md) were visually inspected. Independent review found no substantive issue. Development/research instances were migrated to 0015 and restarted; readiness and V1/V2 compatibility passed, and content counts matched the earlier checkpoint. An attempted new pre-migration hash snapshot used system Python and did not run; no before/after policy-history hash comparison is claimed. Migration code and tests verify V1 document preservation. Hosted CI completion is not claimed.
 
 Next: complete durable inventory/accounting and general capability/approval prerequisites within P5.1. Actual site/derivative quota enforcement, scheduled policy activation, portable archives and retention remain later gated work.
+
+## Asset-directory inventory (2026-11-09)
+
+Added `labadda inventory-storage` with bounded database-reference selection and
+metadata-only directory enumeration. Durable receipts report referenced originals,
+previews, temporary files, unreferenced candidates and unexpected files without
+names or keys. Descriptor-relative no-follow opens protect shard traversal;
+physical observations count inodes once and report allocation limitations.
+No deletion, repair, admission changes or complete inventory generation is claimed.
+See [operator procedure](STORAGE-INVENTORY.md). Validation: full 365-test backend
+suite with recovery and drift checks, 31 frontend tests/build; 14 focused inventory
+cases after adding race/time regressions. Independent operational review found no
+substantive safety issue. Full web receipt presentation is the next slice.
