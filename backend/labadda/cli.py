@@ -54,6 +54,16 @@ def main(argv: list[str] | None = None) -> int:
     inventory.add_argument("--max-entries", type=int, default=10000)
     inventory.add_argument("--max-assets", type=int, default=10000)
     inventory.add_argument("--max-seconds", type=float, default=30)
+    queue_inventory = sub.add_parser("queue-inventory", help="queue an idempotent operator inventory job")
+    queue_inventory.add_argument("--request-key", required=True)
+    queue_inventory.add_argument("--max-entries", type=int, default=10000)
+    queue_inventory.add_argument("--max-assets", type=int, default=10000)
+    queue_inventory.add_argument("--max-seconds", type=int, default=30)
+    run_inventory = sub.add_parser("run-inventory", help="run one queued inventory job with a durable lease")
+    run_inventory.add_argument("job_id", type=uuid.UUID)
+    run_inventory.add_argument("--retry", action="store_true", help="explicitly retry an expired, partial, failed or paused job")
+    cancel_inventory = sub.add_parser("cancel-inventory", help="cancel a queued or active inventory job at its next checkpoint")
+    cancel_inventory.add_argument("job_id", type=uuid.UUID)
     reconcile = sub.add_parser("reconcile-previews", help="dry-run or explicitly apply verified historical preview metadata")
     reconcile.add_argument("--max-assets", type=int, default=100)
     reconcile.add_argument("--max-bytes", type=int, default=100*1024**2)
@@ -73,6 +83,8 @@ def main(argv: list[str] | None = None) -> int:
     charges.add_argument("--apply", action="store_true")
     charges.add_argument("--expected-plan")
     charges.add_argument("--writers-quiesced", action="store_true")
+    show_inventory = sub.add_parser("show-inventory", help="show sanitized inventory job and attempt status")
+    show_inventory.add_argument("job_id", type=uuid.UUID)
     args = parser.parse_args(argv)
     settings = load_settings()
 
@@ -103,6 +115,35 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if result['status'] == 'completed' and result['summary']['issue_count'] == 0 else 2
         except Exception:
             print('Preview reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the reviewed plan. No files are rewritten or deleted.', file=sys.stderr)
+            return 2
+
+    if args.cmd in {"queue-inventory", "run-inventory", "cancel-inventory", "show-inventory"}:
+        from . import inventory_jobs
+        try:
+            factory = session_factory(settings.database_url)
+            if args.cmd == "show-inventory":
+                from .models import InventoryJob
+                with factory() as db:
+                    job = db.get(InventoryJob, args.job_id)
+                    if job is None:
+                        raise ValueError("Unknown inventory job")
+                    print(json.dumps(inventory_jobs.describe(db, job)))
+                return 0
+            if args.cmd == "queue-inventory":
+                job_id = inventory_jobs.enqueue(factory, args.request_key, {
+                    'max_entries': args.max_entries, 'max_assets': args.max_assets, 'max_seconds': args.max_seconds})
+                print(json.dumps({'job_id': str(job_id)}))
+                return 0
+            if args.cmd == "cancel-inventory":
+                inventory_jobs.cancel(factory, args.job_id)
+                print(json.dumps({'job_id': str(args.job_id), 'state': 'cancelled'}))
+                return 0
+            result = inventory_jobs.run(factory, settings.asset_dir, args.job_id, retry=args.retry)
+            print(json.dumps(result))
+            return 0 if result['summary']['selected_pass_complete'] else 2
+        except Exception:
+            print("Inventory job unconfirmed. Inspect its job and attempt records before retrying. "
+                  "No files are modified; expired attempts require explicit --retry.", file=sys.stderr)
             return 2
 
     if args.cmd == "inventory-storage":

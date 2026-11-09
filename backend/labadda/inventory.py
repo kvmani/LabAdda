@@ -22,7 +22,7 @@ class InventoryLimit(Exception):
 
 
 def inventory_storage(factory, root: Path, *, max_entries: int = 10000,
-                      max_assets: int = 10000, max_seconds: float = 30) -> dict:
+                      max_assets: int = 10000, max_seconds: float = 30, checkpoint=None, job_context: dict | None = None) -> dict:
     if (type(max_entries) is not int or not 1 <= max_entries <= 100000
             or type(max_assets) is not int or not 1 <= max_assets <= 100000
             or not math.isfinite(max_seconds) or not 0 < max_seconds <= 300):
@@ -40,6 +40,8 @@ def inventory_storage(factory, root: Path, *, max_entries: int = 10000,
         'unmeasured': ['database', 'outside_asset_root', 'file_integrity', 'missing_referenced_files',
                        'directory_metadata', 'shared_extent_deduplication'],
     }
+    if job_context is not None:
+        summary["job"] = dict(job_context)
     with factory() as db:
         receipt = StorageInspection(status='running', summary=summary, created_at=utcnow())
         db.add(receipt)
@@ -52,6 +54,8 @@ def inventory_storage(factory, root: Path, *, max_entries: int = 10000,
         counts[code] = counts.get(code, 0) + 1
 
     def check_time():
+        if checkpoint is not None:
+            checkpoint()
         if time.monotonic() - began >= max_seconds:
             raise InventoryLimit()
 

@@ -465,3 +465,37 @@ class ContentCharge(Base):
         Index('ix_content_charges_user', 'user_id', 'item_type'),
         Index('ix_content_charges_workspace', 'workspace_id', 'item_type'),
     )
+
+
+class InventoryJob(Base):
+    """Operator-only observation job. Leases fence accepted results, never delete files."""
+    __tablename__ = 'inventory_jobs'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    request_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    plan_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    parameters: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created()
+    updated_at: Mapped[datetime] = _created()
+    __table_args__ = (
+        CheckConstraint("state in ('queued','running','completed','partial','failed','paused','cancelled')", name='ck_inventory_job_state'),
+        CheckConstraint('attempt >= 0 and attempt <= 100', name='ck_inventory_job_attempt'),
+        CheckConstraint("(state = 'running') = (lease_until is not null)", name='ck_inventory_job_lease'),
+    )
+
+
+class InventoryAttempt(Base):
+    __tablename__ = 'inventory_attempts'
+    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('inventory_jobs.id'), primary_key=True)
+    number: Mapped[int] = mapped_column(Integer, primary_key=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    started_at: Mapped[datetime] = _created()
+    heartbeat_at: Mapped[datetime] = _created()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    receipt_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('storage_inspections.id'))
+    __table_args__ = (
+        CheckConstraint("state in ('running','completed','partial','failed','expired','paused','cancelled')", name='ck_inventory_attempt_state'),
+        CheckConstraint('number > 0 and number <= 100', name='ck_inventory_attempt_number'),
+    )

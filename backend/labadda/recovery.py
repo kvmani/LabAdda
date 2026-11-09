@@ -224,6 +224,8 @@ def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: 
                             conn.execute(text('delete from usage_reader_grants'))
                             conn.execute(text('delete from upload_receipts'))
                             conn.execute(text('delete from upload_reservations'))
+                            from .inventory_jobs import pause_restored_jobs
+                            pause_restored_jobs(conn)
                         sync_tree(staged_assets)
                         os.rename(staged_assets, assets)
                         fd = os.open(assets.parent, os.O_RDONLY | os.O_DIRECTORY)

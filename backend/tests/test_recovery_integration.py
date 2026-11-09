@@ -61,6 +61,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
         db.add(UploadReservation(user_id=ids['users']['ben'],bytes=123,
             created_at=utcnow(),expires_at=utcnow()+timedelta(minutes=10)))
         db.commit()
+    from labadda import inventory_jobs
+    job_id = inventory_jobs.enqueue(session_factory(settings.database_url), 'recovery-inventory', {})
+    inventory_jobs.claim(session_factory(settings.database_url), job_id)
     bundle = tmp_path / 'backup'
     sha = backup(settings.database_url, settings.asset_dir, bundle, 'synthetic-release', writers_quiesced=True)
     target_name = 'labadda_restore_test_' + uuid.uuid4().hex
@@ -74,6 +77,11 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
         target_assets = tmp_path / 'restored-assets'
         result = restore(bundle, sha, target_url, target_assets, isolated_target=True)
         assert result['sessions_revoked']
+        from labadda.models import InventoryJob, InventoryAttempt
+        with session_factory(target_url)() as db:
+            assert db.get(InventoryJob, job_id).state == 'paused'
+            assert db.get(InventoryJob, job_id).lease_until is None
+            assert db.get(InventoryAttempt, (job_id, 1)).state == 'paused'
         restored = replace(settings, database_url=target_url, asset_dir=target_assets)
         with TestClient(create_app(restored)) as client:
             client.cookies.update(old_cookies)

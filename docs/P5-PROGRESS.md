@@ -157,3 +157,16 @@ typecheck/build; 69 browser checks; 120-second local TLS 30-client run delivered
 [Details](P4-QUALIFICATION.md). The independent review gate is closed for this scope;
 site/device/long-duration acceptance and remaining P5.1 inventory generations,
 capability/approval/job prerequisites remain open before dependent archive work.
+
+## Durable inventory execution (2026-11-09)
+
+Inventory requests now have durable IDs, normalized parameter digests, idempotent
+keys and numbered attempts. DB-clock leases and row serialization fence stale
+workers; cancellation prevents result acceptance, explicit retries preserve prior
+attempts, and the accepted receipt is bound to its job/attempt. Operator commands
+queue/run/show/cancel the narrow observational workflow. Restore pauses copied
+active jobs; populated downgrade refuses evidence loss. Full390 backend tests
+including real recovery and drift,31 frontend tests/typecheck/build passed;30
+focused job/inventory checks passed. Independent operational review found no
+substantive issue. [Procedure](INVENTORY-JOBS.md). This is not resumable enumeration,
+a full inventory generation, general worker/capability framework or web execution.

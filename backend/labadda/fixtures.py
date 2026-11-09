@@ -48,7 +48,7 @@ def fixture_password() -> str:
 
 
 def reset_database(db: Session) -> None:
-    tables = ["upload_receipts", "upload_reservations", "usage_reader_grants", "storage_inspections", "usage_observations", "policy_drafts", "content_charges", "panel_pairings", "board_snapshots", "board_ops", "boards", "chat_reads", "chat_messages", "notifications", "assets", "notes", "posts",
+    tables = ["inventory_attempts", "inventory_jobs", "upload_receipts", "upload_reservations", "usage_reader_grants", "storage_inspections", "usage_observations", "policy_drafts", "content_charges", "panel_pairings", "board_snapshots", "board_ops", "boards", "chat_reads", "chat_messages", "notifications", "assets", "notes", "posts",
               "audit_events", "memberships", "credential_tokens", "auth_sessions"]
     db.execute(text("UPDATE users SET home_workspace_id = NULL"))
     db.execute(text("TRUNCATE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"))

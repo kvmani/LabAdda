@@ -32,6 +32,7 @@ DATABASE_CATEGORIES = {
     'identity_and_access': ('users', 'credential_tokens', 'auth_sessions', 'panel_pairings', 'workspaces',
                             'memberships', 'usage_reader_grants'),
     'audit_and_governance': ('audit_events', 'policy_drafts', 'usage_observations', 'storage_inspections',
+                             'inventory_jobs', 'inventory_attempts',
                              'content_charges'),
 }
 DATABASE_SIZES = text("""
