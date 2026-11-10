@@ -4,7 +4,7 @@ import { api } from '../api';
 import { realtime } from '../realtime';
 import { useWorkspaces } from '../workspaces';
 
-type Source={kind:'post'|'chat';id:string;workspace_id:string;workspace_name:string;body:string};
+type Source={workspace_id:string;workspace_name:string} & ({kind:'post'|'chat';id:string;body:string} | {kind:'board';epoch:number;revision:number;current_epoch:number;current_revision:number});
 export function TaskSource({listId,taskId}:{listId:string;taskId:string}){
   const [source,setSource]=useState<Source|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(false);
   const generation=useRef(0);
@@ -28,9 +28,17 @@ export function TaskSource({listId,taskId}:{listId:string;taskId:string}){
     catch(e:any){if(token===generation.current)setError([403,404].includes(e.status)?'Source unavailable or no longer accessible.':e.message);}
     finally{if(token===generation.current)setLoading(false);}
   }
-  return <section aria-label="Task source conversation">
-    <button type="button" disabled={loading} onClick={load}>{loading?'Loading source…':'View source conversation'}</button>
+  return <section aria-label="Task source reference">
+    <button type="button" disabled={loading} onClick={load}>{loading?'Loading source…':'View source reference'}</button>
     {error&&<p role="alert">{error}</p>}
-    {source&&<><p>Source {source.kind==='post'?'post':'chat message'} in {source.workspace_name}</p><p className="preserve">{source.body}</p><Link to={`/w/${source.workspace_id}/${source.kind==='post'?'noticeboard':'chat'}`}>Open source workspace</Link><button type="button" onClick={()=>{++generation.current;setSource(null);}}>Close source conversation</button></>}
+    {source&&<>
+      <p>Source {source.kind==='board'?'whiteboard':source.kind==='post'?'post':'chat message'} in {source.workspace_name}</p>
+      {source.kind==='board'?<>
+        <p>Recorded context: epoch {source.epoch}, revision {source.revision}.</p>
+        <p>Current board: epoch {source.current_epoch}, revision {source.current_revision}. This opens the live board, not a saved image of the recorded context.</p>
+      </>:<p className="preserve">{source.body}</p>}
+      <Link to={`/w/${source.workspace_id}/${source.kind==='board'?'board':source.kind==='post'?'noticeboard':'chat'}`}>Open source {source.kind==='board'?'board':'workspace'}</Link>
+      <button type="button" onClick={()=>{++generation.current;setSource(null);}}>Close source reference</button>
+    </>}
   </section>;
 }

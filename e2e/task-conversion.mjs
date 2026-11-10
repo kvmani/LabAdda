@@ -48,7 +48,7 @@ try{
   await form.getByRole('button',{name:'Retry same task copy',exact:true}).click();await ben.page.getByText('Task saved. Its source link still requires access to the original conversation.',{exact:true}).waitFor();
   const personal=(await call(ben,`/todos/lists/${privateList.id}/tasks`)).items;
   check(personal.length===1&&personal[0].description==='Only my reviewed followup.'&&personal[0].has_source,base+' retry creates exactly one reviewed task and reference');
-  await tasks(ben,base,null,privateList);await ben.page.getByRole('button',{name:'View source conversation',exact:true}).click();await ben.page.getByRole('region',{name:'Task source conversation'}).getByText(original,{exact:true}).waitFor();
+  await tasks(ben,base,null,privateList);await ben.page.getByRole('button',{name:'View source reference',exact:true}).click();await ben.page.getByRole('region',{name:'Task source reference'}).getByText(original,{exact:true}).waitFor();
   await accessible(ben,base,'protected source view');
   check(await ben.page.locator('script').filter({hasText:'window.fixtureExecuted'}).count()===0,base+' source text is rendered without HTML execution');
   check((await chen.ctx.request.get(chen.api+`/todos/lists/${privateList.id}/tasks/${personal[0].id}/source`)).status()===404,base+' personal reference is owner-only');
@@ -66,7 +66,7 @@ try{
   check(!await form.getByRole('checkbox').isChecked(),base+' changing destination resets audience confirmation');
   await form.getByRole('checkbox').check();await form.getByLabel('Task title',{exact:true}).fill('Reviewed division control action');await form.getByLabel('Task description',{exact:true}).fill('Reviewed controls for the common division.');await form.getByRole('button',{name:'Save conversation task',exact:true}).click();await ben.page.getByText('Task saved. Its source link still requires access to the original conversation.',{exact:true}).waitFor();
   const converted=(await call(ben,`/todos/lists/${divisionList.id}/tasks`)).items[0],sourcePath=`/todos/lists/${divisionList.id}/tasks/${converted.id}/source`;
-  await tasks(chen,base,division.id,divisionList);await chen.page.getByRole('button',{name:'View source conversation',exact:true}).click();await chen.page.getByText('Source unavailable or no longer accessible.',{exact:true}).waitFor();
+  await tasks(chen,base,division.id,divisionList);await chen.page.getByRole('button',{name:'View source reference',exact:true}).click();await chen.page.getByText('Source unavailable or no longer accessible.',{exact:true}).waitFor();
   check(await chen.page.getByText('Reviewed controls for the common division.',{exact:true}).isVisible()&&await chen.page.getByText(chatText,{exact:true}).count()===0,base+' sibling sees reviewed division task without protected source body');
   check((await chen.ctx.request.get(chen.api+sourcePath)).status()===404,base+' direct source lookup does not grant sibling access');
   // Real pagination must not submit a previous page's hidden selected list.
@@ -78,14 +78,14 @@ try{
   let release,captured;const held=new Promise(resolve=>release=resolve),ready=new Promise(resolve=>captured=resolve);
   await ben.page.route('**/api/v1'+sourcePath,async route=>{const response=await route.fetch();captured();await held;await route.fulfill({response});},{times:1});
   const delivered=ben.page.waitForResponse(r=>r.url().endsWith(sourcePath));
-  await ben.page.getByRole('button',{name:'View source conversation',exact:true}).click();await ready;
+  await ben.page.getByRole('button',{name:'View source reference',exact:true}).click();await ready;
   // Retain division read authority while removing the child-section source grant.
   await call(admin,`/admin/workspaces/${division.id}/memberships`,{user_id:ben.session.user.id,role:'member'},'PUT');
   const removal=await admin.ctx.request.delete(admin.api+`/admin/workspaces/${section.id}/memberships/${ben.session.user.id}`,{headers:admin.headers});assert.equal(removal.status(),200);
   await ben.page.getByText('Source unavailable or no longer accessible.',{exact:true}).waitFor();
   await ben.page.evaluate(text=>{window.__sourceLeaked=false;new MutationObserver(()=>{if(document.body.innerText.includes(text))window.__sourceLeaked=true;}).observe(document.body,{childList:true,subtree:true,characterData:true});},chatText);
   release();await(await delivered).finished();await ben.page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  await ben.page.getByRole('button',{name:'View source conversation',exact:true}).waitFor();
+  await ben.page.getByRole('button',{name:'View source reference',exact:true}).waitFor();
   check(!await ben.page.evaluate(()=>window.__sourceLeaked)&&await ben.page.getByText(chatText,{exact:true}).count()===0,base+' delayed source response cannot restore text after source-only revocation');
   check((await call(ben,`/todos/lists/${divisionList.id}/tasks`)).items.length===1,base+' reviewed destination task survives source revocation');
   check(ben.errors.length===0&&chen.errors.length===0,base+' no browser exceptions');

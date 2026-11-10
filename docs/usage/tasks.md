@@ -98,9 +98,30 @@ workflow and assignment. If saving is unconfirmed, keep the form open and choose
 **Retry same task copy**; the original text/destination stay frozen to prevent
 unintended copies. Closing or navigating away discards in-memory retry state.
 
-Converted tasks offer **View source conversation**. Only people who can currently
+Converted tasks offer **View source reference**. Only people who can currently
 read both the task and the original conversation can open its current text.
 Someone who can read a reviewed division task may still be unable to open its
 section-only source. Missing/removed/inaccessible sources show the same unavailable
 message; the reviewed task stays available under its own list permissions. Source
-text is displayed as plain text. Replies and whiteboard references are later slices.
+text is displayed as plain text. Reply conversion is a later slice; board references are described below.
+
+## Research-plan tasks from a whiteboard
+
+After adding plan content, choose **Create task from board** in the normal
+whiteboard toolbar. Describe the followup, choose a personal/shared list and review
+the recorded board epoch/revision. A different workspace still requires explicit
+audience confirmation. Drawing content, images and board names are not copied
+into the task text.
+
+If the board changes before saving, the task draft is kept and saving is blocked.
+Review the board, then choose **Load latest board context (keeps draft)**. This
+updates the context and resets audience confirmation. If the result is unconfirmed,
+**Retry same task copy** recovers the original task and context even if colleagues
+have since added ink or restored the board.
+
+**View source reference** on the task shows its recorded context and the board's
+current context separately, then offers **Open source board**. That link opens the
+live board; it is not a saved image or historical rendering. Use the existing
+snapshot publishing flow when an immutable image copy is needed. Current task AND
+board access are required to inspect context. Later edits/restores do not rewrite
+the task reference. Board-only touch sessions cannot create or read task references.

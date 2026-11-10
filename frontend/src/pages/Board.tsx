@@ -4,6 +4,7 @@ import { API, BASE } from "../config";
 import { useWorkspaces } from "../workspaces";
 import { realtime } from "../realtime";
 import type { BoardOp, Workspace } from "../types";
+import { ConversationTask } from "../components/ConversationTask";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 import type { UploadedAsset } from "../uploads";
 
@@ -67,6 +68,9 @@ function hit(o: Obj, x: number, y: number, tol: number): boolean {
 export function Board({ ws, userId, panel = false, onActivity, maxUploadBytes = 20 * 1048576 }: { ws: Workspace; userId?: string; panel?: boolean; onActivity?: () => void; maxUploadBytes?: number }) {
   const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [taskContext,setTaskContext]=useState<{epoch:number;revision:number}|null>(null);
+  const taskFormRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(taskContext)taskFormRef.current?.scrollIntoView({block:'start'});},[taskContext]);
   const [ops, setOps] = useState<BoardOp[]>([]);
   const [base, setBase] = useState<Record<string, Obj> | null>(null);
   const [selection, setSelection] = useState<Region | null>(null);
@@ -361,7 +365,7 @@ export function Board({ ws, userId, panel = false, onActivity, maxUploadBytes = 
   const typed = [...objects.entries()].filter(([, o]) => o.alive && o.kind !== "stroke" && o.kind !== "image");
   const imageCount = [...objects.values()].filter((o) => o.alive && o.kind === "image").length;
 
-  return (
+  return (<>
     <section className={"whiteboard" + (panel ? " panel-board" : "")} aria-label={`Whiteboard for ${ws.name}`} onPointerDownCapture={() => onActivity?.()}>
       {pairing && (
         <div className="dialog card" role="dialog" aria-label="Touch panel code">
@@ -400,6 +404,7 @@ export function Board({ ws, userId, panel = false, onActivity, maxUploadBytes = 
         <button className="tool" onClick={fit}>Fit</button>
         <button className="tool" onClick={() => setShowList((v) => !v)} aria-expanded={showList}>List view</button>
         {!panel && ws.can_moderate && ws.can_write && <button className="tool" onClick={restore}>Restore…</button>}
+        {!panel && <button className="tool" disabled={state.current.revision===0||save==='Saving…'||save==='Reconnecting…'} title="Add research-plan content before creating a task reference" onClick={()=>setTaskContext({...state.current})}>Create task from board</button>}
         {!panel && <button className="tool" onClick={openOnPanel}>📺 Open on touch panel</button>}
         <span className={"save-state" + (save === "Saved" ? " ok" : "")} role="status">{save}</span>
         <span className="muted small">Epoch {epoch} · rev {state.current.revision} · {presence.length} here: {presence.map((p) => p.display_name).join(", ")}</span>
@@ -435,7 +440,8 @@ export function Board({ ws, userId, panel = false, onActivity, maxUploadBytes = 
         </div>
       )}
     </section>
-  );
+    {!panel && taskContext && <div ref={taskFormRef}><ConversationTask source={ws} kind="board" boardContext={taskContext} text="Research plan followup" close={()=>setTaskContext(null)} /></div>}
+  </>);
 }
 
 type Destination = { id: string; name: string; same_workspace: boolean };

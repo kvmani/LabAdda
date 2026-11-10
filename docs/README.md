@@ -7,6 +7,7 @@ Read this map first; follow the relevant path rather than loading every document
 | Current work and next stage | [Roadmap priority and latest ledger](../ROADMAP.md) | [Developer task map](development/README.md) |
 | Review collaboration screenshots | [Five-person capture guide](evidence/collaboration-review/README.md) | Research scenario, reproducible gallery and current feature limits |
 | Use to-do lists | [User guide](usage/tasks.md) | Personal vs workspace scope, saving and conflict recovery |
+| Research-plan board references | [Board reference guide](development/task-board-references.md) | Recorded context, live board links and source permissions |
 | Conversation to task | [Conversion guide](development/task-conversion.md) | Reviewed copies, destination audience and protected sources |
 | To-do lists / collaboration | [Task implementation guide](development/tasks.md) | S8 in [specifications](../SPECIFICATIONS.md), C1 in [API](API.md), T37–T42 in [testing](../TESTING.md) |
 | Start and verify a checkout | [Repository README](../README.md) | [Testing](../TESTING.md), scripts/verify.sh |

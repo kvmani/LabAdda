@@ -204,7 +204,8 @@ async function run(base) {
     await panel.getByRole("button", { name: "End session" }).waitFor();
     check(await seen(panel.getByText("Drawing as Ben Okafor")), `${tag}: panel opens the chosen board as the pairing user`);
     check(await panel.getByRole("button", { name: "📷 Publish snapshot" }).count() === 0 &&
-          await panel.getByRole("button", { name: "🖼 Image" }).count() === 0, `${tag}: panel hides publishing and file picker`);
+          await panel.getByRole("button", { name: "🖼 Image" }).count() === 0 &&
+          await panel.getByRole("button", { name: "Create task from board", exact: true }).count() === 0, `${tag}: panel hides publishing, file picker and task creation`);
     await panel.getByRole("status").filter({ hasText: "Saved" }).waitFor();
     const revBefore = await ben.page.evaluate(() => Number((document.querySelector(".toolbar")?.textContent ?? "").match(/rev (\d+)/)?.[1] ?? 0));
     const pbox = await panel.locator(".canvas").boundingBox();

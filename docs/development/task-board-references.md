@@ -38,8 +38,8 @@ return uniform404, not ObjectDeletedError. This also applies to post sources.
 Source purge clears its FK; stored tuple still blocks lossy downgrade. Ordinary
 list/task/history/My Tasks/events never include board context or topology.
 
-Backend/API are delivered; web paths describe the following slice until its
-browser evidence is recorded. Checks: focused board/conversation tests, real
+Backend/API and web controls are delivered; see the [qualification evidence](../evidence/task-board-references/README.md). Checks: focused board/conversation tests, real
 recovery, full verify, new browser suite and post/chat/board/panel regressions.
+Board-source storage bytes are not separately metered; no quota/retention changes.
 Per-object/region links, historical board viewing and cross-session personal task
 signals remain outside this slice. C4 communication follows C3 core delivery.

@@ -17,7 +17,7 @@ Backend and web controls are delivered. Qualification evidence is recorded in th
   remains, while protected retrieval returns404. Populated downgrade is refused.
 - `ConversationTask.tsx`: editable reviewed copy, current writable destinations,
   bounded list picker, explicit confirmation, frozen unknown-write retry.
-- `TaskSource.tsx`: lazy protected source body as text. Guard all currently readable
+- `TaskSource.tsx`: lazy protected source body as text, or protected recorded/current board context. Guard all currently readable
   workspace subscriptions before the first response; revoke/visibility changes
   invalidate in-flight bodies even when the source workspace is not yet known.
 - Chat and Noticeboard offer creation; Todos renders the source control only when
