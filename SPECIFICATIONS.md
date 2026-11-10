@@ -169,3 +169,24 @@ state remains authoritative. A new subscription/reconnect must signal possible
 missed changes. Preserve drafts until explicit review/replacement; do not silently
 adopt a new task revision for an unsaved assignment. Personal cross-session live
 updates and assignment notifications remain separate work.
+
+**CT-10 (C3 conversation-to-task).** Convert a readable top-level post or chat
+message into a task in an owner-private or currently writable shared list. The user
+reviews editable title/description and destination. Every different workspace
+requires explicit audience confirmation, even if audiences overlap; personal copies
+need no broader-audience confirmation. Never implicitly copy attachments, source
+names, authors or subsequent edits into a task. Task creation, initial history and
+one protected reference commit atomically with durable same-intent request identity.
+Replays require current source-read and destination-write authority; source edits/
+removal serialize with acceptance. Preserve C1 task fingerprints and field edits.
+
+A generic `has_source` flag is destination-visible provenance only, including after
+source removal; task/history payloads contain no protected source identifier, name
+or body. Resolve the reference through a separate endpoint requiring current task
+and source read access, rechecking before return. Missing, removed, purged and
+inaccessible sources return uniform404 without deleting the reviewed task copy.
+Source purge clears foreign keys, not tasks. Protect references against lossy
+schema downgrade and preserve them through recovery. Web uncertain writes freeze
+original intent/audience, and revoked scopes invalidate delayed source/create
+responses. This slice excludes reply conversion, board references and automatic
+assignment/reminders; those remain subsequent C3/C5 work.

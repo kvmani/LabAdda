@@ -536,6 +536,7 @@ class TodoTask(Base):
     done: Mapped[bool] = mapped_column(Boolean, nullable=False)
     assignee_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'))
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy='selectin')
+    source: Mapped[TodoSource | None] = relationship('TodoSource', uselist=False, lazy='selectin')
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default='todo')
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = _created()
@@ -578,3 +579,12 @@ class TodoComment(Base):
         UniqueConstraint('task_id','sequence',name='uq_todo_comment_sequence'),
         CheckConstraint('sequence > 0',name='ck_todo_comment_sequence'),
     )
+
+
+class TodoSource(Base):
+    """Protected reference, never a copied conversation or an access grant."""
+    __tablename__ = 'todo_sources'
+    task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_tasks.id'), primary_key=True)
+    post_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='SET NULL'))
+    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id', ondelete='SET NULL'))
+    __table_args__ = (CheckConstraint('post_id is null or chat_message_id is null', name='ck_todo_source_kind'),)

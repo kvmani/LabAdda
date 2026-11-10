@@ -153,3 +153,16 @@ visible-card and second-page draft preservation, unchanged editor revision,
 assignment review, explicit comment/My Tasks catch-up, a newer signal during a
 paused old HTTP snapshot, failed reads, offline-write reconnect, minimal payload,
 sibling denial and revocation clearing. Reset proxy fixtures between scripts.
+
+**T47 · CT-10, conversation conversion.** `test_task_conversion.py` covers posts/
+chat to personal/same-workspace/different-workspace lists; explicit confirmation;
+reviewed copy vs source metadata, replay binding and C1 identity compatibility;
+source/destination/panel denial; read-only source vs destination; removal/purge,
+atomic rollback and guarded downgrade; expiry before commit, final-read revocation
+and actual PostgreSQL blocked source-deletion races for shared/personal targets.
+Real recovery integration round-trips a protected post reference.
+
+`e2e/task-conversion.mjs` uses fresh disposable proxy fixtures and revokes Ben's
+source grant last. Cover root/prefix, editable copies, frozen lost-reply retry,
+actual audience confirmation/reset, source plain-text safety, private and sibling
+isolation, destination-list paging and delayed first-source-response revocation.

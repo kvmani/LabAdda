@@ -302,3 +302,29 @@ The hub's current delivery checks and panel whitelist apply.
 Signals can be missed, duplicated or reordered; clients must read authorized HTTP
 state rather than apply event deltas. Treat `subscribed` as a possible catch-up
 boundary. Personal lists have no socket invalidation in this slice.
+
+### C3 conversation-to-task
+
+`POST /todos/lists/{list_id}/from-conversation` accepts the C1 TaskCreate fields plus
+`source_kind` (`post` or `chat`), `source_id` (UUID) and strict boolean
+`confirm_audience` (default false). Posts must be readable, undeleted top-level
+posts; chats must be readable actual messages. Destination uses actual current
+list scope/write policy. Any different shared workspace requires confirmation
+(`422 audience_confirmation_required`); a personal destination is owner-only.
+Title/description are the user's reviewed copy, not server-expanded source text.
+
+Response201 uses the compatible task representation. `has_source` is a generic
+provenance boolean visible to task readers; it conveys no source IDs/names/body.
+Old task create fingerprints are unchanged. Conversion identity additionally binds
+source kind/ID, confirmation, destination and normalized task fields. Identical
+replay returns the same task after current-authority checks; changed intent or
+reuse across the old create endpoint returns409. New shared conversions emit the
+existing content-free task hint only after atomic task/history/reference commit.
+
+`GET /todos/lists/{list_id}/tasks/{task_id}/source` requires actual task/list access
+and independently current source read access. Success returns kind, source ID,
+workspace ID/name, current body and creation time. This explicit protected view
+never grants source access. No reference/missing/removed/purged/out-of-scope source
+uses uniform404. Task content/history never receives this protected payload.
+No panel access, attachment copying, edit synchronization or source permission
+changes. Source physical purge sets reference FKs null and retains the task copy.

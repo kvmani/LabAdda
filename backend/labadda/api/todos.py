@@ -112,7 +112,7 @@ def _list_json(row):
 
 
 def _task_json(row):
-    return {'id':str(row.id), 'list_id':str(row.list_id), 'title':row.title, 'description':row.description,
+    return {'id':str(row.id), 'has_source':row.source is not None, 'list_id':str(row.list_id), 'title':row.title, 'description':row.description,
             'due_date':row.due_date.isoformat() if row.due_date else None, 'priority':row.priority,
             'assignee':{'id':str(row.assignee.id),'display_name':row.assignee.display_name,'is_active':row.assignee.is_active} if row.assignee else None,
             'checklist':row.checklist, 'done':row.done, 'status':row.status, 'revision':row.revision, 'updated_at':iso(row.updated_at)}
@@ -185,17 +185,14 @@ def tasks(list_id: uuid.UUID, request: Request, after: uuid.UUID | None = None,
     return result
 
 
-@router.post('/lists/{list_id}/tasks', status_code=201)
-def create_task(list_id: uuid.UUID, body: TaskCreate, request: Request, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
-    user = _actor(request, actor, db, True)
-    task_list = _list(db, user, list_id, True)
-    fingerprint = _digest(body, list_id)
+def _create_task_row(db, user, list_id, body, fingerprint=None):
+    """Stage task/history atomically; callers authorize, lock and commit."""
+    fingerprint = fingerprint or _digest(body, list_id)
     row = db.scalar(select(TodoTask).where(TodoTask.created_by == user.id, TodoTask.client_id == body.client_id))
     if row:
         if row.create_digest != fingerprint:
             raise Conflict('request_reused', 'This request ID already names a different task.')
-        lock_identity(db, actor, get_settings(request))
-        return _task_json(row)
+        return row, False
     if db.scalar(select(func.count()).select_from(TodoTask).where(TodoTask.list_id == list_id)) >= 2000:
         raise Invalid('task_limit', 'This list already has 2,000 tasks.')
     values = body.model_dump(exclude={'checklist','status'})
@@ -207,6 +204,17 @@ def create_task(list_id: uuid.UUID, body: TaskCreate, request: Request, actor: A
     db.add(row)
     db.flush()
     task_history.record(db, row, user.id)
+    return row, True
+
+
+@router.post('/lists/{list_id}/tasks', status_code=201)
+def create_task(list_id: uuid.UUID, body: TaskCreate, request: Request, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+    user = _actor(request, actor, db, True)
+    task_list = _list(db, user, list_id, True)
+    row, created = _create_task_row(db, user, list_id, body)
+    if not created:
+        lock_identity(db, actor, get_settings(request))
+        return _task_json(row)
     lock_identity(db, actor, get_settings(request))
     db.commit()
     task_events.publish_changed(request, task_list.workspace_id)

@@ -74,3 +74,5 @@ a baseline explicitly marks unavailable earlier history. Do not auto-prune histo
 until its lifecycle contract exists. State/history and assignment/My Tasks APIs/web controls and [comments](task-comments.md) are delivered; shared update notices with reviewed HTTP refresh are implemented.
 
 See the [update guide](task-updates.md) before changing shared refresh or draft lifetime.
+
+For reviewed conversation copies and protected provenance, read the [conversion guide](task-conversion.md). Task source metadata must stay out of task/history representations except the generic provenance flag.
