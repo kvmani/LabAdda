@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {api} from '../api';
 import {realtime} from '../realtime';
+import {ChatFiles} from './ChatFiles';
 import {ChatComposer} from './ChatComposer';
 import {fmtTime} from '../format';
 import type {ChatMessage,Workspace} from '../types';
@@ -30,8 +31,8 @@ export function ChatThread({ws,rootId,close}:{ws:Workspace;rootId:string;close:(
    <button type="button" disabled={loading} onClick={()=>load()}>Refresh thread</button>
    {changed&&<p role="status">Discussion may have changed. Refresh the thread; your reply draft is kept.</p>}
    {loading&&<p role="status">Loading thread…</p>}{error&&<p role="alert">{error}</p>}
-   {page&&<><p className="preserve"><strong>{page.root.author?.display_name}</strong>: {page.root.body}</p>
-    {page.messages.length===0?<p>No replies yet.</p>:<ol>{page.messages.map(message=><li key={message.id}><strong>{message.author?.display_name}</strong> · {fmtTime(message.created_at)}<p className="preserve">{message.body}</p></li>)}</ol>}
+   {page&&<><p className="preserve"><strong>{page.root.author?.display_name}</strong>: {page.root.body}</p><ChatFiles files={page.root.attachments}/>
+    {page.messages.length===0?<p>No replies yet.</p>:<ol>{page.messages.map(message=><li key={message.id}><strong>{message.author?.display_name}</strong> · {fmtTime(message.created_at)}<p className="preserve">{message.body}</p><ChatFiles files={message.attachments}/></li>)}</ol>}
     {page.next_before&&<button type="button" disabled={loading} onClick={()=>load(page.next_before!)}>Older thread replies</button>}
    </>}
    <ChatComposer ws={ws} parentId={rootId} sent={()=>load()} denied={deny}/>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { ChatFiles } from "../components/ChatFiles";
 import { ChatComposer } from "../components/ChatComposer";
 import { ChatThread } from "../components/ChatThread";
 import { ConversationTask } from "../components/ConversationTask";
@@ -76,7 +77,7 @@ export function Chat({ws}:{ws:Workspace}) {
       <button type="button" className="ghost small" onClick={()=>setThread(message.parent_id??message.id)}>Open thread</button>
       <button type="button" className="ghost small" onClick={()=>setSummary(`Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`)} aria-label="Publish to noticeboard">Share to noticeboard</button>
       <button type="button" className="ghost small" onClick={()=>setTaskSource(message)}>Create task</button>
-      <p className="body">{message.body}</p>
+      <p className="body">{message.body}</p><ChatFiles files={message.attachments}/>
      </li>)}
     </ol>
     {error&&<p role="alert" className="error">{error}</p>}

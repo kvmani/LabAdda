@@ -44,3 +44,17 @@ chat sources so retained original/preview counts stay accurate. Existing upload
 reservation/receipt/preview validation and asset recovery are reused, not bypassed.
 Tests: test_chat_attachments plus upload/file/usage/recovery regressions. Web file
 controls and private conversation qualification follow in stage4.
+
+## Attachment and private-group web delivery
+
+ChatComposer uses the existing UploadQueue/UploadRecovery receipt controls. Pending
+uploads block send; unknown sends freeze original text/root/file IDs; no implicit
+re-upload or rebind. ChatFiles displays authorized links/previews in stream and
+thread. NewGroup's conversation mode selects one colleague and opens a private
+group chat; it freezes uncertain creation and refreshes group navigation rather
+than automatically retrying. Group membership remains explicit and mutable.
+Browser qualification: e2e/chat-attachments.mjs creates five synthetic users across
+two sibling sections/one division, a common plan group and a separate two-person
+file handoff. It verifies upload/send recovery, private file isolation, reply files,
+mobile/desktop axe, uncertain group creation and membership removal. Gallery/report
+are separate artifacts. No direct-message endpoint or implicit attachment sharing.

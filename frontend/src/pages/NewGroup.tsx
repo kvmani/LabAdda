@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useWorkspaces } from "../workspaces";
 import type { User } from "../types";
@@ -39,6 +39,9 @@ export function ColleaguePicker({ selected, onChange, exclude = [] }: { selected
 
 export function NewGroup() {
   const navigate = useNavigate();
+  const [params]=useSearchParams();const conversation=params.get('conversation')==='1';
+  const generation=useRef(0);useEffect(()=>()=>{++generation.current;},[]);
+  const [unknown,setUnknown]=useState(false);
   const { reload } = useWorkspaces();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -47,30 +50,34 @@ export function NewGroup() {
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
+    e.preventDefault();if(busy||unknown)return;
+    const token=++generation.current;setBusy(true);
     setError(null);
     try {
-      const ws = await api("/groups", { body: { name, description, member_ids: members.map((m) => m.id) } });
+      const ws = await api("/groups", { body: { name:name||`Conversation with ${members.map(m=>m.display_name).join(', ')}`.slice(0,120), description, member_ids: members.map((m) => m.id) } });
       await reload();
-      navigate(`/w/${ws.id}/noticeboard`);
+      if(token===generation.current)navigate(`/w/${ws.id}/${conversation?'chat':'noticeboard'}`);
     } catch (err: any) {
-      setError(err.message);
+      if(token===generation.current){setError(err.message);if(err.status===0||err.status>=500){setUnknown(true);reload();}}
     } finally {
-      setBusy(false);
+      if(token===generation.current)setBusy(false);
     }
   }
 
   return (
     <form className="card narrow" onSubmit={submit} aria-labelledby="new-group-title">
-      <h1 id="new-group-title">New collaborative group</h1>
+      <h1 id="new-group-title">{conversation?'Start a private conversation':'New collaborative group'}</h1>
+      {conversation&&<p>Choose one colleague. This creates a private group with the two of you and opens its chat. Membership can later be managed explicitly in that group.</p>}
+      <fieldset disabled={busy||unknown}>
       <p className="muted">A group gives you and chosen colleagues — from any section, division or project — a shared noticeboard, whiteboard and chat. It sits outside the organization tree: only members can see it, and nothing in it is visible to parent units or administrators.</p>
-      <label>Group name<input value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} placeholder="e.g. Microscopy Reading Club" /></label>
+      <label>Group name<input value={name} onChange={(e) => setName(e.target.value)} required={!conversation} maxLength={120} placeholder="e.g. Microscopy Reading Club" /></label>
       <label>Purpose (optional)<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={2000} /></label>
-      <ColleaguePicker selected={members} onChange={setMembers} />
+      <ColleaguePicker selected={members} onChange={users=>setMembers(conversation?users.slice(-1):users)} />
       <p className="muted small">You will be the group's steward. You can add or remove members and hand over stewardship later.</p>
+      </fieldset>
+      {unknown&&<p role="status">Creation may have succeeded. Check My groups before creating another; this form will not repeat an uncertain creation.</p>}
       {error && <p className="error" role="alert">{error}</p>}
-      <button type="submit" disabled={busy}>{busy ? "Creating…" : `Create group${members.length ? ` with ${members.length} colleague${members.length > 1 ? "s" : ""}` : ""}`}</button>
+      <button type="submit" disabled={busy||unknown||conversation&&members.length!==1}>{busy ? "Creating…" : `Create group${members.length ? ` with ${members.length} colleague${members.length > 1 ? "s" : ""}` : ""}`}</button>
     </form>
   );
 }

@@ -113,6 +113,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <h2 className="rail-heading">My groups</h2>
         <ul>{groups.map((w) => <RailItem key={w.id} ws={w} depth={0} current={w.id === currentId} />)}</ul>
         <Link to="/groups/new" className="rail-action">+ New group</Link>
+        <Link to="/groups/new?conversation=1" className="rail-action">+ Private conversation</Link>
       </nav>
       <main className="content" id="main" tabIndex={-1}>{children}</main>
     </div>
