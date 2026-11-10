@@ -41,3 +41,10 @@ LABADDA_RECOVERY_TESTS=1 scripts/verify.sh
 The configured disposable test role needs CREATEDB and PostgreSQL 16 clients on PATH. The recovery test seeds synthetic content in `LABADDA_TEST_DATABASE_URL`, creates a uniquely named empty target, dumps/restores real PostgreSQL and assets, verifies content and authorization through the application, and drops only its own target in cleanup. Never point the test suite at site state. Without `LABADDA_RECOVERY_TESTS=1`, that integration test is explicitly skipped; filesystem/configuration recovery tests still run. CI enables it and installs the required clients. CI execution itself must be confirmed from the CI service; a local pass is not a claim that hosted CI completed.
 
 Physical panel acceptance, a site TLS/service rehearsal, verified off-host backup transport, retention policy and pilot-owner approval remain separate gates.
+
+## Serialized operational wrapper
+
+The [operations guide](development/operations.md#managed-backup-and-upgrade-installed-sites)
+describes the default-plan-only lifecycle wrapper for service quiescence, consistent
+backup, upgrade sequencing and durable fail-closed journals. Restore remains the
+explicit isolated-target procedure above; the wrapper never rewinds live data.

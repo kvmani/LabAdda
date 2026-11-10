@@ -57,3 +57,77 @@ recovery CLI, then safe upgrade orchestration with fail-closed maintenance. Neve
 infer that a local digest proves publisher identity or that a successful backup
 proves recovery/off-host durability. Restore remains isolated and never changes
 traffic. Dedicated simulation orchestration follows the collaboration test map.
+
+## Managed backup and upgrade (installed sites)
+
+`scripts/lifecycle.py` wraps the existing trusted release/recovery protocols.
+It supports **installed-site** backups/upgrades, not initial database provisioning.
+Run it from a verified operator-owned tool directory, with system-service privileges
+and PostgreSQL16 clients in `/usr/bin`. No shell is evaluated. It accepts a strict
+unquoted environment-file subset: unique allowlisted `LABADDA_*=value` lines,
+no whitespace, quotes or backslashes; URL-encode database credential punctuation.
+The file must be operator/root-owned mode0600 or stricter. Values must match the
+site's instance, prefix, private assets, current frontend, unique cookie and HTTPS
+origin. The subprocess environment excludes ambient Python, pip, PostgreSQL and
+loader selectors. The exact libpq TLS allowlist is `PGSSLMODE=verify-full`, `PGSSLROOTCERT`
+and optionally paired `PGSSLCERT`/`PGSSLKEY` absolute paths. No ambient connection
+selectors are retained. Install certificates where both the runtime and operator
+can read them; keep client keys private.
+
+Provision the layout from `plan.json` first. Every ancestor, installed release,
+venv, tool and configuration file must be controlled by the trusted operator,
+not writable by the runtime account; root runs must not execute untrusted code.
+Only the assets directory is runtime-writable. This is a host prerequisite, not a
+claim that the tool can safely run in an attacker-owned filesystem tree.
+
+```sh
+# Install/verify the candidate first using release.py and its independently trusted digest.
+# Preview: reads configuration and verifies installed payloads; does not stop anything.
+python3 scripts/lifecycle.py --site /etc/labadda/site.json upgrade \
+  --expected-current previous --expected-schema 0025 --candidate candidate
+# After review, schedule downtime and stop every external CLI/worker writer:
+python3 scripts/lifecycle.py --site /etc/labadda/site.json upgrade \
+  --expected-current previous --expected-schema 0025 --candidate candidate \
+  --apply --external-writers-stopped
+# Backup only: leaves maintenance ON and service STOPPED after success.
+python3 scripts/lifecycle.py --site /etc/labadda/site.json backup \
+  --expected-current candidate --expected-schema 0025 --apply --external-writers-stopped
+```
+
+The nonblocking instance lock serializes invocations. Private fsynced JSONL journals
+in `<root>/operations` record phase, release/schema and backup manifest digest,
+never credentials/content or raw subprocess errors. The operator must separately
+retain trusted digests and transfer backups off host using approved encrypted
+storage with verification; local backup success does not prove off-host durability.
+
+Apply rejects changed current code/schema or existing maintenance. It publishes a
+durable marker, stops the system service, verifies `MainPID=0` and inactive/failed,
+then creates a consistent verified backup through the active release's CLI. The
+external-writer flag is an operator attestation, not process discovery. Upgrade
+then runs candidate migrations, observes schema, validates/switches code atomically,
+starts the service, polls loopback readiness (60-second window plus at most
+20 seconds for the final bounded probe), removes maintenance and probes HTTPS. The TLS
+probe uses the OS trust store: install the site CA there first. There is necessarily
+a short open-traffic interval for the final external probe; a failure immediately
+reinstates maintenance. These probes do not replace authenticated acceptance.
+
+Any failed/interrupted command retains maintenance; command deadlines terminate
+its child process group. A host/process crash can leave an incomplete last phase:
+inspect the journal and live schema/pointer before doing anything. Do not replay
+migrations or infer rollback safety from a missing completion record. No automatic
+schema downgrade, data rewind, backup deletion or failure resume is implemented.
+
+After a successful backup-only operation, verify the journal/backup, start the
+service (`systemctl start labadda-<instance>`), run `probe --direct`, remove the
+maintenance marker, then run the TLS probe. If anything is unconfirmed, retain or
+reinstate the marker. For failed upgrades use [recovery](../RECOVERY.md): same-schema
+code rollback requires actual observed-schema proof; otherwise restore into a
+new isolated target with a separately trusted manifest digest. Never restore over
+the live database. Initial deployment still follows [deployment](../DEPLOYMENT.md)
+and `release.py`: create dedicated empty DB/assets, migrate exactly once while
+isolated, preflight, switch, start and qualify before opening traffic.
+
+Tests `backend/tests/test_lifecycle.py` inject failures at stop, stopped-state,
+backup, migration and both probes, test lock contention, private configuration,
+stale plans, redaction and subprocess deadlines. Real systemd boot, persistence,
+permissions, site TLS, off-host transfer and full DR timing remain site gates.
