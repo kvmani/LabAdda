@@ -21,5 +21,5 @@ Deployment needs installed system tzdata; Asia/Kolkata is supported for local re
 Date-only tasks compare against this advertised calendar, not a browser UTC cast.
 
 Checks: test_dashboard, assignment/group regressions and e2e/dashboard.mjs. Dashboard
-has no new migration. User alert preferences are the following C5 slice. Physical/
+has no new migration. Owner alert preferences are delivered; see the [preference guide](alert-preferences.md). Physical/
 representative-site/manual accessibility acceptance remains separate.

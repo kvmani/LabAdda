@@ -600,3 +600,14 @@ class TodoSource(Base):
         CheckConstraint('num_nonnulls(post_id, chat_message_id, board_workspace_id) <= 1', name='ck_todo_source_kind'),
         CheckConstraint('(board_epoch is null) = (board_revision is null) and (board_epoch is null or (board_epoch > 0 and board_revision >= 0)) and (board_workspace_id is null or board_epoch is not null) and ((post_id is null and chat_message_id is null) or board_epoch is null)', name='ck_todo_source_board'),
     )
+
+
+class NotificationPreference(Base):
+    """Owner alert choices; absence means the compatible all-enabled default."""
+    __tablename__='notification_preferences'
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True),ForeignKey('users.id'),primary_key=True)
+    mentions: Mapped[bool] = mapped_column(Boolean,nullable=False)
+    official_notices: Mapped[bool] = mapped_column(Boolean,nullable=False)
+    reminders: Mapped[bool] = mapped_column(Boolean,nullable=False)
+    revision: Mapped[int] = mapped_column(Integer,nullable=False)
+    __table_args__=(CheckConstraint('revision > 0',name='ck_notification_preference_revision'),)

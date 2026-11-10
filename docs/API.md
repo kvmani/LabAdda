@@ -397,3 +397,15 @@ final grant changes filter data, suppress shared more flags and set restart_requ
 Includes today/timezone/observed_at. Calendar date follows valid configured
 LABADDA_TIMEZONE. Administrators get only their own/current-source content; panels
 are refused. Notification open still uses its existing current-source API.
+
+### C5 owner alert preferences
+
+`GET /notification-preferences` returns mentions, official_notices, reminders and
+revision for the current owner only; absent storage means all true, revision0.
+`PUT` accepts exactly these fields with strict booleans and expected revision.
+A current identity lock serializes saves, stale revisions return409 and a successful
+save increments revision. No target-user field or administrator override exists.
+Panels/unsafe requests without CSRF are refused. New queued mention/official/
+reminder occurrences follow the recipient's choices. Previously queued alerts
+remain visible; re-enabling never replays consumed muted reminder occurrences.
+This does not add task assignment/due reminders or change source permissions.

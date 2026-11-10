@@ -209,3 +209,13 @@ boundaries/invalid timezone startup. `e2e/dashboard.mjs` covers root/prefix owne
 views, calendar tags, mentions/unread, sibling exclusion, failure versus zero,
 held HTTP response across source-only revocation, personal survival and desktop/
 mobile WCAG2.1 A/AA plus overflow. This is bounded owner content, not admin analytics.
+
+**T52 · CT-15, alert preferences.** `test_alert_preferences.py` covers compatible
+defaults, owner isolation, strict fields/CSRF/panel denial, optimistic/concurrent
+saves, recipient normalization/category filtering, retained existing history,
+expiry rollback, populated downgrade and skipped scheduled occurrence consumption.
+Recovery round-trips choices. `e2e/alert-preferences.mjs` covers root/prefix unknown
+save recovery, two-tab conflicts/draft retention, actual mute/resume semantics,
+colleague independence, desktop/mobile WCAG2.1 A/AA/overflow and mobile My day/
+private-conversation navigation. Final C4/C5 qualification also reruns earlier
+chat/board/panel/task/conversion/live suites on freshly reset disposable fixtures.

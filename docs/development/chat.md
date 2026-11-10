@@ -4,7 +4,7 @@ Read S3/S8 and the latest roadmap ledger. C4 work proceeds as APIs, threaded web
 attachment APIs, attachment/private-group web qualification; C5 dashboard/settings
 follow. Keep each slice runnable and update this guide with its source/test contract.
 
-Current baseline: workspace stream with durable client IDs, per-workspace unread
+C4 software core is delivered. Current stream: workspace stream with durable client IDs, per-workspace unread
 state, socket delivery and HTTP replay. Groups use the same source policy. Parent
 membership and administrator roles never grant access to private groups or siblings.
 Board-only sessions never receive chat. No implicit broader sharing of attachments.
@@ -18,7 +18,7 @@ NO KEY UPDATE before allocation so lower sequences cannot commit later. Read
 receipts lock current read scope and identity before commit. No source access is
 created by parent IDs. Never advance browser catch-up solely from live message max.
 Backend tests: test_chat_threads, existing test_chat_board/test_realtime and recovery.
-Web threads and attachments are following slices, not delivered by this API stage.
+This API slice is consumed by the delivered thread and attachment controls below.
 
 ## Thread web controls
 
@@ -42,8 +42,7 @@ prefix for URLs. files.py checks the actual chat source before desktop delivery;
 board-only panels still see only own-board embedded images. workspace_usage.py joins
 chat sources so retained original/preview counts stay accurate. Existing upload
 reservation/receipt/preview validation and asset recovery are reused, not bypassed.
-Tests: test_chat_attachments plus upload/file/usage/recovery regressions. Web file
-controls and private conversation qualification follow in stage4.
+Tests: test_chat_attachments plus upload/file/usage/recovery regressions. Delivered web file controls and private conversation qualification are described below.
 
 ## Attachment and private-group web delivery
 

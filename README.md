@@ -6,6 +6,8 @@ LabAdda is a browser-based collaboration workspace for research teams on an air-
 
 Users can also create **collaborative groups** with chosen colleagues from any unit. A group has the same noticeboard, whiteboard and chat as a section, without hierarchy.
 
+Chat supports **threads and validated file attachments**, including private-group conversations. Personal/shared to-do lists include assignment, workflow and discussion; posts/chat and board context can become reviewed tasks. **My day** combines current-access work, private deadlines, mentions and unread conversations; **Alert preferences** controls your in-app categories. See [chat usage](docs/usage/chat.md), [tasks](docs/usage/tasks.md) and [My day](docs/usage/dashboard.md).
+
 Each readable workspace has a **Storage** tab with shared file and logical-content observations. It covers that workspace's content only; personal notes and parent/child totals are separate. These partial counters do not activate workspace quotas or retention.
 
 Administrators can save observation-only site capacity proposals and preview asset-budget/reserve scenarios. Previews show incomplete measurements and upper bounds; saving or previewing does not activate limits. See [API and current boundaries](docs/API.md#p51-site-capacity-proposals-and-previews).
@@ -30,7 +32,7 @@ The product display name and GitHub repository slug are both **LabAdda**. Use lo
 
 ## Run locally (development, fictional data)
 
-Prerequisites: Ubuntu 24.04, Python 3.12, PostgreSQL 16, Node 22 (build-time only), nginx (only for proxy tests).
+Prerequisites: Ubuntu 24.04, Python 3.12, PostgreSQL 16, Node 22 (build-time only), system IANA tzdata, nginx (only for proxy tests).
 
 ```bash
 # 1. Disposable databases (development only)

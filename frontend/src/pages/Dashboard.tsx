@@ -35,7 +35,7 @@ export function Dashboard(){
  }
  return <section className="daily-dashboard"><h1>My day</h1>
   <p>Your personal work and currently accessible shared assignments, reminders and conversations.</p>
-  <button type="button" disabled={loading} onClick={load}>Refresh My day</button>
+  <button type="button" disabled={loading} onClick={load}>Refresh My day</button> <Link to="/preferences">Manage alert preferences</Link>
   {changed&&<p className="notice" role="status">Activity may have changed. Refresh My day to review current work.</p>}
   {loading&&<p role="status">Loading My day…</p>}{error&&<p role="alert" className="error">{error}</p>}
   {data&&<>

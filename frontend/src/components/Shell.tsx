@@ -42,6 +42,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const [operations, setOperations] = useState(false);
   const [unread, setUnread] = useState(0);
   const currentId = location.pathname.match(/^\/w\/([^/]+)/)?.[1];
+  const pageSelections:Record<string,string>={"/today":"today","/preferences":"preferences","/notes":"notes","/usage":"usage","/operations":"operations","/groups/new":location.search.includes("conversation=1")?"private_conversation":"new_group"};
+
 
   useEffect(() => {
     let live = true;
@@ -80,12 +82,15 @@ export function Shell({ children }: { children: ReactNode }) {
         {INSTANCE !== "pilot" && <span className="tag instance">{INSTANCE}</span>}
         <label className="switcher">
           <span className="sr-only">Switch workspace</span>
-          <select value={currentId ?? ""} onChange={(e) => e.target.value && navigate(["notes", "usage", "operations", "today"].includes(e.target.value) ? `/${e.target.value}` : `/w/${e.target.value}/noticeboard`)}>
+          <select aria-label="Switch workspace" value={currentId??pageSelections[location.pathname]??""} onChange={e=>{const value=e.target.value;if(!value)return;const destinations:Record<string,string>={notes:"/notes",usage:"/usage",operations:"/operations",today:"/today",preferences:"/preferences",new_group:"/groups/new",private_conversation:"/groups/new?conversation=1"};navigate(destinations[value]??`/w/${value}/noticeboard`);}}>
             <option value="">Choose workspace…</option>
             {tree.map(({ ws, depth }) => <option key={ws.id} value={ws.id}>{"· ".repeat(depth) + ws.name}</option>)}
             {projects.map((w) => <option key={w.id} value={w.id}>Project: {w.name}</option>)}
             {groups.map((w) => <option key={w.id} value={w.id}>Group: {w.name}</option>)}
             <option value="today">My day</option>
+            <option value="preferences">Alert preferences</option>
+            <option value="private_conversation">Private conversation</option>
+            <option value="new_group">New group</option>
             <option value="notes">My Notes</option>
             <option value="usage">My storage usage</option>
             {operations && <option value="operations">Operational observations</option>}
@@ -104,6 +109,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {operations && <NavLink to="/operations" className="rail-link">Operational observations</NavLink>}
         <NavLink to="/usage" className={({ isActive }) => "rail-link" + (isActive ? " active" : "")}>My storage usage</NavLink>
         <NavLink to="/today" className="rail-link">My day</NavLink>
+        <NavLink to="/preferences" className="rail-link">Alert preferences</NavLink>
         <NavLink to="/my-tasks" className="rail-link">My Tasks</NavLink>
         <NavLink to="/todos" className="rail-link">My To-do Lists <span className="muted small">private</span></NavLink>
         <NavLink to="/notes" className={({ isActive }) => "rail-link notes-link" + (isActive ? " active" : "")}>My Notes <span className="muted small">private</span></NavLink>

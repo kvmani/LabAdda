@@ -16,14 +16,13 @@ site/device/manual acceptance gates continue to apply.
 | C4 · Colleague communication | Chat threads/replies, validated chat attachments and private conversations built on private groups | Attachment recovery, private isolation and realistic cross-section workflows |
 | C5 · Daily dashboard and qualification | Assigned tasks/deadlines/mentions/unread views, configurable notification/reminder controls; keyboard/mobile/touch polish | Five-user sibling-section/division scenario, screenshots/fixtures, accessibility/load and required independent review |
 
-Current collaboration checkpoint: C1 lists and C2 workflow/history, assignment,
-My Tasks, immutable discussion and shared live update notices are delivered.
-Shared notices use explicit reviewed HTTP refresh; personal cross-session live
-updates and notifications remain separate work. C3 core is delivered: post/chat task copies, protected source views and research-
-plan board references with recorded revision context. C4 software core is delivered: threaded chat, validated attachments and private-
-group conversations. Next: C5 daily dashboard and owner notification/reminder
-preferences. Site/device/manual qualification remains open;
-consult the latest ledger for evidence and limits.
+Current collaboration checkpoint: C1–C4 software core is delivered. C5 My day,
+owner alert preferences, mobile navigation and local automated qualification are
+also delivered. Personal cross-session task updates and automatic assignment/
+deadline alerts remain optional enhancements. Next: representative-site TLS/
+long-workload rehearsal, manual screen-reader/visual and physical-panel acceptance;
+these gates are not closed by local test evidence. Archive expansion stays deferred.
+Consult the latest ledger for exact evidence and limits.
 
 ## Current checkpoint
 
@@ -184,3 +183,5 @@ acceptance gates remain explicit. Archive expansion remains deferred.
 | C4 stage4 · Chat files and private-group conversations · verified | ChatComposer reuses bounded upload receipt/check/retry; unresolved uploads block send and unknown sends freeze text/root/file IDs. Links/previews render in stream/thread. Private conversation shortcut creates a two-person group; uncertain group creation blocks duplicate retry and refreshes group navigation.38 five-researcher attachment/private checks plus26 final thread checks passed at root/prefix, desktop/mobile axe/overflow, including upload/send recovery, four-outside-file denial and member removal. Six screenshots/gallery captured.505 backend/recovery/drift and31 frontend/typecheck/build at API boundary; source/UI review found no remaining blocker. [Evidence](docs/evidence/c4/README.md). | C4 software core delivered. Private groups remain explicitly mutable; no separate DM API, cross-audience file copying or persistent browser drafts. Site/device/manual gates remain. | C5 stage5: current-access daily dashboard; stage6: owner notification/reminder preferences and final qualification. |
 
 | C5 stage5 · My day owner dashboard · verified | Bounded active personal/shared-assigned work ordered by due/priority, private dated notes, current-source updates and unread conversations. Final source rechecks drop revoked content and suppress stale shared pagination. Site-calendar dates and startup IANA validation; failed reads show unavailable, not zero.34 dashboard/assignment/group checks and24 root/prefix desktop/mobile browser checks passed, including held response after source grant loss. Typecheck/build and independent API/UI review passed. [Guide](docs/development/dashboard.md). | Current owner overview, not admin/site analytics. Bounded windows are labeled. Alert settings and final qualification follow; physical/site/manual gates remain. | C5 stage6: owner notification/reminder preferences, final regressions and preserved-demo qualification. |
+
+| C5 stage6 · Owner alert controls and final local qualification · verified | Schema0025 owner-only revisioned mention/official/reminder choices; compatible enabled defaults, strict fields/current identity, conflict/uncertain reload and scheduler skipped-occurrence consumption. Current preferences recover with content. Desktop/mobile navigation exposes My day, preferences and private conversations. Full519 backend/recovery/drift,31 frontend/typecheck/build and369 browser checks passed. Independent review found no remaining blocker. Bounded TLS30-client/2-workspace/90-second workload passed:1646 board ops,144 chats,26850 expected deliveries, zero missing/lost/duplicate/isolation errors; update/list p95 61.3/98.4ms. Preserved demos ready on0025 with checked counts unchanged. Ten review screenshots/gallery/ZIP captured. [Evidence](docs/evidence/c5/README.md). | C4 software core and C5 feature/local qualification delivered, not real-site acceptance. Physical panel, representative-site/long workload, manual accessibility gates remain. Task automatic alerts and personal cross-session updates are optional extensions; archives remain deferred. | Carry out representative-site/manual/device acceptance with the owner; keep future collaboration enhancements explicitly scoped before starting a new macro phase. |

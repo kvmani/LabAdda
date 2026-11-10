@@ -242,3 +242,15 @@ reads honestly, not false zero totals. Date-only deadlines use the advertised si
 calendar timezone; validate its IANA zone at configuration load. Browser generations
 must prevent delayed responses restoring revoked content; live activity signals
 prompt refresh without silently claiming a complete site-wide inventory.
+
+**CT-15 (C5 owner alert preferences).** Provide owner-only revisioned controls for
+mention, official-notice and scheduled note/post reminder alerts. Missing choices
+retain compatible all-enabled defaults. Strict booleans, current identity and
+optimistic revisions prevent spoofing/stale overwrites; uncertain/conflicted saves
+require explicit current-state reload while retaining the draft. Apply choices
+when an occurrence is processed for queuing. Existing alerts remain available and
+muted reminder occurrences are consumed rather than replayed when re-enabled.
+Choices never change content grants or mandatory server admission controls. Preserve
+preferences through recovery and refuse lossy populated downgrade. Dashboard and
+preferences must be reachable through desktop/mobile navigation; automated checks
+supplement, not replace, required physical/site/manual acceptance.

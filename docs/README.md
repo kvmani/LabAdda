@@ -18,10 +18,11 @@ Read this map first; follow the relevant path rather than loading every document
 | Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |
 | Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
 
-Current priority: C1–C5 collaboration. C1 personal/shared lists and the first C2 workflow/history slice are delivered.
-C2 assignment and My Tasks are delivered; task comments and shared live update notices are delivered; personal cross-session updates remain pending. Further archive/export/inventory
-expansion is deferred. C3 core and C4 communication software are delivered; C5
-dashboard/preferences follow. Existing P4 site/device/manual acceptance gates remain open.
+Current priority: collaboration qualification. C1–C4 software core and C5 My day/
+owner alert preferences are delivered and locally tested. Personal cross-session
+task updates and automatic assignment/deadline alerts remain optional extensions.
+Further archive/export/inventory expansion is deferred. Representative-site,
+physical-device and manual acceptance gates remain open.
 
 Specifications describe required behaviour; feature guides describe implementation;
 the roadmap's latest ledger entries record delivered evidence and outstanding work.

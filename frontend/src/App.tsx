@@ -12,6 +12,7 @@ import { Operations } from "./pages/Operations";
 import { Usage } from "./pages/Usage";
 import { Admin } from "./pages/Admin";
 
+import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
 
 function Home() {
@@ -51,6 +52,7 @@ export function App() {
           <Route path="/activate" element={<Navigate to="/" replace />} />
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
+          <Route path="/preferences" element={<AlertPreferences />} />
           <Route path="/today" element={<Dashboard />} />
           <Route path="/my-tasks" element={<MyTasks />} />
           <Route path="/todos" element={<Todos />} />

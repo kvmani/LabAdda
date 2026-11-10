@@ -103,7 +103,7 @@ read both the task and the original conversation can open its current text.
 Someone who can read a reviewed division task may still be unable to open its
 section-only source. Missing/removed/inaccessible sources show the same unavailable
 message; the reviewed task stays available under its own list permissions. Source
-text is displayed as plain text. Reply conversion is a later slice; board references are described below.
+text is displayed as plain text. Chat thread replies also appear in the stream and can use Create task. Noticeboard reply conversion remains a later extension; board references are described below.
 
 ## Research-plan tasks from a whiteboard
 

@@ -87,6 +87,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
         'source_workspace_id':workspace,'source_epoch':board_context['epoch'],'source_revision':board_context['revision']})
     assert board_task.status_code==201
     board_source_path=f"/todos/lists/{todo['id']}/tasks/{board_task.json()['id']}/source"
+    assert ben.put('/notification-preferences',json={'revision':0,'mentions':True,'official_notices':True,'reminders':False}).status_code==200
     bundle = tmp_path / 'backup'
     sha = backup(settings.database_url, settings.asset_dir, bundle, 'synthetic-release', writers_quiesced=True)
     target_name = 'labadda_restore_test_' + uuid.uuid4().hex
@@ -123,6 +124,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             assert api.get(source_path).json()['body'] == 'Recovery post'
             assert api.get(board_source_path).json()['revision']==board_context['revision']
             assert api.get('/files/'+chat_asset['id']).content==pdf
+            assert api.get('/notification-preferences').json()['reminders'] is False
             assert api.get(f"/workspaces/{workspace}/chat/{recovery_chat.json()['id']}/replies").json()['messages'][0]['body']=='Recovery threaded reply'
             assert recovered_tasks[0]['checklist'][0]['done'] is True
             recovered_history=api.get(f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/history").json()['items']
