@@ -189,3 +189,8 @@ legacy stream pagination, changed retry intent, expiry/rollback, protected downg
 and two-author commit ordering. Recovery integration round-trips a reply. Existing
 chat/board/realtime tests remain required. Browser stage follows with live hints,
 reconnect, frozen reply retry, draft preservation and revoked-response races.
+
+T49 web evidence: e2e/chat-threads.mjs covers retained drafts, lost-reply recovery,
+root/prefix desktop/mobile accessibility, held older-page vs latest-view race,
+new-message notice while viewing old history, held old HTTP snapshot across
+reconnect/offline write, and revocation clearing stream/thread/composer.

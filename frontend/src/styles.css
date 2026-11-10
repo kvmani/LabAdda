@@ -185,3 +185,6 @@ main:focus-visible { outline: 3px solid #f59e0b; outline-offset: -3px; }
 .feed { min-width: 0; }
 .composer .inline { max-width: 100%; }
 .composer .inline input, .reply-form input { min-width: 0; }
+
+.chat-thread { min-width: 0; }
+.chat-thread input, .chat input { min-width: 0; }

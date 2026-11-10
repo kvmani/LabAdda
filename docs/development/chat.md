@@ -19,3 +19,15 @@ receipts lock current read scope and identity before commit. No source access is
 created by parent IDs. Never advance browser catch-up solely from live message max.
 Backend tests: test_chat_threads, existing test_chat_board/test_realtime and recovery.
 Web threads and attachments are following slices, not delivered by this API stage.
+
+## Thread web controls
+
+Chat.tsx keeps a safe HTTP cursor separate from live display, queues reconnect
+catch-up behind active requests and acknowledges only authorized HTTP snapshots.
+The bounded earlier-history view pauses live replacement until Return to latest;
+view generations reject late older pages. ChatThread.tsx pages/reloads one root and
+retains ChatComposer state. ChatComposer freezes unknown text/parent identity for
+explicit same-request recovery. Scope generations and socket denial clear all
+protected streams, threads, dialogs and composers. Browser: e2e/chat-threads.mjs,
+including held-response reconnect/older-page races and desktop/mobile axe checks.
+Attachments/private-group qualification are following slices.

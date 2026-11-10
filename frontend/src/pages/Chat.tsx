@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { ChatComposer } from "../components/ChatComposer";
+import { ChatThread } from "../components/ChatThread";
 import { ConversationTask } from "../components/ConversationTask";
 import { api, newId } from "../api";
 import { fmtTime } from "../format";
@@ -6,122 +8,85 @@ import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import type { ChatMessage, Workspace } from "../types";
 
-type Pending = { client_id: string; body: string; failed?: boolean };
-
-export function Chat({ ws }: { ws: Workspace }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [pending, setPending] = useState<Pending[]>([]);
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [taskSource,setTaskSource]=useState<ChatMessage|null>(null);
-  const lastSeq = useRef(0);
-  const listRef = useRef<HTMLOListElement>(null);
-  const { reload } = useWorkspaces();
-
-  const merge = useCallback((incoming: ChatMessage[]) => {
-    setMessages((prev) => {
-      const seen = new Map(prev.map((m) => [m.seq, m]));
-      incoming.forEach((m) => seen.set(m.seq, m));
-      const all = [...seen.values()].sort((a, b) => a.seq - b.seq);
-      lastSeq.current = all.length ? all[all.length - 1].seq : lastSeq.current;
-      return all;
-    });
-    setPending((p) => p.filter((x) => !incoming.some((m) => m.client_id === x.client_id)));
-  }, []);
-
-  const catchUp = useCallback(async () => {
-    try {
-      const r = await api(`/workspaces/${ws.id}/chat`, { params: lastSeq.current ? { after: lastSeq.current, limit: 200 } : { limit: 50 } });
-      if (!lastSeq.current) setHasMore(r.has_more);
-      merge(r.messages);
-      if (lastSeq.current) {
-        await api(`/workspaces/${ws.id}/chat/read`, { body: { seq: lastSeq.current } });
-        reload();
-      }
-      setError(null);
-    } catch (e: any) {
-      setError(e.message);
-    }
-  }, [ws.id, merge, reload]);
-
-  useEffect(() => {
-    catchUp();
-    return realtime.subscribe(ws.id, (ev) => {
-      if (ev.type === "chat.message") {
-        merge([ev.message]);
-        api(`/workspaces/${ws.id}/chat/read`, { body: { seq: ev.message.seq } }).catch(() => undefined);
-      }
-      if (ev.type === "subscribed") catchUp(); // replay anything missed while disconnected
-    });
-  }, [ws.id, catchUp, merge]);
-
-  useEffect(() => {
-    listRef.current?.lastElementChild?.scrollIntoView({ block: "end" });
-  }, [messages.length, pending.length]);
-
-  async function send(p: Pending) {
-    setPending((prev) => [...prev.filter((x) => x.client_id !== p.client_id), { ...p, failed: false }]);
-    try {
-      const m = await api<ChatMessage>(`/workspaces/${ws.id}/chat`, { body: { body: p.body, client_id: p.client_id } });
-      merge([m]);
-    } catch (e: any) {
-      setError(e.message);
-      setPending((prev) => prev.map((x) => (x.client_id === p.client_id ? { ...x, failed: true } : x)));
-    }
-  }
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    send({ client_id: newId("m"), body: text });
-    setText("");
-  }
-
-  async function older() {
-    const first = messages[0];
-    if (!first) return;
-    const r = await api(`/workspaces/${ws.id}/chat`, { params: { before: first.seq } });
-    setHasMore(r.has_more);
-    merge(r.messages);
-  }
-
-  return (
-    <section className="chat card" aria-label={`Chat in ${ws.name}`}>
-      {hasMore && <button className="ghost small" onClick={older}>Load earlier messages</button>}
-      <ol className="messages" ref={listRef} aria-live="polite">
-        {messages.length === 0 && pending.length === 0 && <li className="muted">No messages yet.</li>}
-        {messages.map((m) => (
-          <li key={m.seq}>
-            <strong>{m.author?.display_name}</strong> <span className="muted small">{fmtTime(m.created_at)}</span>
-            <button className="ghost small" onClick={() => setSummary(`Chat summary from ${ws.name}:\n> ${m.author?.display_name}: ${m.body}`)} aria-label="Publish to noticeboard">Share to noticeboard</button>
-            <button type="button" className="ghost small" onClick={()=>setTaskSource(m)}>Create task</button>
-            <p className="body">{m.body}</p>
-          </li>
-        ))}
-        {pending.map((p) => (
-          <li key={p.client_id} className="pending">
-            <span className="muted small">{p.failed ? "Not sent" : "Sending…"}</span>
-            <p className="body">{p.body}</p>
-            {p.failed && <button className="small" onClick={() => send(p)}>Retry</button>}
-          </li>
-        ))}
-      </ol>
-      {error && <p className="error" role="alert">{error}</p>}
-      {ws.can_write ? (
-        <form className="row" onSubmit={submit}>
-          <label className="sr-only" htmlFor="chat-input">Message {ws.name}</label>
-          <input id="chat-input" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Message ${ws.name}`} maxLength={4000} autoComplete="off" />
-          <button type="submit">Send</button>
-        </form>
-      ) : (
-        <p className="notice">Chat is read-only here.</p>
-      )}
-      {taskSource && <ConversationTask key={taskSource.id} source={ws} kind="chat" sourceId={taskSource.id} text={taskSource.body} close={()=>setTaskSource(null)} />}
-      {summary !== null && <PublishSummary source={ws} text={summary} onClose={() => setSummary(null)} />}
-    </section>
-  );
+export function Chat({ws}:{ws:Workspace}) {
+ const [messages,setMessages]=useState<ChatMessage[]>([]),[hasMore,setHasMore]=useState(false),[moreNew,setMoreNew]=useState(false);
+ const [earlier,setEarlier]=useState(false);
+ const historyMode=useRef(false),resetLatest=useRef(false),viewGeneration=useRef(0);
+ const [error,setError]=useState(''),[blocked,setBlocked]=useState(false),[summary,setSummary]=useState<string|null>(null),[taskSource,setTaskSource]=useState<ChatMessage|null>(null),[thread,setThread]=useState<string|null>(null);
+ const safeCursor=useRef(0),generation=useRef(0),catching=useRef(false),queued=useRef(false),refreshTimer=useRef<number|undefined>(undefined),listRef=useRef<HTMLOListElement>(null);
+ const {reload}=useWorkspaces();
+ function deny(){++generation.current;setBlocked(true);setMessages([]);setHasMore(false);setMoreNew(false);setSummary(null);setTaskSource(null);setThread(null);}
+ const merge=useCallback((incoming:ChatMessage[],older=false)=>setMessages(previous=>{
+  const byId=new Map(previous.map(m=>[m.id,m]));incoming.forEach(m=>byId.set(m.id,m));
+  const all=[...byId.values()].sort((a,b)=>a.seq-b.seq);
+  return older?all.slice(0,500):all.slice(-500);
+ }),[]);
+ const catchUp=useCallback(async()=>{
+  if(catching.current){queued.current=true;return;}catching.current=true;
+  if(resetLatest.current){resetLatest.current=false;safeCursor.current=0;setMessages([]);}
+  const token=generation.current;
+  try{
+   for(let i=0;i<4;i++){
+    const cursor=safeCursor.current;
+    const result=await api(`/workspaces/${ws.id}/chat`,{params:cursor?{after:cursor,limit:200}:{limit:50}});
+    if(token!==generation.current)return;
+    if(!historyMode.current)merge(result.messages);
+    if(!cursor)setHasMore(result.has_more);
+    // Only an authorized HTTP snapshot advances replay state. Live high sequence
+    // display must never hide a committed message whose fanout was interrupted.
+    if(result.messages.length)safeCursor.current=Math.max(cursor,...result.messages.map((m:ChatMessage)=>m.seq));
+    if(!historyMode.current)setMoreNew(!!cursor&&result.has_more);else if(result.messages.length)setMoreNew(true);
+    if(!cursor||!result.has_more)break;
+   }
+   if(token!==generation.current)return;
+   if(!historyMode.current)await api(`/workspaces/${ws.id}/chat/read`,{body:{seq:safeCursor.current}});
+   if(token===generation.current){setError('');reload();}
+  }catch(e:any){if(token===generation.current){setError(e.message);if([401,403,404].includes(e.status))deny();}}
+  finally{catching.current=false;if(queued.current&&token===generation.current){queued.current=false;queueMicrotask(()=>catchUp());}}
+ },[ws.id,merge,reload]);
+ useEffect(()=>{
+  let active=true;catchUp();
+  const stop=realtime.subscribe(ws.id,event=>{
+   if(!active)return;
+   if(event.type==='chat.message'){if(historyMode.current)setMoreNew(true);else merge([event.message]);if(refreshTimer.current===undefined)refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=undefined;catchUp();},150);}
+   if(event.type==='subscribed')catchUp();
+   if(['revoked','subscribe_failed','session_ended'].includes(event.type))deny();
+  });
+  return()=>{active=false;++generation.current;window.clearTimeout(refreshTimer.current);queued.current=false;stop();};
+ },[ws.id,catchUp,merge]);
+ useEffect(()=>{if(!thread)listRef.current?.lastElementChild?.scrollIntoView({block:'end'});},[messages.length,thread]);
+ async function older(){
+  const token=generation.current,view=++viewGeneration.current,first=messages[0];if(!first)return;historyMode.current=true;setEarlier(true);
+  try{const result=await api(`/workspaces/${ws.id}/chat`,{params:{before:first.seq}});if(token===generation.current&&view===viewGeneration.current&&historyMode.current){setHasMore(result.has_more);setMessages(result.messages);}}
+  catch(e:any){if(token===generation.current){setError(e.message);if([401,403,404].includes(e.status))deny();}}
+ }
+ function latest(){++viewGeneration.current;historyMode.current=false;setEarlier(false);resetLatest.current=true;catchUp();}
+ return <>
+  <section className="chat card" aria-label={`Chat in ${ws.name}`}>
+   {blocked?<p role="alert">This chat is no longer available.</p>:<>
+    <button type="button" onClick={latest}>Refresh chat</button>
+    {earlier&&<p>Viewing earlier messages. <button type="button" onClick={latest}>Return to latest messages</button></p>}
+    {hasMore&&<button type="button" onClick={older}>Load earlier messages</button>}
+    {moreNew&&<button type="button" onClick={earlier?latest:catchUp}>Load more new messages</button>}
+    <ol className="messages" ref={listRef} aria-live="polite">
+     {messages.length===0&&<li>No messages yet.</li>}
+     {messages.map(message=><li key={message.id}>
+      <strong>{message.author?.display_name}</strong> <span className="muted small">{fmtTime(message.created_at)}</span>
+      {message.parent_id&&<span className="tag">Thread reply</span>}
+      <button type="button" className="ghost small" onClick={()=>setThread(message.parent_id??message.id)}>Open thread</button>
+      <button type="button" className="ghost small" onClick={()=>setSummary(`Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`)} aria-label="Publish to noticeboard">Share to noticeboard</button>
+      <button type="button" className="ghost small" onClick={()=>setTaskSource(message)}>Create task</button>
+      <p className="body">{message.body}</p>
+     </li>)}
+    </ol>
+    {error&&<p role="alert" className="error">{error}</p>}
+    <ChatComposer ws={ws} sent={message=>merge([message])} denied={deny}/>
+    {taskSource&&<ConversationTask key={taskSource.id} source={ws} kind="chat" sourceId={taskSource.id} text={taskSource.body} close={()=>setTaskSource(null)}/>}
+    {summary!==null&&<PublishSummary source={ws} text={summary} onClose={()=>setSummary(null)}/>}
+   </>}
+  </section>
+  {!blocked&&thread&&<ChatThread key={thread} ws={ws} rootId={thread} close={()=>setThread(null)}/>}
+ </>;
 }
 
 function PublishSummary({ source, text, onClose }: { source: Workspace; text: string; onClose: () => void }) {
