@@ -74,15 +74,18 @@ def _actor(request, actor, db, write=False):
     return current_actor(request, db).user
 
 
+def _scope_locks(db, workspace_id):
+    # KEY SHARE before table SHARE avoids workspace-update/child-FK deadlocks.
+    db.execute(select(Workspace.id).where(Workspace.id == workspace_id)
+               .with_for_update(read=True, key_share=True))
+    db.execute(text('lock table workspaces, memberships in share mode'))
+    db.expire_all()
+
+
 def _scope(db, user, workspace_id, write=False):
     if workspace_id is not None:
         if write:
-            # Short SHARE table locks serialize task authorization with all
-            # membership/tree/policy mutations, including ancestor grant changes.
-            db.execute(select(Workspace.id).where(Workspace.id == workspace_id)
-                       .with_for_update(read=True, key_share=True))
-            db.execute(text('lock table workspaces, memberships in share mode'))
-            db.expire_all()
+            _scope_locks(db, workspace_id)
         return (policy.require_write if write else policy.require_read)(db, user, workspace_id)
 
 
@@ -99,10 +102,7 @@ def _list(db, user, list_id, write=False):
 
 def _lock_source_read(db, user, target, workspace_id):
     if target.workspace_id is None:
-        db.execute(select(Workspace.id).where(Workspace.id == workspace_id)
-                   .with_for_update(read=True, key_share=True))
-        db.execute(text('lock table workspaces, memberships in share mode'))
-        db.expire_all()
+        _scope_locks(db, workspace_id)
     policy.require_read(db, user, workspace_id)
 
 

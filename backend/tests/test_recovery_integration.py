@@ -39,7 +39,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
     assert post.status_code == 201
     note = ben.post('/notes', json={'title': 'Private recovery note', 'body': 'fixture'})
     assert note.status_code == 201
-    assert ben.post(f'/workspaces/{workspace}/chat', json={'body': 'Recovery chat', 'client_id': 'recover-chat-01'}).status_code == 201
+    recovery_chat=ben.post(f'/workspaces/{workspace}/chat', json={'body':'Recovery chat','client_id':'recover-chat-01'})
+    assert recovery_chat.status_code==201
+    assert ben.post(f'/workspaces/{workspace}/chat',json={'body':'Recovery threaded reply','client_id':'recover-reply-01','parent_id':recovery_chat.json()['id']}).status_code==201
     assert ben.post(f'/workspaces/{workspace}/board/ops', json=stroke('recover-stroke-01', 'recovered-line')).status_code == 200
     panel = pair(as_user, make_client, ids)
     unused_code = ben.post('/panel/pairings', json={'workspace_id': workspace}).json()['code']
@@ -119,6 +121,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             assert recovered_tasks[0]['id'] == todo_task['id']
             assert api.get(source_path).json()['body'] == 'Recovery post'
             assert api.get(board_source_path).json()['revision']==board_context['revision']
+            assert api.get(f"/workspaces/{workspace}/chat/{recovery_chat.json()['id']}/replies").json()['messages'][0]['body']=='Recovery threaded reply'
             assert recovered_tasks[0]['checklist'][0]['done'] is True
             recovered_history=api.get(f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/history").json()['items']
             assert recovered_history[-1]['action']=='created'

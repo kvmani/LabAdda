@@ -357,3 +357,17 @@ Missing/purged/inaccessible source uses uniform404. Ordinary task/history respon
 retain only generic `has_source`, never board context. Board purge clears its FK
 but keeps recorded context stored; populated context downgrade is refused even
 when the source FK is null. Both endpoints reject panel sessions.
+
+### C4 chat threads
+
+Chat creation accepts optional `parent_id` (default null). It must name a top-level
+message in the actual destination workspace; replies to replies return422. Same
+client ID binds workspace, body and parent. Existing flat history and socket chat
+messages include parent_id and retain every message, including replies. Sends
+serialize per workspace before sequence allocation; acknowledgements/fanout follow
+commit. Current source write/session policy applies to replay.
+
+`GET /workspaces/{workspace_id}/chat/{message_id}/replies` returns root, ascending
+messages (latest page) and next_before. Optional positive before and limit1–100
+(default25) page older replies. Both actual root scope and final read authority
+are checked. No panel access. Unread remains per workspace, not per-thread.

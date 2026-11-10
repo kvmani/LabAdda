@@ -182,3 +182,10 @@ A MutationObserver detects even transient restoration of revoked context. Deskto
 mobile WCAG2.1 A/AA and overflow checks apply to form and protected view. Existing
 post/chat conversion and chat/board/panel regressions remain required; panel flow
 asserts task creation is absent. Use separately reset disposable proxy fixtures.
+
+**T49 · CT-12, C4 threads.** `test_chat_threads.py` covers actual root/workspace,
+parent spoofing, personal-group/sibling/admin/panel boundaries, bounded thread and
+legacy stream pagination, changed retry intent, expiry/rollback, protected downgrade
+and two-author commit ordering. Recovery integration round-trips a reply. Existing
+chat/board/realtime tests remain required. Browser stage follows with live hints,
+reconnect, frozen reply retry, draft preservation and revoked-response races.

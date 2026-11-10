@@ -209,3 +209,13 @@ context downgrade and preserve references through recovery. No task controls or
 endpoints are available to board-only sessions. Empty never-written boards must
 have plan content before creation; no implicit board write on a reader's behalf.
 This slice does not provide per-object/region references or historical rendering.
+
+**CT-12 (C4 threads).** A message may reply to one top-level message in the same
+actual readable/writable workspace. One-level threads preserve legacy full stream,
+unread and after-cursor delivery. Parent identity is immutable and part of send
+retry intent. Thread pages are bounded and current-source scoped; no sibling,
+parent-only, admin or panel bypass. Serialize message sequence allocation/commit
+per workspace, current identity and grants before acceptance, and final read scope
+before returning. Retain thread context through recovery; populated downgrade is
+refused. Clients keep a safe HTTP catch-up cursor separate from live display state,
+and clear protected stream/thread/composers on revocation and stale responses.

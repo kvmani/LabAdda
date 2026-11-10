@@ -300,12 +300,15 @@ class ChatMessage(Base):
         UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False
     )
     author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id'))
     body: Mapped[str] = mapped_column(Text, nullable=False)
     client_id: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (
         UniqueConstraint("author_id", "client_id", name="uq_chat_client_id"),
+        CheckConstraint('parent_id is null or parent_id <> id', name='ck_chat_not_self'),
+        Index('ix_chat_parent_seq', 'parent_id', 'seq'),
         Index("ix_chat_workspace_seq", "workspace_id", "seq"),
     )
 

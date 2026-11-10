@@ -173,3 +173,5 @@ assigned work/deadlines/mentions/unread scopes; (6) owner notification/reminder
 preferences and final collaboration qualification. These are substantial slices of
 C4 and C5, not five invented top-level roadmap phases. Existing site/device/manual
 acceptance gates remain explicit. Archive expansion remains deferred.
+
+| C4 stage1 · Thread/reply API · verified | Schema0023 adds one-level actual-workspace roots, immutable retry-bound parent IDs and bounded thread pages while preserving the flat stream/unread/socket contract. Current identity/metadata locks, per-workspace commit ordering and final reads prevent stale authority/replay gaps.30 focused thread/chat/realtime cases and real reply recovery passed; independent sequencing/read-receipt findings fixed. [Guide](docs/development/chat.md). | API stage; web threads and attachments follow. No nested replies or per-thread unread. | Deliver web discussion with safe HTTP cursor, retained reply drafts and revoked-response guards. |
