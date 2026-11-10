@@ -190,6 +190,8 @@ def test_panel_socket_gets_board_events_only(as_user, make_client, ids, settings
         asha = as_user("asha")
         asha.post(f"/workspaces/{a}/chat", json={"body": "private chat", "client_id": "chat-panel-1"})
         asha.post(f"/workspaces/{a}/posts", json={"body": "feed item"})
+        from tests.test_task_assignment import task
+        task(asha, a)
         asha.post(f"/workspaces/{a}/board/ops", json=stroke("op-ash-p01", "a1"))
         seen = []
         while True:
@@ -197,7 +199,7 @@ def test_panel_socket_gets_board_events_only(as_user, make_client, ids, settings
             seen.append(msg["type"])
             if msg["type"] == "board.op":
                 break
-        assert "chat.message" not in seen and "noticeboard.changed" not in seen
+        assert "chat.message" not in seen and "noticeboard.changed" not in seen and "tasks.changed" not in seen
         panel.post("/panel/end", json={})
         while conn.receive_json()["type"] != "session_ended":
             pass

@@ -288,3 +288,17 @@ works at that ceiling. Posting is independent of the task field revision. There
 are no comment edit/delete/attachment/notification/live-event endpoints in this
 slice. Source read-only policy permits reading; normal write rules govern posting.
 Comments and request identity survive recovery; populated downgrade refuses loss.
+
+### C2 shared task invalidation
+
+`tasks.changed` on the existing workspace socket contains exactly
+`{"type":"tasks.changed","workspace_id":"<actual list workspace UUID>"}`.
+Publication follows a new committed list create/rename, task create/edit,
+assignment change or comment append. Creation replay, unchanged assignment,
+rejected requests and personal mutations do not publish. No new socket command,
+subscription grant, durable event cursor, schema migration or notification is added.
+The hub's current delivery checks and panel whitelist apply.
+
+Signals can be missed, duplicated or reordered; clients must read authorized HTTP
+state rather than apply event deltas. Treat `subscribed` as a possible catch-up
+boundary. Personal lists have no socket invalidation in this slice.

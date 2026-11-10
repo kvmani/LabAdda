@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from .. import policy, task_history
+from .. import policy, task_history, task_events
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound, Unauthenticated
 from ..identity_locks import lock_identity
@@ -91,6 +91,7 @@ def assign(list_id: uuid.UUID, task_id: uuid.UUID, body: Assignment, request: Re
     task_history.record(db,task,user.id,before)
     lock_identity(db,actor,get_settings(request))
     db.commit()
+    task_events.publish_changed(request, row.workspace_id)
     return _task_json(task)
 
 

@@ -12,6 +12,7 @@ boundary. Run the affected checks and update the same guide and ledger with code
 | Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
 | Workspace/browser navigation | frontend/src/App.tsx, components/Shell.tsx, pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |
 | Schema and recovery | backend/labadda/models.py, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |
+| Shared task update signals | [Update guide](task-updates.md) → task_events.py and task routers | CT-09, T46, test_task_events.py |
 | Realtime delivery | backend/labadda/realtime.py, frontend/src/realtime.ts | tests/test_realtime.py; REVIEW.md; P4-QUALIFICATION.md |
 | Operational inventory jobs | backend/labadda/inventory_jobs.py, api/inventory_jobs.py | INVENTORY-JOBS.md; focused job/API tests |
 

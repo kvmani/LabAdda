@@ -8,10 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .. import task_events
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound
 from ..identity_locks import lock_identity
-from ..models import TodoComment, TodoTask
+from ..models import TodoComment, TodoTask, TodoList
 from .todos import _actor, _list
 from ..serialize import iso
 
@@ -80,5 +81,7 @@ def comment(list_id: uuid.UUID, task_id: uuid.UUID, body: CommentCreate, request
                       sequence=sequence,body=body.body,created_at=db.scalar(select(func.clock_timestamp())))
     db.add(row)
     lock_identity(db,actor,get_settings(request))
+    workspace_id = db.get(TodoList, list_id).workspace_id
     db.commit()
+    task_events.publish_changed(request, workspace_id)
     return _json(row)

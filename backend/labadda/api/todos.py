@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from .. import policy, task_history
+from .. import policy, task_history, task_events
 from ..deps import Actor, PANEL_HEADER, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound, Unauthenticated
 from ..identity_locks import lock_identity
@@ -158,6 +158,7 @@ def create_list(body: ListCreate, request: Request, actor: Actor = Depends(curre
     db.add(row)
     lock_identity(db, actor, get_settings(request))
     db.commit()
+    task_events.publish_changed(request, row.workspace_id)
     return _list_json(row)
 
 
@@ -170,6 +171,7 @@ def edit_list(list_id: uuid.UUID, body: ListEdit, request: Request, actor: Actor
     row.title, row.revision = body.title, row.revision+1
     lock_identity(db, actor, get_settings(request))
     db.commit()
+    task_events.publish_changed(request, row.workspace_id)
     return _list_json(row)
 
 
@@ -186,7 +188,7 @@ def tasks(list_id: uuid.UUID, request: Request, after: uuid.UUID | None = None,
 @router.post('/lists/{list_id}/tasks', status_code=201)
 def create_task(list_id: uuid.UUID, body: TaskCreate, request: Request, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
     user = _actor(request, actor, db, True)
-    _list(db, user, list_id, True)
+    task_list = _list(db, user, list_id, True)
     fingerprint = _digest(body, list_id)
     row = db.scalar(select(TodoTask).where(TodoTask.created_by == user.id, TodoTask.client_id == body.client_id))
     if row:
@@ -207,6 +209,7 @@ def create_task(list_id: uuid.UUID, body: TaskCreate, request: Request, actor: A
     task_history.record(db, row, user.id)
     lock_identity(db, actor, get_settings(request))
     db.commit()
+    task_events.publish_changed(request, task_list.workspace_id)
     return _task_json(row)
 
 
@@ -214,7 +217,7 @@ def create_task(list_id: uuid.UUID, body: TaskCreate, request: Request, actor: A
 def edit_task(list_id: uuid.UUID, task_id: uuid.UUID, body: TaskEdit, request: Request,
               actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
     user = _actor(request, actor, db, True)
-    _list(db, user, list_id, True)
+    task_list = _list(db, user, list_id, True)
     row = db.get(TodoTask, task_id)
     if row is None or row.list_id != list_id:
         raise NotFound()
@@ -232,6 +235,7 @@ def edit_task(list_id: uuid.UUID, task_id: uuid.UUID, body: TaskEdit, request: R
     row.updated_at = utcnow()
     lock_identity(db, actor, get_settings(request))
     db.commit()
+    task_events.publish_changed(request, task_list.workspace_id)
     return _task_json(row)
 
 

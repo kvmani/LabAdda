@@ -158,3 +158,14 @@ browser. Recheck source access before returning a page. Use explicit same-reques
 recovery after uncertain creation; stale responses cannot populate another task.
 Keep drafts during same-list refresh/field edits. Initial delivery adds no comment
 editing/deletion, notifications, attachments or live events; refresh loads discussion.
+
+**CT-09 (C2 shared task invalidation).** After a new shared list/task/assignment/
+comment mutation commits, send a content-free `tasks.changed` hint in the actual
+list's workspace. Include only event type and workspace ID; never personal list,
+task, comment, author or assignee metadata. Replays, no-op assignment and rejected/
+rolled-back writes send no hint. Delivery uses current session/grant checks and
+excludes board-only sessions. Hints are lossy and may arrive out of order; HTTP
+state remains authoritative. A new subscription/reconnect must signal possible
+missed changes. Preserve drafts until explicit review/replacement; do not silently
+adopt a new task revision for an unsaved assignment. Personal cross-session live
+updates and assignment notifications remain separate work.

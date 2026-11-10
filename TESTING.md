@@ -140,3 +140,10 @@ T45 delivery evidence:15 focused backend cases, full461/recovery/drift,31 fronte
 checks/build and162 browser checks passed (48comments+48assignment+66task regression).
 Discussion drafts survive same-list reload/field edits; the explicit assignment
 reload also resolves a never-committed write with unchanged revision. [Evidence](docs/evidence/task-comments/README.md).
+
+**T46 · CT-09, shared task invalidation.** `test_task_events.py` verifies six
+post-commit mutation paths with an independent database reader, replay/no-op/
+rejection silence, personal mutation silence, rollback silence, actual payload,
+delivery-time grant removal and durable HTTP catch-up after an offline write.
+`test_panel_socket_gets_board_events_only` also excludes task hints. Existing
+realtime session/queue/generation/revocation tests remain mandatory.
