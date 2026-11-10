@@ -1,0 +1,34 @@
+# Task assignment and My Tasks
+
+Read [task invariants](tasks.md) first, then CT-07 in SPECIFICATIONS, T44 in
+TESTING and [the API contract](../API.md#c2-assignment-and-my-tasks). Backend is
+implemented; dedicated browser assignment/My Tasks controls are the next slice.
+
+## Source and boundaries
+
+- backend/labadda/api/task_assignment.py: picker, assignment and My Tasks.
+- TodoTask.assignee_id/relationship in models.py, migration0019: nullable identity
+  and index. No grant creation, deletion, reminders or assignment notifications.
+- task_history.py: before/after assignment names/IDs are scoped content history.
+  Old create payloads/fingerprints stay unchanged; field edits preserve assignment.
+- backend/tests/test_task_assignment.py: scope, revision, grant-filter/cursor and
+  identity-lock races. Recovery integration also round-trips assignment/history.
+
+## Lock ordering and final reads
+
+Preflight current source read/write and target eligibility without target locks.
+Then lock actor and target User rows in UUID order (NO KEY UPDATE), then the actor
+session via lock_identity, workspace KEY SHARE/table SHARE, and list row. Resolve
+eligibility again after the scope lock; session validity again before acceptance.
+Do not move target locks after actor/session/list locks: reciprocal assignments can
+otherwise deadlock. Preserve the PostgreSQL blocked-target-deactivation regression.
+
+Picker results are eligible at their query snapshot; never treat an option as an
+access grant. My Tasks uses current source policy, rechecks the principal/grants
+before returning, drops revoked rows and suppresses all pagination cursors when
+grants change. Removed members' assignment rows remain for history/reassignment,
+but they cannot read shared tasks through My Tasks. Do not silently clear them.
+
+Run test_task_assignment.py with task_workflow and real recovery, then the affected
+browser flows. Fixtures recreate the test schema; do not run concurrent pytest
+sessions against the same database. Update this guide, API and ledger with code.

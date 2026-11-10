@@ -114,6 +114,7 @@ def _list_json(row):
 def _task_json(row):
     return {'id':str(row.id), 'list_id':str(row.list_id), 'title':row.title, 'description':row.description,
             'due_date':row.due_date.isoformat() if row.due_date else None, 'priority':row.priority,
+            'assignee':{'id':str(row.assignee.id),'display_name':row.assignee.display_name,'is_active':row.assignee.is_active} if row.assignee else None,
             'checklist':row.checklist, 'done':row.done, 'status':row.status, 'revision':row.revision, 'updated_at':iso(row.updated_at)}
 
 

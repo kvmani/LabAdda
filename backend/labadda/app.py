@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from sqlalchemy import text
 
 from . import boardstate, scheduler
-from .api import admin, auth, board, capabilities, chat, files, governance, groups, inventory_jobs, notes, notifications, panel, posts, todos, usage, workspaces
+from .api import admin, auth, board, capabilities, chat, files, governance, groups, inventory_jobs, notes, notifications, panel, posts, task_assignment, todos, usage, workspaces
 from .config import Settings, get_settings
 from .db import session_factory
 from .errors import ApiError
@@ -89,7 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     api = APIRouter(prefix=settings.api_prefix)
-    for module in (auth, workspaces, admin, governance, usage, inventory_jobs, capabilities, groups, todos, posts, files, notes, notifications, chat, board, panel):
+    for module in (auth, workspaces, admin, governance, usage, inventory_jobs, capabilities, groups, task_assignment, todos, posts, files, notes, notifications, chat, board, panel):
         api.include_router(module.router)
     app.include_router(api)
 

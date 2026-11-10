@@ -5,8 +5,9 @@
 Scope: C1 personal/shared lists. Authoritative requirements: S8/CT-01–03 in
 [SPECIFICATIONS](../../SPECIFICATIONS.md); wire contract: [C1 API](../API.md#c1-to-do-lists).
 User-facing instructions: [Using to-do lists](../usage/tasks.md).
-C2 workflow states and scoped history are implemented; assignment/comments/live
-updates and My Tasks remain planned.
+C2 workflow/history and assignment/My Tasks APIs are implemented.
+[Assignment guide](task-assignment.md) covers their locks and permission boundaries.
+Dedicated assignment/My Tasks web delivery follows; comments/live updates remain planned.
 
 ## Source map
 
@@ -70,5 +71,5 @@ invalidate older creation receipts. History is ordinary scoped content, not an
 operational audit report: do not expose it through usage.read or admin privileges.
 Each committed revision records changes atomically, including creator attribution;
 a baseline explicitly marks unavailable earlier history. Do not auto-prune history
-until its lifecycle contract exists. State/history are delivered; C2 assignment,
-comments, task delivery and My Tasks are still pending.
+until its lifecycle contract exists. State/history and assignment/My Tasks APIs are delivered; assignment/My Tasks
+web controls, comments and live task delivery are still pending.

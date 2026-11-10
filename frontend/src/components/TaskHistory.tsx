@@ -3,12 +3,13 @@ import { api } from '../api';
 
 type Change = {revision:number;actor_id:string|null;actor:{display_name:string}|null;action:string;changes:Record<string,{before:unknown;after:unknown}>;created_at:string};
 type Page = {items:Change[];next_cursor:number|null};
-const labels: Record<string,string> = {title:'Title',description:'Description',due_date:'Due date',priority:'Priority',checklist:'Checklist',done:'Completion',status:'Workflow state'};
+const labels: Record<string,string> = {assignee:'Assignee',title:'Title',description:'Description',due_date:'Due date',priority:'Priority',checklist:'Checklist',done:'Completion',status:'Workflow state'};
 function value(data:unknown,key:string):string {
   if(key==='status' && typeof data==='string')return ({todo:'To do',in_progress:'In progress',blocked:'Blocked',done:'Done'} as Record<string,string>)[data] ?? data;
   if(data === null)return 'None';
   if(typeof data==='boolean')return data?'Yes':'No';
   if(Array.isArray(data))return data.map(item=>`${item.done?'✓':'○'} ${item.title}`).join('; ') || 'Empty';
+  if(typeof data==='object' && 'display_name' in data)return String(data.display_name);
   return String(data);
 }
 export function TaskHistory({listId,taskId,revision}:{listId:string;taskId:string;revision:number}) {

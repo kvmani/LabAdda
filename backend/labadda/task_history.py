@@ -6,6 +6,7 @@ FIELDS = ('title','description','due_date','priority','checklist','done','status
 
 def snapshot(task):
     result = {key:getattr(task,key) for key in FIELDS}
+    result['assignee'] = {'id':str(task.assignee_id),'display_name':task.assignee.display_name} if task.assignee_id else None
     result['due_date'] = task.due_date.isoformat() if task.due_date else None
     return result
 

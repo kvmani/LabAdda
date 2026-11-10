@@ -110,3 +110,12 @@ C1 backend evidence: `test_todos.py` covers personal/admin isolation, upward/sib
 C1 web evidence: `e2e/todos.mjs` passed60 root/prefix checks on 2026-11-10, including native form actions, owner/shared scope, lost creation replies, list/task conflicts, deliberate latest-version reload, delayed editor/rename responses and denied refresh clearing; desktop/mobile axe/overflow passed. [Reproduction and limits](docs/evidence/todos/README.md). `GET /todos/lists/{id}` is covered by the owner/shared privacy matrix in test_todos.py.
 
 **T43 · CT-06, C2 workflow/history.** Verify workflow/completion consistency; C1 create replay after migration and old-client state-preserving edits; atomic revision history/actor attribution, failure rollback, scope/panel/revocation denial, bounded history pages and explicit migration baseline; web state transitions/history and C1 regression flows. Tests: backend/tests/test_task_workflow.py, real recovery integration and e2e/todos.mjs.
+
+**T44 · CT-07, assignment/My Tasks.** Check active current-reader eligibility,
+private owner-only assignment, upward/direct-project/group rules, no admin/sibling
+bypass, history and old-edit preservation, target revocation/deactivation,
+revision/CSRF/panel denial, bounded search/pages/status filters, current-grant
+aggregation and grant loss during serialization (including cursor suppression),
+reciprocal identity lock ordering and downgrade protection for past assignments.
+Focused backend source: backend/tests/test_task_assignment.py. Browser delivery and
+its evidence are separate slices until recorded in the roadmap ledger.

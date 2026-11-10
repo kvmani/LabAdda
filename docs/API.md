@@ -235,3 +235,38 @@ baselines never reconstruct older edits. Normal creates/updates write history
 atomically with the task revision, including failed/conflicting/replayed requests
 not creating extra history. History failure aborts the edit. Populated downgrade
 refuses to discard history. History has no pruning or deletion API in this slice.
+
+## C2 assignment and My Tasks
+
+`GET /todos/lists/{list}/assignees` returns active eligible readers, or only the
+owner for a personal list. Optional literal `q` searches names/usernames (max100
+characters); UUID `after` pages by user ID, limit1–50 (default25). Results are
+`{items,next_cursor}` with public colleague identity only, not grant topology.
+Eligibility is a point-in-time snapshot; assignment rechecks it independently.
+
+`PUT /todos/lists/{list}/tasks/{task}/assignee` accepts
+`{user_id: UUID|null,revision: positive integer}`. Current task write access is
+required; an administrator without content access cannot assign. Targets must be
+active readers of the actual workspace; a personal task can name only its owner.
+Null clears an assignment, including a stale/inactive one. Changed assignment
+increments the task revision and records named before/after values atomically.
+An unchanged target with a current revision is a no-op; stale revisions conflict.
+No notification or membership is created. Unknown write outcomes require reloading
+the task/history before retrying, not automatic write replay.
+
+Actor/target identities are locked in deterministic UUID order before session,
+workspace authorization and list locks. Final target eligibility and session time
+validity are checked under those locks. C1/C2 field edits preserve assignment;
+creation payload/fingerprints have no new assignment field.
+
+`GET /todos/mine` returns all owner-private tasks plus shared tasks assigned to the
+caller in currently readable spaces. Optional `status` uses workflow states;
+UUID `after` and limit1–50 (default25) page by task ID. Items add `list_title` and
+`workspace_id`; task JSON adds nullable `assignee` with id/display_name/is_active.
+Responses include `next_cursor` and `restart_required`. Final grant loss filters
+protected rows; any visible-workspace change clears the cursor and asks the client
+to restart. Pages are live observations, not frozen snapshots. Membership removal
+hides a shared task without rewriting assignment/history. The caller can still
+see their personal tasks. These normal-session routes reject panels and grant no
+admin/operational-reader bypass. Migration0019 protects current and past assignment
+evidence from a lossy downgrade.

@@ -26,7 +26,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -534,6 +534,8 @@ class TodoTask(Base):
     priority: Mapped[str] = mapped_column(String(8), nullable=False)
     checklist: Mapped[list] = mapped_column(JSONB, nullable=False)
     done: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    assignee_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'))
+    assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy='selectin')
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default='todo')
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = _created()
@@ -542,6 +544,7 @@ class TodoTask(Base):
         CheckConstraint("status in ('todo','in_progress','blocked','done') and done = (status = 'done')", name='ck_todo_task_status'),
         CheckConstraint("priority in ('low','normal','high') and revision > 0", name='ck_todo_task_values'),
         UniqueConstraint('created_by', 'client_id', name='uq_todo_task_request'),
+        Index('ix_todo_task_assignee', 'assignee_id', 'id'),
         Index('ix_todo_task_list', 'list_id', 'id'),
     )
 

@@ -129,3 +129,20 @@ earlier authors/history, not invented reconstruction. Bound history pages and
 protect stored history against lossy downgrade. Web changes use the existing draft,
 revision and revoked-refresh rules. Assignment/comments/live updates/My Tasks are
 separate C2 slices.
+
+**CT-07 (C2 assignment/My Tasks).** Shared task assignment may name only an active
+current reader of the task's actual workspace; personal tasks may name only their
+owner. Assignment never creates membership or broadens an audience. Use expected
+revision and atomic content history; current write/session authority and target
+eligibility must hold at commit. Reciprocal assignments must use deterministic
+identity lock ordering. Unassigning stale/deactivated assignees remains possible.
+
+Provide a bounded searchable eligible-colleague picker and My Tasks containing
+owner-private tasks plus shared assignments with current source read access. Apply
+hierarchy/project/group policy without an admin bypass. Revalidate read grants
+before returning; do not expose stale content/cursors when grants change during
+measurement. Membership loss hides shared assignments without silently rewriting
+responsibility/history. Old task field edits must preserve assignment; create
+request fingerprints stay compatible. Web refresh/conflicts/uncertain writes must
+retain useful drafts and discard stale results. No assignment notifications or
+live delivery are implied by this slice.
