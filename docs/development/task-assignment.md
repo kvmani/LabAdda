@@ -1,8 +1,8 @@
 # Task assignment and My Tasks
 
 Read [task invariants](tasks.md) first, then CT-07 in SPECIFICATIONS, T44 in
-TESTING and [the API contract](../API.md#c2-assignment-and-my-tasks). Backend is
-implemented; dedicated browser assignment/My Tasks controls are the next slice.
+TESTING and [the API contract](../API.md#c2-assignment-and-my-tasks). Backend and dedicated browser assignment/My Tasks controls are implemented.
+Comments and live task coordination remain separate C2 slices.
 
 ## Source and boundaries
 
@@ -13,6 +13,16 @@ implemented; dedicated browser assignment/My Tasks controls are the next slice.
   Old create payloads/fingerprints stay unchanged; field edits preserve assignment.
 - backend/tests/test_task_assignment.py: scope, revision, grant-filter/cursor and
   identity-lock races. Recovery integration also round-trips assignment/history.
+
+## Web source and recovery
+
+TaskAssignment.tsx owns eligible search, assignment choices and explicit reload
+after unknown/stale writes. MyTasks.tsx owns current-source aggregation and status
+filter/paging, with request generations and workspace-visibility refresh. Todos.tsx
+keeps a current selected-list ref so old component saves cannot refresh another
+list. Task field edits do not submit assignment fields. TaskAssignment blocks blind
+retries after uncertain outcomes; it reloads task revision/history instead.
+Browser regression: e2e/task-assignment.mjs (fresh disposable fixtures; revokes Ben).
 
 ## Lock ordering and final reads
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api';
+import { TaskAssignment, type Assignee } from '../components/TaskAssignment';
 import { TaskHistory } from '../components/TaskHistory';
 import type { Workspace } from '../types';
 
@@ -7,7 +8,7 @@ type List = {id: string; title: string; revision: number; workspace_id: string |
 type Workflow = 'todo' | 'in_progress' | 'blocked' | 'done';
 const workflowLabels: Record<Workflow,string> = {todo:'To do',in_progress:'In progress',blocked:'Blocked',done:'Done'};
 type Fields = {status: Workflow; title: string; description: string; due_date: string | null; priority: string; checklist: {title: string; done: boolean}[]; done: boolean};
-type Task = Fields & {id: string; revision: number};
+type Task = Fields & {assignee:Assignee|null;id: string; revision: number};
 type Page<T> = {items: T[]; next_cursor: string | null};
 const blank = (): Fields => ({status:'todo',title:'', description:'', due_date:null, priority:'normal', checklist:[], done:false});
 const uncertain = (error: any) => error.status === 0 || error.status >= 500;
@@ -81,11 +82,12 @@ export function Todos({ws}: {ws?: Workspace}) {
   const [unconfirmed,setUnconfirmed] = useState(false);
   const [renameConflict,setRenameConflict] = useState(false);
   const listAttempt=useRef<{client_id:string;title:string;workspace_id:string|null}|null>(null);
+  const selectedRef=useRef<string|null>(null);
   const generation=useRef(0), taskGeneration=useRef(0), editorGeneration=useRef(0);
   const writable = ws ? ws.can_write && !ws.archived : true;
   function failed(e: any) {
     setError(e.message);
-    if ([401,403,404].includes(e.status)) {++generation.current;++taskGeneration.current;++editorGeneration.current;setLoading(false);setListCursor(null);setTaskCursor(null);setLists([]);setSelected(null);setTasks([]);setCreating(false);setEditing(null);}
+    if ([401,403,404].includes(e.status)) {++generation.current;++taskGeneration.current;++editorGeneration.current;setLoading(false);setListCursor(null);setTaskCursor(null);setLists([]);selectedRef.current=null;setSelected(null);setTasks([]);setCreating(false);setEditing(null);}
   }
   async function loadLists(after?: string) {
     const token=++generation.current; setLoading(true); setError('');
@@ -103,7 +105,7 @@ export function Todos({ws}: {ws?: Workspace}) {
     } catch(e:any) {if(token===taskGeneration.current) failed(e);}
   }
   useEffect(()=>{loadLists();return()=>{++generation.current;++taskGeneration.current;};},[ws?.id]);
-  function choose(row:List) {++editorGeneration.current;++taskGeneration.current;setSelected(row);setRename(row.title);setRenameConflict(false);setTasks([]);setCreating(false);setEditing(null);loadTasks(row.id);}
+  function choose(row:List) {selectedRef.current=row.id;++editorGeneration.current;++taskGeneration.current;setSelected(row);setRename(row.title);setRenameConflict(false);setTasks([]);setCreating(false);setEditing(null);loadTasks(row.id);}
   async function createList(event:FormEvent) {
     event.preventDefault();if(busy)return;setBusy(true);setError('');
     const creationGeneration=generation.current;
@@ -134,7 +136,7 @@ export function Todos({ws}: {ws?: Workspace}) {
     } catch(e:any) {failed(e);} finally {setBusy(false);}
   }
   return <section className="todos">
-    <h2>{ws ? 'To-do lists' : 'My To-do Lists'}</h2>
+    {ws ? <h2>To-do lists</h2> : <h1>My To-do Lists</h1>}
     <p className="notice">{ws ? `Shared with readers of ${ws.name}.` : 'Private to you. Administrators and colleagues cannot open these lists.'}</p>
     {!writable && <p>This workspace is read-only. You can read its tasks.</p>}
     <button type="button" onClick={()=>loadLists()}>Refresh lists</button>
@@ -158,6 +160,7 @@ export function Todos({ws}: {ws?: Workspace}) {
         <h4>{task.done?'✓ ':''}{task.title}</h4><p>{workflowLabels[task.status] ?? (task.done?'Done':'To do')} · {task.priority} priority{task.due_date?` · Due ${task.due_date}`:''}</p>
         <p className="preserve">{task.description}</p>
         {task.checklist.length>0 && <ul>{task.checklist.map((item,i)=><li key={i}>{item.done?'✓':'○'} {item.title}</li>)}</ul>}
+        <TaskAssignment listId={selected.id} taskId={task.id} revision={task.revision} assignee={task.assignee} writable={writable} saved={()=>{if(selectedRef.current===selected.id)loadTasks(selected.id);}} />
         <TaskHistory listId={selected.id} taskId={task.id} revision={task.revision} />
         {writable && <button type="button" onClick={()=>{setEditing(task);setCreating(false);setEditorKey(++editorGeneration.current);}}>Edit task: {task.title}</button>}
       </li>)}</ul>

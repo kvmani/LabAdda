@@ -119,3 +119,9 @@ aggregation and grant loss during serialization (including cursor suppression),
 reciprocal identity lock ordering and downgrade protection for past assignments.
 Focused backend source: backend/tests/test_task_assignment.py. Browser delivery and
 its evidence are separate slices until recorded in the roadmap ledger.
+
+T44 web evidence: `e2e/task-assignment.mjs` exercises real picker/assignment and My
+Tasks across sibling sections, division, group and private lists, conflict and lost
+reply reload, revoked visibility and delayed filter response, desktop/mobile axe
+and overflow. Its46 checks passed; existing66 task checks passed too. Reset proxy
+fixtures between scripts: both revoke Ben's section membership. [Evidence](docs/evidence/task-assignment/README.md).

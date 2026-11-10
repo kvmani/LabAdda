@@ -20,8 +20,7 @@ the original request ID, recovering the same created resource rather than creati
 a duplicate. Keep the view open until this is resolved: drafts and these retry IDs
 are held in the open view, not saved across closing/reloading/navigating away.
 
-Assignments, task comments/live updates, automatic reminders and deletion are later
-stages; the current lists support coordination without those features.
+Task comments/live updates, automatic reminders and deletion are later stages.
 
 ## Workflow and history
 
@@ -33,3 +32,23 @@ purge it. History follows the same personal/workspace permissions as the task.
 For tasks predating history tracking, a baseline explains that earlier changes and
 authors were not recorded. Refresh tasks to fetch a colleague's latest edits;
 live task updates are a later C2 slice.
+
+## Assigning work and My Tasks
+
+Choose **Change assignee** on a task, find an eligible colleague and **Save assignment**.
+Only active readers of that workspace can be selected; personal lists offer only
+the owner. Assignment does not grant membership or reveal a private list. Use
+**Unassigned** to clear responsibility. A read-only workspace cannot be reassigned.
+
+If the task changed or an assignment reply was lost, your choice is retained but
+blind retry is blocked. **Reload task assignment** loads the current task and
+revision, discarding the pending choice. Review the result before assigning again.
+History records who changed responsibility and the previous/new colleague.
+
+**My Tasks** combines all your personal tasks with shared tasks assigned to you.
+Filter by workflow state and open a source list to act on a task. Personal tasks
+remain here even when unassigned. Losing workspace access hides its shared tasks;
+it does not erase their recorded responsibility or history. Refresh loads current
+results; task changes are not yet pushed live. Assignment sends no automatic
+notification in this slice. If access changes during loading, restart with Refresh
+My Tasks rather than continuing an obsolete page.

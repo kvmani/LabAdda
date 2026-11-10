@@ -102,6 +102,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <nav className="rail" aria-label="Workspaces">
         {operations && <NavLink to="/operations" className="rail-link">Operational observations</NavLink>}
         <NavLink to="/usage" className={({ isActive }) => "rail-link" + (isActive ? " active" : "")}>My storage usage</NavLink>
+        <NavLink to="/my-tasks" className="rail-link">My Tasks</NavLink>
         <NavLink to="/todos" className="rail-link">My To-do Lists <span className="muted small">private</span></NavLink>
         <NavLink to="/notes" className={({ isActive }) => "rail-link notes-link" + (isActive ? " active" : "")}>My Notes <span className="muted small">private</span></NavLink>
         {error && <p className="error small">{error}</p>}
