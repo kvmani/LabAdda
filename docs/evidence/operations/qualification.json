@@ -1,0 +1,163 @@
+{
+  "format": 1,
+  "code_commit": "b82f23acaaf7c47f477172868dd3dea387dc60d5",
+  "backend_full_suite_before_commissioning": 573,
+  "commissioning_tests_afterward": 10,
+  "enhanced_real_recovery_rerun": true,
+  "frontend_tests": 31,
+  "typecheck_build_drift_passed": true,
+  "browser_checks": {
+    "flows": 69,
+    "todos": 66,
+    "task-assignment": 48,
+    "task-comments": 48,
+    "task-updates": 30,
+    "task-conversion": 44,
+    "task-board-reference": 42,
+    "chat-threads": 26,
+    "chat-attachments": 38,
+    "dashboard": 24,
+    "alert-preferences": 30
+  },
+  "browser_checks_total": 465,
+  "managed_simulation_passed": true,
+  "cleanup_confirmed": true,
+  "workloads": {
+    "root": {
+      "environment": {
+        "python": "3.12.14",
+        "system": "Linux",
+        "machine": "x86_64",
+        "logical_cpus": 5,
+        "tls": true,
+        "origin": "https://127.0.0.1:8080",
+        "base": ""
+      },
+      "workload": {
+        "clients": 30,
+        "drawers": 8,
+        "readers": 22,
+        "workspaces": 2,
+        "seconds": 90.0,
+        "drawer_interval_s": 0.5,
+        "clients_subscribed": 30
+      },
+      "elapsed_seconds": 114.33,
+      "board_ops_acknowledged": 1655,
+      "chat_messages_acknowledged": 143,
+      "deliveries_expected": 26970,
+      "deliveries_missing": 0,
+      "isolation_violations": 0,
+      "lost": 0,
+      "duplicates": 0,
+      "revision_gaps": false,
+      "boards": {
+        "4172472a-21ab-412c-8846-4a1225ef9822": {
+          "ops_retained": 828,
+          "compacted_through": 0
+        },
+        "42e19cf9-40d6-4ec8-97b4-9edb42408f4a": {
+          "ops_retained": 827,
+          "compacted_through": 0
+        }
+      },
+      "errors": [],
+      "error_count": 0,
+      "latency_samples": 26970,
+      "list_samples": 462,
+      "update_latency_ms": {
+        "p50": 27.0,
+        "p95": 56.5,
+        "max": 271.2,
+        "mean": 32.0
+      },
+      "list_latency_ms": {
+        "p50": 21.4,
+        "p95": 96.6
+      },
+      "targets": {
+        "update_p95_lt_500ms": true,
+        "list_p95_lt_1000ms": true
+      },
+      "passed": true,
+      "targets_enforced": true
+    },
+    "prefix": {
+      "environment": {
+        "python": "3.12.14",
+        "system": "Linux",
+        "machine": "x86_64",
+        "logical_cpus": 5,
+        "tls": true,
+        "origin": "https://127.0.0.1:8080",
+        "base": "/labadda-staging"
+      },
+      "workload": {
+        "clients": 30,
+        "drawers": 8,
+        "readers": 22,
+        "workspaces": 2,
+        "seconds": 90.0,
+        "drawer_interval_s": 0.5,
+        "clients_subscribed": 30
+      },
+      "elapsed_seconds": 114.26,
+      "board_ops_acknowledged": 1654,
+      "chat_messages_acknowledged": 142,
+      "deliveries_expected": 26940,
+      "deliveries_missing": 0,
+      "isolation_violations": 0,
+      "lost": 0,
+      "duplicates": 0,
+      "revision_gaps": false,
+      "boards": {
+        "cb11f34b-d276-48a5-b9ae-f77e86efd668": {
+          "ops_retained": 826,
+          "compacted_through": 0
+        },
+        "d19877fe-15a9-4174-ae3a-8a8a9e1994e0": {
+          "ops_retained": 828,
+          "compacted_through": 0
+        }
+      },
+      "errors": [],
+      "error_count": 0,
+      "latency_samples": 26940,
+      "list_samples": 462,
+      "update_latency_ms": {
+        "p50": 26.6,
+        "p95": 54.4,
+        "max": 261.4,
+        "mean": 31.6
+      },
+      "list_latency_ms": {
+        "p50": 20.6,
+        "p95": 76.1
+      },
+      "targets": {
+        "update_p95_lt_500ms": true,
+        "list_p95_lt_1000ms": true
+      },
+      "passed": true,
+      "targets_enforced": true
+    }
+  },
+  "release": {
+    "release": "ops-20261111",
+    "commit": "b82f23acaaf7c47f477172868dd3dea387dc60d5",
+    "schema": "0025",
+    "platform": {
+      "machine": "x86_64",
+      "os": "debian",
+      "os_version": "13",
+      "python": "3.12"
+    },
+    "sha256": "eeb092adc686f6899fb4a4417113423a84f355e4f6e6f936e7a8b55bd7b2305b",
+    "bytes": 24174122,
+    "payload_files": 192,
+    "operations_tools_included": true
+  },
+  "offline_install_and_payload_verification_passed": true,
+  "generated_nginx_root_prefix_checks_passed": true,
+  "site_systemd_offhost_timed_dr_and_manual_acceptance": "not verified"
+}

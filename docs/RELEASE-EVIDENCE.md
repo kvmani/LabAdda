@@ -43,3 +43,10 @@ Sanitized current-instance logs and the smoke harness are retained under `/works
 ## Remaining gates
 
 The offline release implementation and clean target-platform installation are verified. Site deployment still requires the separately authenticated transfer/provenance process, dependency/artifact scanning and license approval, actual internal OS provisioning, real TLS/proxy/service-persistence rehearsal, and site-owner acceptance. A wheel/frontend license inventory does not establish distribution clearance; the repository currently has no application LICENSE file. The next implementation slice is writer-quiesced database-and-assets backup/restore, including restored-session revocation. Physical pen/finger acceptance and the representative TLS load/accessibility rehearsal remain open.
+
+## Current operational automation evidence
+
+See [2026-11-11 qualification](evidence/operations/README.md) for the deployed-code
+preparation tools,465 full-profile browser checks, both30-client TLS workloads,
+offline build/install proof and outstanding site/platform/DR acceptance gates.
+These local checks do not establish a successful production rollout.

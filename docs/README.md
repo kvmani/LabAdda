@@ -19,7 +19,9 @@ Read this map first; follow the relevant path rather than loading every document
 | Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |
 | Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
 
-Current priority: collaboration qualification. C1–C4 software core and C5 My day/
+Current priority: operational automation and deployment readiness, with the
+[latest local evidence](evidence/operations/README.md) and dedicated collaboration
+regression system. C1–C4 software core and C5 My day/
 owner alert preferences are delivered and locally tested. Personal cross-session
 task updates and automatic assignment/deadline alerts remain optional extensions.
 Further archive/export/inventory expansion is deferred. Representative-site,
