@@ -201,3 +201,11 @@ post/chat destination exclusivity, PDF delivery, PNG preview, SVG refusal, actua
 private-group/sibling/admin/panel/revocation policy, workspace file byte observations,
 expired identity rollback and guarded downgrade. Real recovery includes a chat PDF.
 Existing uploads/reservations/preview/file/recovery tests remain mandatory.
+
+**T51 · CT-14, daily overview.** `test_dashboard.py` covers personal/assigned scope,
+completed/unassigned exclusion, due ordering, source mentions/unread, private notes,
+sibling/admin/panel denial, grant loss after serialization and configured calendar
+boundaries/invalid timezone startup. `e2e/dashboard.mjs` covers root/prefix owner
+views, calendar tags, mentions/unread, sibling exclusion, failure versus zero,
+held HTTP response across source-only revocation, personal survival and desktop/
+mobile WCAG2.1 A/AA plus overflow. This is bounded owner content, not admin analytics.

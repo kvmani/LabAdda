@@ -10,6 +10,7 @@ import os
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 def _normalize_base(path: str) -> str:
@@ -83,6 +84,14 @@ class Settings:
         return self.environment in {"development", "test"}
 
 
+def _timezone(value: str) -> str:
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise ValueError('LABADDA_TIMEZONE must name an installed IANA timezone') from error
+    return value
+
+
 def load_settings() -> Settings:
     env = os.environ.get
     dist = env("LABADDA_FRONTEND_DIST")
@@ -98,7 +107,7 @@ def load_settings() -> Settings:
         trusted_origins=origins,
         asset_dir=Path(env("LABADDA_ASSET_DIR", "var/assets")),
         frontend_dist=Path(dist) if dist else (default_dist if default_dist.exists() else None),
-        timezone=env("LABADDA_TIMEZONE", "UTC"),
+        timezone=_timezone(env("LABADDA_TIMEZONE", "UTC")),
         session_idle_minutes=int(env("LABADDA_SESSION_IDLE_MINUTES", "120")),
         session_absolute_hours=int(env("LABADDA_SESSION_ABSOLUTE_HOURS", "12")),
         max_attachments=int(env("LABADDA_MAX_ATTACHMENTS", "5")),

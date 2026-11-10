@@ -7,6 +7,7 @@ Read this map first; follow the relevant path rather than loading every document
 | Current work and next stage | [Roadmap priority and latest ledger](../ROADMAP.md) | [Developer task map](development/README.md) |
 | Review collaboration screenshots | [Five-person capture guide](evidence/collaboration-review/README.md) | Research scenario, reproducible gallery and current feature limits |
 | Chat, threads and private sharing | [Chat user guide](usage/chat.md) | [Implementation guide](development/chat.md), C4 thread/file checks |
+| My day overview | [My day usage](usage/dashboard.md) | [Developer guide](development/dashboard.md), active work, private deadlines, mentions and unread source bounds |
 | Use to-do lists | [User guide](usage/tasks.md) | Personal vs workspace scope, saving and conflict recovery |
 | Research-plan board references | [Board reference guide](development/task-board-references.md) | Recorded context, live board links and source permissions |
 | Conversation to task | [Conversion guide](development/task-conversion.md) | Reviewed copies, destination audience and protected sources |

@@ -12,6 +12,8 @@ import { Operations } from "./pages/Operations";
 import { Usage } from "./pages/Usage";
 import { Admin } from "./pages/Admin";
 
+import { Dashboard } from "./pages/Dashboard";
+
 function Home() {
   const { homeId, workspaces, loading } = useWorkspaces();
   if (loading) return <p className="state">Loading workspaces…</p>;
@@ -49,6 +51,7 @@ export function App() {
           <Route path="/activate" element={<Navigate to="/" replace />} />
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
+          <Route path="/today" element={<Dashboard />} />
           <Route path="/my-tasks" element={<MyTasks />} />
           <Route path="/todos" element={<Todos />} />
           <Route path="/notes" element={<Notes />} />

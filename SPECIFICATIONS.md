@@ -231,3 +231,14 @@ admin, sibling or panel bypass. Workspace file observations include chat attachm
 existing upload reservation, preview integrity and physical recovery rules apply.
 Web uploads use the existing receipt/check/retry queue and retain unknown send
 intent. No chat attachment copying to broader audiences or tasks is implicit.
+
+**CT-14 (C5 daily overview).** Provide an owner-scoped bounded overview of active
+personal/assigned readable shared tasks ordered by due date/priority, dated private
+notes, recent currently visible notifications and unread readable conversations.
+Never aggregate another user's private data or bypass source grants for admins.
+Recheck grants after serialization, drop revoked rows and suppress shared more-
+results signals when visibility changes. Display window limits and unavailable
+reads honestly, not false zero totals. Date-only deadlines use the advertised site
+calendar timezone; validate its IANA zone at configuration load. Browser generations
+must prevent delayed responses restoring revoked content; live activity signals
+prompt refresh without silently claiming a complete site-wide inventory.

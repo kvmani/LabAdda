@@ -195,3 +195,6 @@ main:focus-visible { outline: 3px solid #f59e0b; outline-offset: -3px; }
 .chat .attachments, .chat-thread .attachments { display: block; }
 .chat .attachments img, .chat-thread .attachments img { max-width: min(220px,100%); }
 #new-group-title + fieldset, .narrow fieldset { min-width: 0; border: 0; padding: 0; }
+
+.daily-dashboard { min-width: 0; }
+.daily-dashboard li, .daily-dashboard button { overflow-wrap: anywhere; }

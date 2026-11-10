@@ -386,3 +386,14 @@ chat workspace each request; removed members, unrelated admins/siblings and pane
 cannot retrieve them. No rebind to posts/boards/another message. Workspace retained
 file/preview observations include chat-owned assets. Storage caps remain the existing
 upload/configuration controls; this does not activate future P5 quota proposals.
+
+### C5 daily overview
+
+`GET /dashboard` returns current actor data: up to25 active personal/shared-assigned
+tasks (due then priority),10 earliest dated private notes,10 recent visible updates
+and10 unread accessible conversations. tasks_more/notes_more/chats_more describe
+bounded windows; no site-wide totals. Source permissions apply to every item;
+final grant changes filter data, suppress shared more flags and set restart_required.
+Includes today/timezone/observed_at. Calendar date follows valid configured
+LABADDA_TIMEZONE. Administrators get only their own/current-source content; panels
+are refused. Notification open still uses its existing current-source API.
