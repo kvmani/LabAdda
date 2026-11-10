@@ -4,6 +4,7 @@ import { useSession } from "./session";
 import { WorkspaceProvider, useWorkspaces } from "./workspaces";
 import { Activate, Login } from "./pages/Login";
 import { WorkspaceView } from "./pages/WorkspaceView";
+import { Todos } from "./pages/Todos";
 import { Notes } from "./pages/Notes";
 import { NewGroup } from "./pages/NewGroup";
 import { Operations } from "./pages/Operations";
@@ -47,6 +48,7 @@ export function App() {
           <Route path="/activate" element={<Navigate to="/" replace />} />
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
+          <Route path="/todos" element={<Todos />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="/usage" element={<Usage />} />
           <Route path="/operations" element={<Operations />} />

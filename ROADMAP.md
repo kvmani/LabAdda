@@ -16,8 +16,8 @@ site/device/manual acceptance gates continue to apply.
 | C4 · Colleague communication | Chat threads/replies, validated chat attachments and private conversations built on private groups | Attachment recovery, private isolation and realistic cross-section workflows |
 | C5 · Daily dashboard and qualification | Assigned tasks/deadlines/mentions/unread views, configurable notification/reminder controls; keyboard/mobile/touch polish | Five-user sibling-section/division scenario, screenshots/fixtures, accessibility/load and required independent review |
 
-Immediate next action: deliver C1 in runnable backend and web slices, pushing each
-validated stage to main and updating the ledger. C2–C5 remain planned.
+Immediate next action: begin C2 team task coordination after the delivered C1
+backend/web slices. C2–C5 remain planned until their own evidence is recorded.
 
 ## Current checkpoint
 
@@ -131,3 +131,5 @@ Add an entry at the end of each meaningful tranche. Mark status as planned, acti
 | C1 · Personal/shared task backend · implemented | Schema0017, owner-only personal and policy-scoped workspace lists/tasks; calendar dates, priorities/checklists, completion/reopening, UUID create replay and optimistic edits. Bounded pages/payloads, safety ceilings and protected downgrade. Full423 backend/recovery/drift,31 frontend/build passed;20 focused task tests including project/group access, concurrent edits, real PG workspace-writer blocking and final session checks. Independent review findings (expiry after waits and FK/table-lock cycle) fixed and re-reviewed. [Contract](docs/API.md#c1-to-do-lists). | Backend stage; browser delivery follows. No assignment/live tasks/reminders/deletion. Task logical bytes explicitly unmeasured by prior ledger; bootstrap ceilings only. | Complete web task workflows and root/prefix desktop/mobile regression evidence, then C2. |
 
 | Developer discovery · implemented | Added compact docs map, developer task map and C1 source/invariant guide; progressive, synchronized documentation is now a foundational AGENTS.md rule. GitHub fetch/pull found no new upstream commits; prior unfinished C1 web work preserved. | Two UI review follow-ups remain before C1 web completion: rename-conflict recovery and suppressing selection after a denied post-create refresh. | Fix/test those flows, push C1 web delivery, then start C2. |
+
+| C1 · Personal/shared to-do web delivery · verified | Personal navigation and Tasks tabs at every workspace level; list/task forms, dates/priorities/checklists, complete/reopen, explicit latest-version conflict reload and same-request lost-reply recovery. Review fixes prevent denied post-create/late-rename responses from restoring content and late editor completion from repopulating another list. Full424 backend/recovery/drift,31 frontend/typecheck/build and60 root/prefix desktop/mobile browser checks passed. [Evidence](docs/evidence/todos/README.md); [user guide](docs/usage/tasks.md); [developer guide](docs/development/tasks.md). | C1 in-memory drafts/retry IDs do not survive navigation/reload. C2 assignment/comments/history/live task updates/My Tasks remain planned; P4 site/manual/device gates remain. | Begin C2 status/history and team coordination in small verified slices, updating the same feature docs with code. |

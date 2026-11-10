@@ -209,3 +209,9 @@ This deliberately favours correctness for the single-process pilot; table locks
 must be revisited with evidence before broader write throughput is required.
 C1 task text is not included in the earlier text-charge ledger: usage marks
 `todo_logical_bytes` unmeasured. Physical database totals still include these tables.
+
+C1 list conflict recovery also provides `GET /todos/lists/{list}`. It checks the
+current personal/workspace scope before and after serialization, including against
+administrators and panel requests. The browser uses it only on an explicit latest
+list reload; this replaces the rename draft and revision after user confirmation
+through the named action.

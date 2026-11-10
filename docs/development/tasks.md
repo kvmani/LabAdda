@@ -4,6 +4,7 @@
 
 Scope: C1 personal/shared lists. Authoritative requirements: S8/CT-01–03 in
 [SPECIFICATIONS](../../SPECIFICATIONS.md); wire contract: [C1 API](../API.md#c1-to-do-lists).
+User-facing instructions: [Using to-do lists](../usage/tasks.md).
 C2 assignment/comments/history/live updates and My Tasks remain planned.
 
 ## Source map
@@ -46,3 +47,12 @@ Check root/prefix, mobile, recovery, lost replies, conflicts and stale callbacks
 Record actual results in the roadmap; never turn planned C2 features into shipped
 claims. Update this guide, API/requirements when changed, and relevant tests in the
 same commit. See the latest roadmap ledger for current completion and next work.
+
+## C1 browser recovery boundaries
+
+List/task creation retry intent is frozen only within the current view. Latest
+list/task reload is explicit and replaces its draft. A denied post-create refresh
+must not select the returned list. Renaming and editor completion capture request/
+editor generations, so delayed success cannot reopen denied content or repopulate
+another list. Native form submit is guarded while busy; other buttons have explicit
+button types. Browser regressions exercise these boundaries with synthetic users.

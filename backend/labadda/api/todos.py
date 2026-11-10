@@ -228,3 +228,12 @@ def task(list_id: uuid.UUID, task_id: uuid.UUID, request: Request,
     result = _task_json(row)
     _list(db, _actor(request, actor, db), list_id)
     return result
+
+
+@router.get('/lists/{list_id}')
+def get_list(list_id: uuid.UUID, request: Request,
+             actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+    row = _list(db, _actor(request, actor, db), list_id)
+    result = _list_json(row)
+    _list(db, _actor(request, actor, db), list_id)
+    return result

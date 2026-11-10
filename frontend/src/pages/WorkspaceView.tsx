@@ -6,6 +6,7 @@ import { useSession } from "../session";
 import { useWorkspaces } from "../workspaces";
 import type { Workspace } from "../types";
 import { Noticeboard } from "./Noticeboard";
+import { Todos } from "./Todos";
 import { Chat } from "./Chat";
 import { Board } from "./Board";
 import { Members } from "./Members";
@@ -16,6 +17,7 @@ const TABS = [
   ["noticeboard", "Noticeboard"],
   ["board", "Whiteboard"],
   ["chat", "Chat"],
+  ["todos", "Tasks"],
   ["members", "Members"],
   ["usage", "Storage"],
 ] as const;
@@ -85,6 +87,7 @@ export function WorkspaceView() {
         </nav>
       </header>
       {tab === "noticeboard" && <Noticeboard ws={ws} key={ws.id} />}
+      {tab === "todos" && <Todos ws={ws} key={ws.id} />}
       {tab === "chat" && <Chat ws={ws} key={ws.id} />}
       {tab === "board" && <Board ws={ws} key={ws.id} userId={session?.user.id} maxUploadBytes={session?.limits.max_attachment_bytes} />}
       {tab === "members" && <Members ws={ws} key={ws.id} />}

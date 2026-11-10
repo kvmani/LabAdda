@@ -193,3 +193,13 @@ def test_workspace_row_writer_and_list_creation_do_not_deadlock(as_user,ids,db_f
             writer.rollback()
             raise
         assert future.result(timeout=5).status_code == 201
+
+
+def test_list_detail_refresh_keeps_scope_private(as_user,ids):
+    api=as_user('ben'); personal=new_list(api)
+    assert api.get('/todos/lists/'+personal['id']).json()['revision'] == 1
+    for name in ['asha','chen','dana','admin']:
+        assert as_user(name).get('/todos/lists/'+personal['id']).status_code == 404
+    shared=new_list(api,ids['workspaces']['section_a'])
+    assert as_user('asha').get('/todos/lists/'+shared['id']).status_code == 200
+    assert as_user('dana').get('/todos/lists/'+shared['id']).status_code == 404
