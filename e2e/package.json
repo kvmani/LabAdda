@@ -1,0 +1,9 @@
+{
+  "name": "labadda-simulation",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

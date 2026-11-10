@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),{chromium}=require('playwright');
-const browser=await chromium.launch({executablePath:'/usr/bin/chromium'}),origin='http://127.0.0.1:8080';let checks=0;
+const browser=await chromium.launch({executablePath:process.env.LABADDA_CHROMIUM ?? '/usr/bin/chromium'}),origin='http://127.0.0.1:8080';let checks=0;
 const check=(v,label)=>{assert.ok(v,label);checks++;console.log('PASS '+label);};
 async function login(base,name){
  const ctx=await browser.newContext({viewport:{width:1400,height:1100}}),page=await ctx.newPage(),errors=[];

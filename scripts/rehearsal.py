@@ -15,7 +15,7 @@ and reports committed-update latency over every (event, receiving client) pair, 
 and request errors. Development/test instances only: it signs in with the fixture admin and
 creates synthetic accounts.
 
-    .venv/bin/python scripts/rehearsal.py --origin https://127.0.0.1:8080 \\
+    .venv/bin/python scripts/rehearsal.py --synthetic-target --origin https://127.0.0.1:8080 \\
         --cafile var/proxy-stack/tls/ca.crt --clients 30 --drawers 8 --seconds 900 --enforce-targets
 """
 
@@ -63,7 +63,10 @@ class Shared:
 def report_passes(report: dict, *, enforce_targets: bool) -> bool:
     """Integrity, completeness and isolation gate every rehearsal; latency targets only when enforced."""
     integrity = (
-        report["board_ops_acknowledged"] > 0
+        report["workload"]["clients_subscribed"] == report["workload"]["clients"]
+        and report["workload"]["clients"] >= 2
+        and report["workload"]["workspaces"] == 2
+        and report["board_ops_acknowledged"] > 0
         and report["chat_messages_acknowledged"] > 0
         and report["deliveries_expected"] > 0
         and report["deliveries_missing"] == 0
@@ -202,6 +205,8 @@ async def run_client(client: Client, http: dict, api: str, origin: str, base: st
 
 async def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--synthetic-target", action="store_true", required=True,
+                    help="Attest this is a disposable synthetic development/test instance, never production")
     ap.add_argument("--origin", default="http://127.0.0.1:8080")
     ap.add_argument("--base", default="")
     ap.add_argument("--cafile", help="CA bundle for an https origin (e.g. the local rehearsal CA)")

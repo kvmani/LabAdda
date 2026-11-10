@@ -19,6 +19,7 @@ boundary. Run the affected checks and update the same guide and ledger with code
 | Schema and recovery | backend/labadda/models.py, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |
 | Shared task update signals | [Update guide](task-updates.md) → task_events.py and task routers | CT-09, T46, test_task_events.py |
 | Realtime delivery | backend/labadda/realtime.py, frontend/src/realtime.ts | tests/test_realtime.py; REVIEW.md; P4-QUALIFICATION.md |
+| Multi-user regression qualification | [Simulation guide](simulation.md) → scripts/simulate.py, rehearsal.py, e2e | test_simulation.py, test_rehearsal_report.py; full root/prefix profile |
 | Deployment / service / probes | [Operations guide](operations.md) → scripts/operations.py, release.py | test_operations.py, test_release.py; DEPLOYMENT.md, RECOVERY.md |
 | Operational inventory jobs | backend/labadda/inventory_jobs.py, api/inventory_jobs.py | INVENTORY-JOBS.md; focused job/API tests |
 

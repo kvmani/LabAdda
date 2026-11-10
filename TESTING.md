@@ -219,3 +219,11 @@ save recovery, two-tab conflicts/draft retention, actual mute/resume semantics,
 colleague independence, desktop/mobile WCAG2.1 A/AA/overflow and mobile My day/
 private-conversation navigation. Final C4/C5 qualification also reruns earlier
 chat/board/panel/task/conversion/live suites on freshly reset disposable fixtures.
+
+## Dedicated collaboration simulation
+
+Use the [simulation guide](docs/development/simulation.md) and `scripts/simulate.py`
+for fresh-fixture root/prefix qualification with durable reports, screenshots,
+TLS multi-user workloads, negative flows and confirmed cleanup. Direct rehearsal
+now requires `--synthetic-target`; never target real user data. CI has a separate
+full-profile job. Local evidence and hosted CI status must be recorded separately.

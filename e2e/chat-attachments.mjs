@@ -3,7 +3,7 @@ import {createRequire} from 'node:module';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const require=createRequire(import.meta.url),{chromium}=require('playwright');
 const origin='http://127.0.0.1:8080',out=process.argv[2]??'/tmp/c4-collaboration';mkdirSync(out,{recursive:true});
-const browser=await chromium.launch({executablePath:'/usr/bin/chromium'});let checks=0;const shots=[];
+const browser=await chromium.launch({executablePath:process.env.LABADDA_CHROMIUM ?? '/usr/bin/chromium'});let checks=0;const shots=[];
 const check=(v,label)=>{assert.ok(v,label);checks++;console.log('PASS '+label);};
 async function login(base,name){const ctx=await browser.newContext({viewport:{width:1400,height:1100},timezoneId:'Asia/Kolkata'}),page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(origin+base+'/');await page.getByLabel('Username').fill(name);await page.getByLabel('Password').fill('fixture-pass-123');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('button',{name:'Sign out'}).waitFor();const session=await(await ctx.request.get(origin+base+'/api/v1/auth/session')).json();return {ctx,page,errors,session,api:origin+base+'/api/v1',headers:{'X-CSRF-Token':session.csrf_token}};}
 async function call(a,path,body,method=body?'POST':'GET'){const r=await a.ctx.request.fetch(a.api+path,{method,headers:a.headers,data:body});assert.ok(r.ok(),await r.text());return r.json();}

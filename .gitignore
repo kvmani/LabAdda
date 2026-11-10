@@ -9,3 +9,4 @@ var/
 *.log
 .env
 *.tsbuildinfo
+e2e/node_modules/

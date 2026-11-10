@@ -14,7 +14,7 @@ spec.loader.exec_module(rehearsal)
 
 
 def valid():
-    return {'board_ops_acknowledged': 10, 'chat_messages_acknowledged': 3, 'deliveries_expected': 100,
+    return {'workload': {'clients': 5, 'clients_subscribed': 5, 'workspaces': 2}, 'board_ops_acknowledged': 10, 'chat_messages_acknowledged': 3, 'deliveries_expected': 100,
             'deliveries_missing': 0, 'isolation_violations': 0, 'lost': 0, 'duplicates': 0,
             'revision_gaps': False, 'error_count': 0, 'targets': {'update': True, 'list': True}}
 
@@ -38,3 +38,9 @@ def test_latency_targets_fail_only_when_enforced():
     report['targets']['update'] = False
     assert rehearsal.report_passes(report, enforce_targets=False)
     assert not rehearsal.report_passes(report, enforce_targets=True)
+
+
+def test_partially_subscribed_workload_cannot_pass():
+    report = valid()
+    report['workload']['clients_subscribed'] = 4
+    assert not rehearsal.report_passes(report, enforce_targets=False)
