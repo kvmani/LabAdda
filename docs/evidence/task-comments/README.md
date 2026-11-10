@@ -22,3 +22,10 @@ Readonly browser fixtures use the actual steward posting-policy route, not admin
 workspace metadata. Both scripts revoke membership/change policy; reset the proxy
 fixtures before other dependent flows. Automated evidence does not replace manual
 accessibility, physical panel or real-site acceptance.
+
+Final local-demo refresh migrated development and research instances to0020,
+restarted each with its preserved application settings, and verified readiness200.
+Checked counts for users/workspaces/posts/chat/boards/ops/assets/notes and existing
+to-do lists/tasks/history/comments were unchanged. This is local synthetic evidence,
+not pilot activation.40 local documentation file links resolved across the entry
+map, repository instructions and feature/user guides.
