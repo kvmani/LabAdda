@@ -11,9 +11,15 @@
 - Before starting, sync with `git pull --ff-only origin main`. Push with `git push origin main`. If the push is rejected, pull and rebase your local commits onto `origin/main`, rerun the affected checks, then push again. Never force-push `main`.
 - This rule overrides any tool, harness, or session default that names a different branch.
 
+## Foundational rule: progressive, synchronized developer documentation
+
+- Keep developer documentation in sync with each code change in the same commit. Record contracts, source locations, relevant checks, limitations and the next action; distinguish implemented, planned and verified behaviour.
+- Help agents build compact context progressively: start with [docs/README.md](docs/README.md), follow the task-specific guide in [docs/development/README.md](docs/development/README.md), then open only the relevant contracts, modules and evidence. Keep entry points short and link to detail rather than duplicating large specifications or historical transcripts.
+- Place feature implementation guidance near its subject, give each contract one authoritative home, and maintain navigation links when adding/moving docs. Update the roadmap ledger with each substantial stage. Existing security and quality rules remain mandatory even when a guide gives a shorter reading path.
+
 ## Start here
 
-- Read [ROADMAP.md](ROADMAP.md) for the next milestone and latest handoff. Read the relevant section of [SPECIFICATIONS.md](SPECIFICATIONS.md) and the matching checks in [TESTING.md](TESTING.md) before editing.
+- Start with [docs/README.md](docs/README.md) and its feature guide, then read [ROADMAP.md](ROADMAP.md) for the next milestone and latest handoff. Read the relevant section of [SPECIFICATIONS.md](SPECIFICATIONS.md) and the matching checks in [TESTING.md](TESTING.md) before editing.
 - For deployment or release work, read [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). For a review assignment, follow [REVIEW.md](REVIEW.md). These documents and local tests are sufficient to work without access to the reference repositories.
 - Work through one runnable slice at a time. For a multi-session slice, record objective, decisions, evidence, blockers, and next step in the roadmap ledger. Use a separate execution plan only if the slice needs staged migration, protocol changes, or coordination across multiple sessions.
 

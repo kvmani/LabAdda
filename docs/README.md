@@ -1,0 +1,21 @@
+# Documentation map
+
+Read this map first; follow the relevant path rather than loading every document.
+
+| Need | Start here | Follow only as needed |
+| --- | --- | --- |
+| Current work and next stage | [Roadmap priority and latest ledger](../ROADMAP.md) | [Developer task map](development/README.md) |
+| To-do lists / collaboration | [Task implementation guide](development/tasks.md) | S8 in [specifications](../SPECIFICATIONS.md), C1 in [API](API.md), T37–T42 in [testing](../TESTING.md) |
+| Start and verify a checkout | [Repository README](../README.md) | [Testing](../TESTING.md), scripts/verify.sh |
+| Deployment and recovery | [Deployment](DEPLOYMENT.md) | [Recovery](RECOVERY.md), [release evidence](RELEASE-EVIDENCE.md) |
+| Authorization/security review | [Repository rules](../AGENTS.md), [review plan](../REVIEW.md) | Relevant feature contracts and negative tests |
+| Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |
+| Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
+
+Current priority: C1–C5 collaboration. C1 backend is shipped; its web delivery is
+being finished. C2 team coordination follows. Further archive/export/inventory
+expansion is deferred. Existing P4 site/device/manual acceptance gates remain open.
+
+Specifications describe required behaviour; feature guides describe implementation;
+the roadmap's latest ledger entries record delivered evidence and outstanding work.
+Historical ledger entries are snapshots, not the current product status.

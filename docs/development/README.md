@@ -1,0 +1,19 @@
+# Developer task map
+
+Use [repository rules](../../AGENTS.md) first. Read one relevant feature guide,
+then its linked contract/tests; consult broader specifications when changing a
+boundary. Run the affected checks and update the same guide and ledger with code.
+
+| Task | Minimal source path | Contract / checks |
+| --- | --- | --- |
+| To-do lists, scope or retry behaviour | [Tasks guide](tasks.md) → backend/labadda/api/todos.py and frontend/src/pages/Todos.tsx | S8/CT-01–05, API C1, tests/test_todos.py, e2e/todos.mjs |
+| Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
+| Workspace/browser navigation | frontend/src/App.tsx, components/Shell.tsx, pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |
+| Schema and recovery | backend/labadda/models.py, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |
+| Realtime delivery | backend/labadda/realtime.py, frontend/src/realtime.ts | tests/test_realtime.py; REVIEW.md; P4-QUALIFICATION.md |
+| Operational inventory jobs | backend/labadda/inventory_jobs.py, api/inventory_jobs.py | INVENTORY-JOBS.md; focused job/API tests |
+
+All source/test paths above are relative to the repository root (backend test files
+live in backend/tests). Do not run parallel pytest sessions against the same test
+database: its fixtures recreate the schema. Browser proxy startup resets only its
+disposable databases. Preserve development and research-demo data.
