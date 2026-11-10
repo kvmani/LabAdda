@@ -5,6 +5,7 @@ import { fmtTime, localToIso } from "../format";
 import { realtime } from "../realtime";
 import { useSession } from "../session";
 import type { Attachment, Post, Workspace } from "../types";
+import { ConversationTask } from "../components/ConversationTask";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 
 type Feed = { pinned: Post[]; posts: Post[]; next_before: number | null };
@@ -30,6 +31,7 @@ function Attachments({ items }: { items: Attachment[] }) {
 
 function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [taskOpen,setTaskOpen]=useState(false);
   const [text, setText] = useState(post.body);
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,8 @@ function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChange
       ) : (
         <p className="body">{post.body}</p>
       )}
+      <button type="button" className="ghost small" onClick={()=>setTaskOpen(true)}>Create task</button>
+      {taskOpen && <ConversationTask source={ws} kind="post" sourceId={post.id} text={post.body} close={()=>setTaskOpen(false)} />}
       {post.snapshot && (
         <p className="muted small">
           📷 Board snapshot at revision {post.snapshot.source_revision}

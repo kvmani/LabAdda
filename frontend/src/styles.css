@@ -177,3 +177,11 @@ main:focus-visible { outline: 3px solid #f59e0b; outline-offset: -3px; }
 .todo-editor fieldset { min-width: 0; border: 0; padding: 0; }
 
 .preserve { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.conversation-task { min-width: 0; }
+.conversation-task fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.conversation-task input:not([type="checkbox"]), .conversation-task textarea, .conversation-task select { max-width: 100%; }
+.conversation-task button { overflow-wrap: anywhere; }
+.feed { min-width: 0; }
+.composer .inline { max-width: 100%; }
+.composer .inline input, .reply-form input { min-width: 0; }

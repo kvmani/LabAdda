@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { useTaskUpdates } from '../taskUpdates';
 import { TaskAssignment, type Assignee } from '../components/TaskAssignment';
+import { TaskSource } from '../components/TaskSource';
 import { TaskComments } from '../components/TaskComments';
 import { TaskHistory } from '../components/TaskHistory';
 import type { Workspace } from '../types';
@@ -10,7 +11,7 @@ type List = {id: string; title: string; revision: number; workspace_id: string |
 type Workflow = 'todo' | 'in_progress' | 'blocked' | 'done';
 const workflowLabels: Record<Workflow,string> = {todo:'To do',in_progress:'In progress',blocked:'Blocked',done:'Done'};
 type Fields = {status: Workflow; title: string; description: string; due_date: string | null; priority: string; checklist: {title: string; done: boolean}[]; done: boolean};
-type Task = Fields & {assignee:Assignee|null;id: string; revision: number};
+type Task = Fields & {has_source:boolean;assignee:Assignee|null;id: string; revision: number};
 type Page<T> = {items: T[]; next_cursor: string | null};
 const blank = (): Fields => ({status:'todo',title:'', description:'', due_date:null, priority:'normal', checklist:[], done:false});
 const uncertain = (error: any) => error.status === 0 || error.status >= 500;
@@ -193,6 +194,7 @@ export function Todos({ws}: {ws?: Workspace}) {
         {task.checklist.length>0 && <ul>{task.checklist.map((item,i)=><li key={i}>{item.done?'✓':'○'} {item.title}</li>)}</ul>}
         <TaskAssignment listId={selected.id} taskId={task.id} revision={task.revision} assignee={task.assignee} writable={writable} saved={()=>{if(selectedRef.current===selected.id)loadTasks(selected.id);}} />
         <TaskComments listId={selected.id} taskId={task.id} writable={writable} workspaceId={ws?.id} />
+        {task.has_source && <TaskSource listId={selected.id} taskId={task.id} />}
         <TaskHistory listId={selected.id} taskId={task.id} revision={task.revision} />
         {writable && <button type="button" onClick={()=>{setEditing(task);setCreating(false);setEditorKey(++editorGeneration.current);}}>Edit task: {task.title}</button>}
       </li>)}</ul>

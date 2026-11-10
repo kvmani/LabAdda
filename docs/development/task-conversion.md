@@ -3,8 +3,8 @@
 Read [task invariants](tasks.md), CT-10/T47 and the
 [API contract](../API.md#c3-conversation-to-task).
 
-Backend contracts are delivered. Web source paths below describe the following
-implementation slice; browser qualification is recorded separately in the ledger.
+Backend and web controls are delivered. Qualification evidence is recorded in the
+[ledger](../../ROADMAP.md) and [capture/check notes](../evidence/task-conversion/README.md).
 
 ## Sources and scope
 

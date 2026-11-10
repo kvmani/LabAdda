@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { ConversationTask } from "../components/ConversationTask";
 import { api, newId } from "../api";
 import { fmtTime } from "../format";
 import { realtime } from "../realtime";
@@ -14,6 +15,7 @@ export function Chat({ ws }: { ws: Workspace }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [taskSource,setTaskSource]=useState<ChatMessage|null>(null);
   const lastSeq = useRef(0);
   const listRef = useRef<HTMLOListElement>(null);
   const { reload } = useWorkspaces();
@@ -94,6 +96,7 @@ export function Chat({ ws }: { ws: Workspace }) {
           <li key={m.seq}>
             <strong>{m.author?.display_name}</strong> <span className="muted small">{fmtTime(m.created_at)}</span>
             <button className="ghost small" onClick={() => setSummary(`Chat summary from ${ws.name}:\n> ${m.author?.display_name}: ${m.body}`)} aria-label="Publish to noticeboard">Share to noticeboard</button>
+            <button type="button" className="ghost small" onClick={()=>setTaskSource(m)}>Create task</button>
             <p className="body">{m.body}</p>
           </li>
         ))}
@@ -115,6 +118,7 @@ export function Chat({ ws }: { ws: Workspace }) {
       ) : (
         <p className="notice">Chat is read-only here.</p>
       )}
+      {taskSource && <ConversationTask key={taskSource.id} source={ws} kind="chat" sourceId={taskSource.id} text={taskSource.body} close={()=>setTaskSource(null)} />}
       {summary !== null && <PublishSummary source={ws} text={summary} onClose={() => setSummary(null)} />}
     </section>
   );

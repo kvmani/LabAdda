@@ -83,3 +83,24 @@ saving; your choice is retained until that explicit reload. Failed refreshes lea
 the update notice pending. New signals during a refresh also leave it pending.
 Personal lists do not send live signals across tabs in this stage. Drafts remain
 in memory and do not survive navigation or a page reload.
+
+## Turn a conversation into a task
+
+Choose **Create task** on a noticeboard post or chat message. Review the suggested
+title/description, choose your personal lists or a writable workspace, then select
+a destination list. The audience is shown before saving. A different workspace
+requires checking the audience confirmation. Changing destination/list resets
+that choice. If no list exists, create one in the destination and reopen the form.
+
+The task is a reviewed copy: later conversation edits do not change it. Attachments
+are not copied. Use ordinary task controls after creation for dates, checklists,
+workflow and assignment. If saving is unconfirmed, keep the form open and choose
+**Retry same task copy**; the original text/destination stay frozen to prevent
+unintended copies. Closing or navigating away discards in-memory retry state.
+
+Converted tasks offer **View source conversation**. Only people who can currently
+read both the task and the original conversation can open its current text.
+Someone who can read a reviewed division task may still be unable to open its
+section-only source. Missing/removed/inaccessible sources show the same unavailable
+message; the reviewed task stays available under its own list permissions. Source
+text is displayed as plain text. Replies and whiteboard references are later slices.
