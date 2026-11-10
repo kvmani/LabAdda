@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api';
+import { TaskHistory } from '../components/TaskHistory';
 import type { Workspace } from '../types';
 
 type List = {id: string; title: string; revision: number; workspace_id: string | null};
-type Fields = {title: string; description: string; due_date: string | null; priority: string; checklist: {title: string; done: boolean}[]; done: boolean};
+type Workflow = 'todo' | 'in_progress' | 'blocked' | 'done';
+const workflowLabels: Record<Workflow,string> = {todo:'To do',in_progress:'In progress',blocked:'Blocked',done:'Done'};
+type Fields = {status: Workflow; title: string; description: string; due_date: string | null; priority: string; checklist: {title: string; done: boolean}[]; done: boolean};
 type Task = Fields & {id: string; revision: number};
 type Page<T> = {items: T[]; next_cursor: string | null};
-const blank = (): Fields => ({title:'', description:'', due_date:null, priority:'normal', checklist:[], done:false});
+const blank = (): Fields => ({status:'todo',title:'', description:'', due_date:null, priority:'normal', checklist:[], done:false});
 const uncertain = (error: any) => error.status === 0 || error.status >= 500;
 
 function TaskEditor({listId, initial, saved, cancel}: {listId: string; initial: Task | null; saved: () => void; cancel: () => void}) {
@@ -22,8 +25,8 @@ function TaskEditor({listId, initial, saved, cancel}: {listId: string; initial: 
     event.preventDefault(); if(busy)return; setBusy(true); setError(''); setConflict(false);
     try {
       if (initial) {
-        const {title,description,due_date,priority,checklist,done} = fields;
-        await api(`${path}/${initial.id}`, {method:'PUT',body:{title,description,due_date,priority,checklist,done,revision}});
+        const {title,description,due_date,priority,checklist,done,status} = fields;
+        await api(`${path}/${initial.id}`, {method:'PUT',body:{title,description,due_date,priority,checklist,done,status,revision}});
       } else {
         attempt.current ??= {...fields,client_id:crypto.randomUUID()};
         await api(path,{body:attempt.current});
@@ -48,7 +51,8 @@ function TaskEditor({listId, initial, saved, cancel}: {listId: string; initial: 
       <label>Description<textarea maxLength={10000} value={fields.description} onChange={e=>setFields({...fields,description:e.target.value})} /></label>
       <label>Due date<input type="date" value={fields.due_date ?? ''} onChange={e=>setFields({...fields,due_date:e.target.value || null})} /></label>
       <label>Priority<select aria-label="Priority" value={fields.priority} onChange={e=>setFields({...fields,priority:e.target.value})}>{['low','normal','high'].map(p=><option key={p}>{p}</option>)}</select></label>
-      <label><input type="checkbox" checked={fields.done} onChange={e=>setFields({...fields,done:e.target.checked})} />Task completed</label>
+      <label>Workflow state<select aria-label="Workflow state" value={fields.status} onChange={e=>{const status=e.target.value as Workflow;setFields({...fields,status,done:status==='done'});}}>{Object.entries(workflowLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+      <label><input type="checkbox" checked={fields.done} onChange={e=>setFields({...fields,done:e.target.checked,status:e.target.checked?'done':'todo'})} />Task completed</label>
       <h4>Checklist</h4>
       {fields.checklist.map((item,index)=><div className="todo-check" key={index}>
         <input aria-label={`Checklist item ${index+1} done`} type="checkbox" checked={item.done} onChange={e=>setFields({...fields,checklist:fields.checklist.map((v,i)=>i===index?{...v,done:e.target.checked}:v)})} />
@@ -131,7 +135,7 @@ export function Todos({ws}: {ws?: Workspace}) {
   }
   return <section className="todos">
     <h2>{ws ? 'To-do lists' : 'My To-do Lists'}</h2>
-    <p className="notice">{ws ? `Shared with readers of ${ws.name}. Task assignment does not grant access.` : 'Private to you. Administrators and colleagues cannot open these lists.'}</p>
+    <p className="notice">{ws ? `Shared with readers of ${ws.name}.` : 'Private to you. Administrators and colleagues cannot open these lists.'}</p>
     {!writable && <p>This workspace is read-only. You can read its tasks.</p>}
     <button type="button" onClick={()=>loadLists()}>Refresh lists</button>
     {error && <p className="error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
@@ -151,9 +155,10 @@ export function Todos({ws}: {ws?: Workspace}) {
       {writable && <button type="button" onClick={()=>{setCreating(true);setEditing(null);setEditorKey(++editorGeneration.current);}}>New task</button>}
       {tasks.length===0 && <p>No tasks on this page.</p>}
       <ul className="todo-task-list">{tasks.map(task=><li className="card" key={task.id}>
-        <h4>{task.done?'✓ ':''}{task.title}</h4><p>{task.done?'Done':'Open'} · {task.priority} priority{task.due_date?` · Due ${task.due_date}`:''}</p>
+        <h4>{task.done?'✓ ':''}{task.title}</h4><p>{workflowLabels[task.status] ?? (task.done?'Done':'To do')} · {task.priority} priority{task.due_date?` · Due ${task.due_date}`:''}</p>
         <p className="preserve">{task.description}</p>
         {task.checklist.length>0 && <ul>{task.checklist.map((item,i)=><li key={i}>{item.done?'✓':'○'} {item.title}</li>)}</ul>}
+        <TaskHistory listId={selected.id} taskId={task.id} revision={task.revision} />
         {writable && <button type="button" onClick={()=>{setEditing(task);setCreating(false);setEditorKey(++editorGeneration.current);}}>Edit task: {task.title}</button>}
       </li>)}</ul>
       {taskCursor && <button type="button" onClick={()=>loadTasks(selected.id,taskCursor)}>More tasks</button>}

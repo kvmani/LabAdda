@@ -22,3 +22,14 @@ are held in the open view, not saved across closing/reloading/navigating away.
 
 Assignments, task comments/live updates, automatic reminders and deletion are later
 stages; the current lists support coordination without those features.
+
+## Workflow and history
+
+Use **Workflow state** to select To do, In progress, Blocked or Done. The completion
+checkbox mirrors Done; reopening returns to To do. **View task history** shows who
+changed fields, previous/new values and revision time. Older changes are available
+in bounded pages. Editing a field retains its old value in history; it does not
+purge it. History follows the same personal/workspace permissions as the task.
+For tasks predating history tracking, a baseline explains that earlier changes and
+authors were not recorded. Refresh tasks to fetch a colleague's latest edits;
+live task updates are a later C2 slice.

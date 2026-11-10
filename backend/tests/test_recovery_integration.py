@@ -100,6 +100,8 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             recovered_tasks = api.get(f"/todos/lists/{todo['id']}/tasks").json()['items']
             assert recovered_tasks[0]['id'] == todo_task['id']
             assert recovered_tasks[0]['checklist'][0]['done'] is True
+            recovered_history=api.get(f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/history").json()['items']
+            assert recovered_history[0]['action']=='created'
             assert api.get('/admin/usage').status_code == 403
             assert api.get('/usage').json()['measurement']['pending_upload_original_bytes'] == 0
             assert api.get('/uploads/requests/recovery-request-01').status_code == 404

@@ -10,11 +10,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from .. import policy
+from .. import policy, task_history
 from ..deps import Actor, PANEL_HEADER, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound, Unauthenticated
 from ..identity_locks import lock_identity
-from ..models import TodoList, TodoTask, Workspace
+from ..models import TodoList, TodoTask, TodoChange, Workspace, User
 from ..security import utcnow
 from ..serialize import iso
 
@@ -52,6 +52,7 @@ class TaskFields(Title):
     priority: Literal['low','normal','high'] = 'normal'
     checklist: list[CheckItem] = Field(default_factory=list, max_length=50)
     done: bool = Field(default=False, strict=True)
+    status: Literal['todo','in_progress','blocked','done'] | None = None
 
 
 class TaskCreate(TaskFields):
@@ -97,7 +98,11 @@ def _list(db, user, list_id, write=False):
 
 
 def _digest(body, scope):
-    return hashlib.sha256(json.dumps({'body':body.model_dump(mode='json'), 'scope':str(scope)},
+    payload = body.model_dump(mode='json')
+    # Preserve C1 request fingerprints for old clients omitting workflow state.
+    if payload.get('status', 'absent') is None:
+        payload.pop('status')
+    return hashlib.sha256(json.dumps({'body':payload, 'scope':str(scope)},
                                     sort_keys=True, separators=(',',':')).encode()).hexdigest()
 
 
@@ -109,7 +114,7 @@ def _list_json(row):
 def _task_json(row):
     return {'id':str(row.id), 'list_id':str(row.list_id), 'title':row.title, 'description':row.description,
             'due_date':row.due_date.isoformat() if row.due_date else None, 'priority':row.priority,
-            'checklist':row.checklist, 'done':row.done, 'revision':row.revision, 'updated_at':iso(row.updated_at)}
+            'checklist':row.checklist, 'done':row.done, 'status':row.status, 'revision':row.revision, 'updated_at':iso(row.updated_at)}
 
 
 def _page(db, query, model, after, limit, serialize):
@@ -190,9 +195,15 @@ def create_task(list_id: uuid.UUID, body: TaskCreate, request: Request, actor: A
         return _task_json(row)
     if db.scalar(select(func.count()).select_from(TodoTask).where(TodoTask.list_id == list_id)) >= 2000:
         raise Invalid('task_limit', 'This list already has 2,000 tasks.')
+    values = body.model_dump(exclude={'checklist','status'})
+    status = body.status or ('done' if body.done else 'todo')
+    if body.status is not None and body.done != (status == 'done'):
+        raise Invalid('status_mismatch', 'Completion must match the selected workflow state.')
     row = TodoTask(list_id=list_id, created_by=user.id, create_digest=fingerprint,
-                   **body.model_dump(exclude={'checklist'}), checklist=[c.model_dump() for c in body.checklist], revision=1)
+                   **values, status=status, checklist=[c.model_dump() for c in body.checklist], revision=1)
     db.add(row)
+    db.flush()
+    task_history.record(db, row, user.id)
     lock_identity(db, actor, get_settings(request))
     db.commit()
     return _task_json(row)
@@ -208,9 +219,15 @@ def edit_task(list_id: uuid.UUID, task_id: uuid.UUID, body: TaskEdit, request: R
         raise NotFound()
     if row.revision != body.revision:
         raise Conflict('revision_conflict', 'This task changed. Refresh and review before saving again.')
-    for key, value in body.model_dump(exclude={'revision'}).items():
+    before = task_history.snapshot(row)
+    status = body.status or (row.status if body.done == row.done else ('done' if body.done else 'todo'))
+    if body.status is not None and body.done != (status == 'done'):
+        raise Invalid('status_mismatch', 'Completion must match the selected workflow state.')
+    for key, value in body.model_dump(exclude={'revision','status'}).items():
         setattr(row, key, value)
+    row.status = status
     row.revision += 1
+    task_history.record(db, row, user.id, before)
     row.updated_at = utcnow()
     lock_identity(db, actor, get_settings(request))
     db.commit()
@@ -235,5 +252,25 @@ def get_list(list_id: uuid.UUID, request: Request,
              actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
     row = _list(db, _actor(request, actor, db), list_id)
     result = _list_json(row)
+    _list(db, _actor(request, actor, db), list_id)
+    return result
+
+
+@router.get('/lists/{list_id}/tasks/{task_id}/history')
+def history(list_id: uuid.UUID, task_id: uuid.UUID, request: Request,
+            before: int | None = Query(default=None, ge=1), limit: int = Query(default=10,ge=1,le=25),
+            actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+    _list(db, _actor(request, actor, db), list_id)
+    row = db.get(TodoTask, task_id)
+    if row is None or row.list_id != list_id:
+        raise NotFound()
+    query = select(TodoChange, User.display_name).outerjoin(User, User.id == TodoChange.actor_id).where(TodoChange.task_id == task_id)
+    if before is not None:
+        query = query.where(TodoChange.revision < before)
+    changes = db.execute(query.order_by(TodoChange.revision.desc()).limit(limit+1)).all()
+    result = {'items':[{'revision':r.revision,'actor_id':str(r.actor_id) if r.actor_id else None,
+                       'actor':{'display_name':name} if r.actor_id else None,
+                       'action':r.action,'changes':r.changes,'created_at':iso(r.created_at)} for r,name in changes[:limit]],
+              'next_cursor':changes[limit-1][0].revision if len(changes)>limit else None}
     _list(db, _actor(request, actor, db), list_id)
     return result

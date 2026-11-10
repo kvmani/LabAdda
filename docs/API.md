@@ -215,3 +215,23 @@ current personal/workspace scope before and after serialization, including again
 administrators and panel requests. The browser uses it only on an explicit latest
 list reload; this replaces the rename draft and revision after user confirmation
 through the named action.
+
+## C2 workflow and task content history
+
+Task create/edit accepts optional `status`: `todo`, `in_progress`, `blocked`, `done`.
+The `done` projection must agree with explicitly supplied status. An omitted state
+uses C1 creation semantics; on edit it preserves the current intermediate state if
+completion is unchanged, sets Done on completion and To do on reopening. C1 create
+fingerprints are preserved when status is omitted/null, including after migration.
+Task responses include status. These changes do not add assignment or task sockets.
+
+`GET /todos/lists/{list}/tasks/{task}/history?before=<revision>&limit=10` returns
+`{items,next_cursor}` ordered by descending revision; limit 1–25, before>=1. Events
+contain revision, actor_id, current actor display name, action, field before/after
+values and timestamp. History is protected content: current list access applies
+before/after reading, even for admin/operational readers and panels. Migration0018
+creates baseline events with unknown actor/earlier changes for existing tasks;
+baselines never reconstruct older edits. Normal creates/updates write history
+atomically with the task revision, including failed/conflicting/replayed requests
+not creating extra history. History failure aborts the edit. Populated downgrade
+refuses to discard history. History has no pruning or deletion API in this slice.

@@ -116,3 +116,16 @@ aggregate only currently authorised content. Links never grant source access.
 colleague conversations using private groups, followed by a daily collaboration
 dashboard and configurable notification controls. Preserve durable retry, current
 content permissions and browser/offline-asset invariants throughout.
+
+**CT-06 (C2 workflow/history slice).** Add To do/In progress/Blocked/Done task
+states, with done as a compatible completion projection. Preserve C1 create request
+fingerprints and omitted-state edits; an old client editing an incomplete task
+must not reset its intermediate state. State and completion supplied together must
+agree. Persist one content-history event atomically per committed revision, including
+actor attribution and field changes. Replay/conflict/failure creates no duplicate
+event. History is content, read only through current task/list permissions; no admin
+or operational-reader bypass. Migration records an explicit baseline with unknown
+earlier authors/history, not invented reconstruction. Bound history pages and
+protect stored history against lossy downgrade. Web changes use the existing draft,
+revision and revoked-refresh rules. Assignment/comments/live updates/My Tasks are
+separate C2 slices.

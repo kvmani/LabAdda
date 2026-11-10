@@ -534,11 +534,25 @@ class TodoTask(Base):
     priority: Mapped[str] = mapped_column(String(8), nullable=False)
     checklist: Mapped[list] = mapped_column(JSONB, nullable=False)
     done: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default='todo')
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = _created()
     __table_args__ = (
+        CheckConstraint("status in ('todo','in_progress','blocked','done') and done = (status = 'done')", name='ck_todo_task_status'),
         CheckConstraint("priority in ('low','normal','high') and revision > 0", name='ck_todo_task_values'),
         UniqueConstraint('created_by', 'client_id', name='uq_todo_task_request'),
         Index('ix_todo_task_list', 'list_id', 'id'),
     )
+
+
+class TodoChange(Base):
+    """Content history, governed by the task's list access; never an admin log."""
+    __tablename__ = 'todo_changes'
+    task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_tasks.id'), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'))
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    changes: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _created()
+    __table_args__ = (CheckConstraint("revision > 0 and action in ('baseline','created','updated')", name='ck_todo_change_values'),)

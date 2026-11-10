@@ -5,7 +5,8 @@
 Scope: C1 personal/shared lists. Authoritative requirements: S8/CT-01–03 in
 [SPECIFICATIONS](../../SPECIFICATIONS.md); wire contract: [C1 API](../API.md#c1-to-do-lists).
 User-facing instructions: [Using to-do lists](../usage/tasks.md).
-C2 assignment/comments/history/live updates and My Tasks remain planned.
+C2 workflow states and scoped history are implemented; assignment/comments/live
+updates and My Tasks remain planned.
 
 ## Source map
 
@@ -15,6 +16,9 @@ C2 assignment/comments/history/live updates and My Tasks remain planned.
   creation identity and revisions. No deletion or scope moves in C1.
 - frontend/src/pages/Todos.tsx: personal/shared UI, drafts, explicit conflict reload,
   frozen same-intent create retry and stale request/editor generations.
+- backend/labadda/task_history.py, TodoChange and migration0018: atomic revision
+  content history and honest legacy baselines. TaskHistory.tsx is the lazy, bounded
+  browser view; actor names are current display names, IDs remain stable.
 - App.tsx, components/Shell.tsx and pages/WorkspaceView.tsx: /todos and workspace
   Tasks tabs. Existing policy applies at every org level, project and group.
 - backend/tests/test_todos.py and e2e/todos.mjs: scope, concurrency and browser cases.
@@ -56,3 +60,15 @@ must not select the returned list. Renaming and editor completion capture reques
 editor generations, so delayed success cannot reopen denied content or repopulate
 another list. Native form submit is guarded while busy; other buttons have explicit
 button types. Browser regressions exercise these boundaries with synthetic users.
+
+## C2 compatibility and history
+
+Status and completion must agree. When status is omitted, preserve C1 fingerprints
+and intermediate states on unchanged-completion edits. See task_workflow tests for
+a real migration/replay fixture; adding future optional fields must not silently
+invalidate older creation receipts. History is ordinary scoped content, not an
+operational audit report: do not expose it through usage.read or admin privileges.
+Each committed revision records changes atomically, including creator attribution;
+a baseline explicitly marks unavailable earlier history. Do not auto-prune history
+until its lifecycle contract exists. State/history are delivered; C2 assignment,
+comments, task delivery and My Tasks are still pending.

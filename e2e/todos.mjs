@@ -130,6 +130,17 @@ try{
   await ben.page.getByRole('button',{name:'Edit task: Colleague revised measurement',exact:true}).click();
   await ben.page.getByLabel('Task completed',{exact:true}).uncheck();await ben.page.getByRole('button',{name:'Save task',exact:true}).click();
   await ben.page.getByRole('heading',{name:'Colleague revised measurement',exact:true}).waitFor();check(true,base+' task reopens');
+  for(const state of ['in_progress','blocked']){
+   await ben.page.getByRole('button',{name:'Edit task: Colleague revised measurement',exact:true}).click();
+   await ben.page.getByLabel('Workflow state',{exact:true}).selectOption(state);
+   await ben.page.getByRole('button',{name:'Save task',exact:true}).click();
+   await ben.page.getByText(`${state==='in_progress'?'In progress':'Blocked'} · high priority · Due 2026-12-01`,{exact:true}).waitFor();
+   check((await(await ben.ctx.request.get(api+`/todos/lists/${list.id}/tasks/${task.id}`)).json()).status===state,base+' workflow '+state+' persists');
+  }
+  await ben.page.getByRole('button',{name:'View task history',exact:true}).click();
+  const history=ben.page.getByRole('region',{name:'Task change history'});
+  await history.getByText('Workflow state: In progress → Blocked',{exact:true}).waitFor();
+  check(await history.getByText('Workflow state: To do → In progress',{exact:true}).count()===1,base+' readable revision history contains state transitions');
   for(const width of [1400,390]){
    await ben.page.setViewportSize({width,height:1100});await ben.page.addScriptTag({path:require.resolve('../frontend/node_modules/axe-core/axe.min.js')});
    const violations=await ben.page.evaluate(async()=> (await window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations.map(x=>x.id));

@@ -13,8 +13,8 @@ Read this map first; follow the relevant path rather than loading every document
 | Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |
 | Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
 
-Current priority: C1–C5 collaboration. C1 personal/shared lists are delivered in the API and web app. C2 team
-coordination follows. Further archive/export/inventory
+Current priority: C1–C5 collaboration. C1 personal/shared lists and the first C2 workflow/history slice are delivered.
+C2 assignment, comments, live task updates and My Tasks follow. Further archive/export/inventory
 expansion is deferred. Existing P4 site/device/manual acceptance gates remain open.
 
 Specifications describe required behaviour; feature guides describe implementation;
