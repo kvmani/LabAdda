@@ -179,3 +179,18 @@ def test_source_view_rechecks_access_after_serialization(as_user, ids, db_factor
     monkeypatch.setattr(task_conversion,'iso',revoke)
     response=ben.get(f"/todos/lists/{target['id']}/tasks/{row['id']}/source")
     assert response.status_code==404 and 'Source-only' not in response.text
+
+
+def test_hard_source_purge_during_final_refresh_returns_uniform404(as_user,ids,db_factory,monkeypatch):
+    from labadda.api import task_conversion
+    api=as_user('ben');src=source(api,ids['workspaces']['section_a'],'post');target=new_list(api)
+    row=api.post(f"/todos/lists/{target['id']}/from-conversation",json=conversion(src)).json()
+    original=task_conversion._actor;calls=0
+    def purge(*args,**kw):
+        nonlocal calls
+        calls+=1
+        if calls==2:
+            with db_factory() as db:db.execute(delete(Post).where(Post.id==src));db.commit()
+        return original(*args,**kw)
+    monkeypatch.setattr(task_conversion,'_actor',purge)
+    assert api.get(f"/todos/lists/{target['id']}/tasks/{row['id']}/source").status_code==404

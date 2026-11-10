@@ -166,3 +166,19 @@ Real recovery integration round-trips a protected post reference.
 source grant last. Cover root/prefix, editable copies, frozen lost-reply retry,
 actual audience confirmation/reset, source plain-text safety, private and sibling
 isolation, destination-list paging and delayed first-source-response revocation.
+
+**T48 · CT-11, board task context.** `test_task_board_conversion.py` covers personal/
+same-workspace/different-workspace scopes, explicit confirmation, minimal source
+metadata, retries after ink/restore, context conflicts, CSRF/panel/current-reader
+and read-only boundaries, actual PostgreSQL FOR SHARE wait races, rollback, expiry,
+final-read revocation/purge, bounded context lookup and populated downgrade.
+Real recovery round-trips a recorded board reference. T47 also adds a hard post
+purge during final refresh to preserve uniform404 after ORM expiry.
+
+`e2e/task-board-reference.mjs` covers root/prefix context review and draft recovery,
+lost-reply retry after further ink, recorded vs current context after restore,
+explicit different audience, sibling denial and delayed source-only revocation.
+A MutationObserver detects even transient restoration of revoked context. Desktop/
+mobile WCAG2.1 A/AA and overflow checks apply to form and protected view. Existing
+post/chat conversion and chat/board/panel regressions remain required; panel flow
+asserts task creation is absent. Use separately reset disposable proxy fixtures.

@@ -4,7 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import Field
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import policy, task_events
@@ -13,7 +13,9 @@ from ..errors import Invalid, NotFound
 from ..identity_locks import lock_identity
 from ..models import ChatMessage, Post, TodoSource, TodoTask, Workspace
 from ..serialize import iso
-from .todos import TaskCreate, _actor, _create_task_row, _digest, _list, _task_json
+from .todos import TaskCreate, _actor, _create_task_row, _digest, _list, _task_json, _lock_source_read
+
+from .task_board_conversion import board_source
 
 router = APIRouter(prefix='/todos', tags=['todos'])
 
@@ -44,12 +46,7 @@ def convert(list_id: uuid.UUID, body: Conversion, request: Request,
     # serialize both source-read and destination-write authority with revocation.
     target = _list(db, user, list_id, True)
     source = _source(db, user, body.source_kind, body.source_id)
-    if target.workspace_id is None:
-        db.execute(select(Workspace.id).where(Workspace.id == source.workspace_id)
-                   .with_for_update(read=True, key_share=True))
-        db.execute(text('lock table workspaces, memberships in share mode'))
-        db.expire_all()
-        source = _source(db, user, body.source_kind, body.source_id)
+    _lock_source_read(db, user, target, source.workspace_id)
     source = _source(db, user, body.source_kind, body.source_id, lock=True)
     if target.workspace_id is not None and target.workspace_id != source.workspace_id and not body.confirm_audience:
         raise Invalid('audience_confirmation_required', 'Confirm that this task copy will be shared with a different workspace audience.')
@@ -78,6 +75,8 @@ def source(list_id: uuid.UUID, task_id: uuid.UUID, request: Request,
     if task is None or task.list_id != list_id:
         raise NotFound()
     reference = db.get(TodoSource, task_id)
+    if reference is not None and reference.board_workspace_id is not None:
+        return board_source(db, request, actor, list_id, reference)
     if reference is None or (reference.post_id is None and reference.chat_message_id is None):
         raise NotFound()
     kind = 'post' if reference.post_id else 'chat'
@@ -85,7 +84,8 @@ def source(list_id: uuid.UUID, task_id: uuid.UUID, request: Request,
     result = {'kind': kind, 'id': str(row.id), 'workspace_id': str(row.workspace_id),
               'workspace_name': db.get(Workspace, row.workspace_id).name, 'body': row.body,
               'created_at': iso(row.created_at)}
+    source_id = row.id
     fresh = _actor(request, actor, db)
     _list(db, fresh, list_id)
-    _source(db, fresh, kind, row.id)
+    _source(db, fresh, kind, source_id)
     return result

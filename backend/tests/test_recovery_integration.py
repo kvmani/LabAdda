@@ -78,6 +78,12 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
         'source_kind':'post','source_id':post.json()['id']})
     assert converted.status_code == 201
     source_path = f"/todos/lists/{todo['id']}/tasks/{converted.json()['id']}/source"
+    board_context=ben.get(f'/workspaces/{workspace}/board').json()
+    board_task=ben.post(f"/todos/lists/{todo['id']}/from-board",json={
+        'client_id':str(uuid.uuid4()),'title':'Recovery research plan action',
+        'source_workspace_id':workspace,'source_epoch':board_context['epoch'],'source_revision':board_context['revision']})
+    assert board_task.status_code==201
+    board_source_path=f"/todos/lists/{todo['id']}/tasks/{board_task.json()['id']}/source"
     bundle = tmp_path / 'backup'
     sha = backup(settings.database_url, settings.asset_dir, bundle, 'synthetic-release', writers_quiesced=True)
     target_name = 'labadda_restore_test_' + uuid.uuid4().hex
@@ -112,6 +118,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             recovered_tasks = [item for item in recovered_tasks if item['id'] == todo_task['id']]
             assert recovered_tasks[0]['id'] == todo_task['id']
             assert api.get(source_path).json()['body'] == 'Recovery post'
+            assert api.get(board_source_path).json()['revision']==board_context['revision']
             assert recovered_tasks[0]['checklist'][0]['done'] is True
             recovered_history=api.get(f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/history").json()['items']
             assert recovered_history[-1]['action']=='created'

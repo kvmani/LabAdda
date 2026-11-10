@@ -328,3 +328,32 @@ never grants source access. No reference/missing/removed/purged/out-of-scope sou
 uses uniform404. Task content/history never receives this protected payload.
 No panel access, attachment copying, edit synchronization or source permission
 changes. Source physical purge sets reference FKs null and retains the task copy.
+
+### C3 protected whiteboard context
+
+`POST /todos/lists/{list_id}/from-board` accepts TaskCreate plus
+`source_workspace_id`, strict `source_epoch` (>=1), strict `source_revision` (>=0)
+and strict `confirm_audience` (default false). The source must be a readable
+existing Board row. Same/personal/different workspace audiences follow CT-10;
+different shared workspaces require explicit confirmation. Fields describe the
+user's task, never copied board strokes/images/names. Task/history/reference commit
+atomically; only a new shared task emits the existing content-free update hint.
+
+New requests compare the reviewed tuple to the current board under FOR SHARE.
+Mismatch returns409 `board_context_changed`; no task/history/reference is stored.
+Committed receipt lookup precedes this comparison: an identical authorized retry
+returns the same task after ink/restore, with its original recorded tuple. Changed
+intent/source/context/destination with the same request ID returns409. C1 and
+conversation fingerprints remain unchanged.
+
+`GET /todos/board-context/{workspace_id}` returns only `{epoch, revision}` for a
+currently readable existing board, rechecking current access before return. It
+serves deliberate context refresh without fetching strokes/images.
+
+The existing protected task `/source` endpoint returns `kind:board`, workspace
+ID/name, recorded `epoch`/`revision` and `current_epoch`/`current_revision` only to
+current task AND board readers. It does not return a historical render or image.
+Missing/purged/inaccessible source uses uniform404. Ordinary task/history responses
+retain only generic `has_source`, never board context. Board purge clears its FK
+but keeps recorded context stored; populated context downgrade is refused even
+when the source FK is null. Both endpoints reject panel sessions.

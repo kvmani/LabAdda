@@ -97,6 +97,15 @@ def _list(db, user, list_id, write=False):
     return row
 
 
+def _lock_source_read(db, user, target, workspace_id):
+    if target.workspace_id is None:
+        db.execute(select(Workspace.id).where(Workspace.id == workspace_id)
+                   .with_for_update(read=True, key_share=True))
+        db.execute(text('lock table workspaces, memberships in share mode'))
+        db.expire_all()
+    policy.require_read(db, user, workspace_id)
+
+
 def _digest(body, scope):
     payload = body.model_dump(mode='json')
     # Preserve C1 request fingerprints for old clients omitting workflow state.

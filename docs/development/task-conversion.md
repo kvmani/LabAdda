@@ -9,7 +9,7 @@ Backend and web controls are delivered. Qualification evidence is recorded in th
 ## Sources and scope
 
 - `api/task_conversion.py`: readable post/chat, explicit audience, creation and
-  independent protected source view. No reply/board conversion yet.
+  independent protected source view. No reply conversion. Board context is covered in the [board reference guide](task-board-references.md).
 - `api/todos.py`: shared `_create_task_row` staging helper; old create identity and
   task fields remain compatible. Conversion fingerprints bind the extended intent.
 - `TodoSource`/schema0021: one task reference, separate nullable post/chat foreign
@@ -50,4 +50,4 @@ Run T47 and real recovery, full verify, then the conversion browser suite and
 existing chat/task regressions on separately reset disposable proxy databases.
 Independent authorization review is required by REVIEW.md. Do not reset preserved
 development/research demos. No source reference accounting, retention action,
-attachments, source edits or board context is introduced in this slice.
+attachments or source edits are introduced by conversion. See the [board reference guide](task-board-references.md) for schema0022 context.

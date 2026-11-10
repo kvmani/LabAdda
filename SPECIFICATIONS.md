@@ -190,3 +190,22 @@ schema downgrade and preserve them through recovery. Web uncertain writes freeze
 original intent/audience, and revoked scopes invalidate delayed source/create
 responses. This slice excludes reply conversion, board references and automatic
 assignment/reminders; those remain subsequent C3/C5 work.
+
+**CT-11 (C3 research-plan board context).** Create a task from a readable existing
+whiteboard, using the same reviewed task fields, destination policy, audience
+confirmation and protected-source boundary as CT-10. Record an immutable epoch/
+revision tuple, not a copied image, rendered historical board or access grant.
+Accept a new task only if the reviewed tuple matches the current board under its
+row lock. A stale tuple requires explicit context review without discarding draft
+text; a committed same-intent retry retains its original context after later ink or
+restore. Source read and destination write must hold under metadata/identity locks.
+
+Task/history/events expose no board IDs, names or revision context; generic source
+provenance remains destination-visible. Authorized source inspection shows recorded
+and current tuples separately and links to the live board with an explicit saved-
+image distinction. Compaction/restore does not rewrite recorded context; source
+purge makes the link unavailable while retaining the task copy. Guard populated
+context downgrade and preserve references through recovery. No task controls or
+endpoints are available to board-only sessions. Empty never-written boards must
+have plan content before creation; no implicit board write on a reader's behalf.
+This slice does not provide per-object/region references or historical rendering.

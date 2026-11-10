@@ -587,4 +587,10 @@ class TodoSource(Base):
     task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_tasks.id'), primary_key=True)
     post_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='SET NULL'))
     chat_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id', ondelete='SET NULL'))
-    __table_args__ = (CheckConstraint('post_id is null or chat_message_id is null', name='ck_todo_source_kind'),)
+    board_workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('boards.workspace_id', ondelete='SET NULL'))
+    board_epoch: Mapped[int | None] = mapped_column(Integer)
+    board_revision: Mapped[int | None] = mapped_column(BigInteger)
+    __table_args__ = (
+        CheckConstraint('num_nonnulls(post_id, chat_message_id, board_workspace_id) <= 1', name='ck_todo_source_kind'),
+        CheckConstraint('(board_epoch is null) = (board_revision is null) and (board_epoch is null or (board_epoch > 0 and board_revision >= 0)) and (board_workspace_id is null or board_epoch is not null) and ((post_id is null and chat_message_id is null) or board_epoch is null)', name='ck_todo_source_board'),
+    )
