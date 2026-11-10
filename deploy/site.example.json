@@ -1,0 +1,13 @@
+{
+  "instance": "staging",
+  "root": "/srv/labadda/staging",
+  "user": "labadda-staging",
+  "group": "labadda-staging",
+  "env_file": "/etc/labadda/staging.env",
+  "server_name": "labadda.intranet.example",
+  "port": 8102,
+  "base_path": "/labadda-staging",
+  "tls_certificate": "/etc/ssl/labadda/server.crt",
+  "tls_key": "/etc/ssl/labadda/server.key",
+  "backup_root": "/srv/labadda-backups/staging"
+}

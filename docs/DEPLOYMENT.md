@@ -29,3 +29,10 @@ Before real pilot activation the operator confirms the base URL, certificate tru
 ## Later web policy and observability boundary
 
 S5–S7 specify future admin-controlled quotas, retention, portable user archives and a complete operational console. See [data lifecycle](DATA-LIFECYCLE.md), [archive format](ARCHIVE-FORMAT.md) and [admin console](ADMIN-CONSOLE.md). The proposed profiles do not activate retention or change current settings. Before enforcement, reconcile existing data, approve site capacity/reserve/expiry values, provide archive escape paths, verify recovery/deletion-intent handling and pass the staged P5 gates. Provision trusted storage/target aliases and constrained worker capabilities outside the web app; web controls select reviewed policy and provisioned aliases, never arbitrary shell commands, credentials, filesystem paths or live restore targets. Operational visibility does not grant content access. Current manual CLI recovery remains governed by RECOVERY.md until the new evidence-backed control plane is implemented and qualified.
+
+## Reviewable site configuration
+
+Use the [operations implementation guide](development/operations.md) for the typed
+site renderer, hardened system service, maintenance gate and bounded readiness
+probes. Rendering is a review step, not site activation. Existing user-service and
+proxy templates remain alternatives; choose one coherent layout rather than mixing them.
