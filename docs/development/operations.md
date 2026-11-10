@@ -52,8 +52,9 @@ workflows, asset checks, WebSocket checks, restore drills or site acceptance.
 
 ## Next runnable slices
 
-Add serialized/journaled maintenance and backup orchestration around the existing
-recovery CLI, then safe upgrade orchestration with fail-closed maintenance. Never
+The lifecycle wrapper below implements serialized/journaled maintenance, backups
+and fail-closed upgrades. [Commissioning](../COMMISSIONING.md) covers empty-site
+initialization and isolated restore preparation. Never
 infer that a local digest proves publisher identity or that a successful backup
 proves recovery/off-host durability. Restore remains isolated and never changes
 traffic. Dedicated simulation orchestration follows the collaboration test map.

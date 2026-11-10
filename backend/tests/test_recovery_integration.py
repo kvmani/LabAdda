@@ -99,6 +99,17 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             conn.execute(text(f'CREATE DATABASE "{target_name}"'))
             created = True
         target_assets = tmp_path / 'restored-assets'
+        # pgx is user-creatable; SQL LIKE 'pg_%' incorrectly treats its x as a wildcard.
+        occupied = create_engine(target_url)
+        with occupied.begin() as conn:
+            conn.execute(text('CREATE SCHEMA pgx'))
+            conn.execute(text('CREATE TABLE pgx.preserved (id integer)'))
+        with pytest.raises(RecoveryError, match='must be empty'):
+            restore(bundle, sha, target_url, target_assets, isolated_target=True)
+        assert not target_assets.exists()
+        with occupied.begin() as conn:
+            conn.execute(text('DROP SCHEMA pgx CASCADE'))
+        occupied.dispose()
         result = restore(bundle, sha, target_url, target_assets, isolated_target=True)
         assert result['sessions_revoked']
         from labadda.models import InventoryJob, InventoryAttempt

@@ -205,7 +205,7 @@ def restore(bundle: Path, expected_manifest_hash: str, target_url: str, assets: 
                     if not guard.scalar(text("select pg_try_advisory_lock(hashtext('labadda_restore'))")):
                         raise RecoveryError('Another restore owns this target')
                     try:
-                        objects = guard.scalar(text("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname not like 'pg_%' and n.nspname <> 'information_schema'"))
+                        objects = guard.scalar(text("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where left(n.nspname, 3) <> 'pg_' and n.nspname <> 'information_schema'"))
                         if objects:
                             raise RecoveryError('Target database must be empty; never overwrite existing data')
                         pg_command(pg_restore, target_url, '--dbname', postgres_environment(target_url)['PGDATABASE'], '--single-transaction', '--exit-on-error',
