@@ -371,3 +371,18 @@ commit. Current source write/session policy applies to replay.
 messages (latest page) and next_before. Optional positive before and limit1–100
 (default25) page older replies. Both actual root scope and final read authority
 are checked. No panel access. Unread remains per workspace, not per-thread.
+
+### C4 validated chat attachments
+
+Chat creation additionally accepts `attachment_ids` (up to20 submitted IDs and the
+configured per-message limit after deduplication). Intent binds the canonical set,
+body, root and workspace. Body may be empty when files are present; empty/whitespace
+without files returns422. Only the sender's provisional uploads can bind; used or
+foreign files return422. Claims lock files in UUID order and commit with the chat.
+
+Chat stream/thread/socket messages include `attachments` with same-origin URLs,
+validated metadata and previews. File/preview authorization resolves the actual
+chat workspace each request; removed members, unrelated admins/siblings and panels
+cannot retrieve them. No rebind to posts/boards/another message. Workspace retained
+file/preview observations include chat-owned assets. Storage caps remain the existing
+upload/configuration controls; this does not activate future P5 quota proposals.

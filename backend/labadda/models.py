@@ -235,6 +235,7 @@ class Asset(Base):
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="provisional")
     post_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("posts.id"))
+    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id'))
     board_workspace_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_assets_board_workspace")
     )
@@ -245,9 +246,9 @@ class Asset(Base):
 
     __table_args__ = (
         CheckConstraint("status in ('provisional','committed')", name="ck_asset_status"),
-        CheckConstraint("status = 'provisional' or post_id is not null or board_workspace_id is not null",
+        CheckConstraint("status = 'provisional' or post_id is not null or board_workspace_id is not null or chat_message_id is not null",
                         name="ck_asset_committed_owner"),
-        CheckConstraint("post_id is null or board_workspace_id is null", name="ck_asset_single_owner"),
+        CheckConstraint("num_nonnulls(post_id, board_workspace_id, chat_message_id) <= 1", name="ck_asset_single_owner"),
         CheckConstraint("(preview_size is null and preview_sha256 is null) or "
                         "(preview_size is not null and "
                         "((has_preview and preview_size > 0 and preview_sha256 is not null and length(preview_sha256) = 64) or "
@@ -255,6 +256,7 @@ class Asset(Base):
                         name="ck_asset_preview_integrity"),
         Index("ix_assets_owner", "owner_id"),
         Index("ix_assets_post", "post_id"),
+        Index("ix_assets_chat", "chat_message_id"),
         Index("ix_assets_board", "board_workspace_id"),
     )
 
@@ -303,6 +305,7 @@ class ChatMessage(Base):
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id'))
     body: Mapped[str] = mapped_column(Text, nullable=False)
     client_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    attachments: Mapped[list[Asset]] = relationship(foreign_keys='Asset.chat_message_id', lazy='selectin', order_by='Asset.id')
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (

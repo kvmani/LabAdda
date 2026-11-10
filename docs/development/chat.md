@@ -31,3 +31,16 @@ explicit same-request recovery. Scope generations and socket denial clear all
 protected streams, threads, dialogs and composers. Browser: e2e/chat-threads.mjs,
 including held-response reconnect/older-page races and desktop/mobile axe checks.
 Attachments/private-group qualification are following slices.
+
+## Attachment API (schema0024)
+
+Asset.chat_message_id is a third exclusive durable destination alongside post/board.
+No private upload becomes shared before message commit. chat.py locks canonical
+provisional IDs in UUID order, binds owner/status and freezes them in replay intent.
+ChatMessage.attachments loads in bounded batches; message_json uses the instance API
+prefix for URLs. files.py checks the actual chat source before desktop delivery;
+board-only panels still see only own-board embedded images. workspace_usage.py joins
+chat sources so retained original/preview counts stay accurate. Existing upload
+reservation/receipt/preview validation and asset recovery are reused, not bypassed.
+Tests: test_chat_attachments plus upload/file/usage/recovery regressions. Web file
+controls and private conversation qualification follow in stage4.

@@ -18,7 +18,7 @@ from ..reservations import consume_upload, release_upload, reserve_upload
 from ..config import Settings
 from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, panel_actor
 from ..errors import ApiError, Invalid, NotFound
-from ..models import Asset, Post, UploadReceipt, UploadReservation
+from ..models import Asset, Post, ChatMessage, UploadReceipt, UploadReservation
 from ..security import utcnow
 from ..serialize import asset_json
 from ..identity_locks import lock_identity
@@ -181,6 +181,11 @@ def _authorized_asset(db: Session, actor: Actor, asset_id: uuid.UUID) -> Asset:
     if asset.board_workspace_id is not None:
         # Board images are readable by anyone who can read that board.
         if not policy.can_read(db, actor.user, asset.board_workspace_id):
+            raise NotFound()
+        return asset
+    if asset.chat_message_id is not None:
+        message=db.get(ChatMessage,asset.chat_message_id)
+        if message is None or not policy.can_read(db,actor.user,message.workspace_id):
             raise NotFound()
         return asset
     post = db.get(Post, asset.post_id)

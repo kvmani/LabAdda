@@ -194,3 +194,10 @@ T49 web evidence: e2e/chat-threads.mjs covers retained drafts, lost-reply recove
 root/prefix desktop/mobile accessibility, held older-page vs latest-view race,
 new-message notice while viewing old history, held old HTTP snapshot across
 reconnect/offline write, and revocation clearing stream/thread/composer.
+
+**T50 · CT-13, chat attachments.** `test_chat_attachments.py` covers roots/replies,
+attachment-only validation, canonical replay binding, foreign-owner/used-file denial,
+post/chat destination exclusivity, PDF delivery, PNG preview, SVG refusal, actual
+private-group/sibling/admin/panel/revocation policy, workspace file byte observations,
+expired identity rollback and guarded downgrade. Real recovery includes a chat PDF.
+Existing uploads/reservations/preview/file/recovery tests remain mandatory.

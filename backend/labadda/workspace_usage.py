@@ -6,7 +6,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 
 from .charges import BOARD_METHOD, TEXT_METHOD
-from .models import Asset, Board, ContentCharge, Post
+from .models import Asset, Board, ContentCharge, Post, ChatMessage
 from .security import utcnow
 from .serialize import iso
 
@@ -21,9 +21,9 @@ def workspace_observation(db, workspace_id):
         'unknown_preview_files', func.count(case((Asset.has_preview & Asset.preview_size.is_(None), 1))),
         'removed_post_original_bytes', func.coalesce(func.sum(case((Post.deleted_at.is_not(None), Asset.size), else_=0)), 0),
         type_=JSONB,
-    )).select_from(Asset).outerjoin(Post, Asset.post_id == Post.id).where(
+    )).select_from(Asset).outerjoin(Post, Asset.post_id == Post.id).outerjoin(ChatMessage,Asset.chat_message_id==ChatMessage.id).where(
         Asset.status == 'committed',
-        or_(Asset.board_workspace_id == workspace_id, Post.workspace_id == workspace_id))
+        or_(Asset.board_workspace_id == workspace_id, Post.workspace_id == workspace_id, ChatMessage.workspace_id==workspace_id))
     columns = [files.scalar_subquery()]
     for kind in SHARED_TYPES:
         columns.append(select(func.jsonb_build_object(

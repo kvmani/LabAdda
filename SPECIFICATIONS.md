@@ -219,3 +219,15 @@ per workspace, current identity and grants before acceptance, and final read sco
 before returning. Retain thread context through recovery; populated downgrade is
 refused. Clients keep a safe HTTP catch-up cursor separate from live display state,
 and clear protected stream/thread/composers on revocation and stale responses.
+
+**CT-13 (C4 chat attachments).** Attach only existing validated owner-provisional
+uploads (PDF/PNG/JPEG, current upload limits) to one chat message/reply. Freeze
+canonical file IDs with text/root/destination in durable retry intent. Binding and
+message/notifications commit together; replays never rebind files or create another
+message. Foreign-owner/already-bound files and changed intent are rejected. Permit
+attachment-only messages, reject empty text without files. Downloads/previews use
+current actual chat workspace grants, including private groups, with no owner,
+admin, sibling or panel bypass. Workspace file observations include chat attachments;
+existing upload reservation, preview integrity and physical recovery rules apply.
+Web uploads use the existing receipt/check/retry queue and retain unknown send
+intent. No chat attachment copying to broader audiences or tasks is implicit.
