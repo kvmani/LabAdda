@@ -70,6 +70,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y nginx postgresql-client-16
           sudo systemctl stop nginx
+          PGPASSWORD=labadda-dev createdb -h 127.0.0.1 -U labadda labadda_e2e_root
+          PGPASSWORD=labadda-dev createdb -h 127.0.0.1 -U labadda labadda_e2e_prefix
           python -m venv .venv
           .venv/bin/pip install -r backend/requirements.lock
           .venv/bin/pip install --no-deps -e backend

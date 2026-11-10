@@ -9,7 +9,9 @@ Do not concurrently run `proxy-stack.sh`, individual browser tests or another
 runner against ports8001/8002/8080. The runner lock covers other runner invocations.
 
 Install locked backend/frontend dependencies, build the frontend, install nginx,
-PostgreSQL16 clients, Node22 and Chromium, then install the locked browser driver:
+PostgreSQL16 clients, Node22 and Chromium. Provision the fictional local role
+`labadda`/`labadda-dev` and its two **disposable** databases `labadda_e2e_root`
+and `labadda_e2e_prefix` before the first run (CI does this explicitly). Then install the locked browser driver:
 
 ```sh
 npm --prefix e2e ci
