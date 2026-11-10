@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { useTaskUpdates } from '../taskUpdates';
 import { useWorkspaces } from '../workspaces';
 
 type Task = {id:string;list_id:string;list_title:string;workspace_id:string|null;title:string;description:string;status:string;due_date:string|null;priority:string};
@@ -11,17 +12,20 @@ export function MyTasks() {
   const visibility=workspaces.map(w=>w.id).sort().join('|');
   const [state,setState]=useState(''),[page,setPage]=useState<Page|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(false);
   const generation=useRef(0);
+  const updates=useTaskUpdates(workspaces.map(w=>w.id),()=>{++generation.current;setPage(null);setLoading(false);});
   async function load(after?:string) {
+    const seen=updates.snapshot();
     const token=++generation.current;setPage(null);setError('');setLoading(true);
     try {
       const result=await api<Page>('/todos/mine',{params:{status:state,after}});
-      if(token===generation.current)setPage(result);
+      if(token===generation.current){setPage(result);if(after===undefined)updates.acknowledge(seen);}
     }catch(e:any){if(token===generation.current)setError(e.message);}
     finally{if(token===generation.current)setLoading(false);}
   }
   useEffect(()=>{load();return()=>{++generation.current;};},[state,visibility]);
   return <section className="todos"><h1>My Tasks</h1>
     <p>Your personal tasks and shared tasks assigned to you in spaces you can currently access.</p>
+    {updates.pending && <p role="status">Shared assignments may have changed. Refresh My Tasks to check current work.</p>}
     <label>My Tasks state<select aria-label="My Tasks state" value={state} onChange={e=>{++generation.current;setPage(null);setState(e.target.value);}}><option value="">All states</option>{Object.entries(states).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
     <button type="button" onClick={()=>load()} disabled={loading}>Refresh My Tasks</button>
     {loading && <p role="status">Loading My Tasks…</p>}

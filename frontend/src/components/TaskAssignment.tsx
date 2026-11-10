@@ -12,8 +12,11 @@ export function TaskAssignment({listId,taskId,revision,assignee,writable,saved}:
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState('');
   const [reloadNeeded,setReloadNeeded]=useState(false);
   const generation=useRef(0);
-  useEffect(()=>{++generation.current;setOpen(false);setPage(null);setSelected(assignee?.id ?? '');setError('');setReloadNeeded(false);return()=>{++generation.current;};},[listId,taskId,revision]);
+  const [draftRevision,setDraftRevision]=useState(revision);
+  useEffect(()=>{++generation.current;setOpen(false);setPage(null);setSelected(assignee?.id ?? '');setError('');setReloadNeeded(false);return()=>{++generation.current;};},[listId,taskId]);
+  useEffect(()=>{if(open)setReloadNeeded(true);else setSelected(assignee?.id ?? '');},[revision]);
   async function load(after?:string) {
+    if(!open){setDraftRevision(revision);setSelected(assignee?.id ?? '');setReloadNeeded(false);}
     const token=++generation.current;setOpen(true);setLoading(true);setPage(null);setError('');
     try {
       const result=await api<Page>(`/todos/lists/${listId}/assignees`,{params:{q:query,after}});
@@ -25,8 +28,8 @@ export function TaskAssignment({listId,taskId,revision,assignee,writable,saved}:
     event.preventDefault();if(busy||reloadNeeded)return;
     const token=++generation.current;setBusy(true);setError('');
     try {
-      await api(`/todos/lists/${listId}/tasks/${taskId}/assignee`,{method:'PUT',body:{user_id:selected || null,revision}});
-      if(token===generation.current)saved();
+      await api(`/todos/lists/${listId}/tasks/${taskId}/assignee`,{method:'PUT',body:{user_id:selected || null,revision:draftRevision}});
+      if(token===generation.current){setOpen(false);setPage(null);saved();}
     }catch(e:any){if(token===generation.current){setError(e.message);setReloadNeeded(e.status===0||e.status>=500||e.status===409);}}
     finally{if(token===generation.current)setBusy(false);}
   }

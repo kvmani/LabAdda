@@ -20,7 +20,7 @@ the original request ID, recovering the same created resource rather than creati
 a duplicate. Keep the view open until this is resolved: drafts and these retry IDs
 are held in the open view, not saved across closing/reloading/navigating away.
 
-Live task updates, automatic reminders and deletion are later stages.
+Automatic reminders and deletion are later stages. Shared update notices are described below.
 
 ## Workflow and history
 
@@ -31,7 +31,7 @@ in bounded pages. Editing a field retains its old value in history; it does not
 purge it. History follows the same personal/workspace permissions as the task.
 For tasks predating history tracking, a baseline explains that earlier changes and
 authors were not recorded. Refresh tasks to fetch a colleague's latest edits;
-live task updates are a later C2 slice.
+shared update notices prompt you to review changes.
 
 ## Assigning work and My Tasks
 
@@ -49,7 +49,7 @@ History records who changed responsibility and the previous/new colleague.
 Filter by workflow state and open a source list to act on a task. Personal tasks
 remain here even when unassigned. Losing workspace access hides its shared tasks;
 it does not erase their recorded responsibility or history. Refresh loads current
-results; task changes are not yet pushed live. Assignment sends no automatic
+results; a shared-update notice prompts you when shared work may have changed. Assignment sends no automatic
 notification in this slice. If access changes during loading, restart with Refresh
 My Tasks rather than continuing an obsolete page.
 
@@ -66,4 +66,20 @@ recovers the same request. Drafts survive same-list task refresh and task field 
 keep the view open until posting is confirmed. Navigation/reload discards in-memory
 drafts/request IDs. Comments preserve newlines and render HTML-looking text safely
 as text. This slice provides no comment editing, deletion, attachments, automatic
-notifications or live updates.
+notifications or automatic content merging.
+
+## Shared update notices
+
+Shared task and discussion changes now send a live **may have changed** notice.
+Reconnecting also shows a notice because updates may have been missed. Choose
+**Check shared updates** to refresh the displayed task cards while keeping your
+open task editor, assignment choice and comment draft. This keeps your current
+page; use **Refresh tasks** to return to the first page and find newly created
+tasks. Refresh open comments separately to load the latest discussion. My Tasks
+has its own refresh notice for shared work.
+
+A changed task revision requires reviewing/reloading a pending assignment before
+saving; your choice is retained until that explicit reload. Failed refreshes leave
+the update notice pending. New signals during a refresh also leave it pending.
+Personal lists do not send live signals across tabs in this stage. Drafts remain
+in memory and do not survive navigation or a page reload.

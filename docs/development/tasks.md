@@ -7,7 +7,7 @@ Scope: C1 personal/shared lists. Authoritative requirements: S8/CT-01–03 in
 User-facing instructions: [Using to-do lists](../usage/tasks.md).
 C2 workflow/history and assignment/My Tasks APIs are implemented.
 [Assignment guide](task-assignment.md) covers their locks and permission boundaries.
-Assignment/My Tasks web delivery is implemented; [Comments](task-comments.md) are implemented; live updates remain planned.
+Assignment/My Tasks web delivery is implemented; [Comments](task-comments.md) are implemented; [shared update notices](task-updates.md) are implemented.
 
 ## Source map
 
@@ -71,5 +71,6 @@ invalidate older creation receipts. History is ordinary scoped content, not an
 operational audit report: do not expose it through usage.read or admin privileges.
 Each committed revision records changes atomically, including creator attribution;
 a baseline explicitly marks unavailable earlier history. Do not auto-prune history
-until its lifecycle contract exists. State/history and assignment/My Tasks APIs/web controls and [comments](task-comments.md) are delivered; live task delivery
-is still pending.
+until its lifecycle contract exists. State/history and assignment/My Tasks APIs/web controls and [comments](task-comments.md) are delivered; shared update notices with reviewed HTTP refresh are implemented.
+
+See the [update guide](task-updates.md) before changing shared refresh or draft lifetime.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api';
+import { useTaskUpdates } from '../taskUpdates';
 import { TaskAssignment, type Assignee } from '../components/TaskAssignment';
 import { TaskComments } from '../components/TaskComments';
 import { TaskHistory } from '../components/TaskHistory';
@@ -90,6 +91,7 @@ export function Todos({ws}: {ws?: Workspace}) {
     setError(e.message);
     if ([401,403,404].includes(e.status)) {++generation.current;++taskGeneration.current;++editorGeneration.current;setLoading(false);setTaskLoading(false);setListCursor(null);setTaskCursor(null);setLists([]);selectedRef.current=null;setSelected(null);setTasks([]);setCreating(false);setEditing(null);}
   }
+  const updates=useTaskUpdates(ws ? [ws.id] : [],()=>failed({status:404,message:"This workspace is no longer available."}));
   async function loadLists(after?: string) {
     const token=++generation.current; setLoading(true); setError('');
     try {
@@ -102,11 +104,33 @@ export function Todos({ws}: {ws?: Workspace}) {
     const token=++taskGeneration.current;setTaskLoading(true);setTaskCursor(null);setError('');
     try {
       const result=await api<Page<Task>>(`/todos/lists/${listId}/tasks`,{params:{after}});
-      if(token===taskGeneration.current) {setTasks(result.items);setTaskCursor(result.next_cursor);}
-    } catch(e:any) {if(token===taskGeneration.current) failed(e);}
+      if(token===taskGeneration.current) {setTasks(result.items);setTaskCursor(result.next_cursor);return true;}
+      return false;
+    } catch(e:any) {if(token===taskGeneration.current) failed(e);return false;}
     finally{if(token===taskGeneration.current)setTaskLoading(false);}
   }
   useEffect(()=>{loadLists();return()=>{++generation.current;++taskGeneration.current;};},[ws?.id]);
+  async function refreshShared() {
+    const seen=updates.snapshot(), listId=selectedRef.current;
+    // Refresh the visible cards in place, not page one: inserts or pagination
+    // must never unmount a colleague's unsent comment or assignment choice.
+    const visible=tasks.map(task=>task.id);
+    if(!await loadLists())return;
+    if(listId && selectedRef.current===listId) {
+      if(visible.length===0) {if(!await loadTasks(listId))return;}
+      else {
+        const token=++taskGeneration.current;setTaskLoading(true);
+        try {
+          const rows=await Promise.all(visible.map(id=>api<Task>(`/todos/lists/${listId}/tasks/${id}`)));
+          if(token!==taskGeneration.current || selectedRef.current!==listId)return;
+          setTasks(rows);
+        } catch(e:any) {if(token===taskGeneration.current)failed(e);return;}
+        finally {if(token===taskGeneration.current)setTaskLoading(false);}
+      }
+    }
+    updates.acknowledge(seen);
+    setMessage('Displayed tasks checked. Refresh tasks to see new tasks or return to the first page. Refresh open comments separately.');
+  }
   function choose(row:List) {selectedRef.current=row.id;++editorGeneration.current;++taskGeneration.current;setSelected(row);setRename(row.title);setRenameConflict(false);setTasks([]);setCreating(false);setEditing(null);loadTasks(row.id);}
   async function createList(event:FormEvent) {
     event.preventDefault();if(busy)return;setBusy(true);setError('');
@@ -140,6 +164,10 @@ export function Todos({ws}: {ws?: Workspace}) {
   return <section className="todos">
     {ws ? <h2>To-do lists</h2> : <h1>My To-do Lists</h1>}
     <p className="notice">{ws ? `Shared with readers of ${ws.name}.` : 'Private to you. Administrators and colleagues cannot open these lists.'}</p>
+    {ws && updates.pending && <div className="notice" role="status">
+      Shared tasks or discussion may have changed. Refresh to check the latest saved work. Your drafts are kept.
+      <button type="button" disabled={loading||taskLoading||busy} onClick={refreshShared}>Check shared updates</button>
+    </div>}
     {!writable && <p>This workspace is read-only. You can read its tasks.</p>}
     <button type="button" onClick={()=>loadLists()}>Refresh lists</button>
     {error && <p className="error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
@@ -164,7 +192,7 @@ export function Todos({ws}: {ws?: Workspace}) {
         <p className="preserve">{task.description}</p>
         {task.checklist.length>0 && <ul>{task.checklist.map((item,i)=><li key={i}>{item.done?'✓':'○'} {item.title}</li>)}</ul>}
         <TaskAssignment listId={selected.id} taskId={task.id} revision={task.revision} assignee={task.assignee} writable={writable} saved={()=>{if(selectedRef.current===selected.id)loadTasks(selected.id);}} />
-        <TaskComments listId={selected.id} taskId={task.id} writable={writable} />
+        <TaskComments listId={selected.id} taskId={task.id} writable={writable} workspaceId={ws?.id} />
         <TaskHistory listId={selected.id} taskId={task.id} revision={task.revision} />
         {writable && <button type="button" onClick={()=>{setEditing(task);setCreating(false);setEditorKey(++editorGeneration.current);}}>Edit task: {task.title}</button>}
       </li>)}</ul>

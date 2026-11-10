@@ -16,8 +16,12 @@ site/device/manual acceptance gates continue to apply.
 | C4 · Colleague communication | Chat threads/replies, validated chat attachments and private conversations built on private groups | Attachment recovery, private isolation and realistic cross-section workflows |
 | C5 · Daily dashboard and qualification | Assigned tasks/deadlines/mentions/unread views, configurable notification/reminder controls; keyboard/mobile/touch polish | Five-user sibling-section/division scenario, screenshots/fixtures, accessibility/load and required independent review |
 
-Immediate next action: begin C2 team task coordination after the delivered C1
-backend/web slices. C2–C5 remain planned until their own evidence is recorded.
+Current collaboration checkpoint: C1 lists and C2 workflow/history, assignment,
+My Tasks, immutable discussion and shared live update notices are delivered.
+Shared notices use explicit reviewed HTTP refresh; personal cross-session live
+updates and notifications remain separate work. Next: C3 conversation-to-action
+with source permissions and explicit destination audiences. C4–C5 remain planned;
+consult the latest ledger for evidence and limits.
 
 ## Current checkpoint
 
@@ -146,4 +150,6 @@ Add an entry at the end of each meaningful tranche. Mark status as planned, acti
 
 | Collaboration · Five-person screenshot review · captured | Reused preserved synthetic Aurora scenario with five authenticated browser contexts; 12 current screenshots cover native handwritten plan/stickies, chat, assigned tasks, five-author discussion and private planning. All five capture checks passed, including four-colleague denial of private note/tasks/scratchpad and no browser errors/external assets. [Reproduction guide](docs/evidence/collaboration-review/README.md). | Review evidence only; no new product milestone. Personal stickies use an owner-only group board; task/comment updates still require refresh. | Owner visual review; implementation priority remains scoped live task/discussion coordination. |
 
-| C2 · Shared task invalidation API · verified | Content-free actual-workspace hints after six committed mutation paths; personal mutations/replays/no-op assignment/rejections stay silent. Independent database readers verify publication follows commit. Delivery revocation and offline HTTP catch-up covered; panel socket regression extended.54 focused task/realtime cases and31 task/panel cases passed; independent backend review found no blocker. [Guide](docs/development/task-updates.md). | Lossy hints only; no migration, personal cross-session live delivery, notification or durable event cursor. Browser notices/reviewed refresh follow. | Deliver draft-safe shared update notices and reconnect catch-up with browser race checks. |
+| C2 · Shared task invalidation API · verified | Content-free actual-workspace hints after six committed mutation paths; personal mutations/replays/no-op assignment/rejections stay silent. Independent database readers verify publication follows commit. Delivery revocation and offline HTTP catch-up covered; panel socket regression extended.50 focused task/realtime cases and31 task/panel cases passed; independent backend review found no blocker. [Guide](docs/development/task-updates.md). | Lossy hints only; no migration, personal cross-session live delivery, notification or durable event cursor. Browser notices/reviewed refresh follow. | Deliver draft-safe shared update notices and reconnect catch-up with browser race checks. |
+
+| C2 · Shared live update notices and reviewed refresh · verified | Workspace task/discussion and My Tasks notices; reconnect signals missed-change possibility. In-place visible-card refresh preserves current task page, comments and editor drafts; assignment choices keep their original revision and require review after change. Newer hints during reads and failed reads remain pending; revocation clears protected views. Full465 backend/recovery/drift,31 frontend/typecheck/build and192 browser checks passed (30live+48assignment+48comments+66tasks). Four independent review findings corrected and re-reviewed. [Evidence](docs/evidence/task-updates/README.md); feature/API/user guides synchronized. | Live invalidation with explicit refresh, not automatic merging. New tasks use Refresh tasks; comments refresh separately. No personal cross-session signals, notifications or event cursor. P4 site/manual/device gates remain. | Start C3 conversation-to-action with source-preserving references and explicit destination audience; keep C2 deferred enhancements visible. |

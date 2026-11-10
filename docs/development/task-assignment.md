@@ -2,7 +2,7 @@
 
 Read [task invariants](tasks.md) first, then CT-07 in SPECIFICATIONS, T44 in
 TESTING and [the API contract](../API.md#c2-assignment-and-my-tasks). Backend and dedicated browser assignment/My Tasks controls are implemented.
-[Comments](task-comments.md) are delivered; live task coordination remains next.
+[Comments](task-comments.md) are delivered; [shared update notices](task-updates.md) are implemented.
 
 ## Source and boundaries
 
@@ -46,3 +46,6 @@ sessions against the same database. Update this guide, API and ledger with code.
 Explicit assignment reload reads the current task even if its revision is unchanged.
 Do not rely solely on a revision-change effect to unfreeze an uncertain choice: a
 request can fail before reaching the server. Preserve that browser regression.
+
+Open assignment drafts keep their original revision. Shared refresh preserves the
+choice but blocks saving after a revision change until explicit assignment reload.

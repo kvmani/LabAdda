@@ -147,3 +147,9 @@ rejection silence, personal mutation silence, rollback silence, actual payload,
 delivery-time grant removal and durable HTTP catch-up after an offline write.
 `test_panel_socket_gets_board_events_only` also excludes task hints. Existing
 realtime session/queue/generation/revocation tests remain mandatory.
+
+T46 browser regression: `e2e/task-updates.mjs` covers root/prefix live notices,
+visible-card and second-page draft preservation, unchanged editor revision,
+assignment review, explicit comment/My Tasks catch-up, a newer signal during a
+paused old HTTP snapshot, failed reads, offline-write reconnect, minimal payload,
+sibling denial and revocation clearing. Reset proxy fixtures between scripts.

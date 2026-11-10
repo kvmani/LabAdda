@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api';
+import { useTaskUpdates } from '../taskUpdates';
 
 type Comment = {id:string;sequence:number;body:string;created_at:string;author:{id:string;display_name:string}};
 type Page = {items:Comment[];next_cursor:number|null};
-export function TaskComments({listId,taskId,writable}:{listId:string;taskId:string;writable:boolean}) {
+export function TaskComments({listId,taskId,writable,workspaceId}:{listId:string;taskId:string;writable:boolean;workspaceId?:string}) {
   const [open,setOpen]=useState(false),[page,setPage]=useState<Page|null>(null),[text,setText]=useState('');
   const [error,setError]=useState(''),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[unconfirmed,setUnconfirmed]=useState(false);
   const generation=useRef(0),attempt=useRef<{client_id:string;body:string}|null>(null);
   const path=`/todos/lists/${listId}/tasks/${taskId}/comments`;
   useEffect(()=>{return()=>{++generation.current;};},[listId,taskId]);
+  const updates=useTaskUpdates(open && workspaceId ? [workspaceId] : [],()=>{
+    ++generation.current;setPage(null);setOpen(false);setText('');attempt.current=null;setUnconfirmed(false);setBusy(false);setLoading(false);
+  });
   async function load(before?:number) {
+    const seen=updates.snapshot();
     const token=++generation.current;setOpen(true);setPage(null);setError('');setLoading(true);
     try {
       const result=await api<Page>(path,{params:{before}});
-      if(token===generation.current)setPage(result);
+      if(token===generation.current){setPage(result);if(before===undefined)updates.acknowledge(seen);}
     }catch(e:any){if(token===generation.current)setError(e.message);}
     finally{if(token===generation.current)setLoading(false);}
   }
@@ -31,6 +36,7 @@ export function TaskComments({listId,taskId,writable}:{listId:string;taskId:stri
   if(!open)return <button type="button" onClick={()=>load()}>View comments</button>;
   return <section aria-label="Task comments">
     <h5>Comments</h5><p>Refresh comments to see new discussion.</p>
+    {workspaceId && updates.pending && <p role="status">Shared discussion may have changed. Refresh comments; your draft is kept.</p>}
     <button type="button" disabled={busy} onClick={()=>load()}>Refresh comments</button>
     <button type="button" disabled={busy} onClick={()=>{++generation.current;setOpen(false);setPage(null);}}>Close comments</button>
     {loading && <p role="status">Loading comments…</p>}

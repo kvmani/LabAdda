@@ -1,7 +1,8 @@
 # Task discussion implementation
 
 Read [task invariants](tasks.md), CT-08/T45 and the [comments API](../API.md#c2-immutable-task-comments).
-This slice is immutable discussion with manual refresh. No live events or notifications.
+Discussion remains immutable with explicit HTTP refresh. Shared update notices are
+implemented in the [update guide](task-updates.md); no notifications are sent.
 
 ## Source map
 
@@ -34,6 +35,7 @@ browser tests load it. Fresh proxy fixtures are required between scripts that
 revoke Ben or change posting policy. Full backend tests share a destructive test
 schema, so never run simultaneous pytest sessions against it.
 
-Live coordination needs its own delivery/revocation review. In particular, do not
+Shared invalidation was independently reviewed; preserve its delivery/revocation
+boundaries. In particular, do not
 broadcast personal task/comment bodies or IDs into workspace channels. Comment
 editing/deletion and history retention require future explicit contracts.
