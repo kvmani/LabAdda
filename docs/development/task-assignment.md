@@ -2,7 +2,7 @@
 
 Read [task invariants](tasks.md) first, then CT-07 in SPECIFICATIONS, T44 in
 TESTING and [the API contract](../API.md#c2-assignment-and-my-tasks). Backend and dedicated browser assignment/My Tasks controls are implemented.
-Comments and live task coordination remain separate C2 slices.
+[Comments](task-comments.md) are delivered; live task coordination remains next.
 
 ## Source and boundaries
 
@@ -42,3 +42,7 @@ but they cannot read shared tasks through My Tasks. Do not silently clear them.
 Run test_task_assignment.py with task_workflow and real recovery, then the affected
 browser flows. Fixtures recreate the test schema; do not run concurrent pytest
 sessions against the same database. Update this guide, API and ledger with code.
+
+Explicit assignment reload reads the current task even if its revision is unchanged.
+Do not rely solely on a revision-change effect to unfreeze an uncertain choice: a
+request can fail before reaching the server. Preserve that browser regression.

@@ -104,6 +104,16 @@ try{
   const pickerViolations=await ben.page.evaluate(async()=> (await window.axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations.map(v=>v.id));
   check(pickerViolations.length===0,base+' mobile assignment picker axe '+pickerViolations.join(','));
   check(await ben.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),base+' mobile assignment picker no overflow');
+  await ben.page.getByLabel('Assignee',{exact:true}).selectOption(ben.session.user.id);
+  await ben.page.route('**/api/v1/todos/lists/*/tasks/*/assignee',route=>route.abort(),{times:1});
+  await ben.page.getByRole('button',{name:'Save assignment',exact:true}).click();
+  await ben.page.getByRole('button',{name:'Reload task assignment',exact:true}).click();
+  await ben.page.getByRole('button',{name:'Change assignee',exact:true}).click();
+  await ben.page.getByLabel('Assignee',{exact:true}).selectOption(ben.session.user.id);
+  check(await ben.page.getByRole('button',{name:'Save assignment',exact:true}).isEnabled(),base+' reload recovers unknown write even when revision did not change');
+  await ben.page.getByRole('button',{name:'Save assignment',exact:true}).click();
+  await ben.page.getByText('Assignee: Ben Okafor',{exact:true}).waitFor();
+
 
   for(const person of [ben,asha,chen,dana,admin])await person.ctx.close();
  }

@@ -125,3 +125,18 @@ Tasks across sibling sections, division, group and private lists, conflict and l
 reply reload, revoked visibility and delayed filter response, desktop/mobile axe
 and overflow. Its46 checks passed; existing66 task checks passed too. Reset proxy
 fixtures between scripts: both revoke Ben's section membership. [Evidence](docs/evidence/task-assignment/README.md).
+
+**T45 · CT-08, task comments.** Verify owner/private and actual shared source policy
+at section/division/project/group, admin/sibling/panel denial, read-only/archive and
+revoked access, strict text bounds, UTF-8/plain-text/newline rendering, creation
+replay/changed-intent/destination binding, concurrent contiguous sequences and
+bounded latest-first pages. Final expiry/read-grant checks must prevent unauthorized
+persistence/delivery; retry must work at capacity. Protect populated downgrade and
+round-trip comments in real recovery. Backend: backend/tests/test_task_comments.py.
+Browser: e2e/task-comments.mjs on disposable fixtures; keep source contracts and
+feature guide synchronized when recording delivery evidence.
+
+T45 delivery evidence:15 focused backend cases, full461/recovery/drift,31 frontend
+checks/build and162 browser checks passed (48comments+48assignment+66task regression).
+Discussion drafts survive same-list reload/field edits; the explicit assignment
+reload also resolves a never-committed write with unchanged revision. [Evidence](docs/evidence/task-comments/README.md).

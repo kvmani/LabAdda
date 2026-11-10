@@ -270,3 +270,21 @@ hides a shared task without rewriting assignment/history. The caller can still
 see their personal tasks. These normal-session routes reject panels and grant no
 admin/operational-reader bypass. Migration0019 protects current and past assignment
 evidence from a lossy downgrade.
+
+## C2 immutable task comments
+
+`GET /todos/lists/{list}/tasks/{task}/comments` returns `{items,next_cursor}` newest
+sequence first. Optional positive `before` sequence and limit1–50 (default25)
+provide bounded older pages. A comment includes id, sequence, plain-text body,
+created_at and author id/current display_name. Current list/task access is checked
+before and after reading; panels/admins/operational readers have no bypass.
+
+`POST` to that path accepts `{client_id: UUID,body: string}`. Trimmed text must be
+nonempty and at most4,000 characters. The author/request key binds actual task and
+normalized text; identical retry returns the same comment, changed intent conflicts.
+Current source write/archive/session checks apply to retries too. Per-list locking
+serializes per-task append sequence; pilot ceiling1,000 comments per task. Replay
+works at that ceiling. Posting is independent of the task field revision. There
+are no comment edit/delete/attachment/notification/live-event endpoints in this
+slice. Source read-only policy permits reading; normal write rules govern posting.
+Comments and request identity survive recovery; populated downgrade refuses loss.

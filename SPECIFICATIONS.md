@@ -146,3 +146,15 @@ responsibility/history. Old task field edits must preserve assignment; create
 request fingerprints stay compatible. Web refresh/conflicts/uncertain writes must
 retain useful drafts and discard stale results. No assignment notifications or
 live delivery are implied by this slice.
+
+**CT-08 (C2 initial comments).** Provide immutable plain-text task discussion under
+the actual list audience: owner-only for personal lists, current source readers for
+shared lists. Posting follows current write/archive/session policy, including retry.
+Creation UUIDs bind author, task and normalized text; identical retries return the
+same comment, changed intent conflicts. Serialize monotonic per-task append sequence
+and capacity under the list lock; comments do not change the task field revision.
+Bound payloads/pages, preserve authorship/Unicode/newlines and escape text in the
+browser. Recheck source access before returning a page. Use explicit same-request
+recovery after uncertain creation; stale responses cannot populate another task.
+Keep drafts during same-list refresh/field edits. Initial delivery adds no comment
+editing/deletion, notifications, attachments or live events; refresh loads discussion.

@@ -30,6 +30,15 @@ export function TaskAssignment({listId,taskId,revision,assignee,writable,saved}:
     }catch(e:any){if(token===generation.current){setError(e.message);setReloadNeeded(e.status===0||e.status>=500||e.status===409);}}
     finally{if(token===generation.current)setBusy(false);}
   }
+  async function reload() {
+    const token=++generation.current;setBusy(true);setError('');
+    try {
+      const current=await api<{assignee:Assignee|null}>(`/todos/lists/${listId}/tasks/${taskId}`);
+      if(token!==generation.current)return;
+      setSelected(current.assignee?.id ?? '');setReloadNeeded(false);setOpen(false);setPage(null);saved();
+    }catch(e:any){if(token===generation.current)setError(e.message);}
+    finally{if(token===generation.current)setBusy(false);}
+  }
   return <section aria-label="Task assignment">
     <p>Assignee: {assignee ? assignee.display_name+(assignee.is_active?'':' (inactive)') : 'Unassigned'}</p>
     {writable && !open && <button type="button" onClick={()=>load()}>Change assignee</button>}
@@ -51,7 +60,7 @@ export function TaskAssignment({listId,taskId,revision,assignee,writable,saved}:
       </form>}
       {page?.next_cursor && <button type="button" disabled={busy} onClick={()=>load(page.next_cursor!)}>More colleagues</button>}
       {reloadNeeded && <p>The task changed or the result is unconfirmed. Reload the current task before trying again; this discards your assignment choice.</p>}
-      {reloadNeeded && <button type="button" disabled={busy} onClick={saved}>Reload task assignment</button>}
+      {reloadNeeded && <button type="button" disabled={busy} onClick={reload}>Reload task assignment</button>}
       <button type="button" disabled={busy} onClick={()=>{++generation.current;setOpen(false);setPage(null);}}>Close assignment</button>
     </>}
   </section>;

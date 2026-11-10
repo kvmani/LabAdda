@@ -70,6 +70,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
     assigned_todo=ben.put(f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/assignee",json={
         'user_id':ids['users']['ben'],'revision':todo_task['revision']})
     assert assigned_todo.status_code==200
+    restored_comment=ben.post(f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/comments",json={
+        'client_id':str(uuid.uuid4()),'body':'Synthetic recovery discussion α'})
+    assert restored_comment.status_code==201
     bundle = tmp_path / 'backup'
     sha = backup(settings.database_url, settings.asset_dir, bundle, 'synthetic-release', writers_quiesced=True)
     target_name = 'labadda_restore_test_' + uuid.uuid4().hex
@@ -107,6 +110,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(settings, ids, 
             assert recovered_history[-1]['action']=='created'
             assert recovered_history[0]['changes']['assignee']['after']['id']==ids['users']['ben']
             assert recovered_tasks[0]['assignee']['id']==ids['users']['ben']
+            recovered_comments=api.get(f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/comments").json()['items']
+            assert recovered_comments[0]['id']==restored_comment.json()['id']
+            assert recovered_comments[0]['body']=='Synthetic recovery discussion α'
             assert api.get('/admin/usage').status_code == 403
             assert api.get('/usage').json()['measurement']['pending_upload_original_bytes'] == 0
             assert api.get('/uploads/requests/recovery-request-01').status_code == 404

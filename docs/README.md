@@ -14,7 +14,7 @@ Read this map first; follow the relevant path rather than loading every document
 | Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
 
 Current priority: C1–C5 collaboration. C1 personal/shared lists and the first C2 workflow/history slice are delivered.
-C2 assignment and My Tasks are delivered; comments and live task updates follow. Further archive/export/inventory
+C2 assignment and My Tasks are delivered; task comments are delivered; live task updates follow. Further archive/export/inventory
 expansion is deferred. Existing P4 site/device/manual acceptance gates remain open.
 
 Specifications describe required behaviour; feature guides describe implementation;

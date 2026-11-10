@@ -20,7 +20,7 @@ the original request ID, recovering the same created resource rather than creati
 a duplicate. Keep the view open until this is resolved: drafts and these retry IDs
 are held in the open view, not saved across closing/reloading/navigating away.
 
-Task comments/live updates, automatic reminders and deletion are later stages.
+Live task updates, automatic reminders and deletion are later stages.
 
 ## Workflow and history
 
@@ -52,3 +52,18 @@ it does not erase their recorded responsibility or history. Refresh loads curren
 results; task changes are not yet pushed live. Assignment sends no automatic
 notification in this slice. If access changes during loading, restart with Refresh
 My Tasks rather than continuing an obsolete page.
+
+## Discussing a task
+
+Use **View comments**, write a plain-text comment and **Post comment**. Colleagues
+with access to the same shared task can read its discussion; personal task comments
+remain owner-only. Refresh comments to see new discussion; older entries are paged.
+Read-only spaces hide posting controls. Comments do not change the task field
+revision, so discussion alone will not conflict with a pending task edit.
+
+If posting is unconfirmed, the original text stays frozen and **Retry same comment**
+recovers the same request. Drafts survive same-list task refresh and task field edits;
+keep the view open until posting is confirmed. Navigation/reload discards in-memory
+drafts/request IDs. Comments preserve newlines and render HTML-looking text safely
+as text. This slice provides no comment editing, deletion, attachments, automatic
+notifications or live updates.

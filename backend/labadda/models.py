@@ -559,3 +559,22 @@ class TodoChange(Base):
     changes: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = _created()
     __table_args__ = (CheckConstraint("revision > 0 and action in ('baseline','created','updated')", name='ck_todo_change_values'),)
+
+
+class TodoComment(Base):
+    """Immutable task discussion entry under the current list audience."""
+    __tablename__ = 'todo_comments'
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_tasks.id'), nullable=False)
+    author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    author: Mapped[User] = relationship(foreign_keys=[author_id], lazy='selectin')
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    create_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = _created()
+    __table_args__ = (
+        UniqueConstraint('author_id','client_id',name='uq_todo_comment_request'),
+        UniqueConstraint('task_id','sequence',name='uq_todo_comment_sequence'),
+        CheckConstraint('sequence > 0',name='ck_todo_comment_sequence'),
+    )

@@ -175,3 +175,5 @@ main:focus-visible { outline: 3px solid #f59e0b; outline-offset: -3px; }
 .todo-check { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .todo-check input:not([type="checkbox"]) { flex: 1; min-width: 6rem; }
 .todo-editor fieldset { min-width: 0; border: 0; padding: 0; }
+
+.preserve { white-space: pre-wrap; overflow-wrap: anywhere; }

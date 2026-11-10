@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { TaskAssignment, type Assignee } from '../components/TaskAssignment';
+import { TaskComments } from '../components/TaskComments';
 import { TaskHistory } from '../components/TaskHistory';
 import type { Workspace } from '../types';
 
@@ -49,7 +50,7 @@ function TaskEditor({listId, initial, saved, cancel}: {listId: string; initial: 
     <h3>{initial ? 'Edit task' : 'New task'}</h3>
     <fieldset disabled={busy || unconfirmed}>
       <label>Task title<input required maxLength={200} value={fields.title} onChange={e=>setFields({...fields,title:e.target.value})} /></label>
-      <label>Description<textarea maxLength={10000} value={fields.description} onChange={e=>setFields({...fields,description:e.target.value})} /></label>
+      <label>Description<textarea aria-label="Description" maxLength={10000} value={fields.description} onChange={e=>setFields({...fields,description:e.target.value})} /></label>
       <label>Due date<input type="date" value={fields.due_date ?? ''} onChange={e=>setFields({...fields,due_date:e.target.value || null})} /></label>
       <label>Priority<select aria-label="Priority" value={fields.priority} onChange={e=>setFields({...fields,priority:e.target.value})}>{['low','normal','high'].map(p=><option key={p}>{p}</option>)}</select></label>
       <label>Workflow state<select aria-label="Workflow state" value={fields.status} onChange={e=>{const status=e.target.value as Workflow;setFields({...fields,status,done:status==='done'});}}>{Object.entries(workflowLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -77,7 +78,7 @@ export function Todos({ws}: {ws?: Workspace}) {
   const [tasks,setTasks] = useState<Task[]>([]), [taskCursor,setTaskCursor] = useState<string|null>(null);
   const [title,setTitle] = useState(''), [rename,setRename] = useState('');
   const [error,setError] = useState(''), [message,setMessage] = useState('');
-  const [busy,setBusy] = useState(false), [loading,setLoading] = useState(true);
+  const [busy,setBusy] = useState(false), [loading,setLoading] = useState(true), [taskLoading,setTaskLoading] = useState(false);
   const [creating,setCreating] = useState(false), [editing,setEditing] = useState<Task|null>(null), [editorKey,setEditorKey] = useState(0);
   const [unconfirmed,setUnconfirmed] = useState(false);
   const [renameConflict,setRenameConflict] = useState(false);
@@ -87,7 +88,7 @@ export function Todos({ws}: {ws?: Workspace}) {
   const writable = ws ? ws.can_write && !ws.archived : true;
   function failed(e: any) {
     setError(e.message);
-    if ([401,403,404].includes(e.status)) {++generation.current;++taskGeneration.current;++editorGeneration.current;setLoading(false);setListCursor(null);setTaskCursor(null);setLists([]);selectedRef.current=null;setSelected(null);setTasks([]);setCreating(false);setEditing(null);}
+    if ([401,403,404].includes(e.status)) {++generation.current;++taskGeneration.current;++editorGeneration.current;setLoading(false);setTaskLoading(false);setListCursor(null);setTaskCursor(null);setLists([]);selectedRef.current=null;setSelected(null);setTasks([]);setCreating(false);setEditing(null);}
   }
   async function loadLists(after?: string) {
     const token=++generation.current; setLoading(true); setError('');
@@ -98,11 +99,12 @@ export function Todos({ws}: {ws?: Workspace}) {
     } catch(e:any) {if(token===generation.current) failed(e);return false;} finally {if(token===generation.current) setLoading(false);}
   }
   async function loadTasks(listId: string,after?: string) {
-    const token=++taskGeneration.current; setTasks([]);setTaskCursor(null);setError('');
+    const token=++taskGeneration.current;setTaskLoading(true);setTaskCursor(null);setError('');
     try {
       const result=await api<Page<Task>>(`/todos/lists/${listId}/tasks`,{params:{after}});
       if(token===taskGeneration.current) {setTasks(result.items);setTaskCursor(result.next_cursor);}
     } catch(e:any) {if(token===taskGeneration.current) failed(e);}
+    finally{if(token===taskGeneration.current)setTaskLoading(false);}
   }
   useEffect(()=>{loadLists();return()=>{++generation.current;++taskGeneration.current;};},[ws?.id]);
   function choose(row:List) {selectedRef.current=row.id;++editorGeneration.current;++taskGeneration.current;setSelected(row);setRename(row.title);setRenameConflict(false);setTasks([]);setCreating(false);setEditing(null);loadTasks(row.id);}
@@ -155,12 +157,14 @@ export function Todos({ws}: {ws?: Workspace}) {
       {renameConflict && writable && <button type="button" disabled={busy} onClick={latestList}>Load latest list (replaces draft)</button>}
       <button type="button" onClick={()=>loadTasks(selected.id)}>Refresh tasks</button>
       {writable && <button type="button" onClick={()=>{setCreating(true);setEditing(null);setEditorKey(++editorGeneration.current);}}>New task</button>}
-      {tasks.length===0 && <p>No tasks on this page.</p>}
+      {taskLoading && <p role="status">Loading tasks…</p>}
+      {!taskLoading && tasks.length===0 && <p>No tasks on this page.</p>}
       <ul className="todo-task-list">{tasks.map(task=><li className="card" key={task.id}>
         <h4>{task.done?'✓ ':''}{task.title}</h4><p>{workflowLabels[task.status] ?? (task.done?'Done':'To do')} · {task.priority} priority{task.due_date?` · Due ${task.due_date}`:''}</p>
         <p className="preserve">{task.description}</p>
         {task.checklist.length>0 && <ul>{task.checklist.map((item,i)=><li key={i}>{item.done?'✓':'○'} {item.title}</li>)}</ul>}
         <TaskAssignment listId={selected.id} taskId={task.id} revision={task.revision} assignee={task.assignee} writable={writable} saved={()=>{if(selectedRef.current===selected.id)loadTasks(selected.id);}} />
+        <TaskComments listId={selected.id} taskId={task.id} writable={writable} />
         <TaskHistory listId={selected.id} taskId={task.id} revision={task.revision} />
         {writable && <button type="button" onClick={()=>{setEditing(task);setCreating(false);setEditorKey(++editorGeneration.current);}}>Edit task: {task.title}</button>}
       </li>)}</ul>
