@@ -61,6 +61,11 @@ Those belong to Q3 and Q4.
 
 ### Q2 · Frontend linter, formatter and strict types
 
+**Status: done (2026-11-11).** ESLint (type-checked rules, hooks, jsx-a11y) and Prettier run
+from `npm run lint` in `scripts/verify.sh`; no `any` remains in `frontend/src`; `tsconfig.json`
+adds `noUncheckedIndexedAccess` and `noImplicitOverride`. Every exception in
+`frontend/eslint.config.js` states its reason. The React Compiler rules are deferred to Q3.
+
 Size M. Depends on nothing.
 
 **Goal.** All TypeScript and browser-check code is formatted by Prettier, passes ESLint, and
@@ -116,6 +121,13 @@ after each function. Order (worst first):
   `components/ConversationTask.tsx`, `taskUpdates.ts`.
 - Browser checks: every `e2e/*.mjs` — extract shared `login`, `call` and `check` helpers into
   `e2e/lib/harness.mjs` first, then rewrite each suite to use them.
+- **Known flaky waits (measured in Q2, present before it):** `e2e/chat-threads.mjs` fails about
+  1 run in 4 on both the pre-Q2 and current builds, always at a 30-second wait — the revocation
+  notice ("This chat is no longer available"), the offline catch-up message, or a
+  `waitForResponse` created before the test holds that response. `e2e/chat-attachments.mjs`
+  failed once in 7 runs waiting for "Uncertain conversation review". Fix the cause (wait for the
+  socket subscription to be confirmed before acting; start response waits after the hold is
+  released). Do not lengthen timeouts or add retries.
 
 Last commit of the package: remove the Q1 deferral of `PLR0911`, `PLR0912`, `PLR0915` and
 `PLR0917` from the `ignore` list in `backend/pyproject.toml` (the comment there names Q3) and fix
