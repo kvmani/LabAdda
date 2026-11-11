@@ -20,6 +20,7 @@ from sqlalchemy import text
 from . import boardstate, metrics, scheduler
 from .api import (
     admin,
+    admin_site,
     alert_preferences,
     auth,
     board,
@@ -153,6 +154,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         dashboard,
         workspaces,
         admin,
+        admin_site,
         audit_api,
         people,
         governance,

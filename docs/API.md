@@ -599,3 +599,36 @@ current usage readers (console section `activity`, read-only). Members without a
   never as zero. Only complete hours and days are rolled up; the current hour and day exist at
   minute resolution only.
 - 503 `metrics_unavailable` when the 2 s statement bound is exceeded.
+
+## A7 · Backups page, settings and site notice (AD-10, AD-11)
+
+All errors use the common envelope. Board-only sessions get 401 on every route here.
+
+`GET /admin/backups/status` (administrators and usage readers). Reads and strictly validates the
+operator status file in `LABADDA_STATUS_DIR` (`backup_status.py`: exact fields, 4 KiB limit,
+patterned text). Never 500. Returns `status` (one AD-03 word), `headline`, `guidance` (or null),
+`checked_at`, `healthy_within_hours` (26), `stale_after_hours` (50), `next_run` and
+`restore_rehearsal` (both null: the receipt does not carry them), `setup_guide`, and
+`last_backup` (null when unknown): `finished_at`, `age_seconds`, `result`, `size_bytes`,
+`verification`, `destination` (short alias), `schema`, `release`. Words: missing, oversized,
+malformed or future-dated receipt is `unknown`; a failed backup or failed verification is
+`unavailable`; a good one older than 26 h is `degraded`, older than 50 h `stale`; otherwise
+`healthy`. No path, host name or secret is ever returned.
+
+`GET /admin/settings` (administrators only; usage readers 403 `admin_required`). Returns
+`groups[]` of `{key, title, summary, items[]}`, each item `{key, label, value, unit, explanation,
+changed_by}` with `changed_by` always "Changed by the operator in the site configuration file.",
+the current `banner` (or null) and `banner_max_length` (280). Only an explicit list of non-secret
+limits is returned; paths, hosts, cookie names and database addresses never are.
+
+`PUT /admin/settings/banner` (administrators only; CSRF required). Body `{message, level
+("info"|"warning"), starts_at (optional, default now), ends_at, expected_revision}`; times carry a
+zone. The message is plain text on one line, 1 to 280 characters after whitespace is collapsed; an
+empty message removes the notice (`level` and `ends_at` then optional). `expected_revision` is the
+revision last read (0 when there is no notice). Returns `{banner}` with `revision` or `{banner:
+null}`. Errors: 422 `banner_too_long`, `invalid_banner`, `invalid_banner_times` (must end after it
+starts and in the future), 409 `banner_changed`. Audited as `site.banner_set` (level, times and
+length, not the text) and `site.banner_clear` in the same transaction.
+
+`GET /site/banner` (any signed-in person). Returns `{banner: {message, level, starts_at,
+ends_at} | null}` for the notice whose window contains now. Clients render the text as text.

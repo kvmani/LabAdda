@@ -756,3 +756,22 @@ class ActivityDay(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
     day: Mapped[date] = mapped_column(Date, primary_key=True)
     __table_args__ = (Index("ix_activity_days_day", "day"),)
+
+
+class SiteBanner(Base):
+    """The one site notice shown to every signed-in user between two times (AD-11)."""
+
+    __tablename__ = "site_banner"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    message: Mapped[str] = mapped_column(String(280), nullable=False)
+    level: Mapped[str] = mapped_column(String(8), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_site_banner_single"),
+        CheckConstraint("level in ('info','warning')", name="ck_site_banner_level"),
+        CheckConstraint("ends_at > starts_at", name="ck_site_banner_window"),
+        CheckConstraint("revision > 0", name="ck_site_banner_revision"),
+    )

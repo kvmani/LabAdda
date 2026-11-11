@@ -70,6 +70,8 @@ CATALOG: dict[str, Entry] = {
     "inventory_job.claim": Entry("settings", "Operator tooling started a storage inventory job."),
     "inventory_job.finish": Entry("settings", "Operator tooling finished a storage inventory job."),
     "inventory_job.cancel": Entry("settings", "A storage inventory job was cancelled."),
+    "site.banner_set": Entry("settings", "{actor} published a site notice."),
+    "site.banner_clear": Entry("settings", "{actor} removed the site notice."),
     "people.export": Entry("exports", "{actor} exported {rows} rows of the staff directory."),
     "audit.export": Entry("exports", "{actor} exported {rows} entries of the audit trail."),
 }
