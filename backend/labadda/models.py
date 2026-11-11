@@ -120,9 +120,15 @@ class AuthSession(Base):
         UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_auth_sessions_workspace")
     )
     end_reason: Mapped[str | None] = mapped_column(String(32))
+    # Shown on the sessions list instead of the cookie-derived id, which is never published.
+    public_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    agent_label: Mapped[str | None] = mapped_column(String(40))
 
     __table_args__ = (
         Index("ix_auth_sessions_user", "user_id"),
+        Index("ux_auth_sessions_public_id", "public_id", unique=True),
         CheckConstraint(
             "(kind = 'normal' and workspace_id is null) or (kind = 'board' and workspace_id is not null)",
             name="ck_auth_session_kind",

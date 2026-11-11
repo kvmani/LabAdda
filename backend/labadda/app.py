@@ -34,6 +34,7 @@ from .api import (
     governance,
     groups,
     inventory_jobs,
+    me,
     notes,
     notifications,
     panel,
@@ -200,6 +201,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         changes,
         board,
         panel,
+        me,
     ):
         api.include_router(module.router)
     app.include_router(api)

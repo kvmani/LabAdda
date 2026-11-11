@@ -47,8 +47,44 @@ def digest(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def agent_label(user_agent: str | None) -> str | None:
+    """Reduce a browser User-Agent to a short family and system, e.g. "Firefox on Linux".
+
+    Only this label is stored; the raw header never is, so it cannot identify a person or device.
+    """
+    if not user_agent:
+        return None
+    agent = user_agent.lower()
+    family = "Other browser"
+    # Order matters: Edge and Opera also say Chrome, Chrome also says Safari.
+    for marker, name in (
+        ("edg/", "Edge"),
+        ("opr/", "Opera"),
+        ("firefox/", "Firefox"),
+        ("chrome/", "Chrome"),
+        ("chromium/", "Chrome"),
+        ("safari/", "Safari"),
+    ):
+        if marker in agent:
+            family = name
+            break
+    system = None
+    for marker, name in (
+        ("android", "Android"),
+        ("iphone", "iOS"),
+        ("ipad", "iOS"),
+        ("windows", "Windows"),
+        ("mac os x", "macOS"),
+        ("linux", "Linux"),
+    ):
+        if marker in agent:
+            system = name
+            break
+    return f"{family} on {system}" if system else family
+
+
 def create_session(
-    db: Session, user: User, settings: Settings, kind: str = "normal"
+    db: Session, user: User, settings: Settings, kind: str = "normal", label: str | None = None
 ) -> tuple[str, AuthSession]:
     token = new_token()
     now = utcnow()
@@ -57,6 +93,7 @@ def create_session(
         user_id=user.id,
         csrf_token=secrets.token_urlsafe(24),
         kind=kind,
+        agent_label=label,
         last_seen_at=now,
         expires_at=now + timedelta(hours=settings.session_absolute_hours),
     )
@@ -73,12 +110,11 @@ def session_valid(sess: AuthSession, settings: Settings, now: datetime | None = 
     return now - sess.last_seen_at <= timedelta(minutes=settings.session_idle_minutes)
 
 
-def revoke_user_sessions(db: Session, user_id) -> None:
-    db.execute(
-        update(AuthSession)
-        .where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))
-        .values(revoked_at=utcnow())
-    )
+def revoke_user_sessions(db: Session, user_id, *, keep: str | None = None) -> int:
+    query = update(AuthSession).where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))
+    if keep is not None:
+        query = query.where(AuthSession.id != keep)
+    return db.execute(query.values(revoked_at=utcnow())).rowcount
 
 
 class RateLimiter:

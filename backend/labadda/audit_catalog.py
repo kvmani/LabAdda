@@ -51,6 +51,7 @@ CATALOG: dict[str, Entry] = {
     "board.snapshot_publish": Entry("authority", "{actor} published a whiteboard snapshot to {unit}."),
     "auth.login": Entry("sign_in", "{actor} signed in."),
     "auth.password_changed": Entry("sign_in", "{actor} changed their own password."),
+    "auth.session_ended": Entry("sign_in", "{actor} signed out one of their other sessions."),
     "auth.activation_redeemed": Entry("sign_in", "{actor} activated their account."),
     "auth.reset_redeemed": Entry("sign_in", "{actor} finished a password reset."),
     "panel.pairing_created": Entry(

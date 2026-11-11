@@ -14,6 +14,7 @@ from ..errors import Forbidden, Invalid, TooMany, Unauthenticated
 from ..models import AuthSession, CredentialToken, User
 from ..security import (
     MIN_PASSWORD_LENGTH,
+    agent_label,
     create_session,
     digest,
     hash_password,
@@ -115,7 +116,7 @@ def login(
         metrics.count("auth.signin_failed")
         raise Unauthenticated("invalid_credentials", "Username or password is incorrect.")
     people.record_sign_in(db, user, settings)
-    token, sess = create_session(db, user, settings)
+    token, sess = create_session(db, user, settings, label=agent_label(request.headers.get("user-agent")))
     audit.record(db, actor=user, action="auth.login", scope_type="identity", target_id=user.id)
     db.commit()
     metrics.count("auth.signin_ok")
@@ -182,7 +183,7 @@ def activate(
         people.set_status(user, "active", effective_on=people.site_date(settings, now=now))
     people.record_sign_in(db, user, settings, now=now)
     revoke_user_sessions(db, user.id)
-    token, sess = create_session(db, user, settings)
+    token, sess = create_session(db, user, settings, label=agent_label(request.headers.get("user-agent")))
     audit.record(
         db,
         actor=user,
@@ -200,6 +201,7 @@ def activate(
 @router.post("/password")
 def change_password(
     body: PasswordBody,
+    request: Request,
     response: Response,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
@@ -211,7 +213,7 @@ def change_password(
     _validate_password(body.new_password)
     user.password_hash = hash_password(body.new_password)
     revoke_user_sessions(db, user.id)
-    token, sess = create_session(db, user, settings)
+    token, sess = create_session(db, user, settings, label=agent_label(request.headers.get("user-agent")))
     audit.record(db, actor=user, action="auth.password_changed", scope_type="identity", target_id=user.id)
     db.commit()
     _set_cookie(response, token, settings)
