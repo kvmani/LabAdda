@@ -22,6 +22,7 @@ area lands: `people.md`, `admin-console.md`, `metrics.md`.
 | Staff records / people directory | [People guide](people.md) → people.py, api/people.py, features/people/ | PO-01–03/20, test_people_*.py, test_staff_migration.py, e2e/people.mjs |
 | Reviewed staff edits / preview and apply | [Change guide](people-changes.md) → changes/, api/changes.py | PO-04–12, test_change_plan.py, test_changes_edit.py; P2 in progress |
 | Admin console routing / operational access | [Console guide](admin-console.md) → policy.py, deps.py, api/capabilities.py | AD-01–02, test_console.py, test_capabilities.py |
+| Usage metrics, activity days, series API | [Metrics guide](metrics.md) → backend/labadda/metrics/, api/metrics.py | AD-05/08, T61–T62, test_metrics_*.py |
 | Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
 | In-app help pages, search, contextual drawer | [Help guide](help-centre.md) → frontend/src/help/, features/help/, scripts/build-help.mjs, scripts/check_help.py | HP-01–11, T67–T68, test_check_help.py, e2e/help.mjs |
 | Shared UI components, tokens, theme | [UI kit guide](ui-kit.md) → frontend/src/ui/ | UX-01–UX-14, T69, src/ui/*.test.tsx, e2e/ui-kit.mjs |

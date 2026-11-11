@@ -565,3 +565,37 @@ with `'`). More than 10 000 matching entries returns 422 `export_limit` with no 
 successful export is audited as `audit.export` (`rows` and the names of the filters used, never their values)
 in the same request, before the first byte, after re-checking administrator authority.
 
+
+## A3 · Metrics foundation (AD-08, schema 0027)
+
+Collection is internal: no endpoint writes metrics. API requests (not `/healthz`, `/readyz`,
+static assets, the web shell or sockets) are counted by route group taken from the route
+template; feature counters are recorded only after the commit, so an idempotent retry counts
+once. Normal-session requests record one `activity_days` row per person per site-local day;
+board-only panels record nothing. No response shape changes.
+
+`GET /admin/metrics/series?metric=&dimension=&resolution=&from=&to=` — administrators and
+current usage readers (console section `activity`, read-only). Members without a grant 403
+`usage_read_required`; signed-out, deactivated and board-only/explicit panel requests 401.
+
+- `metric`: a stored series from `metrics/catalog.py` (`http.requests`, `http.errors`,
+  `http.latency_p50`, `http.latency_p95`, `auth.signin_ok`, `auth.signin_failed`,
+  `sessions.active`, `sockets.connected`, `posts.created`, `replies.created`, `chat.messages`,
+  `board.operations`, `tasks.created`, `tasks.completed`, `uploads.count`, `uploads.bytes`,
+  `notifications.created`, `db.size_bytes`, `assets.bytes`, `disk.free_bytes`); otherwise
+  422 `unknown_metric`.
+- `dimension` (default empty): a route group for `http.*` (`all` only for latency), `org`,
+  `project` or `group` for feature counters, empty for the rest; otherwise 422
+  `unknown_dimension`. Per-unit values (`unit:<id>`, `unit:other`) are stored but never served
+  here (422 `unit_series_not_available`): they need the small-group protection of the
+  Activity summaries.
+- `resolution`: `minute | hour | day`. Hours and days are site-local buckets.
+- `from`, `to`: ISO 8601 with a time zone (422 `invalid` without one); `to` must be after
+  `from` (422 `invalid_range`); at most 48 hours of minutes, 35 days of hours, 731 days of days
+  (422 `range_too_long`).
+- 200 `{metric, dimension, resolution, kind: counter|gauge|histogram, unit: count|bytes|ms,
+  from, to, points: [{bucket_start, value, samples}]}`, oldest first, buckets in `[from, to)`.
+  A missing bucket means nothing was recorded or collection was not running: show it as a gap,
+  never as zero. Only complete hours and days are rolled up; the current hour and day exist at
+  minute resolution only.
+- 503 `metrics_unavailable` when the 2 s statement bound is exceeded.

@@ -47,6 +47,9 @@ from .api import (
 from .api import (
     audit as audit_api,
 )
+from .api import (
+    metrics as metrics_api,
+)
 from .config import Settings, get_settings
 from .db import session_factory
 from .errors import ApiError
@@ -155,6 +158,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         governance,
         usage,
         inventory_jobs,
+        metrics_api,
         capabilities,
         groups,
         task_assignment,
