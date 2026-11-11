@@ -5,6 +5,7 @@ import { Governance } from "../../components/Governance";
 import { Operations } from "../../pages/Operations";
 import { AdminLayout } from "./AdminLayout";
 import { BasicAdministration } from "./BasicAdministration";
+import { AuditPage } from "../audit/AuditPage";
 import { PeoplePage } from "../people/PeoplePage";
 import { Settings } from "./Settings";
 import { SECTIONS, type ConsoleAccess } from "./console";
@@ -63,6 +64,8 @@ export function AdminConsole() {
                 <PeoplePage />
               ) : section.key === "org" ? (
                 <Basic area="org" />
+              ) : section.key === "audit" ? (
+                <AuditPage />
               ) : section.key === "storage" ? (
                 <Storage />
               ) : section.key === "settings" ? (

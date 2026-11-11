@@ -47,4 +47,21 @@ The administration top-bar link now uses the existing compact icon/label pattern
 controls wrap on phones, fixing administrator-name overflow found by the new test.
 
 Next by plan order: P1 staff records/basic directory, then P2 reviewed changes.
-General health, audit explorer, analytics and settings content remain their cards.
+General health, analytics and settings content remain their cards.
+
+## A2 audit explorer
+
+Backend: `audit_catalog.py` is the single list of audit actions (group plus a plain sentence with `{actor}`,
+`{target}`, `{unit}` and detail placeholders). `tests/test_audit_catalog.py` parses every `audit.record(...)`
+and `AuditEvent(...)` call and fails when an `action=` literal, conditional or dynamic name (`auth.*_redeemed`,
+`inventory_job.*`) has no entry; add the entry in the same change as the new action. `audit_explorer.py` builds
+the filtered keyset query on `(created_at, id)` and shapes events; `api/audit.py` serves the list and the
+streamed export (administrators only, `require_console("audit", admin_only=True)`). Migration 0027 adds indexes
+on `(created_at, id)`, actor, target and scope; its downgrade only drops indexes. Tests: `test_audit_catalog.py`,
+`test_audit_explorer.py` (filters, paging during inserts, formula escaping, cap, audited export, denials, no content).
+
+Frontend: `features/audit/` (`AuditPage`, filters kept in the URL, `AuditTable`, `AuditDetail` drawer with the
+sentence and before/after table, `ExportAudit`). The drawer opens from `?entry=` and only for entries on the
+loaded page. Browser check: `e2e/audit.mjs` (with `e2e/audit-fixture.py`) at `/` and `/labadda-staging`: paging,
+filters, drawer, export, retry, axe at 1400 and 390 px, member denial.
+

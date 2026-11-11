@@ -49,7 +49,7 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | Admin | `GET/POST /admin/users`, `PATCH /admin/users/{id}`, `POST /admin/users/{id}/reset` | `last_admin` protection. Deactivation revokes sessions. |
 | | `GET/POST /admin/workspaces`, `PATCH /admin/workspaces/{id}` `{name?, move, parent_id?, archived?}` | Cycle and single-root checks (`cycle`, `invalid_parent`). |
 | | `GET/PUT /admin/workspaces/{id}/memberships`, `DELETE .../memberships/{user}` | Audited with optional reason. |
-| | `GET /admin/audit` | Restricted audit trail. |
+| | `GET /admin/audit` | Audit explorer (A2, below). |
 | Ops | `GET <base>/healthz`, `GET <base>/readyz` | Readiness fails on DB or schema-head mismatch. |
 
 ## Socket messages
@@ -538,3 +538,30 @@ of an applied plan returns409. Audit steps retain structured staff before/after;
 no request bodies or credentials are logged. Live identity revalidation follows
 commit. Authority is checked again before returning the receipt. Only edits are
 served in this slice; add_person and transfer remain P2 work and are rejected422.
+
+## A2 · Audit explorer (AD-09)
+
+Administrators only: usage readers and members get 403, signed-out 401, board-only panel sessions 401.
+Responses carry names, times, outcomes, reasons and recorded before/after values; never message text, note
+titles, file names or board images. Projects and groups are named by kind only ("a project").
+
+`GET /admin/audit?start=&end=&actor_id=&person_id=&unit_id=&group=&outcome=&q=&limit=&cursor=`
+
+- `start`, `end`: inclusive calendar dates in the site time zone. `end` before `start` returns 422 `invalid_range`.
+- `actor_id`: who did it. `person_id`: the person acted on. `unit_id`: the unit or workspace the entry is about.
+- `group`: `people | access | organisation | authority | sign_in | settings | exports`
+  (422 `invalid_group` otherwise). `outcome`: exact value (`success`, `denied`, `failed`, ...).
+- `q`: case-insensitive text in the stated reason only (never searched in recorded detail).
+- `limit` 1-500 (default 100). Order is newest first with `id` as tie-break. `cursor` is opaque, bound to the
+  filters that produced it (422 `invalid_cursor` otherwise); rows inserted meanwhile never shift later pages.
+- Response `{events: [{id, created_at, actor_id, actor, action, group, group_label, sentence, scope_type,
+  scope_id, target_id, target, unit, outcome, reason, changes: [{field, before, after}], detail}],
+  next_cursor}`. `sentence` comes from `audit_catalog.py`; contact fields are removed from `detail`.
+- 503 `audit_unavailable` when the 2 s statement bound is exceeded.
+
+`GET /admin/audit/export.csv?...same filters...` streams `text/csv` (UTF-8 with BOM; columns time, who, group,
+what happened, outcome, reason, action; cells beginning `=`, `+`, `-`, `@` or hidden characters are prefixed
+with `'`). More than 10 000 matching entries returns 422 `export_limit` with no file and no record. A
+successful export is audited as `audit.export` (`rows` and the names of the filters used, never their values)
+in the same request, before the first byte, after re-checking administrator authority.
+

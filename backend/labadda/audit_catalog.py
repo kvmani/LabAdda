@@ -71,7 +71,7 @@ CATALOG: dict[str, Entry] = {
     "inventory_job.finish": Entry("settings", "Operator tooling finished a storage inventory job."),
     "inventory_job.cancel": Entry("settings", "A storage inventory job was cancelled."),
     "people.export": Entry("exports", "{actor} exported {rows} rows of the staff directory."),
-    "audit.export": Entry("exports", "{actor} exported {rows} rows of the audit trail."),
+    "audit.export": Entry("exports", "{actor} exported {rows} entries of the audit trail."),
 }
 
 UNKNOWN = Entry("settings", "{actor} performed an action this version does not describe.")
