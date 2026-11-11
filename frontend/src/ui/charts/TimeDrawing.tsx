@@ -1,6 +1,6 @@
 import { DASHES, Mark } from "./marks";
 import { areaPath, linePath, runs } from "./paths";
-import { linearScale, timeTicks, type NiceTicks, type Scale } from "./scale";
+import { extent, linearScale, niceTicks, timeTicks, type NiceTicks, type Scale } from "./scale";
 import type { ChartPoint } from "./types";
 import type { Active } from "./useActivePoint";
 import { ValueAxis } from "./ValueAxis";
@@ -100,4 +100,12 @@ export function TimeDrawing({ width, height, drawn, area, axis, times, active, .
       )}
     </>
   );
+}
+
+/** Time extent and a value axis; area charts always include zero. */
+export function timeAxis(drawn: ChartPoint[][], area: boolean) {
+  const times = extent(drawn.flatMap((points) => points.map((point) => point.t)));
+  const values = extent(drawn.flatMap((points) => points.map((point) => point.value ?? NaN)));
+  const [low, high] = values ?? [0, 1];
+  return { times, axis: niceTicks(area ? Math.min(0, low) : low, high, 5) };
 }

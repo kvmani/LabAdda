@@ -43,3 +43,12 @@ export function areaPath(points: ChartPoint[], x: Mapper, y: Mapper, baseline: n
     })
     .join(" ");
 }
+
+/** Index of the point whose time is closest to `t`. */
+export function nearestIndex(points: ChartPoint[], t: number): number {
+  let best = 0;
+  points.forEach((point, index) => {
+    if (Math.abs(point.t - t) < Math.abs((points[best]?.t ?? 0) - t)) best = index;
+  });
+  return best;
+}

@@ -3,11 +3,12 @@ import { ChartFrame } from "./ChartFrame";
 import { ChartPlot } from "./ChartPlot";
 import { downsample } from "./downsample";
 import { defaultValueFormat, formatFullTime, hasNoData, makeTimeFormatter, withUnit } from "./format";
-import { extent, linearScale, niceTicks } from "./scale";
+import { linearScale } from "./scale";
 import { SeriesTable } from "./SeriesTable";
 import type { ChartBaseProps } from "./types";
 import { useActivePoint } from "./useActivePoint";
-import { MARGIN, TimeDrawing } from "./TimeDrawing";
+import { nearestIndex } from "./paths";
+import { MARGIN, TimeDrawing, timeAxis } from "./TimeDrawing";
 
 type TimeChartProps = ChartBaseProps & { area: boolean };
 
@@ -22,10 +23,7 @@ export function TimeChart({ area, height = 240, ...props }: TimeChartProps) {
   const formatTime = props.formatTime ?? makeTimeFormatter(series);
   const formatValue = props.formatValue ?? defaultValueFormat;
 
-  const times = extent(drawn.flatMap((points) => points.map((point) => point.t)));
-  const values = extent(drawn.flatMap((points) => points.map((point) => point.value ?? NaN)));
-  const [valueLow, valueHigh] = values ?? [0, 1];
-  const axis = niceTicks(area ? Math.min(0, valueLow) : valueLow, valueHigh, 5);
+  const { times, axis } = timeAxis(drawn, area);
 
   const point = active ? drawn[active.series]?.[active.index] : undefined;
   const readout =
@@ -44,11 +42,7 @@ export function TimeChart({ area, height = 240, ...props }: TimeChartProps) {
     }
     const t = linearScale([MARGIN.left, width - MARGIN.right], times).invert(x);
     const row = active?.series ?? 0;
-    const points = drawn[row] ?? [];
-    let best = 0;
-    points.forEach((candidate, index) => {
-      if (Math.abs(candidate.t - t) < Math.abs((points[best]?.t ?? 0) - t)) best = index;
-    });
+    const best = nearestIndex(drawn[row] ?? [], t);
     setActive({ series: row, index: best });
   }
 
@@ -59,15 +53,7 @@ export function TimeChart({ area, height = 240, ...props }: TimeChartProps) {
       updated={updated}
       legend={series.map((item) => item.label)}
       empty={series.length === 0 || hasNoData(series)}
-      table={
-        <SeriesTable
-          title={title}
-          series={series}
-          unit={unit}
-          formatValue={formatValue}
-          formatTime={props.formatTime}
-        />
-      }
+      table={<SeriesTable {...{ title, series, unit, formatValue, formatTime: props.formatTime }} />}
     >
       <ChartPlot
         label={`${title}, ${period}`}
