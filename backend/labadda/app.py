@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
 import time
@@ -17,7 +18,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import text
 
-from . import boardstate, metrics, scheduler
+from . import boardstate, health, metrics, scheduler
 from .api import (
     admin,
     admin_site,
@@ -55,6 +56,7 @@ from .config import Settings, get_settings
 from .db import session_factory
 from .errors import ApiError
 from .realtime import Hub
+from .security import utcnow
 from .storage import AssetStore
 
 log = logging.getLogger("labadda")
@@ -72,11 +74,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     factory = session_factory(settings.database_url)
     store = AssetStore(settings.asset_dir)
     hub = Hub(factory, settings)
+    sampler = health.Sampler(
+        health.Context(
+            settings=settings,
+            factory=factory,
+            started=utcnow(),
+            expected_schema=functools.cache(expected_schema_head),
+            sockets=lambda: len(hub.connections),
+            backlog=hub.backlog,
+        )
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         hub.loop = asyncio.get_running_loop()
-        task = None
+        tasks: list[asyncio.Task] = []
         if settings.run_scheduler:
 
             def cleanup():
@@ -88,11 +100,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     )
 
             collector = metrics.Collector(factory, settings, lambda: len(hub.connections))
-            task = asyncio.create_task(
-                scheduler.run_forever(factory, settings.reminder_interval_seconds, (cleanup, collector.tick))
-            )
+            tasks = [
+                asyncio.create_task(
+                    scheduler.run_forever(
+                        factory, settings.reminder_interval_seconds, (cleanup, collector.tick)
+                    )
+                ),
+                asyncio.create_task(scheduler.run_periodic(sampler.run_once, settings.health.sample_seconds)),
+            ]
         yield
-        if task:
+        for task in tasks:
             task.cancel()
 
     app = FastAPI(
@@ -107,6 +124,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.session_factory = factory
     app.state.assets = store
     app.state.hub = hub
+    app.state.health = sampler
 
     @app.exception_handler(ApiError)
     async def api_error(_: Request, exc: ApiError):

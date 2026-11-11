@@ -53,6 +53,7 @@ def reset_database(db: Session) -> None:
         "site_banner",
         "activity_days",
         "metric_samples",
+        "ops_events",
         "notification_preferences",
         "todo_comments",
         "todo_changes",

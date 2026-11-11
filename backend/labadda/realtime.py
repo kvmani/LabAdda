@@ -68,6 +68,10 @@ class Hub:
         self.connections: set[Connection] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
 
+    def backlog(self) -> int:
+        """Events queued for delivery across all workspaces; a snapshot for the health page."""
+        return sum(queue.qsize() for queue in list(self._queues.values()))
+
     # ---- thread-safe entry points used by sync routers -----------------
     def _schedule(self, coro_fn, *args) -> None:
         loop = self.loop

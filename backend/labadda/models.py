@@ -775,3 +775,38 @@ class SiteBanner(Base):
         CheckConstraint("ends_at > starts_at", name="ck_site_banner_window"),
         CheckConstraint("revision > 0", name="ck_site_banner_revision"),
     )
+
+
+class OpsEvent(Base):
+    """An operational event (AD-06): repeats of one code and component share a row while open."""
+
+    __tablename__ = "ops_events"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    component: Mapped[str] = mapped_column(String(32), nullable=False)
+    severity: Mapped[str] = mapped_column(String(8), nullable=False)
+    summary: Mapped[str] = mapped_column(String(240), nullable=False)
+    detail: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    first_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    state: Mapped[str] = mapped_column(String(12), nullable=False, default="open")
+    acknowledged_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str | None] = mapped_column(Text)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        CheckConstraint("severity in ('info','warning','error','critical')", name="ck_ops_event_severity"),
+        CheckConstraint("state in ('open','acknowledged','resolved')", name="ck_ops_event_state"),
+        CheckConstraint("count >= 1", name="ck_ops_event_count"),
+        Index("ix_ops_events_last", "last_at", "id"),
+        Index("ix_ops_events_state", "state", "last_at"),
+        # One live row per code and component: repeats raise the count instead (AD-06).
+        Index(
+            "uq_ops_events_live",
+            "code",
+            "component",
+            unique=True,
+            postgresql_where=text("state <> 'resolved'"),
+        ),
+    )

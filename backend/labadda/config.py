@@ -13,6 +13,8 @@ from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .health_thresholds import HealthThresholds, load_thresholds
+
 
 def _normalize_base(path: str) -> str:
     path = (path or "").strip()
@@ -72,6 +74,10 @@ class Settings:
     metrics_hour_retention_days: int = 35
     metrics_day_retention_days: int = 730
     activity_retention_days: int = 730  # per-person activity days (AD-08)
+    health: HealthThresholds = field(default_factory=HealthThresholds)
+    # Test-only: forces health items into a state, such as "database=degraded". Honoured only in
+    # development and test environments.
+    test_health_force: str = ""
     extra: dict = field(default_factory=dict)
 
     @property
@@ -157,6 +163,8 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         activity_retention_days=_positive(
             env("LABADDA_ACTIVITY_RETENTION_DAYS", "730"), "LABADDA_ACTIVITY_RETENTION_DAYS"
         ),
+        health=load_thresholds(os.environ if environ is None else environ),
+        test_health_force=env("LABADDA_TEST_HEALTH_FORCE", ""),
     )
 
 

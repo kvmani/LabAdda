@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from . import notify, policy
+from .health.heartbeat import HEARTBEAT
 from .models import Note, Post, Workspace
 from .security import utcnow
 
@@ -77,6 +78,7 @@ async def run_forever(
         except asyncio.CancelledError:
             raise
         except Exception:  # keep the runner alive; next tick retries
+            HEARTBEAT.failure()
             log.exception("reminders.failed")
         for job in jobs:
             try:
@@ -84,5 +86,19 @@ async def run_forever(
             except asyncio.CancelledError:
                 raise
             except Exception:  # keep the runner alive; next tick retries
+                HEARTBEAT.failure()
                 log.exception("scheduler.job_failed", extra={"job": job.__name__})
+        HEARTBEAT.tick()
+        await asyncio.sleep(interval)
+
+
+async def run_periodic(job: Callable[[], object], interval: int) -> None:
+    """Run one job on its own timer, so a slow reminder pass cannot delay the health sampler."""
+    while True:
+        try:
+            await asyncio.to_thread(job)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # keep the timer alive; next interval retries
+            log.exception("scheduler.job_failed", extra={"job": getattr(job, "__name__", "periodic")})
         await asyncio.sleep(interval)
