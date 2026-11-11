@@ -55,6 +55,9 @@ time. Member → 403; panel → 401. Timeline shows existing audit history in pl
 
 ### P2 · Change protocol; add, edit, transfer
 
+**Status: in progress (2026-11-11).** Immutable metadata snapshots and deterministic,
+versioned plan/digest primitives implemented. No change endpoints or dialogs yet.
+
 Size L. Depends on P1.
 
 **Goal.** PO-04–PO-12: the preview/apply protocol and the first three change kinds.

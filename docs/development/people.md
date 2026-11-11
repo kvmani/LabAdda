@@ -99,3 +99,28 @@ except the disposable proxy databases. The full simulation registers this suite.
 `e2e/admin-console.mjs` still checks the original basic account tools and authority
 boundaries. Unit tests cover URL/CSV/date boundaries, controlled search focus and
 stale export denial. Run suites sequentially; proxy startup resets test data.
+
+
+## P2 protocol foundation (in progress)
+
+`changes/plan.py` defines Step/Warning/Blocker/Plan and immutable Snapshot objects.
+Snapshots detach JSON on input and output, reject implicit coercions (including
+floats/dates/non-string keys), and omit their payload from repr. Plans preserve
+ordered consequences and hash version1 canonical UTF-8 JSON with SHA-256, including
+kind, actor, request, revisions and affected count. Snapshots must contain only
+explicitly selected staff metadata; the serializer does not decide access.
+
+No executable change route, preview builder, guard, apply service or dialog exists
+yet. Next: implement guard/builders and the locked preview/apply service, document
+HTTP bounds/errors before registering routes, then deliver dialogs and browser
+checks. Never accept a client plan as executable instructions. Rebuild from the
+validated request under locks, check current authority/revisions/digest, write all
+steps and audits atomically, then revalidate live delivery after commit.
+`test_change_plan.py` covers snapshot isolation, exact canonical bytes, digest
+binding/order, immutable fields and invalid metadata/revisions/counts.
+
+
+The apply service must use fresh locked identity/session checks. Do not call
+`current_actor` after staging changes: its normal-session heartbeat can commit.
+Trace legacy identity/membership lock order too; retain stale-authority and
+concurrent legacy-write tests until those endpoints are removed in P4.

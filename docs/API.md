@@ -487,3 +487,24 @@ to narrow filters. It audits `people.export` as report preparation with row coun
 never the query or row data. Authority is rechecked after audit commit; no content
 or private contacts in this bulk report. Filename is the fixed `people.csv`.
 This is a directory report, not the future staff-import template or a content archive.
+
+
+### P2 internal plan format (foundation only)
+
+No P2 HTTP endpoint is registered yet. `changes/plan.py` defines the internal
+metadata contract for the later preview/apply service: `format_version:1`, `kind`
+(`add_person|edit_person|transfer`), `actor_id`, normalized `request`, positive
+record `revisions`, ordered `steps`, `warnings`, `blockers`, nonnegative
+`affected_people` and `digest`. Each step has `target_type` (`identity|workspace`),
+`target_id`, a plain `summary`, and structured `before`/`after`. Issues have `code`,
+`message`, and nullable `target_id`. Object keys sort lexically; arrays retain order;
+strings retain exact Unicode; compact UTF-8 JSON excludes the digest itself before
+SHA-256. Floats and implicit Python-to-JSON conversions are refused.
+
+These are immutable server-built snapshots, with detached response copies. The
+digest is a change detector, **not authorization or a signature**. No future apply
+route may accept client-provided steps: it must reauthorize, lock and rebuild from
+the validated original request and current state. Builders must select only staff
+metadata and never insert credentials or private collaboration content into plans.
+HTTP request bounds, mutation outcomes and error codes will be specified before
+those routes are implemented. P2 remains in progress.
