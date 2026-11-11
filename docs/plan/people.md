@@ -185,7 +185,8 @@ endpoint, which follows the patterns in `api/auth.py`.
 **Build.** `GET /me/profile`, `POST /me/password` (current password required, rate limited,
 revokes other sessions), `GET /me/sessions`, `DELETE /me/sessions/{id}` (never returns session
 tokens; shows start time, last seen, browser family parsed from a stored short label).
-Frontend `/profile` page: record (read-only), access list, password form, sessions, theme.
+Frontend `/profile` page: record (read-only), access list, password form, sessions. Add
+"My profile" as the first item of the account menu in `frontend/src/features/shell/TopBar.tsx`.
 
 **Acceptance.** Wrong current password is rate limited and audited; other sessions end
 immediately (socket closed); a user cannot see or end another person's session (404).

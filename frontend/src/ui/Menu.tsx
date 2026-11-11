@@ -12,8 +12,13 @@ export type MenuItem = {
 };
 
 type MenuProps = {
-  /** Text on the button that opens the menu. */
+  /** Accessible name of the button and the menu. */
   label: string;
+  /**
+   * Shorter text to show on the button instead of `label`. It must appear inside `label`
+   * (WCAG 2.5.3), for example label "Account menu for Asha Rao" and visibleLabel "Asha Rao".
+   */
+  visibleLabel?: string;
   items: MenuItem[];
   icon?: IconName;
 };
@@ -22,7 +27,7 @@ type MenuProps = {
  * A button that opens a list of actions (WAI-ARIA menu button). Arrow keys, Home and End move
  * between items, Enter or Space chooses one, and Escape or Tab closes the menu.
  */
-export function Menu({ label, items, icon = "chevron-down" }: MenuProps) {
+export function Menu({ label, visibleLabel, items, icon = "chevron-down" }: MenuProps) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -88,6 +93,7 @@ export function Menu({ label, items, icon = "chevron-down" }: MenuProps) {
         type="button"
         className="ui-button ui-button--secondary ui-button--md"
         aria-haspopup="menu"
+        aria-label={visibleLabel ? label : undefined}
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => (open ? close(false) : openAt(enabled[0] ?? 0))}
@@ -101,7 +107,7 @@ export function Menu({ label, items, icon = "chevron-down" }: MenuProps) {
           }
         }}
       >
-        <span>{label}</span>
+        <span>{visibleLabel ?? label}</span>
         <Icon name={icon} size="sm" />
       </button>
       {open && (

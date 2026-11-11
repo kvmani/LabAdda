@@ -86,7 +86,7 @@ try {
     await page.getByLabel("Username").fill(name);
     await page.getByLabel("Password").fill(process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByRole("button", { name: "Sign out" }).waitFor();
+    await page.getByRole("button", { name: /^Account menu for / }).waitFor();
     const session = await (await ctx.request.get(origin + "/api/v1/auth/session")).json();
     actors[name] = { name, ctx, page, csrf: session.csrf_token, id: session.user.id };
   }

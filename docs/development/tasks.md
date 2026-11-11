@@ -20,7 +20,7 @@ Assignment/My Tasks web delivery is implemented; [Comments](task-comments.md) ar
 - backend/labadda/task_history.py, TodoChange and migration0018: atomic revision
   content history and honest legacy baselines. TaskHistory.tsx is the lazy, bounded
   browser view; actor names are current display names, IDs remain stable.
-- App.tsx, components/Shell.tsx and pages/WorkspaceView.tsx: /todos and workspace
+- App.tsx, features/shell/RailNav.tsx and pages/WorkspaceView.tsx: /todos and workspace
   Tasks tabs. Existing policy applies at every org level, project and group.
 - backend/tests/test_todos.py and e2e/todos.mjs: scope, concurrency and browser cases.
 

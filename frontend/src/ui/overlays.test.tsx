@@ -195,3 +195,11 @@ describe("Toast", () => {
     expect(() => render(<Saver />)).toThrow("useToast must be used inside ToastProvider");
   });
 });
+
+describe("Menu with a shorter visible label", () => {
+  it("keeps the visible text inside the accessible name", () => {
+    render(<Menu label="Account menu for Asha Rao" visibleLabel="Asha Rao" items={[]} />);
+    const trigger = screen.getByRole("button", { name: "Account menu for Asha Rao" });
+    expect(trigger.textContent).toBe("Asha Rao");
+  });
+});

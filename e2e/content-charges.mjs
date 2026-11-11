@@ -40,7 +40,7 @@ async function signIn(base, name) {
   await page.getByLabel("Username").fill(name);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: "Sign out" }).waitFor();
+  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
   return { ctx, page };
 }
 

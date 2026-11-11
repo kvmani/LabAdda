@@ -1,5 +1,5 @@
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { Shell } from "./components/Shell";
+import { Shell } from "./features/shell/Shell";
 import { useSession } from "./session";
 import { WorkspaceProvider, useWorkspaces } from "./workspaces";
 import { Activate, Login } from "./pages/Login";
@@ -14,6 +14,7 @@ import { Admin } from "./pages/Admin";
 
 import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
+import { Help } from "./pages/Help";
 
 function Home() {
   const { homeId, workspaces, loading } = useWorkspaces();
@@ -69,6 +70,7 @@ export function App() {
           <Route path="/usage" element={<Usage />} />
           <Route path="/operations" element={<Operations />} />
           <Route path="/groups/new" element={<NewGroup />} />
+          <Route path="/help" element={<Help />} />
           <Route path="/admin" element={session.user.is_admin ? <Admin /> : <Navigate to="/" replace />} />
           <Route
             path="*"

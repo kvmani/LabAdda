@@ -60,7 +60,7 @@ async function signIn(ctx, base, name) {
   await page.getByLabel("Username").fill(name);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: "Sign out" }).waitFor();
+  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
   return page;
 }
 
@@ -148,6 +148,18 @@ try {
     await admin.getByRole("heading", { name: "Administration" }).waitFor();
     await audit(admin, `${tag} administration`);
     await adminCtx.close();
+
+    const tablet = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+    const tabletPage = await signIn(tablet, base, "ben");
+    await tabletPage.goto(origin + base + `/w/${section}/noticeboard`);
+    await tabletPage.locator(".post").first().waitFor();
+    await audit(tabletPage, `${tag} tablet noticeboard`);
+    await noHorizontalScroll(tabletPage, `${tag} tablet noticeboard`);
+    await tabletPage.screenshot({
+      path: `${out}/${tag.replace("/", "")}-tablet-noticeboard.png`,
+      fullPage: true,
+    });
+    await tablet.close();
 
     const phone = await browser.newContext({
       viewport: { width: 390, height: 844 },

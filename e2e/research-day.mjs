@@ -55,7 +55,7 @@ async function actor(browser, username, ui = true) {
     await page.getByLabel("Username").fill(username);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByRole("button", { name: "Sign out" }).waitFor();
+    await page.getByRole("button", { name: /^Account menu for / }).waitFor();
   } else {
     const r = await ctx.request.post(origin + "/api/v1/auth/login", { data: { username, password } });
     assert.equal(r.status(), 200);

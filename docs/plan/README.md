@@ -24,7 +24,7 @@ outside groups, e-mail delivery, multi-site federation (P6).
 
 ## Status at a glance
 
-Last updated: 2026-11-11 (after Q1, Q2 and U1). Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-11 (after Q1, Q2, U1 and U2). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |
@@ -33,10 +33,10 @@ remaining effort, and are estimates — the package table below is the precise r
 | Deployment, upgrade, backup, recovery tooling | 15 % | 75 % | Rehearsal on a real Ubuntu host, scheduled backups with status, operator quickstart, release 1.0 |
 | Admin console, health and analytics | 20 % | 15 % | Almost all: console shell, metrics, health, activity, overview, audit, events, backups, settings |
 | People and organisation management | 12 % | 20 % | Staff record, change protocol, transfers to retirement, positions, org chart, import, unit administrators |
-| Interface quality and design system | 10 % | 45 % | Shell refresh (U2), charts (U3), moving existing screens onto the kit (U4) |
+| Interface quality and design system | 10 % | 60 % | Charts (U3), moving existing screens onto the kit and enabling the dark theme (U4) |
 | In-app help and onboarding | 6 % | 0 % | Framework, all content, setup checklist, sync check |
 | Code uniformity and quality gates | 7 % | 70 % | Readable rewrite of compressed modules and the deferred rules (Q3), module splits (Q4) |
-| **Overall toward v1.0** | 100 % | **≈ 54 %** | |
+| **Overall toward v1.0** | 100 % | **≈ 55 %** | |
 
 What the 50 % already delivered includes: 25 migrations, about 100 API endpoints, 573 backend
 tests, 465 browser checks across root and prefixed instances, a 30-client TLS workload rehearsal
@@ -53,8 +53,8 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 2 | Q1 | Python formatter and linter gate | — | done | [quality](quality.md#q1--python-formatter-and-linter-gate) |
 | 3 | Q2 | Frontend linter, formatter and strict types | — | done | [quality](quality.md#q2--frontend-linter-formatter-and-strict-types) |
 | 4 | U1 | Design tokens and core components | Q2 | done | [ui](ui.md#u1--design-tokens-and-core-components) |
-| 5 | U2 | Application shell refresh | U1 | next | [ui](ui.md#u2--application-shell-refresh) |
-| 6 | A1 | Admin console shell and navigation | U2 | queued | [admin](admin.md#a1--admin-console-shell-and-navigation) |
+| 5 | U2 | Application shell refresh | U1 | done | [ui](ui.md#u2--application-shell-refresh) |
+| 6 | A1 | Admin console shell and navigation | U2 | next | [admin](admin.md#a1--admin-console-shell-and-navigation) |
 | 7 | P1 | Staff record, people list and profile | A1, Q1 | queued | [people](people.md#p1--staff-record-people-list-and-profile) |
 | 8 | P2 | Change protocol; add, edit, transfer | P1 | queued | [people](people.md#p2--change-protocol-add-edit-transfer) |
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | queued | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
@@ -66,15 +66,15 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 15 | A6 | Overview dashboard | A4, A5, P3 | queued | [admin](admin.md#a6--overview-dashboard) |
 | 16 | P4 | Organisation chart and unit changes | P2 | queued | [people](people.md#p4--organisation-chart-and-unit-changes) |
 | 17 | P5 | Scheduled changes and attention list | P3, P4 | queued | [people](people.md#p5--scheduled-changes-and-attention-list) |
-| 18 | H1 | Help centre framework and sync check | U2 | queued | [help](help.md#h1--help-centre-framework-and-sync-check) |
+| 18 | H1 | Help centre framework and sync check | U2 | next | [help](help.md#h1--help-centre-framework-and-sync-check) |
 | 19 | H2 | Help for members and stewards | H1 | queued | [help](help.md#h2--help-for-members-and-stewards) |
 | 20 | H3 | Administrator handbook and setup checklist | H1, P5, A6 | queued | [help](help.md#h3--administrator-handbook-and-setup-checklist) |
 | 21 | P6 | Staff list import and bulk changes | P3 | queued | [people](people.md#p6--staff-list-import-and-bulk-changes) |
 | 22 | D3 | Scheduled backups with status file | — | queued | [deployment](deployment.md#d3--scheduled-backups-with-status-file) |
 | 23 | A7 | Backups page, settings and site notice | A1, D3 | queued | [admin](admin.md#a7--backups-page-settings-and-site-notice) |
 | 24 | P7 | Unit administrators | P4 | queued | [people](people.md#p7--unit-administrators) |
-| 25 | P8 | My profile and sessions | U2 | queued | [people](people.md#p8--my-profile-and-sessions) |
-| 26 | U4 | Move existing screens onto the design system | U2 | queued | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
+| 25 | P8 | My profile and sessions | U2 | next | [people](people.md#p8--my-profile-and-sessions) |
+| 26 | U4 | Move existing screens onto the design system | U2 | next | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
 | 27 | Q3 | Readable rewrite of compressed modules | Q1, Q2 | queued | [quality](quality.md#q3--readable-rewrite-of-compressed-modules) |
 | 28 | Q4 | Split oversized modules | Q3 | queued | [quality](quality.md#q4--split-oversized-modules) |
 | 29 | H4 | Operator handbook, first-use welcome, what's new | H1, D2 | queued | [help](help.md#h4--operator-handbook-first-use-welcome-whats-new) |

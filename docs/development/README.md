@@ -22,7 +22,7 @@ area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`.
 | Owner alert preferences | [Preferences guide](alert-preferences.md) → api/alert_preferences.py, notify.py | CT-15, T52, test_alert_preferences.py |
 | Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
 | Shared UI components, tokens, theme | [UI kit guide](ui-kit.md) → frontend/src/ui/ | UX-01–UX-14, T69, src/ui/*.test.tsx, e2e/ui-kit.mjs |
-| Workspace/browser navigation | frontend/src/App.tsx, components/Shell.tsx, pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |
+| Workspace/browser navigation, shell | frontend/src/App.tsx, features/shell/ (Shell, TopBar, RailNav, WorkspaceSwitcher), pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |
 | Schema and recovery | backend/labadda/models.py, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |
 | Shared task update signals | [Update guide](task-updates.md) → task_events.py and task routers | CT-09, T46, test_task_events.py |
 | Realtime delivery | backend/labadda/realtime.py, frontend/src/realtime.ts | tests/test_realtime.py; REVIEW.md; P4-QUALIFICATION.md |

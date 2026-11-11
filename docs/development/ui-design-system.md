@@ -73,7 +73,8 @@ Components set no outer margins; the layout around them spaces them with `gap` o
 - **List + detail.** Lists open details in a `Drawer`, so the list keeps its place and filters.
 - **Forms.** One column, labels above inputs, related fields grouped, primary action bottom
   right of the form, destructive action separated and styled `danger`.
-- **Breakpoints.** ≥ 1200 px full layout; 900–1199 px rail collapses to icons; < 900 px rail
+- **Breakpoints.** ≥ 1200 px full layout; 900–1199 px a narrower rail that keeps full names
+  (workspaces have no meaningful icons, and hidden names hurt non-technical users); < 900 px rail
   becomes a labelled switcher and tables scroll inside their own region. Nothing may cause the
   page itself to scroll sideways at 390 px.
 

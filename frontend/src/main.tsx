@@ -1,3 +1,6 @@
+// Global styles load first so component and shell styles, imported below, take precedence.
+import "./ui/tokens.css";
+import "./styles.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -5,14 +8,17 @@ import { App } from "./App";
 import { BASE, PANEL } from "./config";
 import { PanelApp } from "./pages/Panel";
 import { SessionProvider } from "./session";
-import "./ui/tokens.css";
-import "./styles.css";
+import { applyThemeChoice } from "./ui/theme";
 
 // The component gallery exists only in development builds; production removes this branch.
 const Gallery = import.meta.env.DEV
   ? React.lazy(() => import("./ui/gallery/Gallery").then((module) => ({ default: module.Gallery })))
   : null;
 const showGallery = Gallery !== null && window.location.pathname.slice(BASE.length) === "/_ui";
+
+// Until package U4 moves every screen onto the design tokens, the app stays light so a dark
+// shell never surrounds light page content. The gallery still shows both themes.
+if (!showGallery) applyThemeChoice("light");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

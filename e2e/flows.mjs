@@ -41,7 +41,7 @@ async function signIn(browser, base, username) {
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByRole("button", { name: "Sign out" }).waitFor();
+  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
   return { ctx, page, external };
 }
 
@@ -142,8 +142,8 @@ async function run(base) {
     // Live chat in the group.
     await ben.page.goto(`${origin}${base}/w/${groupId}/chat`);
     await chen.page.goto(`${origin}${base}/w/${groupId}/chat`);
-    await chen.page.getByText("● Live").waitFor();
-    await ben.page.getByText("● Live").waitFor();
+    await chen.page.getByText("Live", { exact: true }).waitFor();
+    await ben.page.getByText("Live", { exact: true }).waitFor();
     await chen.page.getByLabel("Message Cross-section XPS Club").fill("Spectra uploaded to the share");
     await chen.page.getByRole("button", { name: "Send" }).click();
     try {
@@ -378,9 +378,11 @@ async function crossInstance() {
     await page.getByLabel("Username").fill("asha");
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByRole("button", { name: "Sign out" }).waitFor();
+    await page.getByRole("button", { name: /^Account menu for / }).waitFor();
   }
-  await page.getByRole("button", { name: "Sign out" }).click(); // signs out of the last instance only
+  // Signs out of the last instance only.
+  await page.getByRole("button", { name: /^Account menu for / }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await page.getByLabel("Username").waitFor();
   const firstStatus = await page.evaluate(
     async (b) => (await fetch(`${b}/api/v1/auth/session`)).status,

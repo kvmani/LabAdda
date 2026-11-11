@@ -1,0 +1,256 @@
+/* Application shell (UX-03): top bar, rail and main region; three layouts by width. */
+.shell {
+  color-scheme: var(--color-scheme);
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  background: var(--surface-page);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+.shell-skip-link {
+  position: absolute;
+  top: calc(-1 * var(--space-7));
+  left: var(--space-2);
+  z-index: 1200;
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.shell-skip-link:focus {
+  top: var(--space-2);
+  outline: 3px solid var(--focus-ring);
+}
+
+/* Top bar */
+.shell-topbar {
+  grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-2) var(--space-5);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow-1);
+}
+.shell-topbar__brand {
+  color: var(--text);
+  font-size: var(--text-xl);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.shell-topbar__brand:focus-visible,
+.shell-topbar__link:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.shell-topbar__instance .ui-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.shell-topbar__end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.shell-topbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-decoration: none;
+}
+.shell-topbar__link:hover {
+  background: var(--accent-soft);
+}
+.shell-topbar__link.active,
+.shell-topbar__link[aria-current="page"] {
+  background: var(--accent-soft);
+}
+.shell-switcher {
+  display: none;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* Rail */
+.shell-rail {
+  position: sticky;
+  top: 56px;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+  padding: var(--space-3) 0 var(--space-6);
+  background: var(--surface-card);
+  border-right: 1px solid var(--line);
+  font-size: var(--text-md);
+}
+.shell-rail ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shell-rail__heading {
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.shell-rail__link,
+.shell-rail__action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  margin: 1px var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+.shell-rail__link--depth-1 {
+  padding-left: calc(var(--space-4) + 1 * var(--space-4));
+}
+.shell-rail__link--depth-2 {
+  padding-left: calc(var(--space-4) + 2 * var(--space-4));
+}
+.shell-rail__link--depth-3 {
+  padding-left: calc(var(--space-4) + 3 * var(--space-4));
+}
+.shell-rail__link--depth-4 {
+  padding-left: calc(var(--space-4) + 4 * var(--space-4));
+}
+.shell-rail__link--depth-5 {
+  padding-left: calc(var(--space-4) + 5 * var(--space-4));
+}
+.shell-rail__link--depth-6 {
+  padding-left: calc(var(--space-4) + 6 * var(--space-4));
+}
+.shell-rail__link:hover,
+.shell-rail__action:hover {
+  background: var(--surface-sunken);
+}
+.shell-rail__link.active,
+.shell-rail__link[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 650;
+}
+.shell-rail__link:focus-visible,
+.shell-rail__action:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+.shell-rail__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shell-rail__action {
+  color: var(--accent);
+  font-weight: 600;
+}
+.shell-rail__actions {
+  margin-top: var(--space-2);
+}
+.shell-rail__empty,
+.shell-rail__error {
+  margin: var(--space-1) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.shell-rail__error {
+  color: var(--danger);
+}
+
+/* Main region: legacy page styles keep their light palette until U4. */
+.shell-main {
+  min-width: 0;
+  padding: var(--space-5) var(--space-6);
+  background: var(--bg);
+  color: var(--ink);
+}
+.shell-main:focus {
+  outline: none;
+}
+
+/* 900-1199 px: a narrower rail that still shows full names. */
+@media (max-width: 1199px) {
+  .shell {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+  .shell-topbar {
+    padding: var(--space-2) var(--space-4);
+  }
+  .shell-main {
+    padding: var(--space-4) var(--space-5);
+  }
+}
+
+/* Under 900 px: the rail becomes the labelled switcher in the top bar. */
+@media (max-width: 899px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shell-rail {
+    display: none;
+  }
+  .shell-switcher {
+    display: block;
+    order: 10;
+    flex: 1 1 100%;
+  }
+  .shell-topbar {
+    position: static;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+  }
+  .shell-topbar__end {
+    gap: var(--space-1);
+  }
+  /* Icon-only on phones; the words stay available to screen readers. */
+  .shell-topbar__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .shell-topbar__notifications,
+  .shell-topbar__link {
+    padding: 0 var(--space-2);
+  }
+  .shell-topbar .ui-menu .ui-button > span {
+    max-width: 7.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shell-main {
+    padding: var(--space-4) var(--space-3);
+  }
+}

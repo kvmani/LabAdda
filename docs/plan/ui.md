@@ -40,6 +40,19 @@ unit-tested; `Dialog` and `Drawer` trap and restore focus; `DataTable` sorts and
 
 ### U2 · Application shell refresh
 
+**Status: done (2026-11-11).** `frontend/src/features/shell/` (Shell, TopBar, RailNav,
+WorkspaceSwitcher). Decisions taken while building it, for the owner to review:
+
+- The rail stays a list of links, not a `TreeView`. People see few workspaces (their unit, its
+  ancestors, projects and groups); links keep normal navigation semantics (Tab, open in a new
+  tab, the screen-reader links list). `TreeView` is reserved for the large organisation chart
+  in P4.
+- Breadcrumbs: the workspace page already shows its ancestor path; it moves onto `Breadcrumbs`
+  in U4 with the rest of the page content, rather than being duplicated in the shell.
+- The account menu has Alert preferences and Sign out. "My profile" is added by P8 and the
+  theme choice by U4; until U4 the app is forced to the light theme (see the U4 card).
+- 900–1199 px uses a narrower rail with full names instead of an icon rail (UX-03 updated).
+
 Size M. Depends on U1.
 
 **Goal.** The top bar and rail are rebuilt on `ui/` per UX-03, with a user menu and help entry.
@@ -86,6 +99,11 @@ settings → Storage/usage pages → Board chrome (toolbar and dialogs only; not
 **Build.** Replace markup with `ui/` components and UX-03/UX-04 layouts. Keep behaviour, routes
 and text meaning. Where wording changes for UX-05, update the browser checks and the help page.
 Delete each CSS rule when its last user is gone.
+
+**Last commit of the package:** remove `applyThemeChoice("light")` from `frontend/src/main.tsx`,
+add the theme choice (Follow the system / Light / Dark) to the account menu in
+`features/shell/TopBar.tsx`, and delete the `--palette-*` tokens once `styles.css` no longer uses
+them. Run every browser suite in both themes.
 
 **Acceptance.** Per screen: its browser suite passes; axe-core clean at both widths and themes;
 all UX-04 states reachable (show them in the suite by forcing loading, empty and error).

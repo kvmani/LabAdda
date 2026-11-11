@@ -27,7 +27,7 @@ async function signIn(base, name) {
   await page.getByLabel("Username").fill(name);
   await page.getByLabel("Password").fill(process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: "Sign out" }).waitFor();
+  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
   return { ctx, page };
 }
 try {

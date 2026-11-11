@@ -50,7 +50,7 @@ async function login(base, name) {
   await page.getByLabel("Username").fill(name);
   await page.getByLabel("Password").fill(process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: "Sign out" }).waitFor();
+  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
   const session = await (await ctx.request.get(origin + base + "/api/v1/auth/session")).json();
   return {
     ctx,
@@ -205,7 +205,7 @@ try {
     await ben.page.evaluate(() => window.__reviewSockets.at(-1).close());
     task = await call(asha, detail, { ...fields(task), title: "Offline reviewed experiment" }, "PUT");
     await until(() => ben.frames.filter((f) => f.type === "subscribed").length > subscriptionsBefore);
-    await ben.page.locator(".conn-online").waitFor();
+    await ben.page.getByText("Live", { exact: true }).waitFor();
     await shared.waitFor();
     await shared.click();
     await ben.page.getByRole("heading", { name: "Offline reviewed experiment", exact: true }).waitFor();
