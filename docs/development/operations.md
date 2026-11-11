@@ -132,3 +132,17 @@ Tests `backend/tests/test_lifecycle.py` inject failures at stop, stopped-state,
 backup, migration and both probes, test lock contention, private configuration,
 stale plans, redaction and subprocess deadlines. Real systemd boot, persistence,
 permissions, site TLS, off-host transfer and full DR timing remain site gates.
+
+## Scheduled backups (D3)
+
+`lifecycle.py backup --unattended --apply --external-writers-stopped --resume-after-backup`
+is what `deploy/systemd/labadda-backup@.service` runs. `scheduled_backup` wraps `maintenance`:
+it validates `LABADDA_STATUS_DIR` before anything is stopped, then writes
+`backup-status.json` after the run whether it succeeded or not (`scripts/backup_tools.py`,
+schema and atomic writer in `backend/labadda/backup_status.py`, shared with the application
+reader). A verified backup re-checks its bundle through `labadda verify-backup`; a failed check
+records `verification: failed` and keeps maintenance on. `prune-backups --keep N` is plan-first
+count retention of finished bundles. The helper modules `site_environment.py` and
+`site_state.py` hold the environment-file parser and the lock/journal primitives that were split
+out of `lifecycle.py`. Tests: `backend/tests/test_backup_status.py` and `test_scheduled_backup.py`.
+Full description: [recovery](../RECOVERY.md#scheduled-backups-and-the-status-file).

@@ -1,0 +1,14 @@
+# Timer for the scheduled backup: systemctl enable --now labadda-backup@<instance>.timer
+# Choose a quiet hour: the site is unavailable while the backup runs.
+[Unit]
+Description=Nightly LabAdda backup (%i)
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=10min
+# Run a missed backup after the host was off at the scheduled time.
+Persistent=true
+Unit=labadda-backup@%i.service
+
+[Install]
+WantedBy=timers.target

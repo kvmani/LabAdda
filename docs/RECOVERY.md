@@ -15,6 +15,35 @@ Securely load the source's `LABADDA_DATABASE_URL` and `LABADDA_ASSET_DIR` withou
 
 Choose a new destination outside release code and the asset tree. Publication happens only after dump, asset inventory, manifest validation and filesystem synchronization. The manifest records release, schema, source database name, recovery-point time, file sizes and SHA-256 hashes. The custom-format dump excludes role ownership and ACLs. Copy the completed bundle off the application VM using the approved process; authenticate and verify that copy before trusting the backup. Do not assume a snapshot of this development workspace is a production backup.
 
+## Scheduled backups and the status file
+
+`deploy/systemd/labadda-backup@.service` and `labadda-backup@.timer` run the lifecycle backup every night (default 02:30, with a random delay of up to ten minutes, and a missed run is made up when the host starts). Install both under `/etc/systemd/system/`, adjust the tool path and the site description file name in the service, then `systemctl enable --now labadda-backup@<instance>.timer`. The unit runs
+
+```bash
+python3 -I <tools>/scripts/lifecycle.py --site /etc/labadda/<instance>.site.json backup \
+  --unattended --apply --external-writers-stopped --resume-after-backup --destination-alias local
+```
+
+`--unattended` takes the expected release and schema from the installed site instead of a reviewed plan (use the reviewed `--expected-current/--expected-schema` form for manual runs). `--external-writers-stopped` is your attestation that no other LabAdda command runs at that hour. `--resume-after-backup` restarts the service and lifts maintenance only after the backup was taken and its bundle was re-checked against its manifest; if anything fails, the site stays in maintenance exactly as for a manual backup. **The site is unavailable while the backup runs**; choose a quiet hour.
+
+After every run, success or failure, the tool writes `backup-status.json` into the directory named by `LABADDA_STATUS_DIR` (an existing directory owned by the operator, not group- or world-writable, readable by the service account). The file is written to a temporary file, flushed, and renamed over the old one, so a crash leaves the previous file whole. It holds only these fields, defined once in `backend/labadda/backup_status.py` and used by both the tool and the application:
+
+| Field | Meaning |
+| --- | --- |
+| `format` | Always `1` |
+| `finished_at` | UTC time the run ended, `YYYY-MM-DDTHH:MM:SSZ` |
+| `result` | `success` or `failure` |
+| `size_bytes` | Size of the finished bundle; `null` on failure |
+| `verification` | `passed`, `failed` (the bundle did not match its manifest) or `not_run` |
+| `destination` | Short label for where backups are kept, e.g. `local` (`--destination-alias`) |
+| `schema`, `release` | Database schema and release that were backed up; `null` on failure |
+
+No paths, host names or secrets are ever written, and a reader rejects any file with other fields, odd values or more than 4 KiB. A missing file means backups are **unknown**, never healthy. A site without `LABADDA_STATUS_DIR` still backs up but records nothing. A success needs a passed verification; the bundle's manifest check is repeated by `labadda verify-backup <bundle> --manifest-sha256 <digest>`.
+
+### Keeping the newest local backups
+
+The timer's second step runs `lifecycle.py ... prune-backups --keep 7 --apply` only after a successful backup. Run it without `--apply` to see the plan: which finished backups would be kept and which removed, nothing deleted. Only directories created by the lifecycle tool that contain a manifest are counted or removed; unfinished bundles and other files are reported and left alone. It runs under the same lock as backups and upgrades and is journaled. Local retention is not off-host durability: copy bundles off the VM by the approved process before relying on them.
+
 ## Restore without exposing traffic
 
 Provision a **new empty database with a different name**, a new asset path that does not exist, distinct cookies/instance identity and isolated proxy/service configuration. Do not restore over a running or existing database. Use an operator restore role with the required DDL rights; application runtime permissions should remain separate where supported. Keep the target off traffic and keep all writers stopped.

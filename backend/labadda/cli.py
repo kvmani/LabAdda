@@ -44,6 +44,9 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("destination", type=Path)
     backup.add_argument("--release", required=True)
     backup.add_argument("--writers-quiesced", action="store_true", required=True)
+    verify = sub.add_parser("verify-backup", help="re-check a finished backup bundle against its manifest")
+    verify.add_argument("bundle", type=Path)
+    verify.add_argument("--manifest-sha256", required=True)
     restore = sub.add_parser("restore", help="restore to a distinct empty, isolated database")
     restore.add_argument("bundle", type=Path)
     restore.add_argument("--manifest-sha256", required=True)
@@ -252,6 +255,19 @@ def main(argv: list[str] | None = None) -> int:
                 "PostgreSQL clients.",
                 file=sys.stderr,
             )
+            return 2
+
+    if args.cmd == "verify-backup":
+        from .recovery import file_hash, verify_bundle
+
+        try:
+            manifest = verify_bundle(args.bundle)
+            if file_hash(args.bundle / "manifest.json") != args.manifest_sha256:
+                raise ValueError("Manifest digest differs from the recorded value")
+            print(json.dumps({"verified": True, "schema": manifest["schema"]}))
+            return 0
+        except Exception:
+            print("Backup verification failed; do not rely on this bundle.", file=sys.stderr)
             return 2
 
     if args.cmd == "restore":

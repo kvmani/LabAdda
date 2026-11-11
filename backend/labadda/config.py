@@ -46,6 +46,7 @@ class Settings:
     trusted_origins: tuple[str, ...] = ()
     asset_dir: Path = Path("var/assets")
     frontend_dist: Path | None = None
+    status_dir: Path | None = None  # operator status files (backup-status.json), read-only here
     timezone: str = "UTC"
     session_idle_minutes: int = 120
     session_absolute_hours: int = 12
@@ -95,6 +96,7 @@ def _timezone(value: str) -> str:
 def load_settings() -> Settings:
     env = os.environ.get
     dist = env("LABADDA_FRONTEND_DIST")
+    status_dir = env("LABADDA_STATUS_DIR")
     default_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
     origins = tuple(
         o.strip().rstrip("/") for o in (env("LABADDA_TRUSTED_ORIGINS") or "").split(",") if o.strip()
@@ -109,6 +111,7 @@ def load_settings() -> Settings:
         trusted_origins=origins,
         asset_dir=Path(env("LABADDA_ASSET_DIR", "var/assets")),
         frontend_dist=Path(dist) if dist else (default_dist if default_dist.exists() else None),
+        status_dir=Path(status_dir) if status_dir else None,
         timezone=_timezone(env("LABADDA_TIMEZONE", "UTC")),
         session_idle_minutes=int(env("LABADDA_SESSION_IDLE_MINUTES", "120")),
         session_absolute_hours=int(env("LABADDA_SESSION_ABSOLUTE_HOURS", "12")),
