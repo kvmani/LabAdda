@@ -51,6 +51,9 @@
   margin: var(--space-5) 0 var(--space-2);
   font-size: var(--text-xl);
 }
+.help-article > :first-child {
+  margin-top: 0;
+}
 .help-article p,
 .help-article ul,
 .help-article ol {
@@ -65,20 +68,21 @@
   font-size: var(--text-sm);
 }
 
+/* Selectors start at .shell so they beat the shell's own rules whatever order the styles load in. */
 @media print {
   .shell {
     display: block;
     min-height: 0;
   }
-  .shell-topbar,
-  .shell-rail,
-  .shell-skip-link,
-  .notifications,
-  .help-noprint,
-  .ui-page-header__help {
+  .shell .shell-topbar,
+  .shell .shell-rail,
+  .shell .shell-skip-link,
+  .shell .notifications,
+  .shell .help-noprint,
+  .shell .ui-page-header__help {
     display: none;
   }
-  .shell-main {
+  .shell .shell-main {
     padding: 0;
   }
   .help-page {

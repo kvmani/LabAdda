@@ -7,7 +7,7 @@ when changing a boundary. Run the affected checks and update the same guide, the
 [plan](../plan/README.md) and the ledger with the code.
 
 For the remaining v1.0 areas, work-package cards name the modules to create; add a guide here (one file per area, under 150 lines) when the first package of an
-area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`.
+area lands: `people.md`, `admin-console.md`, `metrics.md`.
 
 | Task | Minimal source path | Contract / checks |
 | --- | --- | --- |
@@ -23,6 +23,7 @@ area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`.
 | Reviewed staff edits / preview and apply | [Change guide](people-changes.md) → changes/, api/changes.py | PO-04–12, test_change_plan.py, test_changes_edit.py; P2 in progress |
 | Admin console routing / operational access | [Console guide](admin-console.md) → policy.py, deps.py, api/capabilities.py | AD-01–02, test_console.py, test_capabilities.py |
 | Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
+| In-app help pages, search, contextual drawer | [Help guide](help-centre.md) → frontend/src/help/, features/help/, scripts/build-help.mjs, scripts/check_help.py | HP-01–11, T67–T68, test_check_help.py, e2e/help.mjs |
 | Shared UI components, tokens, theme | [UI kit guide](ui-kit.md) → frontend/src/ui/ | UX-01–UX-14, T69, src/ui/*.test.tsx, e2e/ui-kit.mjs |
 | Workspace/browser navigation, shell | frontend/src/App.tsx, features/shell/ (Shell, TopBar, RailNav, WorkspaceSwitcher), pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |
 | Schema and recovery | backend/labadda/models.py, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |

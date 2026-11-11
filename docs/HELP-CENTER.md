@@ -1,7 +1,7 @@
 # In-app help and guidance — contract
 
-Status: **normative for v1.0; not yet implemented.** Delivered by track H of
-[the plan](plan/help.md). Summarised in [SPECIFICATIONS.md S11](../SPECIFICATIONS.md).
+Status: **normative for v1.0; framework delivered by H1, content by H2–H4.** Delivered by track H of
+[the plan](plan/help.md); the developer guide is [help-centre.md](development/help-centre.md). Summarised in [SPECIFICATIONS.md S11](../SPECIFICATIONS.md).
 
 **Purpose.** Nobody at the site should need the source repository, a consultant or the internet
 to use or look after LabAdda. Everything a member, a steward, an administrator or the person
