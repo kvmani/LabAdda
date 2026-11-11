@@ -58,7 +58,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 5 | U2 | Application shell refresh | U1 | done | [ui](ui.md#u2--application-shell-refresh) |
 | 6 | A1 | Admin console shell and navigation | U2 | done | [admin](admin.md#a1--admin-console-shell-and-navigation) |
 | 7 | P1 | Staff record, people list and profile | A1, Q1 | done | [people](people.md#p1--staff-record-people-list-and-profile) |
-| 8 | P2 | Change protocol; add, edit, transfer | P1 | next | [people](people.md#p2--change-protocol-add-edit-transfer) |
+| 8 | P2 | Change protocol; add, edit, transfer | P1 | in progress | [people](people.md#p2--change-protocol-add-edit-transfer) |
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | queued | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
 | 10 | A2 | Audit explorer | A1 | next | [admin](admin.md#a2--audit-explorer) |
 | 11 | U3 | Charts kit | U1 | next | [ui](ui.md#u3--charts-kit) |
