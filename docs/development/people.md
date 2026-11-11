@@ -106,3 +106,15 @@ stale export denial. Run suites sequentially; proxy startup resets test data.
 Read [the change-protocol guide](people-changes.md) for immutable plans,
 normalization, edit preview/apply, lock order and audit guarantees. P2 add/transfer
 builders and dialogs remain pending. No general lifecycle controls exist yet.
+
+## My profile and sessions (P8)
+
+`/profile` (`frontend/src/features/profile/`) is the signed-in person's own page: record and
+access (read-only, from `people_profile.profile` and `access_page`), password form and sessions.
+Backend: `api/me.py` (router), `account.py` (own record and session list), `security.agent_label`
+(browser family from the User-Agent; only the label is stored, in `auth_sessions.agent_label`).
+Migration 0029 also adds `auth_sessions.public_id`, the only session identifier ever returned,
+so the cookie digest used as the primary key stays private. `POST /me/password` shares the
+sign-in rate-limit window, audits wrong attempts as `denied`, revokes only the other sessions
+and asks the hub to revalidate the person's sockets. `/me/*` refuses panel cookies and the panel
+header with 401. Tests: `backend/tests/test_me.py`; browser: `e2e/profile.mjs`.

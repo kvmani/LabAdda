@@ -77,6 +77,7 @@ export function TopBar({
           label={`Account menu for ${name}`}
           visibleLabel={name}
           items={[
+            { label: "My profile", icon: "user", onSelect: () => navigate("/profile") },
             { label: "Alert preferences", icon: "bell", onSelect: () => navigate("/preferences") },
             { label: "Sign out", icon: "external", onSelect: () => void signOut() },
           ]}

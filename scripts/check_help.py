@@ -50,6 +50,7 @@ REQUIRED_PAGES: tuple[str, ...] = (
     "using/my-notes.md",
     "using/notifications-and-alerts.md",
     "using/my-storage.md",
+    "using/my-profile-and-password.md",
     "using/search.md",
     "stewards/what-a-steward-does.md",
     "stewards/members-and-roles.md",

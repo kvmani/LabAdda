@@ -13,6 +13,7 @@ import { Notes } from "./pages/Notes";
 import { NewGroup } from "./pages/NewGroup";
 import { Usage } from "./pages/Usage";
 
+import { ProfilePage } from "./features/profile/ProfilePage";
 import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
 import { HelpBoundary } from "./features/help/HelpBoundary";
@@ -66,6 +67,7 @@ export function App() {
           <Route path="/activate" element={<Navigate to="/" replace />} />
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/preferences" element={<AlertPreferences />} />
           <Route path="/today" element={<Dashboard />} />
           <Route path="/my-tasks" element={<MyTasks />} />
