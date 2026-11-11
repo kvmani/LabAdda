@@ -95,9 +95,14 @@ Markdown with its raw-HTML tokens escaped and its image tokens replaced by their
 - a bold label that appears nowhere in the non-test frontend source;
 - a link that is not a relative path to an existing help page.
 
-Two rules are written but off until the packages that need them: `check_required_pages` runs over
-`REQUIRED_PAGES` (H2 and H3 fill it from the page list) and `check_event_codes` runs when
-`EVENT_CODE_CHECK_ENABLED` is set (H3, once the code catalogue exists).
+Two more rules apply to the whole help set:
+
+- every page in `REQUIRED_PAGES` (the `using/` and `stewards/` page list; H3 adds the administrator
+  pages) must exist;
+- every route in `App.tsx` outside `/admin` must be the `screen` of at least one page. The routes in
+  `ROUTES_WITHOUT_PAGE` (redirects, the catch-all, the help centre itself and `/activate`) are exempt.
+
+The event-code rule (`check_event_codes`) stays off until H3 sets `EVENT_CODE_CHECK_ENABLED`.
 
 ## Checks
 

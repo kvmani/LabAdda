@@ -4,7 +4,7 @@
 
 Scope: C1 personal/shared lists. Authoritative requirements: S8/CT-01–03 in
 [SPECIFICATIONS](../../SPECIFICATIONS.md); wire contract: [C1 API](../API.md#c1-to-do-lists).
-User-facing instructions: [Using to-do lists](../usage/tasks.md).
+User-facing instructions: [Keeping to-do lists](../../frontend/src/help/using/tasks.md).
 C2 workflow/history and assignment/My Tasks APIs are implemented.
 [Assignment guide](task-assignment.md) covers their locks and permission boundaries.
 Assignment/My Tasks web delivery is implemented; [Comments](task-comments.md) are implemented; [shared update notices](task-updates.md) are implemented.

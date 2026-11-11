@@ -8,8 +8,8 @@ changes nothing.
 
     python3 scripts/check_help.py [repository-root]
 
-The event-code rule (H3) and the required-page rule (H2, H3) are separate functions that the
-later packages switch on by setting EVENT_CODE_CHECK_ENABLED and filling REQUIRED_PAGES.
+The event-code rule (H3) is a separate function that H3 switches on by setting
+EVENT_CODE_CHECK_ENABLED. H3 also adds the administrator pages to REQUIRED_PAGES.
 """
 
 from __future__ import annotations
@@ -27,8 +27,43 @@ AUDIENCES = {"everyone", "steward", "administrator", "operator"}
 FREE_FORM_PAGES = {"glossary.md", "whats-new.md"}
 REQUIRED_SECTIONS = ("What this is for", "Steps", "What happens next", "If something goes wrong", "Related")
 OPTIONAL_SECTIONS = ("Before you start",)
-# H2 and H3 fill this with the page list in docs/plan/help.md; each entry is a path below help/.
-REQUIRED_PAGES: tuple[str, ...] = ()
+# The page list in docs/plan/help.md; each entry is a path below help/. H3 adds the administrator pages.
+# Not yet written: using/my-profile-and-password.md (the app has no screen to change a password).
+REQUIRED_PAGES: tuple[str, ...] = (
+    "using/signing-in.md",
+    "using/finding-your-way.md",
+    "using/noticeboard.md",
+    "using/replies-and-official-notices.md",
+    "using/attaching-files.md",
+    "using/reminders-and-upcoming.md",
+    "using/whiteboard.md",
+    "using/publishing-a-snapshot.md",
+    "using/touch-panel.md",
+    "using/chat-and-threads.md",
+    "using/chat-files.md",
+    "using/private-groups.md",
+    "using/tasks.md",
+    "using/assigning-tasks.md",
+    "using/task-from-a-message.md",
+    "using/my-day.md",
+    "using/my-tasks.md",
+    "using/my-notes.md",
+    "using/notifications-and-alerts.md",
+    "using/my-storage.md",
+    "using/search.md",
+    "stewards/what-a-steward-does.md",
+    "stewards/members-and-roles.md",
+    "stewards/read-only-and-archive.md",
+    "stewards/pinning-and-official-notices.md",
+    "stewards/removing-a-post.md",
+    "stewards/handing-over-stewardship.md",
+    "stewards/workspace-storage.md",
+)
+# Routes with no page of their own: redirects, the catch-all, the help centre (which never explains
+# itself) and the activation form, which the signing-in page explains from the sign-in screen.
+ROUTES_WITHOUT_PAGE = {"*", "/", "/activate", "/operations", "/help/*"}
+# Administration routes get their pages from H3.
+ROUTE_PAGES_EXEMPT_PREFIX = "/admin"
 # H3 turns this on once the event-code catalogue exists to compare against.
 EVENT_CODE_CHECK_ENABLED = False
 
@@ -163,6 +198,17 @@ def check_required_pages(root: Path, required: tuple[str, ...]) -> list[str]:
     ]
 
 
+def check_route_pages(routes: set[str], screens: set[str]) -> list[str]:
+    """Return a problem for each application route outside /admin that no page explains (H2)."""
+    return [
+        f"{APP_FILE}: route '{route}' has no help page whose screen matches it"
+        for route in sorted(routes)
+        if route not in ROUTES_WITHOUT_PAGE
+        and not route.startswith(ROUTE_PAGES_EXEMPT_PREFIX)
+        and route not in screens
+    ]
+
+
 def check_event_codes(root: Path) -> list[str]:
     """Return a problem for each event code without a troubleshooting page, and the reverse (H3)."""
     if not EVENT_CODE_CHECK_ENABLED:
@@ -170,20 +216,25 @@ def check_event_codes(root: Path) -> list[str]:
     raise NotImplementedError("H3 compares the code catalogue with help/troubleshooting here")
 
 
-def run(root: Path) -> list[str]:
+def run(root: Path, required: tuple[str, ...] = REQUIRED_PAGES, cover_routes: bool = True) -> list[str]:
     """Return every help problem found below root."""
     routes = app_routes(root)
     source = source_text(root)
     problems = []
+    screens: set[str] = set()
     for page in help_pages(root):
         name = str(page.relative_to(root))
         data, body, body_start = split_front_matter(page.read_text(encoding="utf-8"))
+        screens.add((data or {}).get("screen", ""))
         problems += check_front_matter(name, data, routes)
         if page.relative_to(root / HELP_DIRECTORY).as_posix() not in FREE_FORM_PAGES:
             problems += check_sections(name, body, body_start)
         problems += check_labels(name, body, body_start, source)
         problems += check_links(root, page, body, body_start)
-    return problems + check_required_pages(root, REQUIRED_PAGES) + check_event_codes(root)
+    problems += check_required_pages(root, required)
+    if cover_routes:
+        problems += check_route_pages(routes, screens)
+    return problems + check_event_codes(root)
 
 
 def main(arguments: list[str]) -> int:

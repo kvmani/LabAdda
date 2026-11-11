@@ -134,9 +134,9 @@ async function checkDrawer(member, base) {
   const page = member.page;
   await page.goto(origin + base + "/today");
   await page.getByRole("button", { name: "Help with this page", exact: true }).click();
-  const drawer = page.getByRole("dialog", { name: "Finding your way around" });
+  const drawer = page.getByRole("dialog", { name: "Reading My day" });
   await drawer.waitFor();
-  await drawer.getByText("Switch workspace").first().waitFor();
+  await drawer.getByText("Active work and deadlines").first().waitFor();
   check(
     await page.getByRole("heading", { level: 1, name: "My day" }).isVisible(),
     base + " the screen stays visible beside the help drawer",
@@ -149,11 +149,8 @@ async function checkDrawer(member, base) {
   await drawer.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Help with this page", exact: true }).click();
   await page.getByRole("button", { name: "Open the full guide", exact: true }).click();
-  await page.getByRole("heading", { level: 1, name: "Finding your way around" }).waitFor();
-  check(
-    page.url().endsWith(base + "/help/using/finding-your-way"),
-    base + " the drawer opens the full guide",
-  );
+  await page.getByRole("heading", { level: 1, name: "Reading My day" }).waitFor();
+  check(page.url().endsWith(base + "/help/using/my-day"), base + " the drawer opens the full guide");
   await page.goto(origin + base + "/notes");
   await page.getByRole("heading", { level: 1 }).first().waitFor();
   check(

@@ -6,7 +6,7 @@ LabAdda is a browser-based collaboration workspace for research teams on an air-
 
 Users can also create **collaborative groups** with chosen colleagues from any unit. A group has the same noticeboard, whiteboard and chat as a section, without hierarchy.
 
-Chat supports **threads and validated file attachments**, including private-group conversations. Personal/shared to-do lists include assignment, workflow and discussion; posts/chat and board context can become reviewed tasks. **My day** combines current-access work, private deadlines, mentions and unread conversations; **Alert preferences** controls your in-app categories. See [chat usage](docs/usage/chat.md), [tasks](docs/usage/tasks.md) and [My day](docs/usage/dashboard.md).
+Chat supports **threads and validated file attachments**, including private-group conversations. Personal/shared to-do lists include assignment, workflow and discussion; posts/chat and board context can become reviewed tasks. **My day** combines current-access work, private deadlines, mentions and unread conversations; **Alert preferences** controls your in-app categories. See the in-app help: [chat](frontend/src/help/using/chat-and-threads.md), [tasks](frontend/src/help/using/tasks.md) and [My day](frontend/src/help/using/my-day.md).
 
 Each readable workspace has a **Storage** tab with shared file and logical-content observations. It covers that workspace's content only; personal notes and parent/child totals are separate. These partial counters do not activate workspace quotas or retention.
 

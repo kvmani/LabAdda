@@ -55,9 +55,14 @@ def make_repository(root: Path, page: str = FRONT + BODY) -> None:
     )
 
 
+def run_isolated(root: Path) -> list[str]:
+    """Run the page rules only, without the repository's required pages or route coverage."""
+    return check_help.run(root, required=(), cover_routes=False)
+
+
 def problems_for(tmp_path: Path, page: str) -> list[str]:
     make_repository(tmp_path, page)
-    return check_help.run(tmp_path)
+    return run_isolated(tmp_path)
 
 
 def test_repository_help_passes():
@@ -125,7 +130,7 @@ def test_free_form_pages_skip_the_template(tmp_path):
     write(
         tmp_path, "frontend/src/help/glossary.md", FRONT.replace("/today", "none") + "## Words\n\n- *Unit*.\n"
     )
-    assert check_help.run(tmp_path) == []
+    assert run_isolated(tmp_path) == []
 
 
 def test_required_pages_are_enforced_when_listed(tmp_path):
@@ -134,6 +139,41 @@ def test_required_pages_are_enforced_when_listed(tmp_path):
     assert check_help.check_required_pages(tmp_path, ("using/absent.md",)) == [
         "frontend/src/help/using/absent.md: required page is missing"
     ]
+
+
+def test_every_planned_page_is_required():
+    required = set(check_help.REQUIRED_PAGES)
+    assert {"using/noticeboard.md", "stewards/removing-a-post.md"} <= required
+    assert not [path for path in required if not path.startswith(("using/", "stewards/"))]
+    assert len(required) == len(check_help.REQUIRED_PAGES)
+
+
+def test_run_reports_missing_required_pages(tmp_path):
+    make_repository(tmp_path)
+    problems = check_help.run(tmp_path, required=("using/absent.md",), cover_routes=False)
+    assert problems == ["frontend/src/help/using/absent.md: required page is missing"]
+
+
+def test_route_without_a_page_is_reported(tmp_path):
+    make_repository(tmp_path)
+    assert check_help.run(tmp_path, required=()) == [
+        "frontend/src/App.tsx: route '/w/:id' has no help page whose screen matches it"
+    ]
+
+
+def test_route_with_a_page_is_covered(tmp_path):
+    make_repository(tmp_path)
+    write(
+        tmp_path,
+        "frontend/src/help/using/other.md",
+        FRONT.replace("/today", "/w/:id") + BODY.replace("- [Other](other.md)", "- [Test](test.md)"),
+    )
+    assert check_help.run(tmp_path, required=()) == []
+
+
+def test_exempt_and_admin_routes_need_no_page():
+    routes = {"/", "*", "/activate", "/operations", "/help/*", "/admin/*", "/admin/people", "/today"}
+    assert check_help.check_route_pages(routes, {"/today"}) == []
 
 
 def test_event_code_rule_is_off_until_h3(tmp_path):
