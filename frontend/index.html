@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:," />
     <title>LabAdda</title>
+    <script>
+      // Apply the saved colour theme before first paint; keep in step with src/ui/theme.ts.
+      try {
+        var theme = window.localStorage.getItem("labadda.theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch (error) {
+        // Storage unavailable: follow the system theme.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

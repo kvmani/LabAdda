@@ -5,6 +5,7 @@ import { App } from "./App";
 import { BASE, PANEL } from "./config";
 import { PanelApp } from "./pages/Panel";
 import { SessionProvider } from "./session";
+import "./ui/tokens.css";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

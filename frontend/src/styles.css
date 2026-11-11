@@ -1,16 +1,19 @@
-/* LabAdda: local system fonts only, no external requests. */
+/* LabAdda legacy screen styles: local system fonts only, no external requests.
+ * These variables point at the fixed light palette in ui/tokens.css, so screens not yet built
+ * from ui/ components look the same in every theme. U4 removes this file's rules screen by screen.
+ */
 :root {
-  --bg: #f4f5f7;
-  --panel: #ffffff;
-  --ink: #1f2933;
-  --muted: #4b5563; /* >= 4.5:1 on white and on the active rail highlight (WCAG AA) */
-  --line: #d9dee5;
-  --accent: #1d4ed8;
-  --accent-ink: #ffffff;
-  --ok: #1b7f3b;
-  --warn-bg: #fff4d6;
-  --err: #b42318;
-  --official: #7c2d12;
+  --bg: var(--palette-page);
+  --panel: var(--palette-card);
+  --ink: var(--palette-ink);
+  --muted: var(--palette-muted); /* >= 4.5:1 on white and on the active rail highlight (WCAG AA) */
+  --legacy-line: var(--palette-line);
+  --legacy-accent: var(--palette-accent);
+  --accent-ink: var(--palette-on-accent);
+  --legacy-ok: var(--palette-ok);
+  --warn-bg: var(--palette-warn-soft);
+  --err: var(--palette-danger);
+  --official: var(--palette-official);
   --radius: 8px;
   font-family:
     system-ui,
@@ -29,7 +32,7 @@ body {
   margin: 0;
 }
 a {
-  color: var(--accent);
+  color: var(--legacy-accent);
 }
 h1 {
   font-size: 1.5rem;
@@ -44,8 +47,8 @@ button,
   font: inherit;
   cursor: pointer;
   border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
+  border: 1px solid var(--legacy-accent);
+  background: var(--legacy-accent);
   color: var(--accent-ink);
   padding: 0.45rem 0.9rem;
   text-decoration: none;
@@ -58,7 +61,7 @@ button:disabled {
 button.ghost,
 .ghost-link {
   background: transparent;
-  color: var(--accent);
+  color: var(--legacy-accent);
   border-color: transparent;
   padding: 0.35rem 0.55rem;
   text-decoration: none;
@@ -76,7 +79,7 @@ textarea,
 select {
   font: inherit;
   padding: 0.45rem 0.55rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   border-radius: 6px;
   width: 100%;
   background: #fff;
@@ -115,7 +118,7 @@ label.inline input:not([type="checkbox"]) {
   color: var(--err);
 }
 .ok {
-  color: var(--ok);
+  color: var(--legacy-ok);
 }
 .notice,
 .warning {
@@ -125,7 +128,7 @@ label.inline input:not([type="checkbox"]) {
 }
 .card {
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   border-radius: var(--radius);
   padding: 1rem;
   margin-bottom: 1rem;
@@ -151,7 +154,7 @@ label.inline input:not([type="checkbox"]) {
 }
 .tag {
   font-size: 0.75rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   border-radius: 999px;
   padding: 0.05rem 0.5rem;
   margin-left: 0.35rem;
@@ -161,7 +164,7 @@ label.inline input:not([type="checkbox"]) {
 }
 .badge {
   font-size: 0.75rem;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: #fff;
   border-radius: 999px;
   padding: 0 0.45rem;
@@ -201,7 +204,7 @@ label.inline input:not([type="checkbox"]) {
   align-items: center;
   padding: 0.5rem 1rem;
   background: var(--panel);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--legacy-line);
   flex-wrap: wrap;
 }
 .brand {
@@ -222,7 +225,7 @@ label.inline input:not([type="checkbox"]) {
   margin-left: auto;
 }
 .conn-online {
-  color: var(--ok);
+  color: var(--legacy-ok);
 }
 .conn-reconnecting,
 .conn-connecting {
@@ -236,7 +239,7 @@ label.inline input:not([type="checkbox"]) {
 }
 .rail {
   background: var(--panel);
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--legacy-line);
   padding: 0.75rem 0;
   overflow-y: auto;
 }
@@ -267,7 +270,7 @@ label.inline input:not([type="checkbox"]) {
 }
 .rail-link.active {
   background: #e0e7ff;
-  border-left-color: var(--accent);
+  border-left-color: var(--legacy-accent);
   font-weight: 600;
 }
 .rail-name {
@@ -277,7 +280,7 @@ label.inline input:not([type="checkbox"]) {
 }
 .notes-link {
   font-weight: 600;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--legacy-line);
   margin-bottom: 0.25rem;
 }
 .rail-action {
@@ -307,7 +310,7 @@ label.inline input:not([type="checkbox"]) {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--legacy-line);
   margin-top: 0.75rem;
 }
 .tab {
@@ -318,7 +321,7 @@ label.inline input:not([type="checkbox"]) {
 }
 .tab.active {
   color: var(--ink);
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--legacy-accent);
   font-weight: 600;
 }
 
@@ -355,7 +358,7 @@ label.inline input:not([type="checkbox"]) {
 .replies {
   list-style: none;
   padding: 0 0 0 1rem;
-  border-left: 2px solid var(--line);
+  border-left: 2px solid var(--legacy-line);
 }
 .reply-form {
   display: flex;
@@ -372,7 +375,7 @@ label.inline input:not([type="checkbox"]) {
 .attachments img {
   max-width: 220px;
   max-height: 160px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   border-radius: 4px;
 }
 .chips {
@@ -433,18 +436,18 @@ label.inline input:not([type="checkbox"]) {
   align-items: center;
   padding: 0.5rem;
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   border-radius: var(--radius) var(--radius) 0 0;
 }
 .tool {
   background: #fff;
   color: var(--ink);
-  border-color: var(--line);
+  border-color: var(--legacy-line);
   min-height: 40px;
 }
 .tool.active {
   background: #e0e7ff;
-  border-color: var(--accent);
+  border-color: var(--legacy-accent);
 }
 .swatches {
   display: inline-flex;
@@ -456,23 +459,23 @@ label.inline input:not([type="checkbox"]) {
   padding: 0;
   border-radius: 50%;
   border: 2px solid #fff;
-  box-shadow: 0 0 0 1px var(--line);
+  box-shadow: 0 0 0 1px var(--legacy-line);
 }
 .swatch.active {
-  box-shadow: 0 0 0 3px var(--accent);
+  box-shadow: 0 0 0 3px var(--legacy-accent);
 }
 .save-state {
   font-weight: 600;
   color: #b45309;
 }
 .save-state.ok {
-  color: var(--ok);
+  color: var(--legacy-ok);
 }
 .canvas {
   flex: 1;
   width: 100%;
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   border-top: 0;
   touch-action: none;
   cursor: crosshair;
@@ -505,11 +508,11 @@ label.inline input:not([type="checkbox"]) {
   text-align: left;
   background: transparent;
   color: var(--ink);
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   margin-bottom: 0.35rem;
 }
 .notification.unread {
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--legacy-accent);
 }
 .notification .snippet {
   display: block;
@@ -568,7 +571,7 @@ td.row {
 .snapshot-preview {
   max-width: 100%;
   max-height: 240px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--legacy-line);
   background: #fff;
   display: block;
   margin: 0.5rem 0;
@@ -624,7 +627,7 @@ button.big {
   align-items: center;
   padding: 0.5rem 1rem;
   background: var(--panel);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--legacy-line);
   flex-wrap: wrap;
 }
 .panel-title {
@@ -682,9 +685,9 @@ button.end-session {
   top: -3rem;
   z-index: 100;
   background: var(--panel);
-  color: var(--accent);
+  color: var(--legacy-accent);
   padding: 0.5rem 0.9rem;
-  border: 2px solid var(--accent);
+  border: 2px solid var(--legacy-accent);
   border-radius: 6px;
   text-decoration: none;
 }
