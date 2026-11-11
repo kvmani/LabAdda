@@ -48,8 +48,36 @@ def fixture_password() -> str:
 
 
 def reset_database(db: Session) -> None:
-    tables = ["notification_preferences", "todo_comments", "todo_changes", "todo_tasks", "todo_lists", "inventory_attempts", "inventory_jobs", "upload_receipts", "upload_reservations", "usage_reader_grants", "storage_inspections", "usage_observations", "policy_drafts", "content_charges", "panel_pairings", "board_snapshots", "board_ops", "boards", "chat_reads", "chat_messages", "notifications", "assets", "notes", "posts",
-              "audit_events", "memberships", "credential_tokens", "auth_sessions"]
+    tables = [
+        "notification_preferences",
+        "todo_comments",
+        "todo_changes",
+        "todo_tasks",
+        "todo_lists",
+        "inventory_attempts",
+        "inventory_jobs",
+        "upload_receipts",
+        "upload_reservations",
+        "usage_reader_grants",
+        "storage_inspections",
+        "usage_observations",
+        "policy_drafts",
+        "content_charges",
+        "panel_pairings",
+        "board_snapshots",
+        "board_ops",
+        "boards",
+        "chat_reads",
+        "chat_messages",
+        "notifications",
+        "assets",
+        "notes",
+        "posts",
+        "audit_events",
+        "memberships",
+        "credential_tokens",
+        "auth_sessions",
+    ]
     db.execute(text("UPDATE users SET home_workspace_id = NULL"))
     db.execute(text("TRUNCATE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"))
     db.execute(text("UPDATE workspaces SET created_by = NULL"))
@@ -70,13 +98,23 @@ def seed(db: Session) -> dict[str, object]:
     db.add(ws["project"])
     users: dict[str, User] = {}
     for username, display, is_admin, active in USERS:
-        u = User(username=username, display_name=display, is_admin=is_admin, is_active=active,
-                 password_hash=password_hash, must_set_password=False)
+        u = User(
+            username=username,
+            display_name=display,
+            is_admin=is_admin,
+            is_active=active,
+            password_hash=password_hash,
+            must_set_password=False,
+        )
         db.add(u)
         users[username] = u
     db.flush()
-    ws["reading_club"] = Workspace(kind="group", name="Microscopy Reading Club", created_by=users["ben"].id,
-                                   description="Colleagues from Thin Films and Catalysis reading papers together")
+    ws["reading_club"] = Workspace(
+        kind="group",
+        name="Microscopy Reading Club",
+        created_by=users["ben"].id,
+        description="Colleagues from Thin Films and Catalysis reading papers together",
+    )
     db.add(ws["reading_club"])
     db.flush()
     for username, key, role in GRANTS:
@@ -84,4 +122,7 @@ def seed(db: Session) -> dict[str, object]:
     for username, key in HOMES.items():
         users[username].home_workspace_id = ws[key].id
     db.commit()
-    return {"workspaces": {k: str(v.id) for k, v in ws.items()}, "users": {k: str(v.id) for k, v in users.items()}}
+    return {
+        "workspaces": {k: str(v.id) for k, v in ws.items()},
+        "users": {k: str(v.id) for k, v in users.items()},
+    }

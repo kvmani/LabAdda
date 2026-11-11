@@ -2,8 +2,14 @@
 
 
 def make_group(api, ids, members=("chen",), name="Spectroscopy Journal Club"):
-    r = api.post("/groups", json={"name": name, "description": "Weekly paper reading",
-                                  "member_ids": [ids["users"][m] for m in members]})
+    r = api.post(
+        "/groups",
+        json={
+            "name": name,
+            "description": "Weekly paper reading",
+            "member_ids": [ids["users"][m] for m in members],
+        },
+    )
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -13,7 +19,11 @@ def test_any_user_creates_group_with_chosen_colleagues(as_user, ids):
     group = make_group(asha, ids, members=("chen", "eli"))
     assert group["kind"] == "group" and group["role"] == "steward" and group["parent_id"] is None
     members = asha.get(f"/workspaces/{group['id']}/members").json()["members"]
-    assert {m["username"]: m["role"] for m in members} == {"asha": "steward", "chen": "member", "eli": "member"}
+    assert {m["username"]: m["role"] for m in members} == {
+        "asha": "steward",
+        "chen": "member",
+        "eli": "member",
+    }
     # Colleagues from a sibling section and a project can now collaborate here.
     for user in ("chen", "eli"):
         names = {w["name"] for w in as_user(user).get("/workspaces").json()["workspaces"]}
@@ -23,20 +33,33 @@ def test_any_user_creates_group_with_chosen_colleagues(as_user, ids):
 def test_group_has_all_workspace_features(as_user, ids):
     asha, chen = as_user("asha"), as_user("chen")
     g = make_group(asha, ids)["id"]
-    post = chen.post(f"/workspaces/{g}/posts", json={"body": "Paper for Friday",
-                                                     "due_at": "2030-01-10T09:00:00+00:00"})
+    post = chen.post(
+        f"/workspaces/{g}/posts", json={"body": "Paper for Friday", "due_at": "2030-01-10T09:00:00+00:00"}
+    )
     assert post.status_code == 201
     assert asha.post(f"/posts/{post.json()['id']}/replies", json={"body": "Thanks"}).status_code == 201
     assert asha.post(f"/posts/{post.json()['id']}/pin", json={"pinned": True}).status_code == 200
-    assert chen.post(f"/workspaces/{g}/chat", json={"body": "hello group", "client_id": "chat-0001"}).status_code == 201
+    assert (
+        chen.post(f"/workspaces/{g}/chat", json={"body": "hello group", "client_id": "chat-0001"}).status_code
+        == 201
+    )
     board = chen.get(f"/workspaces/{g}/board").json()
-    op = chen.post(f"/workspaces/{g}/board/ops", json={
-        "op_id": "op-000001", "epoch": board["epoch"], "type": "add", "object_id": "obj-1",
-        "payload": {"kind": "sticky", "data": {"x": 10, "y": 10, "text": "Agenda", "color": "#fff59d"}}})
+    op = chen.post(
+        f"/workspaces/{g}/board/ops",
+        json={
+            "op_id": "op-000001",
+            "epoch": board["epoch"],
+            "type": "add",
+            "object_id": "obj-1",
+            "payload": {"kind": "sticky", "data": {"x": 10, "y": 10, "text": "Agenda", "color": "#fff59d"}},
+        },
+    )
     assert op.status_code == 200
     assert asha.get(f"/workspaces/{g}/upcoming").json()["items"][0]["title"] == "Paper for Friday"
     assert asha.get(f"/workspaces/{g}/search", params={"q": "hello"}).json()["counts"]["chat"] == 1
-    official = asha.post(f"/workspaces/{g}/posts", json={"body": "Official: venue changed", "kind": "official"})
+    official = asha.post(
+        f"/workspaces/{g}/posts", json={"body": "Official: venue changed", "kind": "official"}
+    )
     assert official.status_code == 201
     assert chen.post(f"/workspaces/{g}/posts", json={"body": "x", "kind": "official"}).status_code == 403
 
@@ -47,8 +70,9 @@ def test_no_hierarchy_inheritance(as_user, ids):
     for user in ("dana", "ben", "admin", "eli"):
         assert as_user(user).get(f"/workspaces/{g}/posts").status_code == 404
     # A group cannot be given a parent.
-    r = as_user("admin").patch(f"/admin/workspaces/{g}", json={"move": True,
-                                                              "parent_id": ids["workspaces"]["division"]})
+    r = as_user("admin").patch(
+        f"/admin/workspaces/{g}", json={"move": True, "parent_id": ids["workspaces"]["division"]}
+    )
     assert r.status_code == 422
 
 
@@ -81,7 +105,9 @@ def test_members_can_leave_and_last_steward_is_protected(as_user, ids):
     assert r.status_code == 409 and r.json()["error"]["code"] == "last_steward"
     r = asha.patch(f"/groups/{g}/members/{ids['users']['asha']}", json={"role": "member"})
     assert r.status_code == 409
-    assert asha.patch(f"/groups/{g}/members/{ids['users']['chen']}", json={"role": "steward"}).status_code == 200
+    assert (
+        asha.patch(f"/groups/{g}/members/{ids['users']['chen']}", json={"role": "steward"}).status_code == 200
+    )
     assert asha.delete(f"/groups/{g}/members/{ids['users']['asha']}").status_code == 200
     assert asha.get(f"/workspaces/{g}").status_code == 404
     assert chen.get(f"/workspaces/{g}").json()["can_moderate"] is True
@@ -106,7 +132,10 @@ def test_group_endpoints_do_not_apply_to_org_units(as_user, ids):
     asha = as_user("asha")
     sec = ids["workspaces"]["section_a"]
     assert asha.post(f"/groups/{sec}/members", json={"user_ids": [ids["users"]["chen"]]}).status_code == 404
-    assert as_user("chen").post(f"/groups/{sec}/members", json={"user_ids": [ids["users"]["chen"]]}).status_code == 404
+    assert (
+        as_user("chen").post(f"/groups/{sec}/members", json={"user_ids": [ids["users"]["chen"]]}).status_code
+        == 404
+    )
 
 
 def test_directory_returns_names_only(as_user):
@@ -120,6 +149,7 @@ def test_directory_returns_names_only(as_user):
 
 def test_group_limit(as_user, ids, app):
     from dataclasses import replace
+
     app.state.settings = replace(app.state.settings, max_groups_per_user=1)
     asha = as_user("asha")
     make_group(asha, ids, name="One")

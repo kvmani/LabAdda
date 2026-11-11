@@ -33,7 +33,9 @@ def test_replies_and_pagination(as_user, ids):
     for i in range(25):
         ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": f"post {i}"})
     page1 = ben.get(f"/workspaces/{sec(ids)}/posts", params={"limit": 10}).json()
-    page2 = ben.get(f"/workspaces/{sec(ids)}/posts", params={"limit": 10, "before": page1["next_before"]}).json()
+    page2 = ben.get(
+        f"/workspaces/{sec(ids)}/posts", params={"limit": 10, "before": page1["next_before"]}
+    ).json()
     assert page1["posts"][0]["body"] == "post 24" and page2["posts"][0]["body"] == "post 14"
     pid = page1["posts"][0]["id"]
     assert as_user("asha").post(f"/posts/{pid}/replies", json={"body": "noted"}).status_code == 201
@@ -49,11 +51,18 @@ def test_pin_and_official_are_steward_only(as_user, ids):
     ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "newer"})
     feed = ben.get(f"/workspaces/{sec(ids)}/posts").json()
     assert feed["pinned"][0]["id"] == pid and feed["posts"][0]["body"] == "newer"
-    assert ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "o", "kind": "official"}).status_code == 403
+    assert (
+        ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "o", "kind": "official"}).status_code == 403
+    )
     # Inherited member (ben in division) is not a steward there.
     div = ids["workspaces"]["division"]
     assert ben.post(f"/workspaces/{div}/posts", json={"body": "o", "kind": "official"}).status_code == 403
-    assert as_user("dana").post(f"/workspaces/{div}/posts", json={"body": "Safety audit", "kind": "official"}).status_code == 201
+    assert (
+        as_user("dana")
+        .post(f"/workspaces/{div}/posts", json={"body": "Safety audit", "kind": "official"})
+        .status_code
+        == 201
+    )
 
 
 def test_moderated_removal_requires_reason(as_user, ids):
@@ -70,11 +79,20 @@ def test_moderated_removal_requires_reason(as_user, ids):
 
 def test_read_only_transition(as_user, ids):
     asha, ben = as_user("asha"), as_user("ben")
-    assert ben.patch(f"/workspaces/{sec(ids)}/policy", json={"posting_policy": "read_only"}).status_code == 403
-    assert asha.patch(f"/workspaces/{sec(ids)}/policy", json={"posting_policy": "read_only"}).status_code == 200
+    assert (
+        ben.patch(f"/workspaces/{sec(ids)}/policy", json={"posting_policy": "read_only"}).status_code == 403
+    )
+    assert (
+        asha.patch(f"/workspaces/{sec(ids)}/policy", json={"posting_policy": "read_only"}).status_code == 200
+    )
     r = ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "blocked"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "workspace_read_only"
-    assert ben.post(f"/workspaces/{sec(ids)}/chat", json={"body": "blocked", "client_id": "c-123456"}).status_code == 403
+    assert (
+        ben.post(
+            f"/workspaces/{sec(ids)}/chat", json={"body": "blocked", "client_id": "c-123456"}
+        ).status_code
+        == 403
+    )
     assert asha.post(f"/workspaces/{sec(ids)}/posts", json={"body": "steward ok"}).status_code == 201
     asha.patch(f"/workspaces/{sec(ids)}/policy", json={"posting_policy": "open"})
     assert ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "open again"}).status_code == 201
@@ -96,20 +114,32 @@ def test_search_is_scoped(as_user, ids):
     as_user("chen").post(f"/workspaces/{sec(ids, 'section_b')}/posts", json={"body": "ellipsometry in B"})
     a = as_user("asha").get(f"/workspaces/{sec(ids)}/search", params={"q": "ellipsometry"}).json()
     assert a["counts"]["posts"] == 1 and a["posts"][0]["body"] == "ellipsometry results"
-    div = as_user("dana").get(f"/workspaces/{ids['workspaces']['division']}/search", params={"q": "ellipsometry"})
+    div = as_user("dana").get(
+        f"/workspaces/{ids['workspaces']['division']}/search", params={"q": "ellipsometry"}
+    )
     assert div.json()["counts"]["posts"] == 0
-    assert as_user("chen").get(f"/workspaces/{sec(ids)}/search", params={"q": "ellipsometry"}).status_code == 404
+    assert (
+        as_user("chen").get(f"/workspaces/{sec(ids)}/search", params={"q": "ellipsometry"}).status_code == 404
+    )
     wild = as_user("asha").get(f"/workspaces/{sec(ids)}/search", params={"q": "%%"}).json()
     assert wild["counts"]["posts"] == 0
 
 
 def test_upcoming_and_schedule_validation(as_user, ids):
     ben = as_user("ben")
-    r = ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "Group meeting", "due_at": "2031-03-01T10:00:00+00:00",
-                                                       "remind_at": "2031-03-01T09:00:00+00:00"})
+    r = ben.post(
+        f"/workspaces/{sec(ids)}/posts",
+        json={
+            "body": "Group meeting",
+            "due_at": "2031-03-01T10:00:00+00:00",
+            "remind_at": "2031-03-01T09:00:00+00:00",
+        },
+    )
     assert r.status_code == 201
-    bad = ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "x", "due_at": "2031-03-01T10:00:00+00:00",
-                                                         "remind_at": "2031-03-02T09:00:00+00:00"})
+    bad = ben.post(
+        f"/workspaces/{sec(ids)}/posts",
+        json={"body": "x", "due_at": "2031-03-01T10:00:00+00:00", "remind_at": "2031-03-02T09:00:00+00:00"},
+    )
     assert bad.status_code == 422
     naive = ben.post(f"/workspaces/{sec(ids)}/posts", json={"body": "x", "due_at": "2031-03-01T10:00:00"})
     assert naive.status_code == 422
@@ -123,7 +153,9 @@ def test_mentions_and_official_notifications(as_user, ids):
     asha_n = as_user("asha").get("/notifications").json()
     assert asha_n["unread"] == 1 and asha_n["items"][0]["kind"] == "mention"
     assert as_user("chen").get("/notifications").json()["unread"] == 0  # chen cannot read section A
-    as_user("dana").post(f"/workspaces/{ids['workspaces']['division']}/posts",
-                         json={"body": "Division notice", "kind": "official"})
+    as_user("dana").post(
+        f"/workspaces/{ids['workspaces']['division']}/posts",
+        json={"body": "Division notice", "kind": "official"},
+    )
     kinds = [n["kind"] for n in as_user("chen").get("/notifications").json()["items"]]
     assert kinds == ["official"]

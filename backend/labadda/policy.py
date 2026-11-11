@@ -140,5 +140,7 @@ def can_read(db: Session, user: User, workspace_id: uuid.UUID) -> bool:
 
 
 def direct_grants_for_workspace(db: Session, workspace_id: uuid.UUID) -> dict[uuid.UUID, str]:
-    rows = db.execute(select(Membership.user_id, Membership.role).where(Membership.workspace_id == workspace_id))
+    rows = db.execute(
+        select(Membership.user_id, Membership.role).where(Membership.workspace_id == workspace_id)
+    )
     return {uid: role for uid, role in rows}

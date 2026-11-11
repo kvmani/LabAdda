@@ -17,8 +17,9 @@ from labadda.db import session_factory
 from labadda.fixtures import fixture_password, reset_database, seed
 from labadda.security import login_limiter
 
-TEST_DB = os.environ.get("LABADDA_TEST_DATABASE_URL",
-                         "postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test")
+TEST_DB = os.environ.get(
+    "LABADDA_TEST_DATABASE_URL", "postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test"
+)
 
 
 def recreate_schema(url: str) -> None:
@@ -39,9 +40,16 @@ def migrated():
 @pytest.fixture
 def settings(migrated, tmp_path):
     base = load_settings()
-    return replace(base, database_url=migrated, environment="test", run_scheduler=False,
-                   asset_dir=tmp_path / "assets", base_path=os.environ.get("LABADDA_TEST_BASE_PATH", ""),
-                   instance="test", frontend_dist=None)
+    return replace(
+        base,
+        database_url=migrated,
+        environment="test",
+        run_scheduler=False,
+        asset_dir=tmp_path / "assets",
+        base_path=os.environ.get("LABADDA_TEST_BASE_PATH", ""),
+        instance="test",
+        frontend_dist=None,
+    )
 
 
 @pytest.fixture
@@ -74,8 +82,9 @@ class Api:
         return self.prefix + path
 
     def login(self, username: str, password: str | None = None):
-        r = self.client.post(self.url("/auth/login"), json={"username": username,
-                                                            "password": password or fixture_password()})
+        r = self.client.post(
+            self.url("/auth/login"), json={"username": username, "password": password or fixture_password()}
+        )
         if r.status_code == 200:
             self.csrf = r.json()["csrf_token"]
         return r

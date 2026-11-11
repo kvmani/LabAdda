@@ -77,7 +77,16 @@ def _correction(item_type: str, key: str, expected: tuple | None) -> list:
     if expected is None:
         return ["delete", item_type, key]
     user, workspace, state, size, method = expected
-    return ["upsert", item_type, key, str(user), str(workspace) if workspace else None, state, int(size), method]
+    return [
+        "upsert",
+        item_type,
+        key,
+        str(user),
+        str(workspace) if workspace else None,
+        state,
+        int(size),
+        method,
+    ]
 
 
 def _apply(db: Session, correction: list) -> None:
@@ -202,10 +211,14 @@ def reconcile_content_charges(
             completions: list[list] = []
 
             # Text items (trigger-maintained; drift means a bypassed or disabled trigger).
-            rows = db.execute(TEXT_DIFF, {"after_t": after_t, "after_k": after_k, "limit": max_items + 1}).all()
+            rows = db.execute(
+                TEXT_DIFF, {"after_t": after_t, "after_k": after_k, "limit": max_items + 1}
+            ).all()
             summary["more_items"] = len(rows) > max_items
             rows = rows[:max_items]
-            summary["next_after_item"] = f"{rows[-1].item_type}:{rows[-1].item_key}" if summary["more_items"] else None
+            summary["next_after_item"] = (
+                f"{rows[-1].item_type}:{rows[-1].item_key}" if summary["more_items"] else None
+            )
             for row in rows:
                 budget()
                 summary["checked_items"] += 1
@@ -241,7 +254,8 @@ def reconcile_content_charges(
                     r.item_key: (r.user_id, r.workspace_id, r.state, int(r.bytes), r.method)
                     for r in db.scalars(
                         select(ContentCharge).where(
-                            ContentCharge.item_type == "board_object", ContentCharge.workspace_id == board.workspace_id
+                            ContentCharge.item_type == "board_object",
+                            ContentCharge.workspace_id == board.workspace_id,
                         )
                     )
                 }

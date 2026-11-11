@@ -88,7 +88,9 @@ def upgrade():
         sa.Column("bytes", sa.BigInteger(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.PrimaryKeyConstraint("item_type", "item_key"),
-        sa.CheckConstraint("item_type in ('post','chat','note','board_object')", name="ck_content_charge_type"),
+        sa.CheckConstraint(
+            "item_type in ('post','chat','note','board_object')", name="ck_content_charge_type"
+        ),
         sa.CheckConstraint("state in ('live','removed')", name="ck_content_charge_state"),
         sa.CheckConstraint("bytes >= 0", name="ck_content_charge_bytes"),
         sa.CheckConstraint("(item_type = 'note') = (workspace_id is null)", name="ck_content_charge_scope"),

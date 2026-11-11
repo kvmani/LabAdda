@@ -35,9 +35,15 @@ def apply_op(objects: dict[str, dict], op: BoardOp, by_rev: dict[int, BoardOp] |
         by_rev[op.revision] = op
     obj = objects.get(op.object_id)
     if op.op_type == "add":
-        objects[op.object_id] = {"kind": op.payload["kind"], "data": op.payload["data"],
-                                 "author": op.payload.get("author", str(op.actor_id)), "alive": True,
-                                 "rev": op.revision, "dx": 0.0, "dy": 0.0}
+        objects[op.object_id] = {
+            "kind": op.payload["kind"],
+            "data": op.payload["data"],
+            "author": op.payload.get("author", str(op.actor_id)),
+            "alive": True,
+            "rev": op.revision,
+            "dx": 0.0,
+            "dy": 0.0,
+        }
     elif obj is None:
         return
     elif op.op_type == "erase":
@@ -148,9 +154,16 @@ state_cache = StateCache()
 def undo_target(db: Session, board: Board, actor_id) -> BoardOp | None:
     """The actor's most recent operation in retained history that is not already undone."""
     undone: set[int] = set()
-    rows = db.scalars(select(BoardOp).where(BoardOp.workspace_id == board.workspace_id, BoardOp.epoch == board.epoch,
-                                            BoardOp.revision > board.base_revision, BoardOp.actor_id == actor_id)
-                      .order_by(BoardOp.revision.desc()))
+    rows = db.scalars(
+        select(BoardOp)
+        .where(
+            BoardOp.workspace_id == board.workspace_id,
+            BoardOp.epoch == board.epoch,
+            BoardOp.revision > board.base_revision,
+            BoardOp.actor_id == actor_id,
+        )
+        .order_by(BoardOp.revision.desc())
+    )
     for op in rows:
         if op.op_type == "undo":
             undone.add(op.payload["target_revision"])
@@ -160,15 +173,20 @@ def undo_target(db: Session, board: Board, actor_id) -> BoardOp | None:
 
 
 def latest_snapshot(db: Session, workspace_id, epoch: int, upto: int | None = None) -> BoardSnapshot | None:
-    stmt = select(BoardSnapshot).where(BoardSnapshot.workspace_id == workspace_id, BoardSnapshot.epoch == epoch)
+    stmt = select(BoardSnapshot).where(
+        BoardSnapshot.workspace_id == workspace_id, BoardSnapshot.epoch == epoch
+    )
     if upto is not None:
         stmt = stmt.where(BoardSnapshot.revision <= upto)
     return db.scalar(stmt.order_by(BoardSnapshot.revision.desc()).limit(1))
 
 
-def epoch_ops(db: Session, workspace_id, epoch: int, after: int = 0, upto: int | None = None) -> list[BoardOp]:
-    stmt = select(BoardOp).where(BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch,
-                                 BoardOp.revision > after)
+def epoch_ops(
+    db: Session, workspace_id, epoch: int, after: int = 0, upto: int | None = None
+) -> list[BoardOp]:
+    stmt = select(BoardOp).where(
+        BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch, BoardOp.revision > after
+    )
     if upto is not None:
         stmt = stmt.where(BoardOp.revision <= upto)
     return list(db.scalars(stmt.order_by(BoardOp.revision)))
@@ -181,8 +199,10 @@ def state_at(db: Session, board: Board, revision: int | None = None) -> dict[str
     if target < board.base_revision and (snap is None or snap.revision != target):
         raise Invalid("revision_compacted", "That revision is too old to rebuild. Choose a more recent one.")
     base_rev = snap.revision if snap else 0
-    return fold(epoch_ops(db, board.workspace_id, board.epoch, after=base_rev, upto=target),
-                base=snap.state if snap else None)
+    return fold(
+        epoch_ops(db, board.workspace_id, board.epoch, after=base_rev, upto=target),
+        base=snap.state if snap else None,
+    )
 
 
 def compact(db: Session, board: Board, keep: int) -> int:
@@ -192,8 +212,13 @@ def compact(db: Session, board: Board, keep: int) -> int:
         return 0
     state = state_at(db, board, new_base)
     db.add(BoardSnapshot(workspace_id=board.workspace_id, epoch=board.epoch, revision=new_base, state=state))
-    removed = db.execute(delete(BoardOp).where(BoardOp.workspace_id == board.workspace_id,
-                                               BoardOp.epoch == board.epoch, BoardOp.revision <= new_base)).rowcount
+    removed = db.execute(
+        delete(BoardOp).where(
+            BoardOp.workspace_id == board.workspace_id,
+            BoardOp.epoch == board.epoch,
+            BoardOp.revision <= new_base,
+        )
+    ).rowcount
     board.base_revision = new_base
     return removed or 0
 
@@ -206,8 +231,11 @@ def compact_all(db: Session, threshold: int, keep: int) -> int:
     The board row is then locked only to recheck that epoch and base are unchanged and to write the
     snapshot. A board restored or compacted in between is skipped and retried on a later tick.
     """
-    candidates = db.execute(select(Board.workspace_id, Board.epoch, Board.revision, Board.base_revision)
-                            .where(Board.revision - Board.base_revision > threshold)).all()
+    candidates = db.execute(
+        select(Board.workspace_id, Board.epoch, Board.revision, Board.base_revision).where(
+            Board.revision - Board.base_revision > threshold
+        )
+    ).all()
     db.commit()
     compacted = 0
     for workspace_id, epoch, revision, base in candidates:
@@ -219,20 +247,32 @@ def compact_all(db: Session, threshold: int, keep: int) -> int:
         state = state_at(db, observed, new_base)  # no lock held: reads only immutable history
         db.commit()
         folded = time.perf_counter()
-        board = db.scalar(select(Board).where(Board.workspace_id == workspace_id).with_for_update(skip_locked=True))
+        board = db.scalar(
+            select(Board).where(Board.workspace_id == workspace_id).with_for_update(skip_locked=True)
+        )
         if board is None or board.epoch != epoch or board.base_revision != base:
             db.rollback()
             continue
         db.add(BoardSnapshot(workspace_id=workspace_id, epoch=epoch, revision=new_base, state=state))
-        removed = db.execute(delete(BoardOp).where(BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch,
-                                                   BoardOp.revision <= new_base)).rowcount
+        removed = db.execute(
+            delete(BoardOp).where(
+                BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch, BoardOp.revision <= new_base
+            )
+        ).rowcount
         board.base_revision = new_base
         db.commit()
         compacted += 1
         # Operational timing only (no content): lock-held time is what can delay drawing.
-        log.info(json.dumps({"event": "board.compacted", "operations_removed": removed,
-                             "fold_ms": round((folded - started) * 1000, 1),
-                             "locked_ms": round((time.perf_counter() - folded) * 1000, 1)}))
+        log.info(
+            json.dumps(
+                {
+                    "event": "board.compacted",
+                    "operations_removed": removed,
+                    "fold_ms": round((folded - started) * 1000, 1),
+                    "locked_ms": round((time.perf_counter() - folded) * 1000, 1),
+                }
+            )
+        )
     return compacted
 
 
@@ -251,11 +291,14 @@ def bounds(o: dict) -> tuple[float, float, float, float]:
 
 
 def _hex(color: str) -> tuple[int, int, int]:
-    return tuple(int(color[i:i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
+    return tuple(int(color[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
 
 
-def render_png(objects: dict[str, dict], region: tuple[float, float, float, float],
-               load_image: Callable[[uuid.UUID], Image.Image | None]) -> bytes:
+def render_png(
+    objects: dict[str, dict],
+    region: tuple[float, float, float, float],
+    load_image: Callable[[uuid.UUID], Image.Image | None],
+) -> bytes:
     """Render live objects inside ``region`` (x, y, w, h in board units) to a fresh PNG."""
     x0, y0, w, h = region
     if not (1 <= w <= MAX_REGION and 1 <= h <= MAX_REGION):
@@ -281,7 +324,9 @@ def render_png(objects: dict[str, dict], region: tuple[float, float, float, floa
             width = max(1, round(d["width"] * scale))
             if len(pts) == 1:
                 r = width / 2
-                draw.ellipse([pts[0][0] - r, pts[0][1] - r, pts[0][0] + r, pts[0][1] + r], fill=_hex(d["color"]))
+                draw.ellipse(
+                    [pts[0][0] - r, pts[0][1] - r, pts[0][0] + r, pts[0][1] + r], fill=_hex(d["color"])
+                )
             else:
                 draw.line(pts, fill=_hex(d["color"]), width=width, joint="curve")
         elif o["kind"] == "image":
@@ -297,7 +342,9 @@ def render_png(objects: dict[str, dict], region: tuple[float, float, float, floa
             if o["kind"] == "sticky":
                 b = pt(d["x"] + dx + STICKY_W, d["y"] + dy + STICKY_H)
                 draw.rectangle([a, b], fill=_hex(d["color"]), outline=(200, 200, 200))
-                draw.multiline_text((a[0] + 10 * scale, a[1] + 6 * scale), d["text"], fill=(31, 41, 51), font=font)
+                draw.multiline_text(
+                    (a[0] + 10 * scale, a[1] + 6 * scale), d["text"], fill=(31, 41, 51), font=font
+                )
             else:
                 draw.multiline_text((a[0], a[1] + 4 * scale), d["text"], fill=_hex(d["color"]), font=font)
     out = io.BytesIO()

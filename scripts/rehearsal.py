@@ -83,7 +83,9 @@ def ssl_context(cafile: str | None) -> ssl.SSLContext | None:
     return ssl.create_default_context(cafile=cafile) if cafile else None
 
 
-async def activate(http: dict, api: str, activation: dict, *, wait_s: float = 15, max_wait_s: float = 900) -> None:
+async def activate(
+    http: dict, api: str, activation: dict, *, wait_s: float = 15, max_wait_s: float = 900
+) -> None:
     """Activate one account, waiting out the server's per-client activation rate limit (never bypassing it)."""
     waited = 0.0
     while True:
@@ -99,7 +101,9 @@ async def activate(http: dict, api: str, activation: dict, *, wait_s: float = 15
         waited += wait_s
 
 
-async def provision(http: dict, api: str, clients: int, drawers: int, workspace_names: list[str]) -> list[Client]:
+async def provision(
+    http: dict, api: str, clients: int, drawers: int, workspace_names: list[str]
+) -> list[Client]:
     async with httpx.AsyncClient(**http) as admin:
         h = {"X-CSRF-Token": await login(admin, api, "admin", PASSWORD)}
         spaces = (await admin.get(f"{api}/admin/workspaces")).json()["workspaces"]
@@ -108,24 +112,34 @@ async def provision(http: dict, api: str, clients: int, drawers: int, workspace_
         result = []
         for i in range(clients):
             username = f"rh{tag}{i:02d}"
-            r = await admin.post(f"{api}/admin/users", json={"username": username, "display_name": f"Rehearsal {i}"},
-                                 headers=h)
+            r = await admin.post(
+                f"{api}/admin/users", json={"username": username, "display_name": f"Rehearsal {i}"}, headers=h
+            )
             r.raise_for_status()
             activation = {"token": r.json()["activation_token"], "password": PASSWORD}
             await activate(http, api, activation)
             workspace = ids[i % len(ids)]  # alternate, so drawers and readers are split across workspaces
             membership = {"user_id": r.json()["user"]["id"]}
-            (await admin.put(f"{api}/admin/workspaces/{workspace}/memberships", json=membership,
-                             headers=h)).raise_for_status()
+            (
+                await admin.put(f"{api}/admin/workspaces/{workspace}/memberships", json=membership, headers=h)
+            ).raise_for_status()
             result.append(Client(username, workspace, drawer=i < drawers))
         return result
 
 
-async def listen(client: Client, origin: str, base: str, cookie: str, ctx: ssl.SSLContext | None,
-                 stop: asyncio.Event, ready: asyncio.Event) -> None:
+async def listen(
+    client: Client,
+    origin: str,
+    base: str,
+    cookie: str,
+    ctx: ssl.SSLContext | None,
+    stop: asyncio.Event,
+    ready: asyncio.Event,
+) -> None:
     url = origin.replace("http", "ws", 1) + f"{base}/ws/"
-    async with websockets.connect(url, additional_headers={"Cookie": cookie}, origin=origin, ssl=ctx,
-                                  max_size=2**20) as sock:
+    async with websockets.connect(
+        url, additional_headers={"Cookie": cookie}, origin=origin, ssl=ctx, max_size=2**20
+    ) as sock:
         await sock.send(json.dumps({"type": "subscribe", "workspace_id": client.workspace}))
         while not stop.is_set():
             try:
@@ -149,8 +163,19 @@ async def listen(client: Client, origin: str, base: str, cookie: str, ctx: ssl.S
             client.received.setdefault(key, now)
 
 
-async def run_client(client: Client, http: dict, api: str, origin: str, base: str, ctx, epochs: dict, until: float,
-                     interval: float, shared: Shared, stop: asyncio.Event) -> None:
+async def run_client(
+    client: Client,
+    http: dict,
+    api: str,
+    origin: str,
+    base: str,
+    ctx,
+    epochs: dict,
+    until: float,
+    interval: float,
+    shared: Shared,
+    stop: asyncio.Event,
+) -> None:
     async with httpx.AsyncClient(timeout=15, **http) as c:
         h = {"X-CSRF-Token": await login(c, api, client.username, PASSWORD)}
         cookie = "; ".join(f"{k}={v}" for k, v in c.cookies.items())
@@ -164,8 +189,13 @@ async def run_client(client: Client, http: dict, api: str, origin: str, base: st
                 op_id = f"{client.username}-{i:05d}"
                 x, y = random.uniform(0, 1500), random.uniform(0, 900)
                 points = [[round(x + k * 4, 1), round(y + random.uniform(-3, 3), 1)] for k in range(40)]
-                body = {"op_id": op_id, "epoch": epochs[client.workspace], "type": "add", "object_id": f"o-{op_id}",
-                        "payload": {"kind": "stroke", "data": {"points": points, "color": "#1565c0", "width": 3}}}
+                body = {
+                    "op_id": op_id,
+                    "epoch": epochs[client.workspace],
+                    "type": "add",
+                    "object_id": f"o-{op_id}",
+                    "payload": {"kind": "stroke", "data": {"points": points, "color": "#1565c0", "width": 3}},
+                }
                 key = "op:" + op_id
                 shared.sent[key] = (client.workspace, time.perf_counter())
                 r = await c.post(f"{api}/workspaces/{client.workspace}/board/ops", json=body, headers=h)
@@ -181,15 +211,21 @@ async def run_client(client: Client, http: dict, api: str, origin: str, base: st
                     client_id = f"{client.username}-c{i:05d}"
                     key = "chat:" + client_id
                     shared.sent[key] = (client.workspace, time.perf_counter())
-                    r = await c.post(f"{api}/workspaces/{client.workspace}/chat",
-                                     json={"body": f"rehearsal message {i}", "client_id": client_id}, headers=h)
+                    r = await c.post(
+                        f"{api}/workspaces/{client.workspace}/chat",
+                        json={"body": f"rehearsal message {i}", "client_id": client_id},
+                        headers=h,
+                    )
                     if r.status_code == 201:
                         shared.acked[key] = time.perf_counter()
                     else:
                         shared.errors.append(f"chat {r.status_code} {r.text[:100]}")
                 else:  # ordinary list views: feed, chat history, workspace list
-                    path = (f"/workspaces/{client.workspace}/posts", f"/workspaces/{client.workspace}/chat",
-                            "/workspaces")[action]
+                    path = (
+                        f"/workspaces/{client.workspace}/posts",
+                        f"/workspaces/{client.workspace}/chat",
+                        "/workspaces",
+                    )[action]
                     t0 = time.perf_counter()
                     r = await c.get(api + path)
                     if r.status_code == 200:
@@ -205,8 +241,12 @@ async def run_client(client: Client, http: dict, api: str, origin: str, base: st
 
 async def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--synthetic-target", action="store_true", required=True,
-                    help="Attest this is a disposable synthetic development/test instance, never production")
+    ap.add_argument(
+        "--synthetic-target",
+        action="store_true",
+        required=True,
+        help="Attest this is a disposable synthetic development/test instance, never production",
+    )
     ap.add_argument("--origin", default="http://127.0.0.1:8080")
     ap.add_argument("--base", default="")
     ap.add_argument("--cafile", help="CA bundle for an https origin (e.g. the local rehearsal CA)")
@@ -237,9 +277,16 @@ async def main() -> None:
     shared, stop = Shared(), asyncio.Event()
     started = time.perf_counter()
     until = started + args.seconds + 20  # sockets get up to 20 s to subscribe before the window opens
-    tasks = [asyncio.create_task(run_client(c, http, api, args.origin, args.base, ctx, epochs, until,
-                                            args.interval, shared, stop)) for c in clients]
-    while sum(c.subscribed_at is not None for c in clients) < len(clients) and time.perf_counter() < started + 20:
+    tasks = [
+        asyncio.create_task(
+            run_client(c, http, api, args.origin, args.base, ctx, epochs, until, args.interval, shared, stop)
+        )
+        for c in clients
+    ]
+    while (
+        sum(c.subscribed_at is not None for c in clients) < len(clients)
+        and time.perf_counter() < started + 20
+    ):
         await asyncio.sleep(0.2)
     window_start = time.perf_counter()
     shared.window_open.set()
@@ -258,12 +305,21 @@ async def main() -> None:
     for w in workspaces:
         async with httpx.AsyncClient(**http) as c:
             await login(c, api, verifier[w], PASSWORD)
-            final = (await c.get(f"{api}/workspaces/{w}/board",
-                                 params={"epoch": epochs[w], "after": starts[w]["revision"]})).json()
+            final = (
+                await c.get(
+                    f"{api}/workspaces/{w}/board", params={"epoch": epochs[w], "after": starts[w]["revision"]}
+                )
+            ).json()
         revisions = [o["revision"] for o in final["ops"]]
-        floor = max(starts[w]["revision"], final.get("base_revision", 0)) if final["reset"] else starts[w]["revision"]
+        floor = (
+            max(starts[w]["revision"], final.get("base_revision", 0))
+            if final["reset"]
+            else starts[w]["revision"]
+        )
         gaps = gaps or revisions != list(range(floor + 1, floor + 1 + len(revisions)))
-        present = set((final.get("snapshot") or {}).get("objects", {})) | {o["object_id"] for o in final["ops"]}
+        present = set((final.get("snapshot") or {}).get("objects", {})) | {
+            o["object_id"] for o in final["ops"]
+        }
         objects = shared.acked_objects.get(w, [])
         lost += sum(1 for o in objects if o not in present)
         duplicates += len(revisions) - len(set(revisions)) + len(objects) - len(set(objects))
@@ -275,7 +331,11 @@ async def main() -> None:
     for key in shared.acked:
         workspace, sent_at = shared.sent[key]
         for client in clients:
-            if client.workspace != workspace or client.subscribed_at is None or client.subscribed_at > sent_at:
+            if (
+                client.workspace != workspace
+                or client.subscribed_at is None
+                or client.subscribed_at > sent_at
+            ):
                 continue
             expected += 1
             arrived = client.received.get(key)
@@ -286,25 +346,49 @@ async def main() -> None:
     board_ops = sum(k.startswith("op:") for k in shared.acked)
     chats = sum(k.startswith("chat:") for k in shared.acked)
     report = {
-        "environment": {"python": platform.python_version(), "system": platform.system(),
-                        "machine": platform.machine(), "logical_cpus": os.cpu_count(),
-                        "tls": args.origin.startswith("https://"), "origin": args.origin, "base": args.base},
-        "workload": {"clients": args.clients, "drawers": args.drawers, "readers": args.clients - args.drawers,
-                     "workspaces": len(workspaces), "seconds": args.seconds, "drawer_interval_s": args.interval,
-                     "clients_subscribed": sum(c.subscribed_at is not None for c in clients)},
+        "environment": {
+            "python": platform.python_version(),
+            "system": platform.system(),
+            "machine": platform.machine(),
+            "logical_cpus": os.cpu_count(),
+            "tls": args.origin.startswith("https://"),
+            "origin": args.origin,
+            "base": args.base,
+        },
+        "workload": {
+            "clients": args.clients,
+            "drawers": args.drawers,
+            "readers": args.clients - args.drawers,
+            "workspaces": len(workspaces),
+            "seconds": args.seconds,
+            "drawer_interval_s": args.interval,
+            "clients_subscribed": sum(c.subscribed_at is not None for c in clients),
+        },
         "elapsed_seconds": round(time.perf_counter() - window_start, 2),
-        "board_ops_acknowledged": board_ops, "chat_messages_acknowledged": chats,
-        "deliveries_expected": expected, "deliveries_missing": missing,
+        "board_ops_acknowledged": board_ops,
+        "chat_messages_acknowledged": chats,
+        "deliveries_expected": expected,
+        "deliveries_missing": missing,
         "isolation_violations": sum(c.foreign_events for c in clients),
-        "lost": lost, "duplicates": duplicates, "revision_gaps": gaps, "boards": retained,
-        "errors": shared.errors[:10], "error_count": len(shared.errors),
-        "latency_samples": len(latency), "list_samples": len(shared.list_latency),
-        "update_latency_ms": {"p50": metric(latency, 50), "p95": metric(latency, 95),
-                              "max": round(max(latency), 1) if latency else None,
-                              "mean": round(statistics.mean(latency), 1) if latency else None},
+        "lost": lost,
+        "duplicates": duplicates,
+        "revision_gaps": gaps,
+        "boards": retained,
+        "errors": shared.errors[:10],
+        "error_count": len(shared.errors),
+        "latency_samples": len(latency),
+        "list_samples": len(shared.list_latency),
+        "update_latency_ms": {
+            "p50": metric(latency, 50),
+            "p95": metric(latency, 95),
+            "max": round(max(latency), 1) if latency else None,
+            "mean": round(statistics.mean(latency), 1) if latency else None,
+        },
         "list_latency_ms": {"p50": metric(shared.list_latency, 50), "p95": metric(shared.list_latency, 95)},
-        "targets": {"update_p95_lt_500ms": bool(latency) and pct(latency, 95) < 500,
-                    "list_p95_lt_1000ms": bool(shared.list_latency) and pct(shared.list_latency, 95) < 1000},
+        "targets": {
+            "update_p95_lt_500ms": bool(latency) and pct(latency, 95) < 500,
+            "list_p95_lt_1000ms": bool(shared.list_latency) and pct(shared.list_latency, 95) < 1000,
+        },
     }
     report["passed"] = report_passes(report, enforce_targets=args.enforce_targets)
     report["targets_enforced"] = args.enforce_targets

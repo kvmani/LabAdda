@@ -68,8 +68,11 @@ def _validate_password(password: str) -> None:
 
 def session_payload(user: User, sess: AuthSession, settings: Settings) -> dict:
     return {
-        "user": {**user_brief(user), "is_admin": user.is_admin,
-                 "home_workspace_id": str(user.home_workspace_id) if user.home_workspace_id else None},
+        "user": {
+            **user_brief(user),
+            "is_admin": user.is_admin,
+            "home_workspace_id": str(user.home_workspace_id) if user.home_workspace_id else None,
+        },
         "csrf_token": sess.csrf_token,
         "session_kind": sess.kind,
         "expires_at": sess.expires_at.isoformat(),
@@ -83,19 +86,33 @@ def session_payload(user: User, sess: AuthSession, settings: Settings) -> dict:
 
 
 @router.post("/login")
-def login(body: LoginBody, request: Request, response: Response, db: Session = Depends(get_db),
-          settings: Settings = Depends(get_settings)):
+def login(
+    body: LoginBody,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     _check_origin(request, settings)
     username = body.username.strip().lower()
     client = request.client.host if request.client else "unknown"
-    if not login_limiter.hit(f"login:{username}", settings.login_attempts_per_window, settings.login_window_seconds) \
-            or not login_limiter.hit(f"ip:{client}", settings.login_attempts_per_window * 5, settings.login_window_seconds):
+    if not login_limiter.hit(
+        f"login:{username}", settings.login_attempts_per_window, settings.login_window_seconds
+    ) or not login_limiter.hit(
+        f"ip:{client}", settings.login_attempts_per_window * 5, settings.login_window_seconds
+    ):
         raise TooMany()
     user = db.scalar(select(User).where(User.username == username))
     ok = verify_password(user.password_hash if user else None, body.password)
     if not user or not ok or not user.is_active or user.must_set_password:
-        audit.record(db, actor=user, action="auth.login", scope_type="identity", target_id=user.id if user else None,
-                     outcome="denied")
+        audit.record(
+            db,
+            actor=user,
+            action="auth.login",
+            scope_type="identity",
+            target_id=user.id if user else None,
+            outcome="denied",
+        )
         db.commit()
         raise Unauthenticated("invalid_credentials", "Username or password is incorrect.")
     token, sess = create_session(db, user, settings)
@@ -106,8 +123,13 @@ def login(body: LoginBody, request: Request, response: Response, db: Session = D
 
 
 @router.post("/logout")
-def logout(request: Request, response: Response, actor: Actor = Depends(current_actor),
-           db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+def logout(
+    request: Request,
+    response: Response,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     sess = db.get(AuthSession, actor.session.id)
     sess.revoked_at = utcnow()
     db.commit()
@@ -121,12 +143,19 @@ def session_status(actor: Actor = Depends(current_actor), settings: Settings = D
 
 
 @router.post("/activate")
-def activate(body: ActivateBody, request: Request, response: Response, db: Session = Depends(get_db),
-             settings: Settings = Depends(get_settings)):
+def activate(
+    body: ActivateBody,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     """Redeem a one-time activation or reset credential and set a password."""
     _check_origin(request, settings)
     client = request.client.host if request.client else "unknown"
-    if not login_limiter.hit(f"activate:{client}", settings.login_attempts_per_window, settings.login_window_seconds):
+    if not login_limiter.hit(
+        f"activate:{client}", settings.login_attempts_per_window, settings.login_window_seconds
+    ):
         raise TooMany()
     _validate_password(body.password)
     cred = db.scalar(
@@ -134,24 +163,37 @@ def activate(body: ActivateBody, request: Request, response: Response, db: Sessi
     )
     now = utcnow()
     if cred is None or cred.used_at is not None or cred.expires_at <= now:
-        raise Invalid("token_invalid", "This activation link is invalid or has expired. Ask an administrator for a new one.")
+        raise Invalid(
+            "token_invalid",
+            "This activation link is invalid or has expired. Ask an administrator for a new one.",
+        )
     user = db.get(User, cred.user_id)
     if user is None or not user.is_active:
-        raise Invalid("token_invalid", "This activation link is invalid or has expired. Ask an administrator for a new one.")
+        raise Invalid(
+            "token_invalid",
+            "This activation link is invalid or has expired. Ask an administrator for a new one.",
+        )
     cred.used_at = now
     user.password_hash = hash_password(body.password)
     user.must_set_password = False
     revoke_user_sessions(db, user.id)
     token, sess = create_session(db, user, settings)
-    audit.record(db, actor=user, action=f"auth.{cred.purpose}_redeemed", scope_type="identity", target_id=user.id)
+    audit.record(
+        db, actor=user, action=f"auth.{cred.purpose}_redeemed", scope_type="identity", target_id=user.id
+    )
     db.commit()
     _set_cookie(response, token, settings)
     return session_payload(user, sess, settings)
 
 
 @router.post("/password")
-def change_password(body: PasswordBody, response: Response, actor: Actor = Depends(current_actor),
-                    db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+def change_password(
+    body: PasswordBody,
+    response: Response,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     user = db.get(User, actor.user.id)
     if not verify_password(user.password_hash, body.current_password):
         raise Invalid("invalid_credentials", "Current password is incorrect.")
@@ -165,7 +207,9 @@ def change_password(body: PasswordBody, response: Response, actor: Actor = Depen
     return session_payload(user, sess, settings)
 
 
-def issue_credential(db: Session, user: User, purpose: str, actor, settings: Settings) -> tuple[str, CredentialToken]:
+def issue_credential(
+    db: Session, user: User, purpose: str, actor, settings: Settings
+) -> tuple[str, CredentialToken]:
     from ..security import new_token
 
     token = new_token()

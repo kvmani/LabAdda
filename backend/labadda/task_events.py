@@ -1,4 +1,5 @@
 """Content-free workspace invalidation; personal work never enters shared channels."""
+
 from __future__ import annotations
 
 import uuid
@@ -14,5 +15,6 @@ def publish_changed(request: Request, workspace_id: uuid.UUID | None) -> None:
     The existing hub rechecks current delivery access and excludes board panels.
     """
     if workspace_id is not None:
-        request.app.state.hub.publish(workspace_id, {
-            'type': 'tasks.changed', 'workspace_id': str(workspace_id)})
+        request.app.state.hub.publish(
+            workspace_id, {"type": "tasks.changed", "workspace_id": str(workspace_id)}
+        )

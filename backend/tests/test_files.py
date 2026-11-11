@@ -54,15 +54,24 @@ def test_rejects_forged_and_unsupported(as_user):
     assert upload(ben, "x.pdf", b"<html><script>1</script></html>", "application/pdf").status_code == 422
     assert upload(ben, "x.png", PDF, "image/png").json()["error"]["code"] == "type_mismatch"
     assert upload(ben, "x.svg", b"<svg onload=alert(1)>", "image/svg+xml").status_code == 422
-    assert upload(ben, "x.png", b"\x89PNG\r\n\x1a\nnot really", "image/png").json()["error"]["code"] == "invalid_image"
+    assert (
+        upload(ben, "x.png", b"\x89PNG\r\n\x1a\nnot really", "image/png").json()["error"]["code"]
+        == "invalid_image"
+    )
     assert upload(ben, "empty.pdf", b"", "application/pdf").status_code == 422
 
 
 def test_size_limit_and_quota(as_user, app):
     from dataclasses import replace
-    app.state.settings = replace(app.state.settings, max_attachment_bytes=1000, user_quota_bytes=len(PDF) + 10)
+
+    app.state.settings = replace(
+        app.state.settings, max_attachment_bytes=1000, user_quota_bytes=len(PDF) + 10
+    )
     ben = as_user("ben")
-    assert upload(ben, "big.pdf", PDF + b"0" * 2000, "application/pdf").json()["error"]["code"] == "file_too_large"
+    assert (
+        upload(ben, "big.pdf", PDF + b"0" * 2000, "application/pdf").json()["error"]["code"]
+        == "file_too_large"
+    )
     assert upload(ben, "a.pdf", PDF, "application/pdf").status_code == 201
     assert upload(ben, "b.pdf", PDF, "application/pdf").json()["error"]["code"] == "quota_exceeded"
 
@@ -70,7 +79,9 @@ def test_size_limit_and_quota(as_user, app):
 def test_attachment_count_limit(as_user, ids):
     ben = as_user("ben")
     assets = [upload(ben, f"f{i}.pdf", PDF, "application/pdf").json()["id"] for i in range(6)]
-    r = ben.post(f"/workspaces/{ids['workspaces']['section_a']}/posts", json={"body": "x", "attachment_ids": assets})
+    r = ben.post(
+        f"/workspaces/{ids['workspaces']['section_a']}/posts", json={"body": "x", "attachment_ids": assets}
+    )
     assert r.status_code == 422 and r.json()["error"]["code"] == "too_many_attachments"
 
 
@@ -78,7 +89,10 @@ def test_cleanup_removes_only_stale_provisional(as_user, ids, app, db_factory):
     ben = as_user("ben")
     stale = upload(ben, "stale.pdf", PDF, "application/pdf").json()
     kept = upload(ben, "kept.pdf", PDF, "application/pdf").json()
-    ben.post(f"/workspaces/{ids['workspaces']['section_a']}/posts", json={"body": "x", "attachment_ids": [kept["id"]]})
+    ben.post(
+        f"/workspaces/{ids['workspaces']['section_a']}/posts",
+        json={"body": "x", "attachment_ids": [kept["id"]]},
+    )
     with db_factory() as db:
         for a in db.query(Asset).all():
             a.created_at = utcnow() - timedelta(days=2)

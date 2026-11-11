@@ -46,8 +46,11 @@ def safe_display_name(name: str | None, media_type: str) -> str:
 def detect_media_type(head: bytes, declared: str | None) -> str:
     for media_type, sigs in SIGNATURES.items():
         if any(head.startswith(s) for s in sigs):
-            if declared and declared not in (media_type, "application/octet-stream") and not (
-                    media_type == "image/jpeg" and declared == "image/jpg"):
+            if (
+                declared
+                and declared not in (media_type, "application/octet-stream")
+                and not (media_type == "image/jpeg" and declared == "image/jpg")
+            ):
                 raise Invalid("type_mismatch", "The file type does not match its contents.")
             return media_type
     raise Invalid("unsupported_type", "Attach PDF, PNG or JPEG files only.")
@@ -86,7 +89,9 @@ class AssetStore:
             fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             owned.append(tmp)
             with os.fdopen(fd, "wb") as stream:
-                stream.write(data); stream.flush(); os.fsync(stream.fileno())
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
             os.link(tmp, target)
             owned.append(target)
             tmp.unlink()
@@ -95,7 +100,9 @@ class AssetStore:
                 fd = os.open(preview, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
                 owned.append(preview)
                 with os.fdopen(fd, "wb") as stream:
-                    stream.write(preview_bytes); stream.flush(); os.fsync(stream.fileno())
+                    stream.write(preview_bytes)
+                    stream.flush()
+                    os.fsync(stream.fileno())
             # Sync both file entries and each newly created directory's entry
             # in its parent, up through the previously existing ancestor.
             directories = [target.parent, *(path.parent for path in missing_directories)]
@@ -112,9 +119,15 @@ class AssetStore:
                 except OSError:
                     logging.getLogger("labadda").error("asset_partial_write_cleanup_failed")
             raise
-        return StoredFile(key, media_type, len(data), hashlib.sha256(data).hexdigest(), has_preview,
-                          len(preview_bytes) if preview_bytes is not None else 0,
-                          hashlib.sha256(preview_bytes).hexdigest() if preview_bytes is not None else None)
+        return StoredFile(
+            key,
+            media_type,
+            len(data),
+            hashlib.sha256(data).hexdigest(),
+            has_preview,
+            len(preview_bytes) if preview_bytes is not None else 0,
+            hashlib.sha256(preview_bytes).hexdigest() if preview_bytes is not None else None,
+        )
 
     @staticmethod
     def _sanitized_preview(data: bytes) -> bytes:

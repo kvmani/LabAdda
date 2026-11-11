@@ -27,8 +27,15 @@ class NoteBody(BaseModel):
 
 
 def _json(n: Note) -> dict:
-    return {"id": str(n.id), "title": n.title, "body": n.body, "due_at": iso(n.due_at),
-            "remind_at": iso(n.remind_at), "created_at": iso(n.created_at), "updated_at": iso(n.updated_at)}
+    return {
+        "id": str(n.id),
+        "title": n.title,
+        "body": n.body,
+        "due_at": iso(n.due_at),
+        "remind_at": iso(n.remind_at),
+        "created_at": iso(n.created_at),
+        "updated_at": iso(n.updated_at),
+    }
 
 
 def _validate(body: NoteBody):
@@ -56,17 +63,36 @@ def list_notes(actor: Actor = Depends(current_actor), db: Session = Depends(get_
 
 @router.get("/upcoming")
 def upcoming_notes(actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
-    rows = db.scalars(select(Note).where(Note.owner_id == actor.id, Note.due_at.is_not(None),
-                                         Note.due_at >= utcnow()).order_by(Note.due_at).limit(20)).all()
-    return {"items": [{"id": str(n.id), "source": "note", "title": n.title or n.body[:120],
-                       "due_at": iso(n.due_at), "remind_at": iso(n.remind_at)} for n in rows]}
+    rows = db.scalars(
+        select(Note)
+        .where(Note.owner_id == actor.id, Note.due_at.is_not(None), Note.due_at >= utcnow())
+        .order_by(Note.due_at)
+        .limit(20)
+    ).all()
+    return {
+        "items": [
+            {
+                "id": str(n.id),
+                "source": "note",
+                "title": n.title or n.body[:120],
+                "due_at": iso(n.due_at),
+                "remind_at": iso(n.remind_at),
+            }
+            for n in rows
+        ]
+    }
 
 
 @router.post("", status_code=201)
 def create_note(body: NoteBody, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
     _validate(body)
-    note = Note(owner_id=actor.id, title=body.title.strip(), body=body.body, due_at=body.due_at,
-                remind_at=body.remind_at)
+    note = Note(
+        owner_id=actor.id,
+        title=body.title.strip(),
+        body=body.body,
+        due_at=body.due_at,
+        remind_at=body.remind_at,
+    )
     db.add(note)
     db.commit()
     return _json(note)
@@ -78,13 +104,19 @@ def get_note(note_id: uuid.UUID, actor: Actor = Depends(current_actor), db: Sess
 
 
 @router.put("/{note_id}")
-def update_note(note_id: uuid.UUID, body: NoteBody, actor: Actor = Depends(current_actor),
-                db: Session = Depends(get_db)):
+def update_note(
+    note_id: uuid.UUID, body: NoteBody, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)
+):
     note = _own(db, actor, note_id)
     _validate(body)
     if body.remind_at != note.remind_at:
         note.reminder_processed_at = None
-    note.title, note.body, note.due_at, note.remind_at = body.title.strip(), body.body, body.due_at, body.remind_at
+    note.title, note.body, note.due_at, note.remind_at = (
+        body.title.strip(),
+        body.body,
+        body.due_at,
+        body.remind_at,
+    )
     note.updated_at = utcnow()
     db.commit()
     return _json(note)

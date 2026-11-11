@@ -71,12 +71,19 @@ def _active_users(db: Session, ids: list[uuid.UUID]) -> list[User]:
 
 
 def _member_count(db: Session, group_id: uuid.UUID) -> int:
-    return db.scalar(select(func.count()).select_from(Membership).where(Membership.workspace_id == group_id)) or 0
+    return (
+        db.scalar(select(func.count()).select_from(Membership).where(Membership.workspace_id == group_id))
+        or 0
+    )
 
 
 @router.get("/directory")
-def directory(q: str = Query(default="", max_length=64), limit: int = Query(default=20, le=50),
-              actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+def directory(
+    q: str = Query(default="", max_length=64),
+    limit: int = Query(default=20, le=50),
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+):
     """Find active colleagues to invite. Returns names only, never memberships."""
     stmt = select(User).where(User.is_active.is_(True))
     term = q.strip().lower()
@@ -88,18 +95,33 @@ def directory(q: str = Query(default="", max_length=64), limit: int = Query(defa
 
 
 @router.post("/groups", status_code=201)
-def create_group(body: NewGroup, request: Request, actor: Actor = Depends(current_actor),
-                 db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
-    owned = db.scalar(select(func.count()).select_from(Workspace).where(
-        Workspace.kind == "group", Workspace.created_by == actor.id, Workspace.archived.is_(False))) or 0
+def create_group(
+    body: NewGroup,
+    request: Request,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    owned = (
+        db.scalar(
+            select(func.count())
+            .select_from(Workspace)
+            .where(Workspace.kind == "group", Workspace.created_by == actor.id, Workspace.archived.is_(False))
+        )
+        or 0
+    )
     if owned >= settings.max_groups_per_user:
-        raise Conflict("group_limit", f"You can keep up to {settings.max_groups_per_user} active groups. "
-                                      "Archive one before creating another.")
+        raise Conflict(
+            "group_limit",
+            f"You can keep up to {settings.max_groups_per_user} active groups. "
+            "Archive one before creating another.",
+        )
     invitees = [u for u in _active_users(db, body.member_ids) if u.id != actor.id]
     if len(invitees) + 1 > settings.max_group_members:
         raise Invalid("group_too_large", f"A group can have up to {settings.max_group_members} members.")
-    ws = Workspace(kind="group", name=body.name.strip(), description=body.description.strip(),
-                   created_by=actor.id)
+    ws = Workspace(
+        kind="group", name=body.name.strip(), description=body.description.strip(), created_by=actor.id
+    )
     db.add(ws)
     db.flush()
     audit.record(db, actor=actor.user, action="group.create", scope_type="workspace", scope_id=ws.id)
@@ -113,8 +135,13 @@ def create_group(body: NewGroup, request: Request, actor: Actor = Depends(curren
 
 
 @router.patch("/groups/{group_id}")
-def update_group(group_id: uuid.UUID, body: GroupPatch, request: Request, actor: Actor = Depends(current_actor),
-                 db: Session = Depends(get_db)):
+def update_group(
+    group_id: uuid.UUID,
+    body: GroupPatch,
+    request: Request,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+):
     _group_access(db, actor, group_id, steward=True)
     ws = db.get(Workspace, group_id, with_for_update=True)
     if ws.archived and body.archived is not False and (body.name or body.description is not None):
@@ -125,16 +152,27 @@ def update_group(group_id: uuid.UUID, body: GroupPatch, request: Request, actor:
         ws.description = body.description.strip()
     if body.archived is not None and body.archived != ws.archived:
         ws.archived = body.archived
-        audit.record(db, actor=actor.user, action="group.archive" if body.archived else "group.unarchive",
-                     scope_type="workspace", scope_id=ws.id)
+        audit.record(
+            db,
+            actor=actor.user,
+            action="group.archive" if body.archived else "group.unarchive",
+            scope_type="workspace",
+            scope_id=ws.id,
+        )
     db.commit()
     _hub(request).revalidate_workspace(ws.id)
     return workspace_json(ws, policy.resolve(db, actor.user, ws.id))
 
 
 @router.post("/groups/{group_id}/members")
-def add_members(group_id: uuid.UUID, body: AddMembers, request: Request, actor: Actor = Depends(current_actor),
-                db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+def add_members(
+    group_id: uuid.UUID,
+    body: AddMembers,
+    request: Request,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     access = _group_access(db, actor, group_id, steward=True)
     if access.workspace.archived:
         raise Forbidden("workspace_archived", "Unarchive the group before adding members.")
@@ -154,8 +192,14 @@ def add_members(group_id: uuid.UUID, body: AddMembers, request: Request, actor: 
 
 
 @router.patch("/groups/{group_id}/members/{user_id}")
-def change_role(group_id: uuid.UUID, user_id: uuid.UUID, body: RoleBody, request: Request,
-                actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+def change_role(
+    group_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: RoleBody,
+    request: Request,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+):
     access = _group_access(db, actor, group_id, steward=True)
     if access.workspace.archived:
         raise Forbidden("workspace_archived", "Unarchive the group before changing roles.")
@@ -163,20 +207,37 @@ def change_role(group_id: uuid.UUID, user_id: uuid.UUID, body: RoleBody, request
         raise Invalid("invalid_role", "Role must be member or steward.")
     if user_id not in policy.direct_grants_for_workspace(db, group_id):
         raise NotFound()
-    memberships.set_membership(db, actor=actor.user, workspace_id=group_id, user_id=user_id, role=body.role,
-                               protect_last_steward=True)
+    memberships.set_membership(
+        db,
+        actor=actor.user,
+        workspace_id=group_id,
+        user_id=user_id,
+        role=body.role,
+        protect_last_steward=True,
+    )
     db.commit()
     _hub(request).revalidate_user(user_id)
     return {"ok": True}
 
 
 @router.delete("/groups/{group_id}/members/{user_id}")
-def remove_member(group_id: uuid.UUID, user_id: uuid.UUID, request: Request,
-                  actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+def remove_member(
+    group_id: uuid.UUID,
+    user_id: uuid.UUID,
+    request: Request,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+):
     leaving = user_id == actor.id
     _group_access(db, actor, group_id, steward=not leaving)
-    if not memberships.remove_membership(db, actor=actor.user, workspace_id=group_id, user_id=user_id,
-                                         protect_last_steward=True, reason="left" if leaving else None):
+    if not memberships.remove_membership(
+        db,
+        actor=actor.user,
+        workspace_id=group_id,
+        user_id=user_id,
+        protect_last_steward=True,
+        reason="left" if leaving else None,
+    ):
         raise NotFound()
     db.commit()
     _hub(request).revalidate_user(user_id)

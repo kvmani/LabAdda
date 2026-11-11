@@ -4,6 +4,7 @@
 Uses only the standard library. Trust the tool and the separately delivered digest
 before processing an archive; hashes provide integrity, not publisher identity.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,14 +45,23 @@ def digest(path: Path) -> str:
 
 def host_platform() -> dict:
     distro = platform.freedesktop_os_release()
-    return {"os": distro["ID"], "os_version": distro["VERSION_ID"],
-            "machine": platform.machine(), "python": f"{sys.version_info.major}.{sys.version_info.minor}"}
+    return {
+        "os": distro["ID"],
+        "os_version": distro["VERSION_ID"],
+        "machine": platform.machine(),
+        "python": f"{sys.version_info.major}.{sys.version_info.minor}",
+    }
 
 
 def safe_path(value: str) -> bool:
-    return (isinstance(value, str) and bool(value) and "\\" not in value
-            and not any(ord(c) < 32 for c in value)
-            and not value.startswith("/") and all(p not in ("", ".", "..") for p in value.split("/")))
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and "\\" not in value
+        and not any(ord(c) < 32 for c in value)
+        and not value.startswith("/")
+        and all(p not in ("", ".", "..") for p in value.split("/"))
+    )
 
 
 def inventory(wheels: Path, licenses: Path) -> list[dict]:
@@ -73,9 +83,16 @@ def inventory(wheels: Path, licenses: Path) -> list[dict]:
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(archive.read(name))
                     license_files.append(target.relative_to(licenses.parent).as_posix())
-            result.append({"name": metadata["Name"], "version": metadata["Version"],
-                           "wheel": wheel.name, "license": metadata.get("License-Expression") or metadata.get("License"),
-                           "license_classifiers": metadata.get_all("Classifier", []), "license_files": license_files})
+            result.append(
+                {
+                    "name": metadata["Name"],
+                    "version": metadata["Version"],
+                    "wheel": wheel.name,
+                    "license": metadata.get("License-Expression") or metadata.get("License"),
+                    "license_classifiers": metadata.get_all("Classifier", []),
+                    "license_files": license_files,
+                }
+            )
     return result
 
 
@@ -89,14 +106,22 @@ def frontend_inventory(root: Path, stage: Path) -> list[dict]:
         metadata = json.loads((package / "package.json").read_text())
         texts = []
         for source in package.iterdir():
-            if source.is_file() and any(word in source.name.lower() for word in ("license", "notice", "copying")):
+            if source.is_file() and any(
+                word in source.name.lower() for word in ("license", "notice", "copying")
+            ):
                 target = stage / "licenses/frontend" / name / source.name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, target)
                 texts.append(target.relative_to(stage).as_posix())
-        result.append({"name": metadata["name"], "version": metadata["version"],
-                       "license": metadata.get("license"), "license_files": texts,
-                       "integrity": entry.get("integrity")})
+        result.append(
+            {
+                "name": metadata["name"],
+                "version": metadata["version"],
+                "license": metadata.get("license"),
+                "license_files": texts,
+                "integrity": entry.get("integrity"),
+            }
+        )
     return result
 
 
@@ -121,9 +146,20 @@ def build(root: Path, output: Path, release_id: str) -> Path:
         # Copy only committed runtime source/config, never local state or credentials.
         paths = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0")
         for name in filter(None, paths):
-            include = (name.startswith(("backend/labadda/", "backend/migrations/", "deploy/"))
-                       or name in ("backend/alembic.ini", "backend/requirements.lock", "backend/pyproject.toml",
-                                   "scripts/release.py", "scripts/operations.py", "scripts/lifecycle.py", "scripts/commission.py", "docs/COMMISSIONING.md", "docs/development/operations.md", "docs/DEPLOYMENT.md", "docs/RELEASES.md", "docs/RECOVERY.md"))
+            include = name.startswith(("backend/labadda/", "backend/migrations/", "deploy/")) or name in (
+                "backend/alembic.ini",
+                "backend/requirements.lock",
+                "backend/pyproject.toml",
+                "scripts/release.py",
+                "scripts/operations.py",
+                "scripts/lifecycle.py",
+                "scripts/commission.py",
+                "docs/COMMISSIONING.md",
+                "docs/development/operations.md",
+                "docs/DEPLOYMENT.md",
+                "docs/RELEASES.md",
+                "docs/RECOVERY.md",
+            )
             if include:
                 source = root / name
                 if source.is_symlink() or not source.is_file():
@@ -136,15 +172,42 @@ def build(root: Path, output: Path, release_id: str) -> Path:
         shutil.copytree(root / "frontend/dist", stage / "frontend/dist")
         wheels = stage / "wheelhouse"
         wheels.mkdir()
-        run(sys.executable, "-m", "pip", "download", "--only-binary=:all:", "--dest", wheels,
-            "-r", root / "backend/requirements.lock")
+        run(
+            sys.executable,
+            "-m",
+            "pip",
+            "download",
+            "--only-binary=:all:",
+            "--dest",
+            wheels,
+            "-r",
+            root / "backend/requirements.lock",
+        )
         dependencies = inventory(wheels, stage / "licenses")
         frontend_dependencies = frontend_inventory(root, stage)
-        files = {p.relative_to(stage).as_posix(): {"sha256": digest(p), "size": p.stat().st_size}
-                 for p in sorted(stage.rglob("*")) if p.is_file()}
-        manifest = {"format": FORMAT, "release": release_id, "commit": commit,
-                    "platform": host_platform(), "schema": subprocess.check_output([sys.executable, "-c", "from labadda.app import expected_schema_head; print(expected_schema_head())"], cwd=root / "backend", text=True).strip(), "files": files,
-                    "dependencies": dependencies, "frontend_dependencies": frontend_dependencies}
+        files = {
+            p.relative_to(stage).as_posix(): {"sha256": digest(p), "size": p.stat().st_size}
+            for p in sorted(stage.rglob("*"))
+            if p.is_file()
+        }
+        manifest = {
+            "format": FORMAT,
+            "release": release_id,
+            "commit": commit,
+            "platform": host_platform(),
+            "schema": subprocess.check_output(
+                [
+                    sys.executable,
+                    "-c",
+                    "from labadda.app import expected_schema_head; print(expected_schema_head())",
+                ],
+                cwd=root / "backend",
+                text=True,
+            ).strip(),
+            "files": files,
+            "dependencies": dependencies,
+            "frontend_dependencies": frontend_dependencies,
+        }
         (stage / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         with tarfile.open(archive_path, "w:gz") as archive:
             for path in sorted(stage.rglob("*")):
@@ -180,18 +243,34 @@ def verify(archive_path: Path, expected_digest: str) -> dict:
         files = manifest.get("files", {})
         if set(files) != names - {"manifest.json"}:
             raise ReleaseError("Manifest does not cover archive exactly")
-        required = {"backend/labadda/app.py", "backend/alembic.ini", "backend/requirements.lock",
-                    "frontend/dist/index.html", "scripts/release.py", "docs/RELEASES.md"}
-        if not required <= names or not any(n.startswith("wheelhouse/") and n.endswith(".whl") for n in names):
+        required = {
+            "backend/labadda/app.py",
+            "backend/alembic.ini",
+            "backend/requirements.lock",
+            "frontend/dist/index.html",
+            "scripts/release.py",
+            "docs/RELEASES.md",
+        }
+        if not required <= names or not any(
+            n.startswith("wheelhouse/") and n.endswith(".whl") for n in names
+        ):
             raise ReleaseError("Incomplete release")
         for member in members:
             if member.name == "manifest.json":
                 continue
             info = files[member.name]
-            if member.size != info["size"] or hashlib.file_digest(archive.extractfile(member), "sha256").hexdigest() != info["sha256"]:
+            if (
+                member.size != info["size"]
+                or hashlib.file_digest(archive.extractfile(member), "sha256").hexdigest() != info["sha256"]
+            ):
                 raise ReleaseError(f"Payload hash mismatch: {member.name}")
         # Flat files cannot also be parents of other files.
-        if any(str(parent) in names for name in names for parent in PurePosixPath(name).parents if str(parent) != "."):
+        if any(
+            str(parent) in names
+            for name in names
+            for parent in PurePosixPath(name).parents
+            if str(parent) != "."
+        ):
             raise ReleaseError("Conflicting archive paths")
     return manifest
 
@@ -230,15 +309,35 @@ def install_snapshot(archive_path: Path, expected_digest: str, instance: Path) -
                     shutil.copyfileobj(archive.extractfile(member), sink)
         venv.EnvBuilder(with_pip=True).create(target / "venv")
         python = target / "venv/bin/python"
-        offline = {k: v for k, v in os.environ.items()
-                   if not k.startswith(("PIP_", "PYTHON"))}
+        offline = {k: v for k, v in os.environ.items() if not k.startswith(("PIP_", "PYTHON"))}
         offline.update(PIP_NO_INDEX="1", PIP_DISABLE_PIP_VERSION_CHECK="1", PIP_CONFIG_FILE=os.devnull)
-        run(python, "-m", "pip", "install", "--no-index", "--only-binary=:all:", "--find-links", target / "wheelhouse",
-            "-r", target / "backend/requirements.lock", env=offline)
+        run(
+            python,
+            "-m",
+            "pip",
+            "install",
+            "--no-index",
+            "--only-binary=:all:",
+            "--find-links",
+            target / "wheelhouse",
+            "-r",
+            target / "backend/requirements.lock",
+            env=offline,
+        )
         # Source layout retains migrations beside the package, as required by the CLI.
-        site = subprocess.check_output([str(python), "-I", "-c", "import site; print(site.getsitepackages()[0])"], text=True, env=offline).strip()
+        site = subprocess.check_output(
+            [str(python), "-I", "-c", "import site; print(site.getsitepackages()[0])"], text=True, env=offline
+        ).strip()
         Path(site, "labadda.pth").write_text(str(target / "backend") + "\n")
-        run(python, "-c", "import labadda.app, psycopg, PIL; from labadda.app import expected_schema_head; " + "\nif expected_schema_head() != " + repr(manifest["schema"]) + ": raise RuntimeError('Schema mismatch')", env=offline)
+        run(
+            python,
+            "-c",
+            "import labadda.app, psycopg, PIL; from labadda.app import expected_schema_head; "
+            + "\nif expected_schema_head() != "
+            + repr(manifest["schema"])
+            + ": raise RuntimeError('Schema mismatch')",
+            env=offline,
+        )
     except BaseException:
         shutil.rmtree(target)
         raise
@@ -253,7 +352,11 @@ def validate_installed(target: Path) -> dict:
         if not safe_path(name):
             raise ReleaseError("Unsafe installed payload path")
         path = target / name
-        if not path.resolve().is_relative_to(target.resolve()) or path.is_symlink() or digest(path) != info["sha256"]:
+        if (
+            not path.resolve().is_relative_to(target.resolve())
+            or path.is_symlink()
+            or digest(path) != info["sha256"]
+        ):
             raise ReleaseError(f"Installed payload changed: {name}")
     return manifest
 
@@ -287,11 +390,18 @@ with create_engine(s.database_url, connect_args={'connect_timeout': 10}).connect
     print(rows[0])
 """
     runtime_env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
-    result = subprocess.run([str(target / "venv/bin/python"), "-I", "-c", code], cwd=target,
-                            text=True, capture_output=True, env=runtime_env)
+    result = subprocess.run(
+        [str(target / "venv/bin/python"), "-I", "-c", code],
+        cwd=target,
+        text=True,
+        capture_output=True,
+        env=runtime_env,
+    )
     if result.returncode:
         # SQLAlchemy exceptions can contain connection details. Do not relay stderr.
-        raise ReleaseError("Runtime preflight failed: check instance/TLS/cookie/assets settings and database/schema access; connection details suppressed")
+        raise ReleaseError(
+            "Runtime preflight failed: check instance/TLS/cookie/assets settings and database/schema access; connection details suppressed"
+        )
     schema = result.stdout.strip()
     if not re.fullmatch(r"[A-Za-z0-9_]+", schema):
         raise ReleaseError("Invalid observed schema")
@@ -338,7 +448,9 @@ def main() -> int:
         sub.add_argument("--instance", type=Path, required=True)
         sub.add_argument("--release", required=True)
         if name != "preflight":
-            sub.add_argument("--database-schema", required=True, help="expected observed alembic_version after migration")
+            sub.add_argument(
+                "--database-schema", required=True, help="expected observed alembic_version after migration"
+            )
             sub.add_argument("--writers-quiesced", action="store_true", required=True)
             sub.add_argument("--backup-verified", action="store_true", required=True)
     args = parser.parse_args()
@@ -356,9 +468,18 @@ def main() -> int:
             if schema != args.database_schema:
                 raise ReleaseError("Observed database schema differs from operator expectation")
             switch(args.instance.resolve(), args.release, schema, rollback=args.command == "rollback")
-            print("Pointer switched. Restart and run the documented readiness and functional probes before serving traffic.")
+            print(
+                "Pointer switched. Restart and run the documented readiness and functional probes before serving traffic."
+            )
         return 0
-    except (ReleaseError, OSError, ValueError, KeyError, tarfile.TarError, subprocess.CalledProcessError) as exc:
+    except (
+        ReleaseError,
+        OSError,
+        ValueError,
+        KeyError,
+        tarfile.TarError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"release: {exc}", file=sys.stderr)
         return 1
 

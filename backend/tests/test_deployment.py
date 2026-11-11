@@ -11,12 +11,18 @@ from labadda.fixtures import fixture_password
 def test_prefixed_instance_routes_and_cookie_path(settings, ids, tmp_path):
     dist = tmp_path / "dist"
     (dist / "assets").mkdir(parents=True)
-    (dist / "index.html").write_text("<!doctype html><html><head><title>LabAdda</title></head><body></body></html>")
+    (dist / "index.html").write_text(
+        "<!doctype html><html><head><title>LabAdda</title></head><body></body></html>"
+    )
     (dist / "assets" / "app.js").write_text("console.log(1)")
-    pre = create_app(replace(settings, base_path="/labadda-staging", cookie_name="labadda_staging", frontend_dist=dist))
+    pre = create_app(
+        replace(settings, base_path="/labadda-staging", cookie_name="labadda_staging", frontend_dist=dist)
+    )
     root = create_app(replace(settings, base_path="", cookie_name="labadda_root", frontend_dist=dist))
     with TestClient(pre) as p, TestClient(root) as r:
-        login = p.post("/labadda-staging/api/v1/auth/login", json={"username": "ben", "password": fixture_password()})
+        login = p.post(
+            "/labadda-staging/api/v1/auth/login", json={"username": "ben", "password": fixture_password()}
+        )
         assert login.status_code == 200
         cookie = login.headers["set-cookie"]
         assert "labadda_staging=" in cookie and "Path=/labadda-staging" in cookie
@@ -36,8 +42,7 @@ def test_prefixed_instance_routes_and_cookie_path(settings, ids, tmp_path):
         assert r.get("/api/v1/auth/session").status_code == 401
         r.post("/api/v1/auth/login", json={"username": "asha", "password": fixture_password()})
         assert r.get("/api/v1/auth/session").json()["user"]["username"] == "asha"
-        p.post("/labadda-staging/api/v1/auth/logout",
-               headers={"X-CSRF-Token": login.json()["csrf_token"]})
+        p.post("/labadda-staging/api/v1/auth/logout", headers={"X-CSRF-Token": login.json()["csrf_token"]})
         assert r.get("/api/v1/auth/session").status_code == 200
 
 
@@ -48,6 +53,7 @@ def test_api_responses_not_cached(as_user):
 
 def test_readiness_fails_on_schema_mismatch(settings, ids, db_factory):
     from sqlalchemy import text
+
     app = create_app(settings)
     with db_factory() as db:
         db.execute(text("update alembic_version set version_num = '0002'"))
@@ -63,5 +69,6 @@ def test_readiness_fails_on_schema_mismatch(settings, ids, db_factory):
 
 def test_fixture_command_refused_for_staging(monkeypatch, capsys):
     from labadda.cli import main
+
     monkeypatch.setenv("LABADDA_ENV", "staging")
     assert main(["seed"]) == 2

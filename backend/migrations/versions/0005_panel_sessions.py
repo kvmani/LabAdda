@@ -3,6 +3,7 @@
 Revision ID: 0005
 Revises: 0004
 """
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -16,9 +17,14 @@ def upgrade() -> None:
     # A board session is bound to one workspace board; normal sessions leave this null.
     op.add_column("auth_sessions", sa.Column("workspace_id", sa.UUID(), nullable=True))
     op.add_column("auth_sessions", sa.Column("end_reason", sa.String(length=32), nullable=True))
-    op.create_foreign_key("fk_auth_sessions_workspace", "auth_sessions", "workspaces", ["workspace_id"], ["id"])
-    op.create_check_constraint("ck_auth_session_kind", "auth_sessions",
-                               "(kind = 'normal' and workspace_id is null) or (kind = 'board' and workspace_id is not null)")
+    op.create_foreign_key(
+        "fk_auth_sessions_workspace", "auth_sessions", "workspaces", ["workspace_id"], ["id"]
+    )
+    op.create_check_constraint(
+        "ck_auth_session_kind",
+        "auth_sessions",
+        "(kind = 'normal' and workspace_id is null) or (kind = 'board' and workspace_id is not null)",
+    )
     op.create_table(
         "panel_pairings",
         sa.Column("id", sa.UUID(), nullable=False),

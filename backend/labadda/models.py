@@ -103,8 +103,10 @@ class AuthSession(Base):
 
     __table_args__ = (
         Index("ix_auth_sessions_user", "user_id"),
-        CheckConstraint("(kind = 'normal' and workspace_id is null) or (kind = 'board' and workspace_id is not null)",
-                        name="ck_auth_session_kind"),
+        CheckConstraint(
+            "(kind = 'normal' and workspace_id is null) or (kind = 'board' and workspace_id is not null)",
+            name="ck_auth_session_kind",
+        ),
     )
 
 
@@ -116,7 +118,9 @@ class PanelPairing(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False
+    )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _created()
@@ -219,7 +223,9 @@ class Post(Base):
         UniqueConstraint("author_id", "client_id", name="uq_post_client_id"),
         Index("ix_posts_workspace_seq", "workspace_id", "seq"),
         Index("ix_posts_parent", "parent_id"),
-        Index("ix_posts_pending_reminder", "remind_at", postgresql_where=text("reminder_processed_at is null")),
+        Index(
+            "ix_posts_pending_reminder", "remind_at", postgresql_where=text("reminder_processed_at is null")
+        ),
     )
 
 
@@ -235,7 +241,9 @@ class Asset(Base):
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="provisional")
     post_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("posts.id"))
-    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id'))
+    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("chat_messages.id")
+    )
     board_workspace_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_assets_board_workspace")
     )
@@ -246,14 +254,20 @@ class Asset(Base):
 
     __table_args__ = (
         CheckConstraint("status in ('provisional','committed')", name="ck_asset_status"),
-        CheckConstraint("status = 'provisional' or post_id is not null or board_workspace_id is not null or chat_message_id is not null",
-                        name="ck_asset_committed_owner"),
-        CheckConstraint("num_nonnulls(post_id, board_workspace_id, chat_message_id) <= 1", name="ck_asset_single_owner"),
-        CheckConstraint("(preview_size is null and preview_sha256 is null) or "
-                        "(preview_size is not null and "
-                        "((has_preview and preview_size > 0 and preview_sha256 is not null and length(preview_sha256) = 64) or "
-                        "(not has_preview and preview_size = 0 and preview_sha256 is null)))",
-                        name="ck_asset_preview_integrity"),
+        CheckConstraint(
+            "status = 'provisional' or post_id is not null or board_workspace_id is not null or chat_message_id is not null",
+            name="ck_asset_committed_owner",
+        ),
+        CheckConstraint(
+            "num_nonnulls(post_id, board_workspace_id, chat_message_id) <= 1", name="ck_asset_single_owner"
+        ),
+        CheckConstraint(
+            "(preview_size is null and preview_sha256 is null) or "
+            "(preview_size is not null and "
+            "((has_preview and preview_size > 0 and preview_sha256 is not null and length(preview_sha256) = 64) or "
+            "(not has_preview and preview_size = 0 and preview_sha256 is null)))",
+            name="ck_asset_preview_integrity",
+        ),
         Index("ix_assets_owner", "owner_id"),
         Index("ix_assets_post", "post_id"),
         Index("ix_assets_chat", "chat_message_id"),
@@ -281,7 +295,9 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    recipient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    recipient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"))
     source_type: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -302,16 +318,18 @@ class ChatMessage(Base):
         UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False
     )
     author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id'))
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("chat_messages.id"))
     body: Mapped[str] = mapped_column(Text, nullable=False)
     client_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    attachments: Mapped[list[Asset]] = relationship(foreign_keys='Asset.chat_message_id', lazy='selectin', order_by='Asset.id')
+    attachments: Mapped[list[Asset]] = relationship(
+        foreign_keys="Asset.chat_message_id", lazy="selectin", order_by="Asset.id"
+    )
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (
         UniqueConstraint("author_id", "client_id", name="uq_chat_client_id"),
-        CheckConstraint('parent_id is null or parent_id <> id', name='ck_chat_not_self'),
-        Index('ix_chat_parent_seq', 'parent_id', 'seq'),
+        CheckConstraint("parent_id is null or parent_id <> id", name="ck_chat_not_self"),
+        Index("ix_chat_parent_seq", "parent_id", "seq"),
         Index("ix_chat_workspace_seq", "workspace_id", "seq"),
     )
 
@@ -378,6 +396,7 @@ class BoardOp(Base):
 
 class PolicyDraft(Base):
     """Immutable, non-enforcing site policy proposals; activation is a later gate."""
+
     __tablename__ = "policy_drafts"
     id: Mapped[uuid.UUID] = _uuid_pk()
     revision: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
@@ -387,36 +406,47 @@ class PolicyDraft(Base):
     reason: Mapped[str] = mapped_column(String(500), nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = _created()
-    __table_args__ = (CheckConstraint("revision > 0 and base_revision >= 0 and schema_version in (1,2)", name="ck_policy_draft_version"),)
+    __table_args__ = (
+        CheckConstraint(
+            "revision > 0 and base_revision >= 0 and schema_version in (1,2)", name="ck_policy_draft_version"
+        ),
+    )
 
 
 class UsageObservation(Base):
     """Bounded retained site observations, never a complete quota ledger."""
-    __tablename__ = 'usage_observations'
+
+    __tablename__ = "usage_observations"
     id: Mapped[uuid.UUID] = _uuid_pk()
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = _created()
-    __table_args__ = (CheckConstraint('schema_version = 1', name='ck_usage_observation_version'),)
+    __table_args__ = (CheckConstraint("schema_version = 1", name="ck_usage_observation_version"),)
 
 
 class StorageInspection(Base):
     """Operator-triggered, read-only referenced-file reconciliation evidence."""
-    __tablename__ = 'storage_inspections'
+
+    __tablename__ = "storage_inspections"
     id: Mapped[uuid.UUID] = _uuid_pk()
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     summary: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = _created()
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    __table_args__ = (CheckConstraint("status in ('running','completed','partial','failed')", name='ck_storage_inspection_status'),)
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('running','completed','partial','failed')", name="ck_storage_inspection_status"
+        ),
+    )
 
 
 class UsageReaderGrant(Base):
     """Time-limited site operational metadata access, not an administrator role."""
-    __tablename__ = 'usage_reader_grants'
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), primary_key=True)
-    granted_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+
+    __tablename__ = "usage_reader_grants"
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    granted_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     reason: Mapped[str] = mapped_column(String(500), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _created()
@@ -424,29 +454,44 @@ class UsageReaderGrant(Base):
 
 class UploadReservation(Base):
     """Pending original-byte admission. Durable assets replace these on commit."""
-    __tablename__ = 'upload_reservations'
+
+    __tablename__ = "upload_reservations"
     id: Mapped[uuid.UUID] = _uuid_pk()
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
     bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _created()
-    __table_args__ = (CheckConstraint('bytes > 0 and expires_at > created_at', name='ck_upload_reservation_bounds'),)
+    __table_args__ = (
+        CheckConstraint("bytes > 0 and expires_at > created_at", name="ck_upload_reservation_bounds"),
+    )
 
 
 class UploadReceipt(Base):
     """Owner-scoped 24-hour request identity; never an access grant."""
-    __tablename__ = 'upload_receipts'
+
+    __tablename__ = "upload_receipts"
     id: Mapped[uuid.UUID] = _uuid_pk()
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     request_key: Mapped[str] = mapped_column(String(64), nullable=False)
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     state: Mapped[str] = mapped_column(String(16), nullable=False)
-    reservation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('upload_reservations.id', ondelete='SET NULL'), index=True)
-    asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('assets.id', ondelete='SET NULL'), index=True)
+    reservation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("upload_reservations.id", ondelete="SET NULL"), index=True
+    )
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), index=True
+    )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _created()
-    __table_args__ = (UniqueConstraint('user_id','request_key',name='uq_upload_receipt_user_key'),
-                     CheckConstraint("state in ('pending','complete','failed') and expires_at > created_at",name='ck_upload_receipt_state'))
+    __table_args__ = (
+        UniqueConstraint("user_id", "request_key", name="uq_upload_receipt_user_key"),
+        CheckConstraint(
+            "state in ('pending','complete','failed') and expires_at > created_at",
+            name="ck_upload_receipt_state",
+        ),
+    )
 
 
 class ContentCharge(Base):
@@ -455,28 +500,30 @@ class ContentCharge(Base):
     Text rows are maintained by database triggers; board-object rows by the board writers.
     Derived data: reconcilable from source content, never an access grant.
     """
-    __tablename__ = 'content_charges'
+
+    __tablename__ = "content_charges"
     item_type: Mapped[str] = mapped_column(String(16), primary_key=True)
     item_key: Mapped[str] = mapped_column(String(200), primary_key=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
-    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('workspaces.id'))
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"))
     method: Mapped[str] = mapped_column(String(32), nullable=False)
     state: Mapped[str] = mapped_column(String(16), nullable=False)
     bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     updated_at: Mapped[datetime] = _created()
     __table_args__ = (
-        CheckConstraint("item_type in ('post','chat','note','board_object')", name='ck_content_charge_type'),
-        CheckConstraint("state in ('live','removed')", name='ck_content_charge_state'),
-        CheckConstraint('bytes >= 0', name='ck_content_charge_bytes'),
-        CheckConstraint("(item_type = 'note') = (workspace_id is null)", name='ck_content_charge_scope'),
-        Index('ix_content_charges_user', 'user_id', 'item_type'),
-        Index('ix_content_charges_workspace', 'workspace_id', 'item_type'),
+        CheckConstraint("item_type in ('post','chat','note','board_object')", name="ck_content_charge_type"),
+        CheckConstraint("state in ('live','removed')", name="ck_content_charge_state"),
+        CheckConstraint("bytes >= 0", name="ck_content_charge_bytes"),
+        CheckConstraint("(item_type = 'note') = (workspace_id is null)", name="ck_content_charge_scope"),
+        Index("ix_content_charges_user", "user_id", "item_type"),
+        Index("ix_content_charges_workspace", "workspace_id", "item_type"),
     )
 
 
 class InventoryJob(Base):
     """Operator-only observation job. Leases fence accepted results, never delete files."""
-    __tablename__ = 'inventory_jobs'
+
+    __tablename__ = "inventory_jobs"
     id: Mapped[uuid.UUID] = _uuid_pk()
     request_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     plan_digest: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -487,51 +534,64 @@ class InventoryJob(Base):
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = _created()
     __table_args__ = (
-        CheckConstraint("state in ('queued','running','completed','partial','failed','paused','cancelled')", name='ck_inventory_job_state'),
-        CheckConstraint('attempt >= 0 and attempt <= 100', name='ck_inventory_job_attempt'),
-        CheckConstraint("(state = 'running') = (lease_until is not null)", name='ck_inventory_job_lease'),
+        CheckConstraint(
+            "state in ('queued','running','completed','partial','failed','paused','cancelled')",
+            name="ck_inventory_job_state",
+        ),
+        CheckConstraint("attempt >= 0 and attempt <= 100", name="ck_inventory_job_attempt"),
+        CheckConstraint("(state = 'running') = (lease_until is not null)", name="ck_inventory_job_lease"),
     )
 
 
 class InventoryAttempt(Base):
-    __tablename__ = 'inventory_attempts'
-    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('inventory_jobs.id'), primary_key=True)
+    __tablename__ = "inventory_attempts"
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("inventory_jobs.id"), primary_key=True
+    )
     number: Mapped[int] = mapped_column(Integer, primary_key=True)
     state: Mapped[str] = mapped_column(String(16), nullable=False)
     started_at: Mapped[datetime] = _created()
     heartbeat_at: Mapped[datetime] = _created()
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    receipt_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('storage_inspections.id'))
+    receipt_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("storage_inspections.id")
+    )
     __table_args__ = (
-        CheckConstraint("state in ('running','completed','partial','failed','expired','paused','cancelled')", name='ck_inventory_attempt_state'),
-        CheckConstraint('number > 0 and number <= 100', name='ck_inventory_attempt_number'),
+        CheckConstraint(
+            "state in ('running','completed','partial','failed','expired','paused','cancelled')",
+            name="ck_inventory_attempt_state",
+        ),
+        CheckConstraint("number > 0 and number <= 100", name="ck_inventory_attempt_number"),
     )
 
 
 class TodoList(Base):
-    __tablename__ = 'todo_lists'
+    __tablename__ = "todo_lists"
     id: Mapped[uuid.UUID] = _uuid_pk()
-    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'))
-    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('workspaces.id'))
-    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"))
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     create_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = _created()
     __table_args__ = (
-        CheckConstraint('(owner_id is null) <> (workspace_id is null)', name='ck_todo_list_scope'),
-        CheckConstraint('revision > 0', name='ck_todo_list_revision'),
-        UniqueConstraint('created_by', 'client_id', name='uq_todo_list_request'),
-        Index('ix_todo_list_owner', 'owner_id', 'id'), Index('ix_todo_list_workspace', 'workspace_id', 'id'),
+        CheckConstraint("(owner_id is null) <> (workspace_id is null)", name="ck_todo_list_scope"),
+        CheckConstraint("revision > 0", name="ck_todo_list_revision"),
+        UniqueConstraint("created_by", "client_id", name="uq_todo_list_request"),
+        Index("ix_todo_list_owner", "owner_id", "id"),
+        Index("ix_todo_list_workspace", "workspace_id", "id"),
     )
 
 
 class TodoTask(Base):
-    __tablename__ = 'todo_tasks'
+    __tablename__ = "todo_tasks"
     id: Mapped[uuid.UUID] = _uuid_pk()
-    list_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_lists.id'), nullable=False)
-    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    list_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("todo_lists.id"), nullable=False
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     create_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -540,74 +600,102 @@ class TodoTask(Base):
     priority: Mapped[str] = mapped_column(String(8), nullable=False)
     checklist: Mapped[list] = mapped_column(JSONB, nullable=False)
     done: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    assignee_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'))
-    assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy='selectin')
-    source: Mapped[TodoSource | None] = relationship('TodoSource', uselist=False, lazy='selectin')
-    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default='todo')
+    assignee_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy="selectin")
+    source: Mapped[TodoSource | None] = relationship("TodoSource", uselist=False, lazy="selectin")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="todo")
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = _created()
     __table_args__ = (
-        CheckConstraint("status in ('todo','in_progress','blocked','done') and done = (status = 'done')", name='ck_todo_task_status'),
-        CheckConstraint("priority in ('low','normal','high') and revision > 0", name='ck_todo_task_values'),
-        UniqueConstraint('created_by', 'client_id', name='uq_todo_task_request'),
-        Index('ix_todo_task_assignee', 'assignee_id', 'id'),
-        Index('ix_todo_task_list', 'list_id', 'id'),
+        CheckConstraint(
+            "status in ('todo','in_progress','blocked','done') and done = (status = 'done')",
+            name="ck_todo_task_status",
+        ),
+        CheckConstraint("priority in ('low','normal','high') and revision > 0", name="ck_todo_task_values"),
+        UniqueConstraint("created_by", "client_id", name="uq_todo_task_request"),
+        Index("ix_todo_task_assignee", "assignee_id", "id"),
+        Index("ix_todo_task_list", "list_id", "id"),
     )
 
 
 class TodoChange(Base):
     """Content history, governed by the task's list access; never an admin log."""
-    __tablename__ = 'todo_changes'
-    task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_tasks.id'), primary_key=True)
+
+    __tablename__ = "todo_changes"
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("todo_tasks.id"), primary_key=True
+    )
     revision: Mapped[int] = mapped_column(Integer, primary_key=True)
-    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'))
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     action: Mapped[str] = mapped_column(String(16), nullable=False)
     changes: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = _created()
-    __table_args__ = (CheckConstraint("revision > 0 and action in ('baseline','created','updated')", name='ck_todo_change_values'),)
+    __table_args__ = (
+        CheckConstraint(
+            "revision > 0 and action in ('baseline','created','updated')", name="ck_todo_change_values"
+        ),
+    )
 
 
 class TodoComment(Base):
     """Immutable task discussion entry under the current list audience."""
-    __tablename__ = 'todo_comments'
+
+    __tablename__ = "todo_comments"
     id: Mapped[uuid.UUID] = _uuid_pk()
-    task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_tasks.id'), nullable=False)
-    author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
-    author: Mapped[User] = relationship(foreign_keys=[author_id], lazy='selectin')
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("todo_tasks.id"), nullable=False
+    )
+    author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    author: Mapped[User] = relationship(foreign_keys=[author_id], lazy="selectin")
     client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     create_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = _created()
     __table_args__ = (
-        UniqueConstraint('author_id','client_id',name='uq_todo_comment_request'),
-        UniqueConstraint('task_id','sequence',name='uq_todo_comment_sequence'),
-        CheckConstraint('sequence > 0',name='ck_todo_comment_sequence'),
+        UniqueConstraint("author_id", "client_id", name="uq_todo_comment_request"),
+        UniqueConstraint("task_id", "sequence", name="uq_todo_comment_sequence"),
+        CheckConstraint("sequence > 0", name="ck_todo_comment_sequence"),
     )
 
 
 class TodoSource(Base):
     """Protected reference, never a copied conversation or an access grant."""
-    __tablename__ = 'todo_sources'
-    task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('todo_tasks.id'), primary_key=True)
-    post_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('posts.id', ondelete='SET NULL'))
-    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('chat_messages.id', ondelete='SET NULL'))
-    board_workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('boards.workspace_id', ondelete='SET NULL'))
+
+    __tablename__ = "todo_sources"
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("todo_tasks.id"), primary_key=True
+    )
+    post_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("posts.id", ondelete="SET NULL")
+    )
+    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("chat_messages.id", ondelete="SET NULL")
+    )
+    board_workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("boards.workspace_id", ondelete="SET NULL")
+    )
     board_epoch: Mapped[int | None] = mapped_column(Integer)
     board_revision: Mapped[int | None] = mapped_column(BigInteger)
     __table_args__ = (
-        CheckConstraint('num_nonnulls(post_id, chat_message_id, board_workspace_id) <= 1', name='ck_todo_source_kind'),
-        CheckConstraint('(board_epoch is null) = (board_revision is null) and (board_epoch is null or (board_epoch > 0 and board_revision >= 0)) and (board_workspace_id is null or board_epoch is not null) and ((post_id is null and chat_message_id is null) or board_epoch is null)', name='ck_todo_source_board'),
+        CheckConstraint(
+            "num_nonnulls(post_id, chat_message_id, board_workspace_id) <= 1", name="ck_todo_source_kind"
+        ),
+        CheckConstraint(
+            "(board_epoch is null) = (board_revision is null) and (board_epoch is null or (board_epoch > 0 and board_revision >= 0)) and (board_workspace_id is null or board_epoch is not null) and ((post_id is null and chat_message_id is null) or board_epoch is null)",
+            name="ck_todo_source_board",
+        ),
     )
 
 
 class NotificationPreference(Base):
     """Owner alert choices; absence means the compatible all-enabled default."""
-    __tablename__='notification_preferences'
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True),ForeignKey('users.id'),primary_key=True)
-    mentions: Mapped[bool] = mapped_column(Boolean,nullable=False)
-    official_notices: Mapped[bool] = mapped_column(Boolean,nullable=False)
-    reminders: Mapped[bool] = mapped_column(Boolean,nullable=False)
-    revision: Mapped[int] = mapped_column(Integer,nullable=False)
-    __table_args__=(CheckConstraint('revision > 0',name='ck_notification_preference_revision'),)
+
+    __tablename__ = "notification_preferences"
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    mentions: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    official_notices: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    reminders: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (CheckConstraint("revision > 0", name="ck_notification_preference_revision"),)

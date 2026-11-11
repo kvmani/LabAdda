@@ -20,8 +20,12 @@ def iso(value: datetime | None) -> str | None:
 def user_brief(user: User | None) -> dict | None:
     if user is None:
         return None
-    return {"id": str(user.id), "username": user.username, "display_name": user.display_name,
-            "is_active": user.is_active}
+    return {
+        "id": str(user.id),
+        "username": user.username,
+        "display_name": user.display_name,
+        "is_active": user.is_active,
+    }
 
 
 def users_by_id(db: Session, ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, User]:
@@ -63,8 +67,15 @@ def asset_json(asset: Asset, base: str) -> dict:
     }
 
 
-def post_json(post: Post, authors: dict, assets: list[Asset], base: str, replies: list[dict] | None = None,
-              actor_id=None, can_moderate: bool = False) -> dict:
+def post_json(
+    post: Post,
+    authors: dict,
+    assets: list[Asset],
+    base: str,
+    replies: list[dict] | None = None,
+    actor_id=None,
+    can_moderate: bool = False,
+) -> dict:
     removed = post.deleted_at is not None
     return {
         "id": str(post.id),

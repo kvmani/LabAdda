@@ -14,8 +14,13 @@ def readable_names(as_user, username):
 
 def test_upward_visibility_for_section_member(as_user):
     names = readable_names(as_user, "ben")
-    assert set(names) == {"Thin Films Section", "Surface Science Division", "Materials Group",
-                          "Northwind Research", "Microscopy Reading Club"}
+    assert set(names) == {
+        "Thin Films Section",
+        "Surface Science Division",
+        "Materials Group",
+        "Northwind Research",
+        "Microscopy Reading Club",
+    }
     assert names["Thin Films Section"]["role"] == "member"
     assert names["Surface Science Division"]["inherited"] is True
     assert names["Surface Science Division"]["can_moderate"] is False
@@ -72,6 +77,7 @@ def test_eligible_readers_include_descendants(db_factory, ids):
     import uuid
 
     from labadda.models import Workspace
+
     with db_factory() as db:
         division = db.get(Workspace, uuid.UUID(ids["workspaces"]["division"]))
         readers = policy.eligible_reader_ids(db, division)
@@ -123,6 +129,7 @@ def test_db_trigger_rejects_cycle(db_factory, ids):
     import sqlalchemy
 
     from labadda.models import Workspace
+
     with db_factory() as db:
         root = db.get(Workspace, uuid.UUID(ids["workspaces"]["root"]))
         root.parent_id = uuid.UUID(ids["workspaces"]["section_b"])
@@ -133,6 +140,8 @@ def test_db_trigger_rejects_cycle(db_factory, ids):
 def test_admin_can_move_unit(as_user, ids):
     admin = as_user("admin")
     sec_b, group = ids["workspaces"]["section_b"], ids["workspaces"]["group"]
-    assert admin.patch(f"/admin/workspaces/{sec_b}", json={"move": True, "parent_id": group}).status_code == 200
+    assert (
+        admin.patch(f"/admin/workspaces/{sec_b}", json={"move": True, "parent_id": group}).status_code == 200
+    )
     names = readable_names(as_user, "chen")
     assert "Surface Science Division" not in names and "Materials Group" in names

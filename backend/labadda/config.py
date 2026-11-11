@@ -88,7 +88,7 @@ def _timezone(value: str) -> str:
     try:
         ZoneInfo(value)
     except (ZoneInfoNotFoundError, ValueError) as error:
-        raise ValueError('LABADDA_TIMEZONE must name an installed IANA timezone') from error
+        raise ValueError("LABADDA_TIMEZONE must name an installed IANA timezone") from error
     return value
 
 
@@ -96,7 +96,9 @@ def load_settings() -> Settings:
     env = os.environ.get
     dist = env("LABADDA_FRONTEND_DIST")
     default_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
-    origins = tuple(o.strip().rstrip("/") for o in (env("LABADDA_TRUSTED_ORIGINS") or "").split(",") if o.strip())
+    origins = tuple(
+        o.strip().rstrip("/") for o in (env("LABADDA_TRUSTED_ORIGINS") or "").split(",") if o.strip()
+    )
     return Settings(
         database_url=env("LABADDA_DATABASE_URL", Settings.database_url),
         base_path=_normalize_base(env("LABADDA_BASE_PATH", "")),
@@ -119,8 +121,12 @@ def load_settings() -> Settings:
         max_group_members=int(env("LABADDA_MAX_GROUP_MEMBERS", "200")),
         # Sign-in/activation/pairing attempts per client and window. Operators may raise this
         # temporarily for a supervised load rehearsal; it is never relaxed by web policy.
-        login_attempts_per_window=_positive(env("LABADDA_LOGIN_ATTEMPTS_PER_WINDOW", "10"), "LABADDA_LOGIN_ATTEMPTS_PER_WINDOW"),
-        login_window_seconds=_positive(env("LABADDA_LOGIN_WINDOW_SECONDS", "300"), "LABADDA_LOGIN_WINDOW_SECONDS"),
+        login_attempts_per_window=_positive(
+            env("LABADDA_LOGIN_ATTEMPTS_PER_WINDOW", "10"), "LABADDA_LOGIN_ATTEMPTS_PER_WINDOW"
+        ),
+        login_window_seconds=_positive(
+            env("LABADDA_LOGIN_WINDOW_SECONDS", "300"), "LABADDA_LOGIN_WINDOW_SECONDS"
+        ),
         board_compact_threshold=int(env("LABADDA_BOARD_COMPACT_THRESHOLD", "2000")),
         panel_idle_seconds=int(env("LABADDA_PANEL_IDLE_SECONDS", "300")),
         panel_absolute_minutes=int(env("LABADDA_PANEL_ABSOLUTE_MINUTES", "60")),

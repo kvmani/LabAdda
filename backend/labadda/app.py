@@ -18,7 +18,30 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from sqlalchemy import text
 
 from . import boardstate, scheduler
-from .api import admin, alert_preferences, auth, board, capabilities, chat, dashboard, files, governance, groups, inventory_jobs, notes, notifications, panel, posts, task_assignment, task_comments, task_conversion, task_board_conversion, todos, usage, workspaces
+from .api import (
+    admin,
+    alert_preferences,
+    auth,
+    board,
+    capabilities,
+    chat,
+    dashboard,
+    files,
+    governance,
+    groups,
+    inventory_jobs,
+    notes,
+    notifications,
+    panel,
+    posts,
+    task_assignment,
+    task_comments,
+    task_conversion,
+    task_board_conversion,
+    todos,
+    usage,
+    workspaces,
+)
 from .config import Settings, get_settings
 from .db import session_factory
 from .errors import ApiError
@@ -46,18 +69,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         hub.loop = asyncio.get_running_loop()
         task = None
         if settings.run_scheduler:
+
             def cleanup():
                 with factory() as db:
                     files.cleanup_provisional(db, store, settings)
                 with factory() as db:
-                    boardstate.compact_all(db, settings.board_compact_threshold, settings.board_keep_revisions)
-            task = asyncio.create_task(scheduler.run_forever(factory, settings.reminder_interval_seconds, cleanup))
+                    boardstate.compact_all(
+                        db, settings.board_compact_threshold, settings.board_keep_revisions
+                    )
+
+            task = asyncio.create_task(
+                scheduler.run_forever(factory, settings.reminder_interval_seconds, cleanup)
+            )
         yield
         if task:
             task.cancel()
 
-    app = FastAPI(title="LabAdda", version="0.1.0", lifespan=lifespan, docs_url=None, redoc_url=None,
-                  openapi_url=f"{settings.api_prefix}/openapi.json")
+    app = FastAPI(
+        title="LabAdda",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=f"{settings.api_prefix}/openapi.json",
+    )
     app.state.settings = settings
     app.state.session_factory = factory
     app.state.assets = store
@@ -69,9 +104,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError):
-        fields = [{"field": ".".join(str(p) for p in e["loc"][1:]), "message": e["msg"]} for e in exc.errors()]
-        return JSONResponse({"error": {"code": "invalid", "message": "Some fields are invalid.", "fields": fields}},
-                            status_code=422)
+        fields = [
+            {"field": ".".join(str(p) for p in e["loc"][1:]), "message": e["msg"]} for e in exc.errors()
+        ]
+        return JSONResponse(
+            {"error": {"code": "invalid", "message": "Some fields are invalid.", "fields": fields}},
+            status_code=422,
+        )
 
     @app.middleware("http")
     async def request_log(request: Request, call_next):
@@ -82,14 +121,45 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if request.url.path.startswith(settings.api_prefix):
             response.headers.setdefault("Cache-Control", "private, no-store")
         # Operational log: no bodies, tokens or query strings.
-        log.info(json.dumps({"event": "http", "request_id": request_id, "method": request.method,
-                             "route": request.scope.get("route").path if request.scope.get("route") else "-",
-                             "status": response.status_code,
-                             "ms": round((time.perf_counter() - started) * 1000, 1)}))
+        log.info(
+            json.dumps(
+                {
+                    "event": "http",
+                    "request_id": request_id,
+                    "method": request.method,
+                    "route": request.scope.get("route").path if request.scope.get("route") else "-",
+                    "status": response.status_code,
+                    "ms": round((time.perf_counter() - started) * 1000, 1),
+                }
+            )
+        )
         return response
 
     api = APIRouter(prefix=settings.api_prefix)
-    for module in (auth, alert_preferences, dashboard, workspaces, admin, governance, usage, inventory_jobs, capabilities, groups, task_assignment, task_comments, task_conversion, task_board_conversion, todos, posts, files, notes, notifications, chat, board, panel):
+    for module in (
+        auth,
+        alert_preferences,
+        dashboard,
+        workspaces,
+        admin,
+        governance,
+        usage,
+        inventory_jobs,
+        capabilities,
+        groups,
+        task_assignment,
+        task_comments,
+        task_conversion,
+        task_board_conversion,
+        todos,
+        posts,
+        files,
+        notes,
+        notifications,
+        chat,
+        board,
+        panel,
+    ):
         api.include_router(module.router)
     app.include_router(api)
 
@@ -124,15 +194,20 @@ def _mount_frontend(app: FastAPI, settings: Settings) -> None:
 
     def shell() -> HTMLResponse:
         if dist is None or not (dist / "index.html").exists():
-            return HTMLResponse("<!doctype html><title>LabAdda</title><p>Frontend not built. "
-                                "Run <code>npm run build</code> in frontend/.</p>", status_code=503)
+            return HTMLResponse(
+                "<!doctype html><title>LabAdda</title><p>Frontend not built. "
+                "Run <code>npm run build</code> in frontend/.</p>",
+                status_code=503,
+            )
         html = (dist / "index.html").read_text()
         config = json.dumps({"base": base, "instance": settings.instance})
         inject = f'<base href="{base}/"><script>window.__LABADDA__={config}</script>'
-        return HTMLResponse(html.replace("<head>", "<head>" + inject, 1),
-                            headers={"Cache-Control": "no-cache"})
+        return HTMLResponse(
+            html.replace("<head>", "<head>" + inject, 1), headers={"Cache-Control": "no-cache"}
+        )
 
     if base:
+
         @app.get(base, include_in_schema=False)
         def base_redirect():
             return RedirectResponse(f"{base}/", status_code=308)

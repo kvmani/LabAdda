@@ -47,7 +47,9 @@ def digest(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_session(db: Session, user: User, settings: Settings, kind: str = "normal") -> tuple[str, AuthSession]:
+def create_session(
+    db: Session, user: User, settings: Settings, kind: str = "normal"
+) -> tuple[str, AuthSession]:
     token = new_token()
     now = utcnow()
     sess = AuthSession(

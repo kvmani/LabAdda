@@ -29,8 +29,20 @@ MAX_PREVIEW_BYTES = 16_000
 MAX_MESSAGE_BYTES = 32_000
 SEND_TIMEOUT_SECONDS = 10.0  # per client and batch; bounds head-of-line blocking
 # A board-only panel receives board activity only: no chat, feed or other content.
-PANEL_EVENTS = {"board.op", "board.epoch", "board.preview", "presence", "revoked", "access_changed",
-                "subscribed", "subscribe_failed", "session_ended", "hello", "pong", "error"}
+PANEL_EVENTS = {
+    "board.op",
+    "board.epoch",
+    "board.preview",
+    "presence",
+    "revoked",
+    "access_changed",
+    "subscribed",
+    "subscribe_failed",
+    "session_ended",
+    "hello",
+    "pong",
+    "error",
+}
 
 
 @dataclass(eq=False)
@@ -100,8 +112,14 @@ class Hub:
                         writable.add(ws_id)
             return True, readable, writable
 
-    async def _send(self, conn: Connection, payload: dict, *,
-                    workspace_id: uuid.UUID | None = None, generation: int | None = None) -> None:
+    async def _send(
+        self,
+        conn: Connection,
+        payload: dict,
+        *,
+        workspace_id: uuid.UUID | None = None,
+        generation: int | None = None,
+    ) -> None:
         if conn.panel_workspace is not None and payload.get("type") not in PANEL_EVENTS:
             return
         try:
@@ -109,8 +127,13 @@ class Hub:
                 async with conn.send_lock:
                     if conn not in self.connections:
                         return
-                    if workspace_id is not None and (workspace_id not in conn.subscriptions or
-                            (generation is not None and generation != conn.subscription_generations.get(workspace_id, 0))):
+                    if workspace_id is not None and (
+                        workspace_id not in conn.subscriptions
+                        or (
+                            generation is not None
+                            and generation != conn.subscription_generations.get(workspace_id, 0)
+                        )
+                    ):
                         return
                     await conn.ws.send_text(json.dumps(payload))
         except Exception:
@@ -125,12 +148,19 @@ class Hub:
         archive/posting-policy/direct-steward rule.
         """
         with self.factory() as db:
-            sessions = {s.id: s for s in db.scalars(select(AuthSession).where(
-                AuthSession.id.in_({c.session_id for c in conns})))}
+            sessions = {
+                s.id: s
+                for s in db.scalars(
+                    select(AuthSession).where(AuthSession.id.in_({c.session_id for c in conns}))
+                )
+            }
             workspace = db.get(Workspace, workspace_id)
             readers = policy.eligible_reader_ids(db, workspace) if workspace is not None else set()
-            stewards = {uid for uid, role in policy.direct_grants_for_workspace(db, workspace_id).items()
-                        if role == "steward"}
+            stewards = {
+                uid
+                for uid, role in policy.direct_grants_for_workspace(db, workspace_id).items()
+                if role == "steward"
+            }
             result = {}
             for conn in conns:
                 sess = sessions.get(conn.session_id)
@@ -138,8 +168,11 @@ class Hub:
                     result[conn] = (False, False, False)
                     continue
                 readable = conn.user_id in readers  # eligible readers are already active users
-                writable = readable and not workspace.archived and (
-                    workspace.posting_policy == "open" or conn.user_id in stewards)
+                writable = (
+                    readable
+                    and not workspace.archived
+                    and (workspace.posting_policy == "open" or conn.user_id in stewards)
+                )
                 result[conn] = (True, readable, writable)
             return result
 
@@ -180,8 +213,11 @@ class Hub:
         decisions = await asyncio.to_thread(self._check_many, targets, workspace_id)
         sends = []
         for conn in targets:
-            if (conn not in self.connections or workspace_id not in conn.subscriptions
-                    or generations[conn] != conn.subscription_generations.get(workspace_id, 0)):
+            if (
+                conn not in self.connections
+                or workspace_id not in conn.subscriptions
+                or generations[conn] != conn.subscription_generations.get(workspace_id, 0)
+            ):
                 continue
             ok, readable, writable = decisions[conn]
             if not ok:
@@ -193,13 +229,19 @@ class Hub:
                 sends.append(self._send_all(conn, workspace_id, events, generations[conn]))
         await asyncio.gather(*sends)
 
-    async def _send_all(self, conn: Connection, workspace_id: uuid.UUID, events: list[dict], generation: int) -> None:
+    async def _send_all(
+        self, conn: Connection, workspace_id: uuid.UUID, events: list[dict], generation: int
+    ) -> None:
         """Send a batch to one client; a client that cannot keep up is closed rather than stalling the
         workspace's ordered fanout. It reconnects and catches up from committed state."""
+
         async def send() -> None:
             for event in events:
-                if (conn not in self.connections or workspace_id not in conn.subscriptions
-                        or generation != conn.subscription_generations.get(workspace_id, 0)):
+                if (
+                    conn not in self.connections
+                    or workspace_id not in conn.subscriptions
+                    or generation != conn.subscription_generations.get(workspace_id, 0)
+                ):
                     return
                 await self._send(conn, event, workspace_id=workspace_id, generation=generation)
 
@@ -245,8 +287,11 @@ class Hub:
                 await self._close(conn, "session_ended")
                 continue
             for ws_id, generation in generations.items():
-                if (conn not in self.connections or ws_id not in conn.subscriptions
-                        or generation != conn.subscription_generations.get(ws_id, 0)):
+                if (
+                    conn not in self.connections
+                    or ws_id not in conn.subscriptions
+                    or generation != conn.subscription_generations.get(ws_id, 0)
+                ):
                     continue
                 if ws_id not in readable:
                     await self._drop(conn, ws_id)
@@ -261,10 +306,18 @@ class Hub:
         for c in self.connections:
             if workspace_id in c.subscriptions:
                 present[str(c.user_id)] = c.display_name
-        payload = {"type": "presence", "workspace_id": str(workspace_id),
-                   "users": [{"id": k, "display_name": v} for k, v in sorted(present.items(), key=lambda kv: kv[1])]}
-        await asyncio.gather(*(self._send(c, payload, workspace_id=workspace_id)
-                               for c in list(self.connections) if workspace_id in c.subscriptions))
+        payload = {
+            "type": "presence",
+            "workspace_id": str(workspace_id),
+            "users": [{"id": k, "display_name": v} for k, v in sorted(present.items(), key=lambda kv: kv[1])],
+        }
+        await asyncio.gather(
+            *(
+                self._send(c, payload, workspace_id=workspace_id)
+                for c in list(self.connections)
+                if workspace_id in c.subscriptions
+            )
+        )
 
     # ---- socket endpoint ------------------------------------------------
     def _authenticate(self, token: str | None, kind: str):
@@ -287,13 +340,20 @@ class Hub:
             return
         panel = ws.query_params.get("panel") == "1"
         cookie = self.settings.panel_cookie_name if panel else self.settings.cookie_name
-        ident = await asyncio.to_thread(self._authenticate, ws.cookies.get(cookie), "board" if panel else "normal")
+        ident = await asyncio.to_thread(
+            self._authenticate, ws.cookies.get(cookie), "board" if panel else "normal"
+        )
         if ident is None:
             await ws.close(code=4401)
             return
         await ws.accept()
-        conn = Connection(ws=ws, session_id=ident[0], user_id=ident[1], display_name=ident[2],
-                          panel_workspace=ident[3] if panel else None)
+        conn = Connection(
+            ws=ws,
+            session_id=ident[0],
+            user_id=ident[1],
+            display_name=ident[2],
+            panel_workspace=ident[3] if panel else None,
+        )
         self.connections.add(conn)
         await self._send(conn, {"type": "hello"})
         try:
@@ -349,11 +409,20 @@ class Hub:
             await self._presence(ws_id)
         elif kind == "board.preview":
             # Transient stroke preview: bounded, never stored, only from writers.
-            if (conn not in self.connections or ws_id not in conn.subscriptions or ws_id not in conn.writable
-                    or len(json.dumps(msg.get("stroke", {}))) > MAX_PREVIEW_BYTES):
+            if (
+                conn not in self.connections
+                or ws_id not in conn.subscriptions
+                or ws_id not in conn.writable
+                or len(json.dumps(msg.get("stroke", {}))) > MAX_PREVIEW_BYTES
+            ):
                 return
-            event = {"type": "board.preview", "workspace_id": str(ws_id), "actor_id": str(conn.user_id),
-                     "stroke": msg.get("stroke"), "preview_id": str(msg.get("preview_id", ""))[:64],
-                     "done": bool(msg.get("done"))}
+            event = {
+                "type": "board.preview",
+                "workspace_id": str(ws_id),
+                "actor_id": str(conn.user_id),
+                "stroke": msg.get("stroke"),
+                "preview_id": str(msg.get("preview_id", ""))[:64],
+                "done": bool(msg.get("done")),
+            }
             for other in [c for c in list(self.connections) if ws_id in c.subscriptions and c is not conn]:
                 await self._send(other, event, workspace_id=ws_id)

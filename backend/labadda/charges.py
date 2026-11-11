@@ -31,7 +31,9 @@ TEXT_TYPES = ("post", "chat", "note")
 
 
 def board_object_bytes(kind: str, data: dict) -> int:
-    canonical = json.dumps({"kind": kind, "data": data}, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    canonical = json.dumps(
+        {"kind": kind, "data": data}, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return len(canonical.encode("utf-8"))
 
 
@@ -53,7 +55,9 @@ def charge_board_object(db: Session, workspace_id: uuid.UUID, object_id: str, ob
     key = board_key(workspace_id, object_id)
     if obj is None or not obj["alive"]:
         db.execute(
-            delete(ContentCharge).where(ContentCharge.item_type == "board_object", ContentCharge.item_key == key)
+            delete(ContentCharge).where(
+                ContentCharge.item_type == "board_object", ContentCharge.item_key == key
+            )
         )
         return
     values = {
@@ -105,7 +109,10 @@ def recharge_board(db: Session, board: Board, objects: dict[str, dict]) -> None:
 def summary(db: Session, user_id: uuid.UUID | None = None) -> dict:
     """Charge totals per type and state, plus board coverage. Metadata only."""
     query = select(
-        ContentCharge.item_type, ContentCharge.state, func.count(), func.coalesce(func.sum(ContentCharge.bytes), 0)
+        ContentCharge.item_type,
+        ContentCharge.state,
+        func.count(),
+        func.coalesce(func.sum(ContentCharge.bytes), 0),
     )
     if user_id is not None:
         query = query.where(ContentCharge.user_id == user_id)
@@ -113,11 +120,16 @@ def summary(db: Session, user_id: uuid.UUID | None = None) -> dict:
         t: {"live_bytes": 0, "live_items": 0, "removed_bytes": 0, "removed_items": 0}
         for t in (*TEXT_TYPES, "board_object")
     }
-    for item_type, state, count, total in db.execute(query.group_by(ContentCharge.item_type, ContentCharge.state)):
+    for item_type, state, count, total in db.execute(
+        query.group_by(ContentCharge.item_type, ContentCharge.state)
+    ):
         by_type[item_type][f"{state}_bytes"] = int(total)
         by_type[item_type][f"{state}_items"] = count
-    incomplete = db.scalar(select(func.count()).select_from(Board).where(
-        Board.revision > 0, Board.charges_epoch.is_distinct_from(Board.epoch)))
+    incomplete = db.scalar(
+        select(func.count())
+        .select_from(Board)
+        .where(Board.revision > 0, Board.charges_epoch.is_distinct_from(Board.epoch))
+    )
     return {
         "methods": {"text": TEXT_METHOD, "board": BOARD_METHOD},
         "by_type": by_type,

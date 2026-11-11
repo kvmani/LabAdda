@@ -48,23 +48,46 @@ def _normalize(code: str) -> str:
 
 
 @router.post("/pairings", status_code=201)
-def create_pairing(body: PairingBody, actor: Actor = Depends(current_actor), db: Session = Depends(get_db),
-                   settings: Settings = Depends(get_settings)):
+def create_pairing(
+    body: PairingBody,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     access = policy.require_read(db, actor.user, body.workspace_id)
     code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(8))
-    pairing = PanelPairing(code_hash=digest(code), user_id=actor.id, workspace_id=body.workspace_id,
-                           expires_at=utcnow() + timedelta(seconds=settings.panel_pairing_seconds))
+    pairing = PanelPairing(
+        code_hash=digest(code),
+        user_id=actor.id,
+        workspace_id=body.workspace_id,
+        expires_at=utcnow() + timedelta(seconds=settings.panel_pairing_seconds),
+    )
     db.add(pairing)
-    audit.record(db, actor=actor.user, action="panel.pairing_created", scope_type="workspace",
-                 scope_id=body.workspace_id)
+    audit.record(
+        db,
+        actor=actor.user,
+        action="panel.pairing_created",
+        scope_type="workspace",
+        scope_id=body.workspace_id,
+    )
     db.commit()
-    return {"code": f"{code[:4]}-{code[4:]}", "expires_at": iso(pairing.expires_at),
-            "workspace": {"id": str(access.workspace.id), "name": access.workspace.name}}
+    return {
+        "code": f"{code[:4]}-{code[4:]}",
+        "expires_at": iso(pairing.expires_at),
+        "workspace": {"id": str(access.workspace.id), "name": access.workspace.name},
+    }
 
 
 def _set_cookie(response: Response, token: str, settings: Settings) -> None:
-    response.set_cookie(settings.panel_cookie_name, token, httponly=True, secure=settings.cookie_secure,
-                        samesite="strict", path=settings.cookie_path, max_age=settings.panel_absolute_minutes * 60)
+    response.set_cookie(
+        settings.panel_cookie_name,
+        token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="strict",
+        path=settings.cookie_path,
+        max_age=settings.panel_absolute_minutes * 60,
+    )
 
 
 def _end(db: Session, sess: AuthSession, reason: str) -> None:
@@ -74,16 +97,26 @@ def _end(db: Session, sess: AuthSession, reason: str) -> None:
 
 
 @router.post("/claim")
-def claim(body: ClaimBody, request: Request, response: Response, db: Session = Depends(get_db),
-          settings: Settings = Depends(get_settings)):
+def claim(
+    body: ClaimBody,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     if not origin_allowed(request.headers.get("origin"), request.headers.get("host"), settings):
         raise Forbidden("bad_origin", "Request origin is not trusted.")
     client = request.client.host if request.client else "unknown"
-    if not login_limiter.hit(f"panel:{client}", settings.login_attempts_per_window, settings.login_window_seconds):
+    if not login_limiter.hit(
+        f"panel:{client}", settings.login_attempts_per_window, settings.login_window_seconds
+    ):
         raise TooMany()
-    invalid = Invalid("code_invalid", "That code is not valid or has expired. Create a new one on your computer.")
-    pairing = db.scalar(select(PanelPairing).where(PanelPairing.code_hash == digest(_normalize(body.code)))
-                        .with_for_update())
+    invalid = Invalid(
+        "code_invalid", "That code is not valid or has expired. Create a new one on your computer."
+    )
+    pairing = db.scalar(
+        select(PanelPairing).where(PanelPairing.code_hash == digest(_normalize(body.code))).with_for_update()
+    )
     now = utcnow()
     if pairing is None or pairing.used_at is not None or pairing.expires_at <= now:
         raise invalid
@@ -100,8 +133,14 @@ def claim(body: ClaimBody, request: Request, response: Response, db: Session = D
     token, sess = create_session(db, user, settings, kind="board")
     sess.workspace_id = pairing.workspace_id
     sess.expires_at = now + timedelta(minutes=settings.panel_absolute_minutes)
-    audit.record(db, actor=user, action="panel.start", scope_type="workspace", scope_id=pairing.workspace_id,
-                 target_id=user.id)
+    audit.record(
+        db,
+        actor=user,
+        action="panel.start",
+        scope_type="workspace",
+        scope_id=pairing.workspace_id,
+        target_id=user.id,
+    )
     db.commit()
     _set_cookie(response, token, settings)
     return _session_json(db, user, sess, settings)
@@ -111,16 +150,27 @@ def _session_json(db: Session, user: User, sess: AuthSession, settings: Settings
     access = policy.resolve(db, user, sess.workspace_id)
     if access is None:
         raise NotFound()
-    return {"user": {"id": str(user.id), "display_name": user.display_name},
-            "workspace": {"id": str(access.workspace.id), "name": access.workspace.name,
-                          "can_write": access.can_write, "archived": access.workspace.archived},
-            "csrf_token": sess.csrf_token, "expires_at": iso(sess.expires_at),
-            "idle_seconds": settings.panel_idle_seconds, "instance": settings.instance}
+    return {
+        "user": {"id": str(user.id), "display_name": user.display_name},
+        "workspace": {
+            "id": str(access.workspace.id),
+            "name": access.workspace.name,
+            "can_write": access.can_write,
+            "archived": access.workspace.archived,
+        },
+        "csrf_token": sess.csrf_token,
+        "expires_at": iso(sess.expires_at),
+        "idle_seconds": settings.panel_idle_seconds,
+        "instance": settings.instance,
+    }
 
 
 @router.get("/session")
-def panel_session(actor: Actor = Depends(panel_actor), db: Session = Depends(get_db),
-                  settings: Settings = Depends(get_settings)):
+def panel_session(
+    actor: Actor = Depends(panel_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     return _session_json(db, actor.user, actor.session, settings)
 
 
@@ -131,13 +181,25 @@ def activity(actor: Actor = Depends(panel_actor), settings: Settings = Depends(g
 
 
 @router.post("/end")
-def end(body: EndBody, request: Request, response: Response, actor: Actor = Depends(panel_actor),
-        db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+def end(
+    body: EndBody,
+    request: Request,
+    response: Response,
+    actor: Actor = Depends(panel_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     reason = body.reason if body.reason in END_REASONS else "ended"
     sess = db.get(AuthSession, actor.session.id)
     _end(db, sess, reason)
-    audit.record(db, actor=actor.user, action="panel.lock" if reason == "idle_lock" else "panel.end",
-                 scope_type="workspace", scope_id=sess.workspace_id, target_id=actor.id)
+    audit.record(
+        db,
+        actor=actor.user,
+        action="panel.lock" if reason == "idle_lock" else "panel.end",
+        scope_type="workspace",
+        scope_id=sess.workspace_id,
+        target_id=actor.id,
+    )
     db.commit()
     response.delete_cookie(settings.panel_cookie_name, path=settings.cookie_path)
     request.app.state.hub.revalidate_user(actor.id)

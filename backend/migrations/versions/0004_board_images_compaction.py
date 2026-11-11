@@ -3,6 +3,7 @@
 Revision ID: 0004
 Revises: 0003
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
@@ -19,10 +20,13 @@ def upgrade() -> None:
     op.create_foreign_key("fk_assets_board_workspace", "assets", "workspaces", ["board_workspace_id"], ["id"])
     op.drop_constraint("ck_asset_committed_owner", "assets", type_="check")
     op.create_check_constraint(
-        "ck_asset_committed_owner", "assets",
-        "status = 'provisional' or post_id is not null or board_workspace_id is not null")
-    op.create_check_constraint("ck_asset_single_owner", "assets",
-                               "post_id is null or board_workspace_id is null")
+        "ck_asset_committed_owner",
+        "assets",
+        "status = 'provisional' or post_id is not null or board_workspace_id is not null",
+    )
+    op.create_check_constraint(
+        "ck_asset_single_owner", "assets", "post_id is null or board_workspace_id is null"
+    )
     op.create_index("ix_assets_board", "assets", ["board_workspace_id"])
 
     # Operations at or below base_revision were folded into board_snapshots and removed.
@@ -57,6 +61,8 @@ def downgrade() -> None:
     op.drop_index("ix_assets_board", table_name="assets")
     op.drop_constraint("ck_asset_single_owner", "assets", type_="check")
     op.drop_constraint("ck_asset_committed_owner", "assets", type_="check")
-    op.create_check_constraint("ck_asset_committed_owner", "assets", "status = 'provisional' or post_id is not null")
+    op.create_check_constraint(
+        "ck_asset_committed_owner", "assets", "status = 'provisional' or post_id is not null"
+    )
     op.drop_constraint("fk_assets_board_workspace", "assets", type_="foreignkey")
     op.drop_column("assets", "board_workspace_id")

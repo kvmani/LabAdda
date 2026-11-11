@@ -19,23 +19,45 @@ log = logging.getLogger("labadda.scheduler")
 def process_due_reminders(db: Session, now: datetime | None = None, batch: int = 100) -> int:
     now = now or utcnow()
     created = 0
-    posts = db.scalars(select(Post).where(Post.remind_at.is_not(None), Post.remind_at <= now,
-                                          Post.reminder_processed_at.is_(None))
-                       .order_by(Post.remind_at).limit(batch).with_for_update(skip_locked=True)).all()
+    posts = db.scalars(
+        select(Post)
+        .where(Post.remind_at.is_not(None), Post.remind_at <= now, Post.reminder_processed_at.is_(None))
+        .order_by(Post.remind_at)
+        .limit(batch)
+        .with_for_update(skip_locked=True)
+    ).all()
     for post in posts:
         if post.deleted_at is None:
             ws = db.get(Workspace, post.workspace_id)
             # Eligibility is evaluated now, so members removed before delivery get nothing.
             recipients = policy.eligible_reader_ids(db, ws)
-            created += notify.create(db, recipients=recipients, kind="reminder", workspace_id=ws.id,
-                                     source_type="post", source_id=post.id, occurrence=post.remind_at.isoformat())
+            created += notify.create(
+                db,
+                recipients=recipients,
+                kind="reminder",
+                workspace_id=ws.id,
+                source_type="post",
+                source_id=post.id,
+                occurrence=post.remind_at.isoformat(),
+            )
         post.reminder_processed_at = now
-    notes = db.scalars(select(Note).where(Note.remind_at.is_not(None), Note.remind_at <= now,
-                                          Note.reminder_processed_at.is_(None))
-                       .order_by(Note.remind_at).limit(batch).with_for_update(skip_locked=True)).all()
+    notes = db.scalars(
+        select(Note)
+        .where(Note.remind_at.is_not(None), Note.remind_at <= now, Note.reminder_processed_at.is_(None))
+        .order_by(Note.remind_at)
+        .limit(batch)
+        .with_for_update(skip_locked=True)
+    ).all()
     for note in notes:
-        created += notify.create(db, recipients=[note.owner_id], kind="reminder", workspace_id=None,
-                                 source_type="note", source_id=note.id, occurrence=note.remind_at.isoformat())
+        created += notify.create(
+            db,
+            recipients=[note.owner_id],
+            kind="reminder",
+            workspace_id=None,
+            source_type="note",
+            source_id=note.id,
+            occurrence=note.remind_at.isoformat(),
+        )
         note.reminder_processed_at = now
     db.commit()
     return created

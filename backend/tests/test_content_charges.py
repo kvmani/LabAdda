@@ -33,7 +33,10 @@ def stroke(op_id, obj, epoch=1, points=((0, 0), (5, 5))):
         "epoch": epoch,
         "type": "add",
         "object_id": obj,
-        "payload": {"kind": "stroke", "data": {"points": [list(p) for p in points], "color": "#1f2933", "width": 3}},
+        "payload": {
+            "kind": "stroke",
+            "data": {"points": [list(p) for p in points], "color": "#1f2933", "width": 3},
+        },
     }
 
 
@@ -61,7 +64,10 @@ def test_post_reply_chat_and_note_use_utf8_octets(as_user, ids, db_factory):
     assert charge(db_factory, "post", post["id"]).bytes == 7
     ben.delete(f"/posts/{post['id']}")
     removed = charge(db_factory, "post", post["id"])
-    assert (removed.state, removed.bytes) == ("removed", 7)  # body is still stored: charged as removed, not live
+    assert (removed.state, removed.bytes) == (
+        "removed",
+        7,
+    )  # body is still stored: charged as removed, not live
     msg = ben.post(f"/workspaces/{ws(ids)}/chat", json={"body": MULTIBYTE, "client_id": "chg-0001"}).json()
     assert charge(db_factory, "chat", msg["id"]).bytes == 26
     note = ben.post("/notes", json={"title": "é", "body": "abc"}).json()
@@ -101,7 +107,9 @@ def test_board_object_lifecycle(as_user, ids, db_factory):
     ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "s1"))
     key = board_key(uuid.UUID(w), "s1")
     # Charged from the committed payload, where the server normalizes coordinates to floats.
-    expected = board_object_bytes("stroke", {"points": [[0.0, 0.0], [5.0, 5.0]], "color": "#1f2933", "width": 3.0})
+    expected = board_object_bytes(
+        "stroke", {"points": [[0.0, 0.0], [5.0, 5.0]], "color": "#1f2933", "width": 3.0}
+    )
     row = charge(db_factory, "board_object", key)
     assert (row.bytes, row.method, str(row.user_id)) == (expected, BOARD_METHOD, ids["users"]["ben"])
     sticky = {
@@ -124,11 +132,18 @@ def test_board_object_lifecycle(as_user, ids, db_factory):
     # Moves do not change the logical charge; erase removes it; undo of the erase restores it.
     asha.post(
         f"/workspaces/{w}/board/ops",
-        json={"op_id": "op-ash-002", "epoch": 1, "type": "move", "object_id": "n1", "payload": {"dx": 10, "dy": 10}},
+        json={
+            "op_id": "op-ash-002",
+            "epoch": 1,
+            "type": "move",
+            "object_id": "n1",
+            "payload": {"dx": 10, "dy": 10},
+        },
     )
     assert charge(db_factory, "board_object", board_key(uuid.UUID(w), "n1")).bytes == note_bytes
     asha.post(
-        f"/workspaces/{w}/board/ops", json={"op_id": "op-ash-003", "epoch": 1, "type": "erase", "object_id": "s1"}
+        f"/workspaces/{w}/board/ops",
+        json={"op_id": "op-ash-003", "epoch": 1, "type": "erase", "object_id": "s1"},
     )
     assert charge(db_factory, "board_object", key) is None
     asha.post(f"/workspaces/{w}/board/ops", json={"op_id": "op-ash-004", "epoch": 1, "type": "undo"})
@@ -146,12 +161,16 @@ def test_board_object_lifecycle(as_user, ids, db_factory):
 def test_restore_recharges_restored_objects_to_original_authors(as_user, ids, db_factory):
     ben, asha = as_user("ben"), as_user("asha")
     w = ws(ids)
-    rev = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "keep")).json()["committed"]["revision"]
+    rev = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "keep")).json()["committed"][
+        "revision"
+    ]
     ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-002", "drop"))
     asha.post(f"/workspaces/{w}/board/restore", json={"revision": rev})
     with db_factory() as db:
         rows = db.scalars(select(ContentCharge).where(ContentCharge.item_type == "board_object")).all()
-    assert [(r.item_key, str(r.user_id)) for r in rows] == [(board_key(uuid.UUID(w), "keep"), ids["users"]["ben"])]
+    assert [(r.item_key, str(r.user_id)) for r in rows] == [
+        (board_key(uuid.UUID(w), "keep"), ids["users"]["ben"])
+    ]
     assert reconcile(db_factory)["summary"]["issue_count"] == 0
 
 
@@ -196,7 +215,9 @@ def test_concurrent_drawing_keeps_ledger_exact(as_user, ids, db_factory):
         for i in range(12):
             api.post(f"/workspaces/{w}/board/ops", json=stroke(f"op-{tag}-{i:03d}", f"{tag}{i}"))
             if i % 3 == 2:
-                api.post(f"/workspaces/{w}/board/ops", json={"op_id": f"op-{tag}-u{i}", "epoch": 1, "type": "undo"})
+                api.post(
+                    f"/workspaces/{w}/board/ops", json={"op_id": f"op-{tag}-u{i}", "epoch": 1, "type": "undo"}
+                )
 
     threads = [threading.Thread(target=draw, args=(u, t)) for u, t in zip(users, ("b", "a"), strict=True)]
     [t.start() for t in threads]
@@ -212,7 +233,9 @@ def tamper(db_factory, ids):
     """Bypass the triggers/writers to create every drift class."""
     with db_factory() as db:
         post_ids = [str(r) for r in db.scalars(text("select id from posts order by id"))]
-        db.execute(text("update content_charges set bytes = bytes + 99 where item_key = :k"), {"k": post_ids[0]})
+        db.execute(
+            text("update content_charges set bytes = bytes + 99 where item_key = :k"), {"k": post_ids[0]}
+        )
         db.execute(text("delete from content_charges where item_key = :k"), {"k": post_ids[1]})
         db.execute(
             text(
@@ -238,7 +261,8 @@ def seed_content(as_user, ids):
 def ledger_snapshot(db_factory):
     with db_factory() as db:
         return sorted(
-            (r.item_type, r.item_key, str(r.user_id), r.state, r.bytes) for r in db.scalars(select(ContentCharge))
+            (r.item_type, r.item_key, str(r.user_id), r.state, r.bytes)
+            for r in db.scalars(select(ContentCharge))
         )
 
 
@@ -250,7 +274,12 @@ def test_dry_run_reports_every_drift_class_without_mutation(as_user, ids, db_fac
     before = ledger_snapshot(db_factory)
     result = reconcile(db_factory)
     s = result["summary"]
-    assert s["issue_counts"] == {"stale_bytes": 1, "missing_charge": 1, "orphan_charge": 1, "stale_attribution": 1}
+    assert s["issue_counts"] == {
+        "stale_bytes": 1,
+        "missing_charge": 1,
+        "orphan_charge": 1,
+        "stale_attribution": 1,
+    }
     assert s["correction_count"] == 4 and s["applied_count"] == 0 and len(s["plan_digest"]) == 64
     assert ledger_snapshot(db_factory) == before
     assert MULTIBYTE not in json.dumps(result) and "post 0" not in json.dumps(result)
@@ -284,7 +313,9 @@ def test_apply_requires_attestation_and_matching_plan(as_user, ids, db_factory):
     assert sum(e["action"] == "storage.charge_reconcile" for e in events) >= 4
     with db_factory() as db:
         assert (
-            db.scalar(select(StorageInspection).where(StorageInspection.id == uuid.UUID(applied["id"]))).status
+            db.scalar(
+                select(StorageInspection).where(StorageInspection.id == uuid.UUID(applied["id"]))
+            ).status
             == "completed"
         )
 
@@ -313,9 +344,9 @@ def test_bounded_batches_resume_with_cursors(as_user, ids, db_factory):
         api.post(f"/workspaces/{ws(ids, key)}/board/ops", json=stroke(f"op-{key[:6]}-01", "x"))
     seen_items, seen_boards, cursor_item, cursor_board = 0, 0, None, None
     while True:
-        s = reconcile(db_factory, max_items=2, max_boards=1, after_item=cursor_item, after_board=cursor_board)[
-            "summary"
-        ]
+        s = reconcile(
+            db_factory, max_items=2, max_boards=1, after_item=cursor_item, after_board=cursor_board
+        )["summary"]
         assert s["checked_items"] <= 2 and s["checked_boards"] <= 1
         seen_items += s["checked_items"]
         seen_boards += s["checked_boards"]
@@ -345,7 +376,12 @@ def test_budget_exhaustion_stops_without_plan(as_user, ids, db_factory, monkeypa
 
 
 def test_invalid_arguments_refused(db_factory, ids):
-    for kwargs in ({"max_items": 0}, {"max_seconds": 0}, {"after_item": "board_object:x"}, {"after_item": "nocolon"}):
+    for kwargs in (
+        {"max_items": 0},
+        {"max_seconds": 0},
+        {"after_item": "board_object:x"},
+        {"after_item": "nocolon"},
+    ):
         with pytest.raises(ValueError):
             reconcile(db_factory, **kwargs)
 
@@ -368,8 +404,8 @@ def test_migration_method_matches_code():
     import importlib.util
     from pathlib import Path
 
-    path = Path(__file__).resolve().parents[1] / 'migrations' / 'versions' / '0014_content_charges.py'
-    spec = importlib.util.spec_from_file_location('m0014', path)
+    path = Path(__file__).resolve().parents[1] / "migrations" / "versions" / "0014_content_charges.py"
+    spec = importlib.util.spec_from_file_location("m0014", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.TEXT_METHOD == TEXT_METHOD
@@ -402,10 +438,15 @@ def test_migration_backfills_text_and_leaves_boards_unknown(migrated):
                 ),
                 {"w": space, "u": user, "b": MULTIBYTE},
             )
-            conn.execute(text("insert into boards (workspace_id, epoch, revision) values (:w, 1, 7)"), {"w": space})
+            conn.execute(
+                text("insert into boards (workspace_id, epoch, revision) values (:w, 1, 7)"), {"w": space}
+            )
         command.upgrade(cfg, "head")
         with engine.connect() as conn:
-            assert conn.execute(text("select bytes from content_charges where item_type = 'post'")).scalar() == 26
+            assert (
+                conn.execute(text("select bytes from content_charges where item_type = 'post'")).scalar()
+                == 26
+            )
             assert conn.execute(text("select charges_epoch from boards")).scalar() is None
         command.downgrade(cfg, "0013")  # derived data: downgrade is allowed and keeps content
         with engine.connect() as conn:

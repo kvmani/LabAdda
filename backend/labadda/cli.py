@@ -34,7 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     serve = sub.add_parser("serve", help="run the ASGI server on loopback")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
-    admin = sub.add_parser("create-admin", help="create an administrator and print a one-time activation token")
+    admin = sub.add_parser(
+        "create-admin", help="create an administrator and print a one-time activation token"
+    )
     admin.add_argument("username")
     admin.add_argument("--display-name", default=None)
     sub.add_parser("reminders", help="process due reminders once")
@@ -61,19 +63,26 @@ def main(argv: list[str] | None = None) -> int:
     queue_inventory.add_argument("--max-seconds", type=int, default=30)
     run_inventory = sub.add_parser("run-inventory", help="run one queued inventory job with a durable lease")
     run_inventory.add_argument("job_id", type=uuid.UUID)
-    run_inventory.add_argument("--retry", action="store_true", help="explicitly retry an expired, partial, failed or paused job")
-    cancel_inventory = sub.add_parser("cancel-inventory", help="cancel a queued or active inventory job at its next checkpoint")
+    run_inventory.add_argument(
+        "--retry", action="store_true", help="explicitly retry an expired, partial, failed or paused job"
+    )
+    cancel_inventory = sub.add_parser(
+        "cancel-inventory", help="cancel a queued or active inventory job at its next checkpoint"
+    )
     cancel_inventory.add_argument("job_id", type=uuid.UUID)
-    reconcile = sub.add_parser("reconcile-previews", help="dry-run or explicitly apply verified historical preview metadata")
+    reconcile = sub.add_parser(
+        "reconcile-previews", help="dry-run or explicitly apply verified historical preview metadata"
+    )
     reconcile.add_argument("--max-assets", type=int, default=100)
-    reconcile.add_argument("--max-bytes", type=int, default=100*1024**2)
+    reconcile.add_argument("--max-bytes", type=int, default=100 * 1024**2)
     reconcile.add_argument("--max-seconds", type=float, default=30)
     reconcile.add_argument("--after-asset", type=uuid.UUID)
     reconcile.add_argument("--apply", action="store_true")
     reconcile.add_argument("--expected-plan")
     reconcile.add_argument("--writers-quiesced", action="store_true")
-    charges = sub.add_parser("reconcile-charges",
-                             help="dry-run or explicitly apply text/board logical-charge ledger corrections")
+    charges = sub.add_parser(
+        "reconcile-charges", help="dry-run or explicitly apply text/board logical-charge ledger corrections"
+    )
     charges.add_argument("--max-items", type=int, default=10_000)
     charges.add_argument("--max-boards", type=int, default=50)
     charges.add_argument("--max-board-objects", type=int, default=200_000)
@@ -90,39 +99,63 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "reconcile-charges":
         from .charge_reconciliation import reconcile_content_charges
+
         try:
             result = reconcile_content_charges(
-                session_factory(settings.database_url), max_items=args.max_items, max_boards=args.max_boards,
-                max_board_objects=args.max_board_objects, max_seconds=args.max_seconds,
-                after_item=args.after_item, after_board=args.after_board, apply=args.apply,
-                expected_plan=args.expected_plan, writers_quiesced=args.writers_quiesced)
+                session_factory(settings.database_url),
+                max_items=args.max_items,
+                max_boards=args.max_boards,
+                max_board_objects=args.max_board_objects,
+                max_seconds=args.max_seconds,
+                after_item=args.after_item,
+                after_board=args.after_board,
+                apply=args.apply,
+                expected_plan=args.expected_plan,
+                writers_quiesced=args.writers_quiesced,
+            )
             print(json.dumps(result))
             clean = result["status"] == "completed" and (args.apply or result["summary"]["issue_count"] == 0)
             return 0 if clean else 2
         except Exception:
-            print("Charge reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the "
-                  "reviewed plan. Only ledger rows are ever corrected; no content is changed.", file=sys.stderr)
+            print(
+                "Charge reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the "
+                "reviewed plan. Only ledger rows are ever corrected; no content is changed.",
+                file=sys.stderr,
+            )
             return 2
 
     if args.cmd == "reconcile-previews":
         from .preview_reconciliation import reconcile_previews
+
         try:
-            result = reconcile_previews(session_factory(settings.database_url), settings.asset_dir,
-                max_assets=args.max_assets, max_bytes=args.max_bytes, max_seconds=args.max_seconds,
+            result = reconcile_previews(
+                session_factory(settings.database_url),
+                settings.asset_dir,
+                max_assets=args.max_assets,
+                max_bytes=args.max_bytes,
+                max_seconds=args.max_seconds,
                 after_asset=args.after_asset,
-                apply=args.apply, expected_plan=args.expected_plan, writers_quiesced=args.writers_quiesced)
+                apply=args.apply,
+                expected_plan=args.expected_plan,
+                writers_quiesced=args.writers_quiesced,
+            )
             print(json.dumps(result))
-            return 0 if result['status'] == 'completed' and result['summary']['issue_count'] == 0 else 2
+            return 0 if result["status"] == "completed" and result["summary"]["issue_count"] == 0 else 2
         except Exception:
-            print('Preview reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the reviewed plan. No files are rewritten or deleted.', file=sys.stderr)
+            print(
+                "Preview reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the reviewed plan. No files are rewritten or deleted.",
+                file=sys.stderr,
+            )
             return 2
 
     if args.cmd in {"queue-inventory", "run-inventory", "cancel-inventory", "show-inventory"}:
         from . import inventory_jobs
+
         try:
             factory = session_factory(settings.database_url)
             if args.cmd == "show-inventory":
                 from .models import InventoryJob
+
                 with factory() as db:
                     job = db.get(InventoryJob, args.job_id)
                     if job is None:
@@ -130,70 +163,119 @@ def main(argv: list[str] | None = None) -> int:
                     print(json.dumps(inventory_jobs.describe(db, job)))
                 return 0
             if args.cmd == "queue-inventory":
-                job_id = inventory_jobs.enqueue(factory, args.request_key, {
-                    'max_entries': args.max_entries, 'max_assets': args.max_assets, 'max_seconds': args.max_seconds})
-                print(json.dumps({'job_id': str(job_id)}))
+                job_id = inventory_jobs.enqueue(
+                    factory,
+                    args.request_key,
+                    {
+                        "max_entries": args.max_entries,
+                        "max_assets": args.max_assets,
+                        "max_seconds": args.max_seconds,
+                    },
+                )
+                print(json.dumps({"job_id": str(job_id)}))
                 return 0
             if args.cmd == "cancel-inventory":
                 inventory_jobs.cancel(factory, args.job_id)
-                print(json.dumps({'job_id': str(args.job_id), 'state': 'cancelled'}))
+                print(json.dumps({"job_id": str(args.job_id), "state": "cancelled"}))
                 return 0
             result = inventory_jobs.run(factory, settings.asset_dir, args.job_id, retry=args.retry)
             print(json.dumps(result))
-            return 0 if result['summary']['selected_pass_complete'] else 2
+            return 0 if result["summary"]["selected_pass_complete"] else 2
         except Exception:
-            print("Inventory job unconfirmed. Inspect its job and attempt records before retrying. "
-                  "No files are modified; expired attempts require explicit --retry.", file=sys.stderr)
+            print(
+                "Inventory job unconfirmed. Inspect its job and attempt records before retrying. "
+                "No files are modified; expired attempts require explicit --retry.",
+                file=sys.stderr,
+            )
             return 2
 
     if args.cmd == "inventory-storage":
         from .inventory import inventory_storage
+
         try:
-            result = inventory_storage(session_factory(settings.database_url), settings.asset_dir,
-                                       max_entries=args.max_entries, max_assets=args.max_assets,
-                                       max_seconds=args.max_seconds)
+            result = inventory_storage(
+                session_factory(settings.database_url),
+                settings.asset_dir,
+                max_entries=args.max_entries,
+                max_assets=args.max_assets,
+                max_seconds=args.max_seconds,
+            )
             print(json.dumps(result))
-            return 0 if result['summary']['selected_pass_complete'] else 2
+            return 0 if result["summary"]["selected_pass_complete"] else 2
         except Exception:
-            print("Inventory unconfirmed. Check its receipt, budgets, asset root and database access. "
-                  "No files were changed or deleted.", file=sys.stderr)
+            print(
+                "Inventory unconfirmed. Check its receipt, budgets, asset root and database access. "
+                "No files were changed or deleted.",
+                file=sys.stderr,
+            )
             return 2
 
     if args.cmd == "inspect-storage":
         from .inspection import inspect_storage
+
         try:
-            result = inspect_storage(session_factory(settings.database_url), settings.asset_dir,
-                                     max_files=args.max_files, max_bytes=args.max_bytes, max_seconds=args.max_seconds)
+            result = inspect_storage(
+                session_factory(settings.database_url),
+                settings.asset_dir,
+                max_files=args.max_files,
+                max_bytes=args.max_bytes,
+                max_seconds=args.max_seconds,
+            )
             print(json.dumps(result))
             return 0 if result["status"] == "completed" and result["summary"]["issue_count"] == 0 else 2
         except Exception:
-            print("Inspection failed. Check budgets, asset root and database access; no files were repaired or removed.", file=sys.stderr)
+            print(
+                "Inspection failed. Check budgets, asset root and database access; no files were repaired or removed.",
+                file=sys.stderr,
+            )
             return 2
 
     if args.cmd == "backup":
         from .recovery import backup as create_backup
+
         try:
-            sha = create_backup(settings.database_url, settings.asset_dir, args.destination,
-                                args.release, writers_quiesced=args.writers_quiesced)
+            sha = create_backup(
+                settings.database_url,
+                settings.asset_dir,
+                args.destination,
+                args.release,
+                writers_quiesced=args.writers_quiesced,
+            )
             print(f"Recovery manifest SHA-256: {sha}")
             return 0
         except Exception:
-            print("Backup failed; no readiness claim. Check stopped writers, paths, database access and PostgreSQL clients.", file=sys.stderr)
+            print(
+                "Backup failed; no readiness claim. Check stopped writers, paths, database access and PostgreSQL clients.",
+                file=sys.stderr,
+            )
             return 2
 
     if args.cmd == "restore":
         from .recovery import restore as restore_backup
         import os
+
         target_url = os.environ.get("LABADDA_RESTORE_DATABASE_URL")
         if not target_url:
             print("Set LABADDA_RESTORE_DATABASE_URL to a distinct empty target.", file=sys.stderr)
             return 2
         try:
-            print(json.dumps(restore_backup(args.bundle, args.manifest_sha256, target_url,
-                                           settings.asset_dir, isolated_target=args.isolated_target)))
+            print(
+                json.dumps(
+                    restore_backup(
+                        args.bundle,
+                        args.manifest_sha256,
+                        target_url,
+                        settings.asset_dir,
+                        isolated_target=args.isolated_target,
+                    )
+                )
+            )
             return 0
         except Exception:
-            print("Restore failed. Keep target isolated; inspect integrity, empty target, clients and access. Never activate a partial restore.", file=sys.stderr)
+            print(
+                "Restore failed. Keep target isolated; inspect integrity, empty target, clients and access. Never activate a partial restore.",
+                file=sys.stderr,
+            )
             return 2
 
     if args.cmd == "migrate":
@@ -214,8 +296,15 @@ def main(argv: list[str] | None = None) -> int:
         import uvicorn
 
         logging.basicConfig(level=logging.INFO, format="%(message)s")
-        uvicorn.run("labadda.app:create_app", factory=True, host=args.host, port=args.port, proxy_headers=True,
-                    forwarded_allow_ips="127.0.0.1", ws_max_size=64 * 1024)
+        uvicorn.run(
+            "labadda.app:create_app",
+            factory=True,
+            host=args.host,
+            port=args.port,
+            proxy_headers=True,
+            forwarded_allow_ips="127.0.0.1",
+            ws_max_size=64 * 1024,
+        )
         return 0
     if args.cmd == "create-admin":
         from sqlalchemy import select

@@ -31,17 +31,25 @@ def test_csrf_required_for_unsafe_requests(as_user, ids):
     ws = ids["workspaces"]["section_a"]
     r = ben.client.post(ben.url(f"/workspaces/{ws}/posts"), json={"body": "no token"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "csrf_failed"
-    r = ben.client.post(ben.url(f"/workspaces/{ws}/posts"), json={"body": "bad"}, headers={"X-CSRF-Token": "x"})
+    r = ben.client.post(
+        ben.url(f"/workspaces/{ws}/posts"), json={"body": "bad"}, headers={"X-CSRF-Token": "x"}
+    )
     assert r.status_code == 403
 
 
 def test_untrusted_origin_rejected(as_user, ids):
     ben = as_user("ben")
-    r = ben.post(f"/workspaces/{ids['workspaces']['section_a']}/posts", json={"body": "x"},
-                 headers={"Origin": "http://evil.example"})
+    r = ben.post(
+        f"/workspaces/{ids['workspaces']['section_a']}/posts",
+        json={"body": "x"},
+        headers={"Origin": "http://evil.example"},
+    )
     assert r.status_code == 403 and r.json()["error"]["code"] == "bad_origin"
-    r = ben.post(f"/workspaces/{ids['workspaces']['section_a']}/posts", json={"body": "ok"},
-                 headers={"Origin": "http://testserver"})
+    r = ben.post(
+        f"/workspaces/{ids['workspaces']['section_a']}/posts",
+        json={"body": "ok"},
+        headers={"Origin": "http://testserver"},
+    )
     assert r.status_code == 201
 
 
@@ -80,10 +88,19 @@ def test_activation_flow_and_single_use(as_user, make_client):
     token = r.json()["activation_token"]
     newbie = make_client()
     assert newbie.login("gita", "anything-at-all").status_code == 401
-    assert newbie.client.post(newbie.url("/auth/activate"), json={"token": token, "password": "short"}).status_code == 422
-    ok = newbie.client.post(newbie.url("/auth/activate"), json={"token": token, "password": "a-long-password"})
+    assert (
+        newbie.client.post(
+            newbie.url("/auth/activate"), json={"token": token, "password": "short"}
+        ).status_code
+        == 422
+    )
+    ok = newbie.client.post(
+        newbie.url("/auth/activate"), json={"token": token, "password": "a-long-password"}
+    )
     assert ok.status_code == 200
-    again = make_client().client.post(newbie.url("/auth/activate"), json={"token": token, "password": "another-password"})
+    again = make_client().client.post(
+        newbie.url("/auth/activate"), json={"token": token, "password": "another-password"}
+    )
     assert again.status_code == 422
     assert make_client().login("gita", "a-long-password").status_code == 200
 
@@ -114,8 +131,10 @@ def test_last_admin_race(as_user, ids, make_client):
         barrier.wait()
         results.append(api.patch(f"/admin/users/{target}", json={"is_admin": False}).status_code)
 
-    threads = [threading.Thread(target=demote, args=(admin, ids["users"]["dana"])),
-               threading.Thread(target=demote, args=(dana, ids["users"]["admin"]))]
+    threads = [
+        threading.Thread(target=demote, args=(admin, ids["users"]["dana"])),
+        threading.Thread(target=demote, args=(dana, ids["users"]["admin"])),
+    ]
     for t in threads:
         t.start()
     for t in threads:
@@ -125,7 +144,9 @@ def test_last_admin_race(as_user, ids, make_client):
     if users.status_code == 200:
         active_admins = [u for u in users.json()["users"] if u["is_admin"] and u["is_active"]]
     else:
-        active_admins = [u for u in dana.get("/admin/users").json()["users"] if u["is_admin"] and u["is_active"]]
+        active_admins = [
+            u for u in dana.get("/admin/users").json()["users"] if u["is_admin"] and u["is_active"]
+        ]
     assert len(active_admins) == 1
 
 
@@ -137,8 +158,10 @@ def test_login_rate_limit(make_client):
 
 def test_admin_actions_are_audited(as_user, ids):
     admin = as_user("admin")
-    admin.put(f"/admin/workspaces/{ids['workspaces']['section_b']}/memberships",
-              json={"user_id": ids["users"]["ben"], "reason": "temporary help"})
+    admin.put(
+        f"/admin/workspaces/{ids['workspaces']['section_b']}/memberships",
+        json={"user_id": ids["users"]["ben"], "reason": "temporary help"},
+    )
     events = admin.get("/admin/audit").json()["events"]
     assert any(e["action"] == "membership.set" and e["reason"] == "temporary help" for e in events)
     assert all("password" not in str(e["detail"]) for e in events)

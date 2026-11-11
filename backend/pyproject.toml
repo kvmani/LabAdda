@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest==8.3.4", "httpx==0.28.1"]
+test = ["pytest==8.3.4", "httpx==0.28.1", "ruff==0.17.4"]
 
 [project.scripts]
 labadda = "labadda.cli:main"
@@ -30,3 +30,15 @@ include = ["labadda*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "PIE", "RET", "S", "BLE", "N", "PL", "RUF"]
+ignore = ["PLR0913", "PLR2004", "S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "PLR0915"]
+"migrations/*" = ["N999"]
