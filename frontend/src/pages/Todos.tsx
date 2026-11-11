@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { invalidate } from "../generation";
-import { accessDenied, api, errorMessage, errorStatus, outcomeUnknown } from "../api";
+import { accessDenied, api, ApiError, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 import { TaskAssignment, type Assignee } from "../components/TaskAssignment";
 import { TaskSource } from "../components/TaskSource";
@@ -288,7 +288,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
     }
   }
   const updates = useTaskUpdates(ws ? [ws.id] : [], () =>
-    failed({ status: 404, message: "This workspace is no longer available." }),
+    failed(new ApiError(404, "not_found", "This workspace is no longer available.")),
   );
   async function loadLists(after?: string) {
     const token = ++generation.current;

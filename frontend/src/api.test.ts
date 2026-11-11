@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, ApiError, setCsrf } from "./api";
+import {
+  accessDenied,
+  api,
+  ApiError,
+  errorCode,
+  errorMessage,
+  errorStatus,
+  outcomeUnknown,
+  setCsrf,
+} from "./api";
 afterEach(() => {
   vi.unstubAllGlobals();
   setCsrf(null);
@@ -54,5 +63,29 @@ describe("upload transport contract", () => {
       ),
     );
     await expect(api("/uploads/requests/synthetic-request-01")).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe("error helpers", () => {
+  it("recognise access denial only from API errors", () => {
+    for (const status of [401, 403, 404])
+      expect(accessDenied(new ApiError(status, "denied", "x"))).toBe(true);
+    expect(accessDenied(new ApiError(409, "conflict", "x"))).toBe(false);
+    // A plain object is not an API error; callers must construct ApiError (see pages/Todos.tsx).
+    expect(accessDenied({ status: 404 })).toBe(false);
+  });
+
+  it("treat no reply and server failures as unknown outcomes", () => {
+    expect(outcomeUnknown(new ApiError(0, "offline", "x"))).toBe(true);
+    expect(outcomeUnknown(new ApiError(503, "unavailable", "x"))).toBe(true);
+    expect(outcomeUnknown(new ApiError(422, "invalid", "x"))).toBe(false);
+    expect(outcomeUnknown(new Error("x"))).toBe(false);
+  });
+
+  it("show the message of any error and a fallback otherwise", () => {
+    expect(errorMessage(new ApiError(404, "not_found", "Not found."))).toBe("Not found.");
+    expect(errorMessage("text")).toBe("Something went wrong. Try again.");
+    expect(errorStatus(new Error("x"))).toBeUndefined();
+    expect(errorCode(new ApiError(409, "stale_revision", "x"))).toBe("stale_revision");
   });
 });
