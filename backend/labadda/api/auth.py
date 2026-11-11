@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -20,7 +18,6 @@ from ..security import (
     digest,
     hash_password,
     login_limiter,
-    new_token,
     revoke_user_sessions,
     utcnow,
     verify_password,
@@ -217,18 +214,3 @@ def change_password(
     db.commit()
     _set_cookie(response, token, settings)
     return session_payload(user, sess, settings)
-
-
-def issue_credential(
-    db: Session, user: User, purpose: str, actor, settings: Settings
-) -> tuple[str, CredentialToken]:
-    token = new_token()
-    cred = CredentialToken(
-        user_id=user.id,
-        token_hash=digest(token),
-        purpose=purpose,
-        expires_at=utcnow() + timedelta(hours=settings.activation_hours),
-        created_by=getattr(actor, "id", None),
-    )
-    db.add(cred)
-    return token, cred

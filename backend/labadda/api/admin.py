@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -13,18 +12,18 @@ from sqlalchemy.orm import Session
 
 from .. import audit, memberships, people, policy
 from ..config import Settings
+from ..credentials import issue_credential
 from ..deps import Actor, get_db, get_settings, require_console
 from ..errors import Conflict, Invalid, NotFound
 from ..models import AuditEvent, Membership, User, Workspace
+from ..people import USERNAME_RE
 from ..security import revoke_user_sessions, utcnow
 from ..serialize import iso, user_brief, workspace_json
-from .auth import issue_credential
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 console_people = require_console("people")
 console_org = require_console("org")
 console_audit = require_console("audit")
-USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}$")
 
 
 def _hub(request: Request):

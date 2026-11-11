@@ -317,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
         from sqlalchemy import select
 
         from . import audit, people
-        from .api.auth import issue_credential
+        from .credentials import issue_credential
         from .models import User
 
         with session_factory(settings.database_url)() as db:

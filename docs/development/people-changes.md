@@ -16,6 +16,8 @@ P2 remains in progress: reviewed edits are executable; add/transfer and dialogs 
 - `changes/kinds/edit_person.py`: current record, exact before/after, duplicate/no-op
   blockers; executor applies only the server-built whitelist and increments revision.
 - `changes/service.py`: preview/apply orchestration and parent/per-step audits.
+- `credentials.py`: shared one-time activation/reset issuer used by legacy tools
+  and future onboarding. `people.USERNAME_RE` is the shared identity spelling rule.
 - `api/changes.py`: normal administrator dependency and sanitized database failures.
   `audit.record_step` preserves structured transitions without changing legacy audits.
 

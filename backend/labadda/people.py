@@ -1,5 +1,6 @@
 """Staff-state consistency and date-only sign-in observations; no content authority."""
 
+import re
 from datetime import date, datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session
 from .config import Settings
 from .models import User
 from .security import utcnow
+
+USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}$")
 
 StaffStatus = Literal["invited", "active", "on_leave", "suspended", "retired", "left"]
 STATUSES = ("invited", "active", "on_leave", "suspended", "retired", "left")
