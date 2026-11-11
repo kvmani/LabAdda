@@ -44,6 +44,9 @@ from .api import (
     usage,
     workspaces,
 )
+from .api import (
+    audit as audit_api,
+)
 from .config import Settings, get_settings
 from .db import session_factory
 from .errors import ApiError
@@ -147,6 +150,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         dashboard,
         workspaces,
         admin,
+        audit_api,
         people,
         governance,
         usage,

@@ -15,7 +15,7 @@ from ..config import Settings
 from ..credentials import issue_credential
 from ..deps import Actor, get_db, get_settings, require_console
 from ..errors import Conflict, Invalid, NotFound
-from ..models import AuditEvent, Membership, User, Workspace
+from ..models import Membership, User, Workspace
 from ..people import USERNAME_RE
 from ..security import revoke_user_sessions, utcnow
 from ..serialize import iso, user_brief, workspace_json
@@ -23,7 +23,6 @@ from ..serialize import iso, user_brief, workspace_json
 router = APIRouter(prefix="/admin", tags=["admin"])
 console_people = require_console("people")
 console_org = require_console("org")
-console_audit = require_console("audit")
 
 
 def _hub(request: Request):
@@ -366,29 +365,3 @@ def admin_remove_membership(
     db.commit()
     _hub(request).revalidate_user(user_id)
     return {"ok": True}
-
-
-@router.get("/audit")
-def audit_log(
-    limit: int = Query(default=100, le=500),
-    _: Actor = Depends(console_audit),
-    db: Session = Depends(get_db),
-):
-    rows = db.scalars(select(AuditEvent).order_by(AuditEvent.id.desc()).limit(limit)).all()
-    return {
-        "events": [
-            {
-                "id": e.id,
-                "actor_id": str(e.actor_id) if e.actor_id else None,
-                "action": e.action,
-                "scope_type": e.scope_type,
-                "scope_id": e.scope_id,
-                "target_id": e.target_id,
-                "outcome": e.outcome,
-                "reason": e.reason,
-                "detail": e.detail,
-                "created_at": iso(e.created_at),
-            }
-            for e in rows
-        ]
-    }

@@ -209,6 +209,13 @@ class AuditEvent(Base):
     detail: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = _created()
 
+    __table_args__ = (
+        Index("ix_audit_events_created_id", "created_at", "id"),
+        Index("ix_audit_events_actor", "actor_id", "created_at"),
+        Index("ix_audit_events_target", "target_id", "created_at"),
+        Index("ix_audit_events_scope", "scope_id", "created_at"),
+    )
+
 
 class Post(Base):
     __tablename__ = "posts"
