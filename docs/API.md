@@ -437,3 +437,53 @@ changes advance the record revision; sign-in observations do not.
 
 The read-only people list/profile/timeline/export APIs are the next P1 slice and
 are not exposed yet. [Implementation/limits](development/people.md).
+
+### P1 directory reads
+
+`GET /admin/people` (normal current administrators only): `q` literal case-insensitive
+name/username/employee-number search (max120 characters); `status` one employment
+state; `unit_id` an organisation unit; `include_children` defaults true (home-unit
+filter); `role` admin/member/steward (direct membership, within selected units when
+filtered); `sort` name/username/employee_no/status/last_seen_on; `descending`
+defaults false; `limit`1..100 defaults50; `cursor` max1024 characters.
+Returns `{people:[{id,username,display_name,employee_no,designation,status,revision,
+sign_in_enabled,is_admin,home_unit:{id,name}|null,last_seen_on:date|null}],next_cursor}`.
+Null sort values remain last in both directions; ID breaks ties. Cursors are bound
+to the filters/sort; malformed or mismatched cursors return422 `invalid_cursor`.
+Unknown/non-unit filters return404. No staff contacts, credentials, content or
+exact sign-in times in the directory. Metadata authority is refreshed before
+returning; ordinary members/operational readers get403, panel/signed-out get401.
+Timed-out/unavailable database reads return503 `people_unavailable`, never empty
+success. The additional reads are described below.
+
+### P1 profile, access, timeline and report
+
+All routes below use the same current-administrator/normal-session gates and final
+read checks as the directory. Missing people return404 only after that gate.
+`GET /admin/people/{id}` adds contact_email/contact_phone and status_effective_on,
+expected_return_on/joined_on dates to the directory record. No credential/session
+fields or content. Missing staff values are null, not invented defaults.
+
+`GET /admin/people/{id}/access?limit=50&cursor=WORKSPACE_UUID` returns
+`{memberships:[{workspace:{id,name,kind,archived},role,inherited,sign_in_enabled}],next_cursor}`.
+Limit1..100; stable workspace-ID order. Includes retained grants for departed
+people; `sign_in_enabled` distinguishes a recorded grant from usable sign-in.
+Inherited organisational access goes upward only and carries member authority;
+home-unit pointers and administrator status do not create grants. Projects/groups
+remain direct. These are scope names/roles, never workspace contents.
+
+`GET /admin/people/{id}/timeline?limit=50&before=AUDIT_ID` returns
+`{items:[{id,occurred_on,actor:{id,display_name}|null,summary,reason,outcome}],next_cursor}`.
+Only person-targeted identity/membership/authority history; dates use the site
+calendar, including sign-ins. No exact sign-in times, raw audit details, file names,
+request/search terms or credential values. Summaries are controlled plain sentences;
+unrecognised activity has a generic summary and no free-form detail/reason.
+
+`GET /admin/people/export.csv` accepts the directory filters/sort (no page cursor),
+returns a UTF-8 CSV report (with BOM for office spreadsheets) of the list columns, with blank cells for unknown fields.
+Spreadsheet formula prefixes (including leading whitespace/control characters) are
+escaped. At most10,000 rows; a larger result returns422 `export_limit` with guidance
+to narrow filters. It audits `people.export` as report preparation with row count,
+never the query or row data. Authority is rechecked after audit commit; no content
+or private contacts in this bulk report. Filename is the fixed `people.csv`.
+This is a directory report, not the future staff-import template or a content archive.

@@ -44,8 +44,32 @@ original protected data/assertions; otherwise every login's new staff date would
 correctly stop the chain before reaching the older guard being tested. P1's own
 lossless-downgrade tests never use this fixture-preparation helper.
 
+## Read-only API
+
+`api/people.py` exposes the directory, profile, access, timeline and report routes
+in [API P1](../API.md#p1-directory-reads). `people_directory.py` owns literal
+search/home-unit/direct-role filters and filter-bound keyset cursors; nulls stay
+last in both sort directions. `people_profile.py` owns explicit record fields,
+retained/direct/upward grant metadata and date-only staff history. It never
+forwards raw audit JSON or unknown free-form reasons.
+
+`people_export.py` materializes at most10,000 filtered rows, escapes spreadsheet
+formulas (including control/Unicode prefixes), emits UTF-8 BOM and audits only row
+count. Delivery rechecks authority after the audit commit; report preparation is
+not proof a browser saved the file. Reports exclude private contacts/content.
+Every endpoint requires current normal site administration, has a2s statement
+budget and rechecks identity/session before delivery. Unknown home-unit pointers
+into legacy projects remain unchanged but are not mislabeled as organisation units.
+P7 must add branch predicates before accepting unit administrators; changing only
+the navigation policy would be insufficient.
+
+Checks: `test_people_directory.py` (including500-person<200ms, ties/nulls,
+filter-bound cursors and demotion during read), `test_people_profile.py` (privacy,
+retained/upward-only access and denied cases), `test_people_export.py` (formula
+escaping, bounds, privacy and post-commit demotion). No runtime dependency added.
+
 ## Remaining P1 work
 
-Read-only paginated/filterable people API, protected staff profile/access/timeline,
-formula-safe audited CSV and list/profile web screens. Keep legacy admin endpoints
-working until P4. No staff edit/transfer/status-change UI or new capability in P1.
+List/profile web screens with URL filters, Record/Access/Timeline drawer and CSV
+controls. Keep legacy admin endpoints working until P4. No staff edit/transfer/
+status-change UI or new capability in P1.

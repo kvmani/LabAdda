@@ -48,6 +48,7 @@ def test_admin_and_reader_console_responses_exclude_content(as_user, ids, db_fac
         f"/admin/inventory-jobs/{job}",
     )
     admin_paths = (
+        "/admin/people",
         "/admin/users",
         "/admin/workspaces",
         "/admin/audit",
