@@ -62,8 +62,8 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | queued | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
 | 10 | A2 | Audit explorer | A1 | done | [admin](admin.md#a2--audit-explorer) |
 | 11 | U3 | Charts kit | U1 | done | [ui](ui.md#u3--charts-kit) |
-| 12 | A3 | Metrics foundation | Q1 | in progress | [admin](admin.md#a3--metrics-foundation) |
-| 13 | A4 | System health and operational events | A1, A3, U3 | queued | [admin](admin.md#a4--system-health-and-operational-events) |
+| 12 | A3 | Metrics foundation | Q1 | done | [admin](admin.md#a3--metrics-foundation) |
+| 13 | A4 | System health and operational events | A1, A3, U3 | in progress | [admin](admin.md#a4--system-health-and-operational-events) |
 | 14 | A5 | Usage analytics | A3, U3, P1 | queued | [admin](admin.md#a5--usage-analytics) |
 | 15 | A6 | Overview dashboard | A4, A5, P3 | queued | [admin](admin.md#a6--overview-dashboard) |
 | 16 | P4 | Organisation chart and unit changes | P2 | queued | [people](people.md#p4--organisation-chart-and-unit-changes) |
