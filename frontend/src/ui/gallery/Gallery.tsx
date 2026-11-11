@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import {
   Avatar,
   Badge,
+  Banner,
   Breadcrumbs,
   Button,
   Card,
@@ -290,6 +291,8 @@ export function Gallery() {
 
           <Section title="Cards and states">
             <div className="gallery__wide">
+              <Banner>The server restarts at 18:00 for about five minutes.</Banner>
+              <Banner level="warning">Planned maintenance on Friday: saving is paused from 18:00.</Banner>
               <Card title="Accounts" actions={<Button size="sm">Add person</Button>}>
                 Card content with a title and actions.
               </Card>

@@ -600,6 +600,7 @@ current usage readers (console section `activity`, read-only). Members without a
   minute resolution only.
 - 503 `metrics_unavailable` when the 2 s statement bound is exceeded.
 
+
 ## A7 · Backups page, settings and site notice (AD-10, AD-11)
 
 All errors use the common envelope. Board-only sessions get 401 on every route here.

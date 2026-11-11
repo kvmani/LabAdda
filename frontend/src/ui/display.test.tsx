@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Avatar, initials, toneFor } from "./Avatar";
 import { Badge } from "./Badge";
+import { Banner } from "./Banner";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { EmptyState } from "./EmptyState";
@@ -118,5 +119,13 @@ describe("EmptyState, ErrorState and Skeleton", () => {
   it("announces loading with a label", () => {
     render(<Skeleton lines={2} label="Loading people…" />);
     expect(screen.getByRole("status").textContent).toBe("Loading people…");
+  });
+});
+
+describe("Banner", () => {
+  it("is a status message that shows markup as plain text and names its level", () => {
+    const { container } = render(<Banner level="warning">{"<b>Back at 6</b>"}</Banner>);
+    expect(screen.getByRole("status").textContent).toContain("Warning: <b>Back at 6</b>");
+    expect(container.querySelector("b")).toBeNull();
   });
 });

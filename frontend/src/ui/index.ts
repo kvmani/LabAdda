@@ -2,6 +2,7 @@
 // Pages import from "../ui"; keep this list in step with the components in this folder.
 export { Avatar } from "./Avatar";
 export { Badge } from "./Badge";
+export { Banner } from "./Banner";
 export { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 export { Button, type ButtonVariant } from "./Button";
 export { Card } from "./Card";

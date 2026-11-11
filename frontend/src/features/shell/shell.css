@@ -9,6 +9,13 @@
   color: var(--text);
   font-family: var(--font-ui);
 }
+/* A site notice takes its own full-width row between the top bar and the rail and page. */
+.shell--notice {
+  grid-template-rows: auto auto 1fr;
+}
+.shell-notice {
+  grid-column: 1 / -1;
+}
 .shell-skip-link {
   position: absolute;
   top: calc(-1 * var(--space-7));

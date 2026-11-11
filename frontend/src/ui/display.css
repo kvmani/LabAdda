@@ -206,3 +206,26 @@
     animation: none;
   }
 }
+.ui-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line-strong);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+.ui-banner--info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.ui-banner--warning {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.ui-banner__text {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}

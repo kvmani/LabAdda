@@ -47,3 +47,43 @@
     display: block;
   }
 }
+.admin-facts {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+.admin-facts dt {
+  font-weight: 600;
+}
+.admin-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.admin-form {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 40rem;
+}
+.admin-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+@media (max-width: 599px) {
+  .admin-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+  .admin-facts dd {
+    margin-bottom: var(--space-2);
+  }
+}
+.admin-facts__row {
+  display: contents;
+}

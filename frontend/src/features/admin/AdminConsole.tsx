@@ -7,6 +7,7 @@ import { AdminLayout } from "./AdminLayout";
 import { BasicAdministration } from "./BasicAdministration";
 import { AuditPage } from "../audit/AuditPage";
 import { PeoplePage } from "../people/PeoplePage";
+import { BackupsPage } from "./BackupsPage";
 import { Settings } from "./Settings";
 import { SECTIONS, type ConsoleAccess } from "./console";
 
@@ -68,6 +69,8 @@ export function AdminConsole() {
                 <AuditPage />
               ) : section.key === "storage" ? (
                 <Storage />
+              ) : section.key === "backups" ? (
+                <BackupsPage />
               ) : section.key === "settings" ? (
                 <Settings />
               ) : (
