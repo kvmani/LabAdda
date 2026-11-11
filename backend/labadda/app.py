@@ -29,6 +29,7 @@ from .api import (
     changes,
     chat,
     dashboard,
+    events,
     files,
     governance,
     groups,
@@ -48,6 +49,9 @@ from .api import (
 )
 from .api import (
     audit as audit_api,
+)
+from .api import (
+    health as health_api,
 )
 from .api import (
     metrics as metrics_api,
@@ -179,6 +183,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         usage,
         inventory_jobs,
         metrics_api,
+        health_api,
+        events,
         capabilities,
         groups,
         task_assignment,

@@ -601,6 +601,44 @@ current usage readers (console section `activity`, read-only). Members without a
 - 503 `metrics_unavailable` when the 2 s statement bound is exceeded.
 
 
+## A4 · System health and operational events (AD-06, AD-07, schema 0030)
+
+A background sampler measures the ten health items every `LABADDA_HEALTH_SAMPLE_SECONDS`
+(15) and keeps the latest results in memory; the endpoint never measures on request (except on
+an instance with the scheduler turned off). Console sections `health` and `events`: administrators
+and current usage readers read; members without a grant 403 `usage_read_required`; signed-out,
+deactivated and board-only requests 401. Responses hold times, counts, sizes and status words only.
+
+`GET /admin/health` — 200 `{overall, generated_at, interval_seconds, items: [{key, label,
+status, value, unit, detail, checked_at, age_seconds, help, chart}]}`. `status` is one of
+`healthy | degraded | unavailable | stale | unknown | unsupported` (AD-03); `overall` is the worst
+item ignoring `unsupported`, with `unknown` and `stale` ranked above healthy. `value` is a
+number, text or null with its `unit`; `detail` is one plain sentence. A result older than
+`LABADDA_HEALTH_STALE_SECONDS` (60) is served as `stale`. `key` is `application | database |
+file_storage | connections | jobs | response_time | sign_in | backups | server | certificate`.
+`help` is the help page below `troubleshooting/` (`troubleshooting/health-<item>`). `chart`
+is null or `{metric, dimension, unit}` for `GET /admin/metrics/series`.
+
+`GET /admin/events?state=&severity=&component=&cursor=&limit=` — newest activity first by
+`(last_at, id)`; `limit` 1-100 (default 25); 422 on an unknown `state`
+(`open | acknowledged | resolved`), `severity` or a bad `cursor` (`invalid_cursor`). 200
+`{events: [{id, code, component, component_label, severity, summary, detail, first_at, last_at,
+count, state, acknowledged_by, acknowledged_at, note, resolved_at, help}], next_cursor}`. A code
+is `<item>.<status>` (for example `database.unavailable`). The same code and component while one
+is open raise `count` and `last_at` instead of adding a row. 503 `events_unavailable` past the 2 s bound.
+
+`POST /admin/events/{id}/acknowledge` `{note}` (1-500 characters, required) — administrators only
+(usage readers 403 `admin_required`). Open -> acknowledged, records who and why, audited as
+`ops_event.acknowledge`. It never changes the item: a failing item stays failing and keeps its
+event. 409 `event_acknowledged` or `event_resolved` when it is not open; 404 for an unknown id.
+
+`POST /admin/events/{id}/resolve` `{note?}` — administrators only, audited as
+`ops_event.resolve`. 409 `still_failing` while the item behind the event is still degraded,
+unavailable or stale (it resolves itself when the check passes); 409 `event_resolved`.
+
+Events are raised only for `degraded | unavailable | stale` and are resolved automatically when
+the item reads `healthy`; `unknown` and `unsupported` neither raise nor resolve.
+
 ## A7 · Backups page, settings and site notice (AD-10, AD-11)
 
 All errors use the common envelope. Board-only sessions get 401 on every route here.

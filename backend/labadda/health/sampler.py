@@ -35,7 +35,7 @@ class Sampler:
         self._reported: dict[str, str] = {}
         # Forcing a state is for browser tests only; real instances never honour it.
         allowed = context.settings.fixtures_allowed
-        self._forced = parse_forced(context.settings.test_health_force) if allowed else {}
+        self.forced = parse_forced(context.settings.test_health_force) if allowed else {}
 
     def measure(self) -> dict[str, Result]:
         """Run every item once; an item that raises is reported unknown, never as an error."""
@@ -46,7 +46,7 @@ class Sampler:
             except Exception:
                 log.exception("health.item_failed", extra={"item": item.key})
                 result = make(self.context, "unknown", None, "", "This check could not be completed.")
-            forced = self._forced.get(item.key)
+            forced = self.forced.get(item.key)
             if forced:
                 result = replace(result, status=forced, detail=f"{FORCED_NOTE} {result.detail}")
             results[item.key] = result
