@@ -150,8 +150,8 @@ function PanelBoard({ session, onEnd }: { session: PanelSession; onEnd: (why: st
     const t = window.setInterval(() => {
       const left = Math.ceil(session.idle_seconds - (Date.now() - last.current) / 1000);
       setRemaining(left);
-      if (left <= 0) end("idle_lock");
-      if (Date.now() >= new Date(session.expires_at).getTime()) end("ended");
+      if (left <= 0) void end("idle_lock");
+      if (Date.now() >= new Date(session.expires_at).getTime()) void end("ended");
     }, 1000);
     return () => window.clearInterval(t);
   }, [session, end]);

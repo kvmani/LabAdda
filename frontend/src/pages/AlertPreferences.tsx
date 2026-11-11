@@ -27,7 +27,7 @@ export function AlertPreferences() {
     }
   }
   useEffect(() => {
-    load();
+    void load();
     return () => {
       ++generation.current;
     };

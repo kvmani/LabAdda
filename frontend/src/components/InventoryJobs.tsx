@@ -78,7 +78,7 @@ export function InventoryJobs() {
     }
   }
   useEffect(() => {
-    load();
+    void load();
     return () => {
       ++generation.current;
       ++detailGeneration.current;

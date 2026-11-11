@@ -43,7 +43,7 @@ export function ChatThread({ ws, rootId, close }: { ws: Workspace; rootId: strin
   }
   useEffect(() => {
     let active = true;
-    load();
+    void load();
     section.current?.scrollIntoView({ block: "start" });
     const stop = realtime.subscribe(ws.id, (event) => {
       if (!active) return;

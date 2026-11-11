@@ -29,7 +29,7 @@ export function Members({ ws }: { ws: Workspace }) {
     [ws.id],
   );
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   async function run(fn: () => Promise<unknown>, after?: () => void) {

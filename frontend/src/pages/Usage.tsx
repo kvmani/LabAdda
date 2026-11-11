@@ -16,7 +16,7 @@ export function Usage() {
     }
   }
   useEffect(() => {
-    load();
+    void load();
   }, []);
   return (
     <section>

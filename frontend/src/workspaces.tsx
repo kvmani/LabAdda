@@ -29,7 +29,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   useEffect(() => {
-    reload();
+    void reload();
   }, [reload]);
   return (
     <WorkspaceContext.Provider value={{ workspaces, homeId, loading, error, reload }}>

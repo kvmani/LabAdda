@@ -41,7 +41,7 @@ export function UsageReaders({ users }: { users: Candidate[] }) {
   }
   function submit(e: FormEvent) {
     e.preventDefault();
-    change(user);
+    void change(user);
   }
   return (
     <div className="card">

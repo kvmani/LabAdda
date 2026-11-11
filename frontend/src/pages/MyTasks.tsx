@@ -60,7 +60,7 @@ export function MyTasks() {
     }
   }
   useEffect(() => {
-    load();
+    void load();
     return () => {
       ++generation.current;
     };

@@ -78,9 +78,9 @@ export function Notes() {
   const load = () =>
     api<{ notes: Note[] }>("/notes")
       .then((r) => setNotes(r.notes))
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(errorMessage(e)));
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   return (
@@ -104,7 +104,7 @@ export function Notes() {
               note={n}
               onSaved={() => {
                 setEditing(null);
-                load();
+                void load();
               }}
               onCancel={() => setEditing(null)}
             />

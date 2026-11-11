@@ -71,7 +71,7 @@ export function Dashboard() {
     }
   }
   useEffect(() => {
-    load();
+    void load();
     let active = true;
     const stops = (visibility ? visibility.split("|") : []).map((id) =>
       realtime.subscribe(id, (event) => {

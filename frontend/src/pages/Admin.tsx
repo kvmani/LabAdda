@@ -46,13 +46,13 @@ export function Admin() {
     }
   };
   useEffect(() => {
-    load();
+    void load();
   }, []);
   useEffect(() => {
     if (selected)
-      api<{ memberships: WorkspaceMember[] }>(`/admin/workspaces/${selected}/memberships`).then((r) =>
-        setMembers(r.memberships),
-      );
+      api<{ memberships: WorkspaceMember[] }>(`/admin/workspaces/${selected}/memberships`)
+        .then((r) => setMembers(r.memberships))
+        .catch((e) => setError(errorMessage(e)));
   }, [selected]);
 
   async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -197,7 +197,7 @@ export function Admin() {
             className="row wrap"
             onSubmit={(e) => {
               e.preventDefault();
-              run(() =>
+              void run(() =>
                 api("/admin/workspaces", {
                   body: {
                     name: unit.name,
@@ -282,7 +282,9 @@ export function Admin() {
             className="row wrap"
             onSubmit={(e) => {
               e.preventDefault();
-              run(() => api(`/admin/workspaces/${selected}/memberships`, { method: "PUT", body: grant }));
+              void run(() =>
+                api(`/admin/workspaces/${selected}/memberships`, { method: "PUT", body: grant }),
+              );
             }}
           >
             <select

@@ -32,7 +32,7 @@ export function Notifications({ onClose, onChange }: { onClose: () => void; onCh
       })
       .catch((e) => setError(errorMessage(e)));
   useEffect(() => {
-    load();
+    void load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function open(item: Item) {
@@ -44,7 +44,7 @@ export function Notifications({ onClose, onChange }: { onClose: () => void; onCh
       else navigate(`/w/${link.workspace_id}/${link.view}`);
     } catch (e: unknown) {
       setError(errorCode(e) === "not_found" ? "That item is no longer available to you." : errorMessage(e));
-      load();
+      void load();
     }
   }
 

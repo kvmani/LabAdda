@@ -229,7 +229,7 @@ export function Board({
 
   const submit = (op: Omit<PendingOp, "op_id" | "epoch">) => {
     pending.current.push({ op_id: newId("op"), epoch: state.current.epoch, ...op });
-    flush();
+    void flush();
   };
 
   useEffect(() => {
@@ -240,7 +240,7 @@ export function Board({
       else if (ev.type === "board.epoch") {
         pending.current = [];
         setMessage("A steward restored the board. Your view was refreshed.");
-        load(true);
+        load(true).catch((e) => setMessage(errorMessage(e)));
       } else if (ev.type === "board.preview") {
         if (ev.done) previews.current.delete(ev.preview_id);
         else if (ev.stroke) previews.current.set(ev.preview_id, ev.stroke);
@@ -248,7 +248,9 @@ export function Board({
       } else if (ev.type === "presence") setPresence(ev.users);
       else if (ev.type === "subscribed") {
         previews.current.clear(); // disconnect discards uncommitted remote previews
-        load().then(flush);
+        load()
+          .then(flush)
+          .catch((e) => setMessage(errorMessage(e)));
       }
     });
     return () => {
@@ -785,7 +787,7 @@ function PublishSnapshot({
           confirm_audience: broader ? dest : null,
         },
       });
-      reload();
+      void reload();
       onClose(true);
     } catch (e: unknown) {
       setError(errorMessage(e));

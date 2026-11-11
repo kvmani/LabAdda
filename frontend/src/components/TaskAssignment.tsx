@@ -124,7 +124,7 @@ export function TaskAssignment({
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              load();
+              void load();
             }}
           >
             <label>

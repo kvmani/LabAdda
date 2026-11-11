@@ -95,7 +95,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
     setLists(null);
     setListId("");
     setConfirmed(false);
-    load();
+    void load();
   }, [destination]);
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -276,7 +276,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
           onClick={() => {
             setListId("");
             setConfirmed(false);
-            load();
+            void load();
           }}
         >
           Refresh destination lists
@@ -288,7 +288,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
             onClick={() => {
               setListId("");
               setConfirmed(false);
-              load(lists.next_cursor!);
+              void load(lists.next_cursor!);
             }}
           >
             More destination lists

@@ -19,7 +19,7 @@ export function Operations() {
     }
   }
   useEffect(() => {
-    load();
+    void load();
   }, []);
   return (
     <section>

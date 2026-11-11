@@ -83,7 +83,7 @@ export function Chat({ ws }: { ws: Workspace }) {
         await api(`/workspaces/${ws.id}/chat/read`, { body: { seq: safeCursor.current } });
       if (token === generation.current) {
         setError("");
-        reload();
+        void reload();
       }
     } catch (e: unknown) {
       if (token === generation.current) {
@@ -100,7 +100,7 @@ export function Chat({ ws }: { ws: Workspace }) {
   }, [ws.id, merge, reload]);
   useEffect(() => {
     let active = true;
-    catchUp();
+    void catchUp();
     const stop = realtime.subscribe(ws.id, (event) => {
       if (!active) return;
       if (event.type === "chat.message") {
@@ -109,10 +109,10 @@ export function Chat({ ws }: { ws: Workspace }) {
         if (refreshTimer.current === undefined)
           refreshTimer.current = window.setTimeout(() => {
             refreshTimer.current = undefined;
-            catchUp();
+            void catchUp();
           }, 150);
       }
-      if (event.type === "subscribed") catchUp();
+      if (event.type === "subscribed") void catchUp();
       if (["revoked", "subscribe_failed", "session_ended"].includes(event.type)) deny();
     });
     return () => {
@@ -151,7 +151,7 @@ export function Chat({ ws }: { ws: Workspace }) {
     historyMode.current = false;
     setEarlier(false);
     resetLatest.current = true;
-    catchUp();
+    void catchUp();
   }
   return (
     <>

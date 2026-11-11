@@ -329,7 +329,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
     }
   }
   useEffect(() => {
-    loadLists();
+    void loadLists();
     return () => {
       ++generation.current;
       ++taskGeneration.current;
@@ -377,7 +377,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
     setTasks([]);
     setCreating(false);
     setEditing(null);
-    loadTasks(row.id);
+    void loadTasks(row.id);
   }
   async function createList(event: FormEvent) {
     event.preventDefault();
@@ -587,7 +587,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
                   assignee={task.assignee}
                   writable={writable}
                   saved={() => {
-                    if (selectedRef.current === selected.id) loadTasks(selected.id);
+                    if (selectedRef.current === selected.id) void loadTasks(selected.id);
                   }}
                 />
                 <TaskComments
@@ -634,7 +634,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
                 setCreating(false);
                 setEditing(null);
                 setMessage("Task saved.");
-                loadTasks(selected.id);
+                void loadTasks(selected.id);
               }}
             />
           )}

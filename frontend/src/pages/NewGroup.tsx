@@ -102,7 +102,7 @@ export function NewGroup() {
         setError(errorMessage(err));
         if (outcomeUnknown(err)) {
           setUnknown(true);
-          reload();
+          void reload();
         }
       }
     } finally {

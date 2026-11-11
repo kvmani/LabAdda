@@ -406,9 +406,9 @@ export function Noticeboard({ ws }: { ws: Workspace }) {
   }, [ws.id]);
 
   useEffect(() => {
-    load();
+    void load();
     return realtime.subscribe(ws.id, (ev) => {
-      if (ev.type === "noticeboard.changed" || ev.type === "subscribed") load();
+      if (ev.type === "noticeboard.changed" || ev.type === "subscribed") void load();
     });
   }, [load, ws.id]);
 

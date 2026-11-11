@@ -75,7 +75,7 @@ export function Shell({ children }: { children: ReactNode }) {
       api<{ unread: number }>("/notifications", { params: { limit: 1 } })
         .then((r) => setUnread(r.unread))
         .catch(() => undefined);
-    load();
+    void load();
     const t = window.setInterval(load, 30000);
     return () => window.clearInterval(t);
   }, [location.pathname]);
@@ -85,13 +85,13 @@ export function Shell({ children }: { children: ReactNode }) {
     // Membership changes arrive as access signals; refresh the rail.
     const unsubs = workspaces.map((w) =>
       realtime.subscribe(w.id, (ev) => {
-        if (ev.type === "revoked" || ev.type === "access_changed") reload();
+        if (ev.type === "revoked" || ev.type === "access_changed") void reload();
         if (
           ev.type === "chat.message" &&
           ev.message.author?.id !== session?.user.id &&
           currentRef.current !== w.id
         )
-          reload();
+          void reload();
       }),
     );
     return () => unsubs.forEach((u) => u());
