@@ -1,0 +1,41 @@
+/* Operational events: filters above the table, facts and a note form in the drawer. */
+.events-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-4);
+  align-items: end;
+}
+.events-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.events-summary {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0 0 var(--space-3);
+  overflow-wrap: anywhere;
+}
+.events-facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+.events-facts dt {
+  color: var(--text-muted);
+}
+.events-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.events-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.events-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

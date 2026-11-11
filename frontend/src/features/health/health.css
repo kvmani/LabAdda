@@ -1,0 +1,62 @@
+/* System health: an overall band and a responsive grid of item cards. */
+.health-overall {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-inline-start: 6px solid var(--neutral);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.health-overall--healthy {
+  border-inline-start-color: var(--ok);
+}
+.health-overall--degraded,
+.health-overall--stale {
+  border-inline-start-color: var(--warn);
+}
+.health-overall--unavailable {
+  border-inline-start-color: var(--danger);
+}
+.health-overall__text {
+  margin: 0;
+  font-weight: 600;
+  flex: 1 1 14rem;
+}
+.health-overall__time {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.health-warning {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--text);
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+}
+.health-grid .ui-card {
+  min-width: 0;
+}
+.health-value {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.health-detail {
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+}
+.health-checked {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
