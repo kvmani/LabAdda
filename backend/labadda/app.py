@@ -24,6 +24,7 @@ from .api import (
     auth,
     board,
     capabilities,
+    changes,
     chat,
     dashboard,
     files,
@@ -159,6 +160,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         notes,
         notifications,
         chat,
+        changes,
         board,
         panel,
     ):

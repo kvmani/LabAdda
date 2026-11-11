@@ -13,6 +13,8 @@ from .models import AuditEvent, User, Workspace
 from .people_directory import DirectoryFilters, directory_query, person_json
 
 SUMMARIES = {
+    "people.change": "Reviewed staff change applied",
+    "people.change_step": "Staff record updated",
     "identity.create": "Account created",
     "identity.update": "Account updated",
     "identity.reset": "Password reset requested",

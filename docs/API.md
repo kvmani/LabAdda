@@ -489,9 +489,9 @@ or private contacts in this bulk report. Filename is the fixed `people.csv`.
 This is a directory report, not the future staff-import template or a content archive.
 
 
-### P2 internal plan format (foundation only)
+### P2 internal plan format
 
-No P2 HTTP endpoint is registered yet. `changes/plan.py` defines the internal
+`changes/plan.py` defines the internal
 metadata contract for the later preview/apply service: `format_version:1`, `kind`
 (`add_person|edit_person|transfer`), `actor_id`, normalized `request`, positive
 record `revisions`, ordered `steps`, `warnings`, `blockers`, nonnegative
@@ -506,5 +506,35 @@ digest is a change detector, **not authorization or a signature**. No future app
 route may accept client-provided steps: it must reauthorize, lock and rebuild from
 the validated original request and current state. Builders must select only staff
 metadata and never insert credentials or private collaboration content into plans.
-HTTP request bounds, mutation outcomes and error codes will be specified before
-those routes are implemented. P2 remains in progress.
+The first executable slice below supports reviewed staff edits. Add/transfer
+remain P2 work. P2 remains in progress.
+
+### P2 reviewed edits (first executable slice)
+
+Normal site administrators only; members and operational readers receive403,
+board-only intent and signed-out sessions401. POST requests require same-origin
+and the normal session's CSRF token. No content access is granted.
+
+- `POST /admin/changes/preview`: `{request:{kind:"edit_person",person_id,fields}}`.
+  Fields permit only display_name(1–120), designation(120), employee_no(64),
+  contact_email(254), contact_phone(64). Unknown keys, empty edits, controls and
+  invalid Unicode are rejected422. Strings are trimmed; blank optional fields
+  become null. Display name cannot be cleared. Preview returns the version1
+  plan above, including current revisions, ordered before/after steps, blockers,
+  warnings and digest. A duplicate employee number and no effective change are
+  blocking problems. No staff or audit rows are written by preview.
+- `POST /admin/changes/apply`: same `request`, `digest`(64 lowercase hex),
+  `revisions`(at most100 UUID keys with positive32-bit integers) and a trimmed
+  `reason`(3–500). Returns `{applied:true,person_id,revision,digest}` after commit.
+  The actor/session is refreshed under locks; current plans are rebuilt, never
+  supplied by clients.409 `plan_stale` means re-preview;422 `plan_blocked` means
+  fix the request. Missing target404.503 `changes_unavailable` means the database
+  could not complete the operation; reload the record before retrying.
+
+Apply takes the shared admin-role lock, actor identity/session locks and target
+identity lock, rechecks authority, matches the complete digest/revision map and
+writes the edit, revision and parent/per-step audits in one transaction. A retry
+of an applied plan returns409. Audit steps retain structured staff before/after;
+no request bodies or credentials are logged. Live identity revalidation follows
+commit. Authority is checked again before returning the receipt. Only edits are
+served in this slice; add_person and transfer remain P2 work and are rejected422.
