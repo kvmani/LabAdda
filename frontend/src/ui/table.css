@@ -1,0 +1,72 @@
+.ui-table {
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  color: var(--text);
+}
+.ui-table__scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.ui-table__scroll:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.ui-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ui-table__caption {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-weight: 650;
+  color: var(--text);
+}
+.ui-table th,
+.ui-table td {
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+.ui-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  white-space: nowrap;
+}
+.ui-table tbody tr:hover {
+  background: var(--surface-sunken);
+}
+.ui-table__cell--end {
+  text-align: right;
+}
+.ui-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ui-table__sort:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+th[aria-sort="none"] .ui-table__sort .ui-icon {
+  opacity: 0.35;
+}
+.ui-table__footer {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3);
+}
