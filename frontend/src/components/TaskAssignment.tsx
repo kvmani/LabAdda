@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { invalidate } from "../generation";
 import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 
 export type Assignee = { id: string; display_name: string; is_active: boolean };
@@ -37,12 +38,14 @@ export function TaskAssignment({
     setError("");
     setReloadNeeded(false);
     return () => {
-      ++generation.current;
+      invalidate(generation);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when another task is shown; reads the assignee at that moment
   }, [listId, taskId]);
   useEffect(() => {
     if (open) setReloadNeeded(true);
     else setSelected(assignee?.id ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- react only to a new task revision; reads the open state at that moment
   }, [revision]);
   async function load(after?: string) {
     if (!open) {

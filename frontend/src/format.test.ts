@@ -12,6 +12,6 @@ describe("storage display preserves small measurements and unknowns", () => {
     [1024 ** 2, "1 MiB"],
     [1024 ** 3, "1 GiB"],
   ])("%s → %s", (value, expected) => {
-    expect(fmtBytes(value as number | null)).toBe(expected);
+    expect(fmtBytes(value)).toBe(expected);
   });
 });

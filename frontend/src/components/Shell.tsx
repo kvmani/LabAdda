@@ -95,7 +95,8 @@ export function Shell({ children }: { children: ReactNode }) {
       }),
     );
     return () => unsubs.forEach((u) => u());
-  }, [workspaces.map((w) => w.id).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resubscribe only when the set of workspace IDs changes
+  }, [workspaces.map((w) => w.id).join(",")]);
 
   const tree = treeOrder(workspaces);
   const projects = workspaces.filter((w) => w.kind === "project");

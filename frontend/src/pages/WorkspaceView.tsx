@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useParams } from "react-router-dom";
-import { api } from "../api";
+import { api, errorStatus } from "../api";
 import { kindLabel } from "../format";
 import { useSession } from "../session";
 import { useWorkspaces } from "../workspaces";
@@ -45,7 +45,8 @@ export function WorkspaceView() {
     api<Detail>(`/workspaces/${workspaceId}`)
       .then((d) => live && setDetail(d))
       .catch((e) => {
-        if (live && (e.status === 404 || e.status === 422)) setMissing(true);
+        const status = errorStatus(e);
+        if (live && (status === 404 || status === 422)) setMissing(true);
       });
     return () => {
       live = false;

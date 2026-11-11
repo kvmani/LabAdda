@@ -1,8 +1,8 @@
 import { socketUrl } from "./config";
-import type { BoardOp, ChatMessage } from "./types";
+import type { BoardOp, ChatMessage, Point } from "./types";
 
 /** An uncommitted stroke another person is drawing; relayed by the server without storing it. */
-export type StrokePreview = { points: number[][]; color: string };
+export type StrokePreview = { points: Point[]; color: string };
 
 /** Messages the server pushes on the socket (see docs/API.md, socket messages). */
 export type RealtimeEvent =

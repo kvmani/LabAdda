@@ -62,7 +62,9 @@ export type ChatMessage = {
   created_at: string;
   author: User | null;
 };
-export type StrokeData = { points: number[][]; color: string; width: number };
+/** A board coordinate: x then y, in board units. */
+export type Point = [number, number];
+export type StrokeData = { points: Point[]; color: string; width: number };
 /** Typed notes and stickies share one shape. */
 export type NoteData = { x: number; y: number; text: string; color: string };
 export type BoardImageData = { x: number; y: number; w: number; h: number; asset_id: string };

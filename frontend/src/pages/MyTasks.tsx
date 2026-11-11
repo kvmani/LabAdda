@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "../generation";
 import { Link } from "react-router-dom";
 import { api, errorMessage } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
@@ -62,8 +63,9 @@ export function MyTasks() {
   useEffect(() => {
     void load();
     return () => {
-      ++generation.current;
+      invalidate(generation);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the filter or the visible workspaces change
   }, [state, visibility]);
   return (
     <section className="todos">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { invalidate } from "../generation";
 import { ChatFiles } from "../components/ChatFiles";
 import { ChatComposer } from "../components/ChatComposer";
 import { ChatThread } from "../components/ChatThread";
@@ -94,7 +95,7 @@ export function Chat({ ws }: { ws: Workspace }) {
       catching.current = false;
       if (queued.current && token === generation.current) {
         queued.current = false;
-        queueMicrotask(() => catchUp());
+        queueMicrotask(() => void catchUp());
       }
     }
   }, [ws.id, merge, reload]);
@@ -117,7 +118,7 @@ export function Chat({ ws }: { ws: Workspace }) {
     });
     return () => {
       active = false;
-      ++generation.current;
+      invalidate(generation);
       window.clearTimeout(refreshTimer.current);
       queued.current = false;
       stop();

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Single local verification entry point. CI runs the same commands.
-#   scripts/verify.sh            docs check, Python lint, backend tests, frontend typecheck/unit tests/build
+#   scripts/verify.sh            docs check, Python lint, backend tests, frontend lint/typecheck/unit tests/build
 #   scripts/verify.sh --e2e      also run browser flows through nginx (root + prefix)
 # Requires a disposable PostgreSQL reachable via LABADDA_TEST_DATABASE_URL (see README).
 set -euo pipefail
@@ -20,8 +20,8 @@ echo "== backend: migrations, policy, API, realtime (pytest) =="
 echo "== backend: model/migration drift =="
 ( cd "$ROOT/backend" && LABADDA_DATABASE_URL="${LABADDA_TEST_DATABASE_URL:-postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test}" "$PY/alembic" check )
 
-echo "== frontend: typecheck, unit tests, production build =="
-( cd "$ROOT/frontend" && npm run --silent typecheck && npx vitest run && npm run --silent build )
+echo "== frontend: lint and format, typecheck, unit tests, production build =="
+( cd "$ROOT/frontend" && npm run --silent lint && npm run --silent typecheck && npx vitest run && npm run --silent build )
 
 if [[ "${1:-}" == "--e2e" ]]; then
   echo "== browser flows through nginx (T03 + P1/P2/P3 flows) =="

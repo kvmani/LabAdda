@@ -42,6 +42,8 @@ export function Login({ next }: { next: string }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            // The sign-in page has one purpose, so starting in the username field is expected.
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
         </label>

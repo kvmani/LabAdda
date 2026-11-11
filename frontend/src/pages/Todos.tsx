@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { invalidate } from "../generation";
 import { accessDenied, api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 import { TaskAssignment, type Assignee } from "../components/TaskAssignment";
@@ -331,9 +332,10 @@ export function Todos({ ws }: { ws?: Workspace }) {
   useEffect(() => {
     void loadLists();
     return () => {
-      ++generation.current;
-      ++taskGeneration.current;
+      invalidate(generation);
+      invalidate(taskGeneration);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload lists only when the workspace changes
   }, [ws?.id]);
   async function refreshShared() {
     const seen = updates.snapshot(),

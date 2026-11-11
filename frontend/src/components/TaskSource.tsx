@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "../generation";
 import { Link } from "react-router-dom";
 import { api, errorMessage, errorStatus } from "../api";
 import { realtime } from "../realtime";
@@ -37,7 +38,7 @@ export function TaskSource({ listId, taskId }: { listId: string; taskId: string 
     );
     return () => {
       active = false;
-      ++generation.current;
+      invalidate(generation);
       stops.forEach((stop) => stop());
     };
   }, [visibility, listId, taskId]);

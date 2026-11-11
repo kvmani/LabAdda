@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "../generation";
 import type { OpenedNotification } from "../types";
 import { Link, useNavigate } from "react-router-dom";
 import { api, errorMessage } from "../api";
@@ -95,7 +96,7 @@ export function Dashboard() {
     );
     return () => {
       active = false;
-      ++generation.current;
+      invalidate(generation);
       stops.forEach((stop) => stop());
     };
   }, [visibility]);

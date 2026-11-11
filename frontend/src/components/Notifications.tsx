@@ -33,7 +33,8 @@ export function Notifications({ onClose, onChange }: { onClose: () => void; onCh
       .catch((e) => setError(errorMessage(e)));
   useEffect(() => {
     void load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once when the panel opens
+  }, []);
 
   async function open(item: Item) {
     try {

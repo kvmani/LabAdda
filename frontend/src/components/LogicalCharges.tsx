@@ -45,7 +45,7 @@ export function LogicalCharges({
                 {scope === "site" && key === "note" ? " (site total only)" : ""}
               </th>
               <td>{cell(charges.by_type[key]!, "live")}</td>
-              <td>{key === "post" ? cell(charges.by_type[key]!, "removed") : "—"}</td>
+              <td>{key === "post" ? cell(charges.by_type[key], "removed") : "—"}</td>
             </tr>
           ))}
         </tbody>

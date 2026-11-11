@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { invalidate } from "../generation";
 import { api, errorMessage, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 
@@ -33,7 +34,7 @@ export function TaskComments({
   const path = `/todos/lists/${listId}/tasks/${taskId}/comments`;
   useEffect(() => {
     return () => {
-      ++generation.current;
+      invalidate(generation);
     };
   }, [listId, taskId]);
   const updates = useTaskUpdates(open && workspaceId ? [workspaceId] : [], () => {

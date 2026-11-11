@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "./generation";
 import { realtime } from "./realtime";
 
 /** Content-free hints never replace drafts. Only acknowledge the version fetched;
@@ -30,7 +31,7 @@ export function useTaskUpdates(workspaceIds: string[], denied?: () => void) {
     );
     return () => {
       active = false;
-      ++version.current;
+      invalidate(version);
       unsubscribe.forEach((stop) => stop());
     };
   }, [scope]);

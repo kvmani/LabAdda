@@ -32,12 +32,16 @@ Look and behaviour: [ui-design-system.md](../docs/development/ui-design-system.m
 - No request, font, image or script from outside the server.
 - No compressed style (several statements per line, one-letter names). See standards §1.
 - Do not restyle the board-only touch panel as part of general interface work.
+- No `eslint-disable` without `-- <reason>` on the same comment. Effects keyed on purpose use
+  `// eslint-disable-next-line react-hooks/exhaustive-deps -- <what it reacts to>`.
+- In effect cleanups, advance request counters with `invalidate(counter)` from `src/generation.ts`.
 
 ## Commands
 
 ```bash
 cd frontend
-npm run typecheck && npx vitest run && npm run build
+npm run lint && npm run typecheck && npx vitest run && npm run build
+npm run format                      # Prettier for src/, e2e/ and config files
 npm run dev                         # hot reload; proxies /api and /ws to port 8000
 cd .. && scripts/verify.sh --e2e    # browser checks at / and /labadda-staging
 ```

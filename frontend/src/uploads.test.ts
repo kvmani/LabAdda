@@ -41,11 +41,11 @@ describe("upload recovery", () => {
     request.mockRejectedValueOnce(offline()).mockResolvedValueOnce(asset);
     queue.add([original], 1);
     await settle();
-    const key = queue.snapshot()[0].key;
+    const key = queue.snapshot()[0]!.key;
     await queue.send(key);
     expect(request.mock.calls.map((c) => c[1]?.uploadKey)).toEqual([key, key]);
-    expect(request.mock.calls[0][1]?.form?.get("file")).toBe(original);
-    expect(request.mock.calls[1][1]?.form?.get("file")).toBe(original);
+    expect(request.mock.calls[0]![1]?.form?.get("file")).toBe(original);
+    expect(request.mock.calls[1]![1]?.form?.get("file")).toBe(original);
     expect(complete).toHaveBeenCalledTimes(1);
     expect(complete).toHaveBeenCalledWith(asset);
     expect(queue.snapshot()).toEqual([]);
@@ -56,9 +56,9 @@ describe("upload recovery", () => {
     request.mockRejectedValueOnce(offline()).mockResolvedValueOnce({ state: "complete", asset });
     queue.add([file()], 1);
     await settle();
-    await queue.check(queue.snapshot()[0].key);
-    expect(request.mock.calls[1][0]).toMatch(/^\/uploads\/requests\/upload-/);
-    expect(request.mock.calls[1][1]).toBeUndefined();
+    await queue.check(queue.snapshot()[0]!.key);
+    expect(request.mock.calls[1]![0]).toMatch(/^\/uploads\/requests\/upload-/);
+    expect(request.mock.calls[1]![1]).toBeUndefined();
     expect(complete).toHaveBeenCalledTimes(1);
     expect(complete).toHaveBeenCalledWith(asset);
   });
@@ -70,10 +70,10 @@ describe("upload recovery", () => {
       .mockResolvedValueOnce(asset);
     queue.add([file()], 1);
     await settle();
-    const key = queue.snapshot()[0].key;
-    expect(queue.snapshot()[0].retryable).toBe(true);
+    const key = queue.snapshot()[0]!.key;
+    expect(queue.snapshot()[0]!.retryable).toBe(true);
     await queue.send(key);
-    expect(request.mock.calls[1][1]?.uploadKey).toBe(key);
+    expect(request.mock.calls[1]![1]?.uploadKey).toBe(key);
     expect(complete).toHaveBeenCalledWith(asset);
   });
   it("does not submit concurrently when check/retry are clicked twice", async () => {
@@ -87,7 +87,7 @@ describe("upload recovery", () => {
     const complete = vi.fn(),
       queue = new UploadQueue(100, complete);
     queue.add([file()], 1);
-    const key = queue.snapshot()[0].key;
+    const key = queue.snapshot()[0]!.key;
     await queue.check(key);
     await queue.send(key);
     expect(request).toHaveBeenCalledTimes(1);
@@ -100,19 +100,19 @@ describe("upload recovery", () => {
     request.mockRejectedValueOnce(offline()).mockResolvedValueOnce({ state, asset: null });
     queue.add([file()], 1);
     await settle();
-    const key = queue.snapshot()[0].key;
+    const key = queue.snapshot()[0]!.key;
     await queue.check(key);
     await queue.send(key);
     expect(request).toHaveBeenCalledTimes(2);
-    expect(queue.snapshot()[0].retryable).toBe(false);
+    expect(queue.snapshot()[0]!.retryable).toBe(false);
   });
   it("keeps pending uploads visible and inspects without automatic retries", async () => {
     const queue = new UploadQueue(100, vi.fn());
     request.mockRejectedValueOnce(offline()).mockResolvedValueOnce({ state: "pending", asset: null });
     queue.add([file()], 1);
     await settle();
-    await queue.check(queue.snapshot()[0].key);
-    expect(queue.snapshot()[0].message).toContain("still pending");
+    await queue.check(queue.snapshot()[0]!.key);
+    expect(queue.snapshot()[0]!.message).toContain("still pending");
     expect(request).toHaveBeenCalledTimes(2);
   });
   it.each([404, 410, 401])("fails closed when status returns %s", async (status) => {
@@ -122,11 +122,11 @@ describe("upload recovery", () => {
       .mockRejectedValueOnce(new ApiError(status, "not_found", "denied"));
     queue.add([file()], 1);
     await settle();
-    const key = queue.snapshot()[0].key;
+    const key = queue.snapshot()[0]!.key;
     await queue.check(key);
     await queue.send(key);
     expect(request).toHaveBeenCalledTimes(2);
-    expect(queue.snapshot()[0].retryable).toBe(false);
+    expect(queue.snapshot()[0]!.retryable).toBe(false);
   });
   it("never reuses an expired request identity", async () => {
     const queue = new UploadQueue(100, vi.fn());
@@ -135,9 +135,9 @@ describe("upload recovery", () => {
     await settle();
     vi.useFakeTimers();
     vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000);
-    await queue.send(queue.snapshot()[0].key);
+    await queue.send(queue.snapshot()[0]!.key);
     expect(request).toHaveBeenCalledTimes(1);
-    expect(queue.snapshot()[0].message).toContain("too old");
+    expect(queue.snapshot()[0]!.message).toContain("too old");
   });
   it("bounds pending slots and file bytes before sending", async () => {
     request.mockRejectedValue(offline());
@@ -157,14 +157,14 @@ describe("upload recovery", () => {
     queue.add([file()], 1);
     await settle();
     expect(complete).not.toHaveBeenCalled();
-    expect(queue.snapshot()[0].retryable).toBe(false);
+    expect(queue.snapshot()[0]!.retryable).toBe(false);
   });
   it("dismisses without issuing a delete or starting a fresh upload", async () => {
     const queue = new UploadQueue(100, vi.fn());
     request.mockRejectedValue(offline());
     queue.add([file()], 1);
     await settle();
-    queue.dismiss(queue.snapshot()[0].key);
+    queue.dismiss(queue.snapshot()[0]!.key);
     expect(queue.snapshot()).toEqual([]);
     expect(request).toHaveBeenCalledTimes(1);
   });

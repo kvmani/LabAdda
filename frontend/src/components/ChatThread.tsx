@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "../generation";
 import { accessDenied, api, errorMessage } from "../api";
 import { realtime } from "../realtime";
 import { ChatFiles } from "./ChatFiles";
@@ -58,9 +59,10 @@ export function ChatThread({ ws, rootId, close }: { ws: Workspace; rootId: strin
     });
     return () => {
       active = false;
-      ++generation.current;
+      invalidate(generation);
       stop();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload and resubscribe only when the thread changes
   }, [ws.id, rootId]);
   return (
     <section className="card chat-thread" aria-label="Chat thread" ref={section}>

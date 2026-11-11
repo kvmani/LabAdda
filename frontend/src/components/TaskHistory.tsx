@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "../generation";
 import { api, errorMessage } from "../api";
 
 type Change = {
@@ -20,6 +21,7 @@ const labels: Record<string, string> = {
   done: "Completion",
   status: "Workflow state",
 };
+type ChecklistEntry = { title: string; done: boolean };
 function value(data: unknown, key: string): string {
   if (key === "status" && typeof data === "string")
     return (
@@ -33,9 +35,13 @@ function value(data: unknown, key: string): string {
   if (data === null) return "None";
   if (typeof data === "boolean") return data ? "Yes" : "No";
   if (Array.isArray(data))
-    return data.map((item) => `${item.done ? "✓" : "○"} ${item.title}`).join("; ") || "Empty";
+    // History records a checklist as its list of entries.
+    return (
+      (data as ChecklistEntry[]).map((item) => `${item.done ? "✓" : "○"} ${item.title}`).join("; ") || "Empty"
+    );
   if (typeof data === "object" && "display_name" in data) return String(data.display_name);
-  return String(data);
+  if (typeof data === "string" || typeof data === "number") return String(data);
+  return JSON.stringify(data) ?? "";
 }
 export function TaskHistory({
   listId,
@@ -56,7 +62,7 @@ export function TaskHistory({
     setPage(null);
     setError("");
     return () => {
-      ++generation.current;
+      invalidate(generation);
     };
   }, [listId, taskId, revision]);
   async function load(before?: number) {

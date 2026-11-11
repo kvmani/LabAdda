@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "../generation";
 import { api, errorMessage } from "../api";
 
 type Attempt = {
@@ -57,7 +58,7 @@ export function InventoryJobs() {
     if (filter) query.set("state", filter);
     if (before) query.set("before", before);
     try {
-      const result = await api<Page>("/admin/inventory-jobs?" + query);
+      const result = await api<Page>("/admin/inventory-jobs?" + query.toString());
       if (current === generation.current) setPage(result);
     } catch (e: unknown) {
       if (current === generation.current) setError(errorMessage(e));
@@ -80,9 +81,10 @@ export function InventoryJobs() {
   useEffect(() => {
     void load();
     return () => {
-      ++generation.current;
-      ++detailGeneration.current;
+      invalidate(generation);
+      invalidate(detailGeneration);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the state filter changes
   }, [filter]);
   return (
     <section className="card" aria-label="Inventory jobs">

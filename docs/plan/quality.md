@@ -119,7 +119,10 @@ after each function. Order (worst first):
 
 Last commit of the package: remove the Q1 deferral of `PLR0911`, `PLR0912`, `PLR0915` and
 `PLR0917` from the `ignore` list in `backend/pyproject.toml` (the comment there names Q3) and fix
-what they report, splitting functions by responsibility.
+what they report, splitting functions by responsibility. In the same way, enable the React
+Compiler rules that Q2 left off in `frontend/eslint.config.js` (`react-hooks/set-state-in-effect`,
+`react-hooks/refs`, `react-hooks/purity`; the comment there names Q3) and restructure the
+components they report.
 
 **Acceptance.** Test and browser-check counts unchanged and green after every commit. No public
 contract changed (`git diff docs/API.md` is empty). Each rewritten file meets the limits in

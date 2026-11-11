@@ -161,17 +161,15 @@ try {
   for (const a of Object.values(people)) await view(a, group.id, "board");
   for (let i = 0; i < objects.length; i += 12)
     await Promise.all(
-      objects
-        .slice(i, i + 12)
-        .map((o, j) =>
-          api(people[o.actor], `/workspaces/${group.id}/board/ops`, {
-            epoch: 1,
-            type: "add",
-            op_id: `research-op-${i + j}`,
-            object_id: `research-object-${i + j}`,
-            payload: { kind: o.kind, data: o.data },
-          }),
-        ),
+      objects.slice(i, i + 12).map((o, j) =>
+        api(people[o.actor], `/workspaces/${group.id}/board/ops`, {
+          epoch: 1,
+          type: "add",
+          op_id: `research-op-${i + j}`,
+          object_id: `research-object-${i + j}`,
+          payload: { kind: o.kind, data: o.data },
+        }),
+      ),
     );
   const first = objects[0];
   const retry = await api(people[first.actor], `/workspaces/${group.id}/board/ops`, {

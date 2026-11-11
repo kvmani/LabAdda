@@ -20,12 +20,22 @@ export default tseslint.config(
       // The React Compiler rules in eslint-plugin-react-hooks 7 (set-state-in-effect, refs, purity)
       // require restructuring components; package Q3 enables them. These two apply now.
       "react-hooks/rules-of-hooks": "error",
+      // Scrollable table regions must be keyboard-focusable (axe scrollable-region-focusable).
+      "jsx-a11y/no-noninteractive-tabindex": ["error", { roles: ["tabpanel", "region"] }],
       "react-hooks/exhaustive-deps": "error",
       // React event handlers may be async; their promise is intentionally not awaited by React.
       "@typescript-eslint/no-misused-promises": ["error", { checksVoidReturn: { attributes: false } }],
       "@typescript-eslint/no-explicit-any": "error",
       eqeqeq: ["error", "always"],
       "no-console": ["error", { allow: ["warn", "error"] }],
+    },
+  },
+  {
+    // Vitest matchers such as expect.objectContaining() are typed `any` by design.
+    files: ["src/**/*.test.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
     },
   },
 );

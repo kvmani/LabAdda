@@ -3,7 +3,7 @@ import { api, errorCode, errorMessage, newId, outcomeUnknown } from "../api";
 import { API, BASE } from "../config";
 import { useWorkspaces } from "../workspaces";
 import { realtime, type StrokePreview } from "../realtime";
-import type { BoardObjectContent, BoardOp, BoardOpPayload, Workspace } from "../types";
+import type { BoardObjectContent, BoardOp, BoardOpPayload, Point, Workspace } from "../types";
 import { ConversationTask } from "../components/ConversationTask";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 import type { UploadedAsset } from "../uploads";
@@ -38,8 +38,8 @@ type PendingOp = {
   base_revision?: number;
 };
 
-const PEN_COLORS = ["#1f2933", "#c62828", "#1565c0", "#2e7d32", "#ef6c00", "#6a1b9a"];
-const STICKY_COLORS = ["#fff59d", "#b3e5fc", "#c8e6c9", "#ffccbc"];
+const PEN_COLORS = ["#1f2933", "#c62828", "#1565c0", "#2e7d32", "#ef6c00", "#6a1b9a"] as const;
+const STICKY_COLORS = ["#fff59d", "#b3e5fc", "#c8e6c9", "#ffccbc"] as const;
 
 export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<string, Obj> {
   const objects = new Map<string, Obj>(Object.entries(base ?? {}).map(([k, v]) => [k, { ...v }]));
@@ -87,8 +87,8 @@ export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<str
 
 function bounds(o: Obj): [number, number, number, number] {
   if (o.kind === "stroke") {
-    const xs = o.data.points.map((p: number[]) => p[0] + o.dx);
-    const ys = o.data.points.map((p: number[]) => p[1] + o.dy);
+    const xs = o.data.points.map((p) => p[0] + o.dx);
+    const ys = o.data.points.map((p) => p[1] + o.dy);
     return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   }
   if (o.kind === "image")
@@ -103,9 +103,7 @@ function hit(o: Obj, x: number, y: number, tol: number): boolean {
     const [a, b, c, d] = bounds(o);
     return x >= a - tol && x <= c + tol && y >= b - tol && y <= d + tol;
   }
-  return o.data.points.some(
-    (p: number[]) => Math.hypot(p[0] + o.dx - x, p[1] + o.dy - y) < tol + o.data.width,
-  );
+  return o.data.points.some((p) => Math.hypot(p[0] + o.dx - x, p[1] + o.dy - y) < tol + o.data.width);
 }
 
 /** Whiteboard. With ``panel`` set it runs as a board-only touch panel: no images, publishing or restore. */
@@ -137,7 +135,7 @@ export function Board({
   const images = useRef(new Map<string, HTMLImageElement>());
   const [epoch, setEpoch] = useState(1);
   const [tool, setTool] = useState<Tool>("pen");
-  const [color, setColor] = useState(PEN_COLORS[0]);
+  const [color, setColor] = useState<string>(PEN_COLORS[0]);
   const [save, setSave] = useState<SaveState>(ws.can_write ? "Saved" : "Read-only");
   const [message, setMessage] = useState<string | null>(null);
   const uploads = useUploadQueue(maxUploadBytes, (asset) => {
@@ -148,7 +146,7 @@ export function Board({
   const [presence, setPresence] = useState<{ id: string; display_name: string }[]>([]);
   const pending = useRef<PendingOp[]>([]);
   const flushing = useRef(false);
-  const drawing = useRef<{ id: string; points: number[][]; last: number } | null>(null);
+  const drawing = useRef<{ id: string; points: Point[]; last: number } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
   const previews = useRef(new Map<string, StrokePreview>());
   const state = useRef({ revision: 0, epoch: 1 });
@@ -171,7 +169,7 @@ export function Board({
         const floor = r.reset ? (r.snapshot?.revision ?? r.base_revision ?? 0) : state.current.revision;
         state.current = {
           epoch: r.epoch,
-          revision: merged.length ? Math.max(floor, merged[merged.length - 1].revision) : floor,
+          revision: Math.max(floor, merged[merged.length - 1]?.revision ?? floor),
         };
         return merged;
       });
@@ -275,14 +273,15 @@ export function Board({
       rect.width / view.scale,
       rect.height / view.scale,
     );
-    const line = (pts: number[][], c: string, w: number, dx = 0, dy = 0) => {
+    const line = (pts: Point[], c: string, w: number, dx = 0, dy = 0) => {
       ctx.strokeStyle = c;
       ctx.lineWidth = w;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
       pts.forEach((p, i) => (i ? ctx.lineTo(p[0] + dx, p[1] + dy) : ctx.moveTo(p[0] + dx, p[1] + dy)));
-      if (pts.length === 1) ctx.lineTo(pts[0][0] + dx + 0.1, pts[0][1] + dy);
+      const [only] = pts;
+      if (pts.length === 1 && only) ctx.lineTo(only[0] + dx + 0.1, only[1] + dy);
       ctx.stroke();
     };
     for (const o of [...objects.values()].sort((a, b) => a.rev - b.rev)) {
@@ -336,7 +335,7 @@ export function Board({
     }
   });
 
-  const toWorld = (e: React.PointerEvent) => {
+  const toWorld = (e: React.PointerEvent): Point => {
     const r = canvasRef.current!.getBoundingClientRect();
     return [(e.clientX - r.left - view.x) / view.scale, (e.clientY - r.top - view.y) / view.scale];
   };

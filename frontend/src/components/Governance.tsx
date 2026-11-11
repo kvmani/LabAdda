@@ -109,6 +109,7 @@ export function Governance() {
   }
   useEffect(() => {
     load().catch((e) => setError(errorMessage(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once when the panel opens
   }, []);
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true);

@@ -105,7 +105,8 @@ scripts/proxy-stack.sh start
 scripts/proxy-stack.sh stop
 ```
 
-Python formatting and linting use Ruff with the configuration in `backend/pyproject.toml`. Before committing, run:
+Frontend and browser-check code use ESLint and Prettier: `cd frontend && npm run lint` (check) and
+`npm run format` (rewrite). Python formatting and linting use Ruff with the configuration in `backend/pyproject.toml`. Before committing, run:
 
 ```bash
 .venv/bin/ruff format --config backend/pyproject.toml backend scripts e2e

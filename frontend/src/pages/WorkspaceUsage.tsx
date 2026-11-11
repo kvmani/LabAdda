@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidate } from "../generation";
 import { api, errorMessage } from "../api";
 import { fmtBytes } from "../format";
 import type { WorkspaceUsage as Observation } from "../governance-types";
@@ -26,8 +27,9 @@ export function WorkspaceUsage({ workspaceId }: { workspaceId: string }) {
   useEffect(() => {
     void load();
     return () => {
-      generation.current++;
+      invalidate(generation);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the workspace changes
   }, [workspaceId]);
   return (
     <section aria-labelledby="workspace-usage-heading">

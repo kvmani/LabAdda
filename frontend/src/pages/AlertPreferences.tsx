@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { invalidate } from "../generation";
 import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { Link } from "react-router-dom";
 type Choices = { mentions: boolean; official_notices: boolean; reminders: boolean; revision: number };
@@ -29,7 +30,7 @@ export function AlertPreferences() {
   useEffect(() => {
     void load();
     return () => {
-      ++generation.current;
+      invalidate(generation);
     };
   }, []);
   async function save(event: FormEvent) {

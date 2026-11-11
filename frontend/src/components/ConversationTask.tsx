@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { invalidate } from "../generation";
 import { Link } from "react-router-dom";
 import { accessDenied, api, errorCode, errorMessage, outcomeUnknown } from "../api";
 import { realtime } from "../realtime";
@@ -33,7 +34,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
   );
   const [lists, setLists] = useState<Page | null>(null),
     [listId, setListId] = useState("");
-  const [title, setTitle] = useState(text.trim().split("\n")[0].slice(0, 200)),
+  const [title, setTitle] = useState((text.trim().split("\n")[0] ?? "").slice(0, 200)),
     [description, setDescription] = useState(text.slice(0, 10000));
   const [confirmed, setConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
@@ -69,7 +70,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
     );
     return () => {
       active = false;
-      ++generation.current;
+      invalidate(generation);
       unsubs.forEach((stop) => stop());
     };
   }, [source.id, destination]);
@@ -96,6 +97,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
     setListId("");
     setConfirmed(false);
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload lists only when the chosen destination changes
   }, [destination]);
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -111,7 +113,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
               source_epoch: context!.epoch,
               source_revision: context!.revision,
             }
-          : { source_kind: kind, source_id: sourceId! };
+          : { source_kind: kind, source_id: sourceId };
       attempt.current ??= {
         listId,
         endpoint: kind === "board" ? "from-board" : "from-conversation",

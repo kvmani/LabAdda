@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint . && prettier --check \"src/**/*.{ts,tsx,css}\" \"../e2e/*.mjs\" \"*.{js,ts}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"../e2e/*.mjs\" \"*.{js,ts}\""
   },
   "dependencies": {
     "react": "18.3.1",
