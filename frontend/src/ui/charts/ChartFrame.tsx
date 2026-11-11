@@ -34,9 +34,7 @@ export function ChartFrame({ title, period, updated, legend = [], empty, table, 
         </span>
       </figcaption>
       {empty ? (
-        <EmptyState title="No data for this period">
-          Nothing was measured for {period.toLowerCase()}.
-        </EmptyState>
+        <EmptyState title="No data for this period">{period}: nothing was measured.</EmptyState>
       ) : (
         <>
           <div className="ui-chart__tools">

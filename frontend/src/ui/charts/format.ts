@@ -1,22 +1,29 @@
 import type { Series } from "./types";
 
-const DAY = 86_400_000;
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
 
-/** Default time text: date and time for short spans, date only for long ones. */
-export function makeTimeFormatter(series: Series[]): (t: number) => string {
-  let low = Infinity;
-  let high = -Infinity;
-  for (const item of series) {
-    for (const point of item.points) {
-      low = Math.min(low, point.t);
-      high = Math.max(high, point.t);
-    }
+/** Pick the shortest time text that is still unambiguous for this data's span and spacing. */
+export function timeFormatOptions(span: number, minGap: number): Intl.DateTimeFormatOptions {
+  if (minGap >= 20 * HOUR) {
+    return span <= 14 * DAY ? { weekday: "short", day: "numeric" } : { day: "numeric", month: "short" };
   }
-  const short = high - low <= 2 * DAY;
-  const options: Intl.DateTimeFormatOptions = short
-    ? { hour: "2-digit", minute: "2-digit" }
-    : { day: "numeric", month: "short" };
-  const formatter = new Intl.DateTimeFormat(undefined, options);
+  if (span <= DAY) return { hour: "2-digit", minute: "2-digit" };
+  if (span <= 7 * DAY) return { weekday: "short", hour: "2-digit", minute: "2-digit" };
+  return { day: "numeric", month: "short" };
+}
+
+/** Default time text for axis labels, adapted to the data. */
+export function makeTimeFormatter(series: Series[]): (t: number) => string {
+  const times = [...new Set(series.flatMap((item) => item.points.map((point) => point.t)))].sort(
+    (a, b) => a - b,
+  );
+  let minGap = Infinity;
+  for (let index = 1; index < times.length; index += 1) {
+    minGap = Math.min(minGap, (times[index] ?? 0) - (times[index - 1] ?? 0));
+  }
+  const span = (times[times.length - 1] ?? 0) - (times[0] ?? 0);
+  const formatter = new Intl.DateTimeFormat(undefined, timeFormatOptions(span, minGap));
   return (t) => formatter.format(new Date(t));
 }
 

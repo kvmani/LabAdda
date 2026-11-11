@@ -15,6 +15,7 @@ says where the code is and how to work with it. Delivered by package U1.
 | `frontend/src/ui/*.css` | Styles by group: `button`, `field`, `display`, `overlay`, `navigation`, `table`, `base` |
 | `frontend/src/ui/focus.ts` | `useFocusTrap` for modal surfaces; `focusableWithin` |
 | `frontend/src/ui/*.test.ts(x)` | Vitest + Testing Library tests; each file starts with `// @vitest-environment jsdom` |
+| `frontend/src/ui/charts/` | Chart components, `scale.ts`, `downsample.ts` and `charts.css` (see Charts below) |
 | `frontend/src/ui/gallery/Gallery.tsx` | Development-only page at `/_ui` showing every component and state |
 | `e2e/ui-kit.mjs` | Browser check of the gallery: axe-core in both themes at 1400 px and 390 px, dialog focus |
 
@@ -46,6 +47,38 @@ uncontrolled starting value. Keep `onSearch` idempotent for unchanged queries.
    and name (`getByRole("button", { name: "…" })`), never by class.
 3. Export it from `index.ts` and add every state to the gallery.
 4. Run `npm run lint && npm run typecheck && npx vitest run` and `node e2e/ui-kit.mjs`.
+
+## Charts
+
+Pure SVG components in `frontend/src/ui/charts/` (UX-09, package U3); no charting library.
+Import `Sparkline`, `LineChart`, `AreaChart`, `BarChart`, `HeatGrid` and `Meter` from `../ui`.
+
+```tsx
+<LineChart
+  title="Sessions"
+  series={[{ label: "Sessions", points: [{ t: 1_762_646_400_000, value: 31 }, { t: 1_762_650_000_000, value: null }] }]}
+  unit="sessions"
+  period="Last 24 hours"
+  updated="Updated 12 s ago"
+/>
+```
+
+- Data is `{ label, points: { t, value | null }[] }` with `t` in epoch milliseconds. `null` is a gap
+  (a broken line, an empty cell, no bar), never zero. Pass at most four series.
+- `period` is required; `updated` is shown as "Update time unknown" when you do not have it.
+- Line, area and bar charts and the heat grid have one tab stop: arrow keys read each point (up and
+  down change series or row), Home and End jump, Escape stops. The reading is shown under the
+  chart and announced with label, time and value with unit ("no data" for a gap).
+- "View as table" shows the same data in a `DataTable`; every chart except `Sparkline` and
+  `Meter` has it. `Sparkline` is a summary inside a `StatTile` and `Meter` prints its numbers.
+- Series colours are `--chart-1` to `--chart-4`; series also differ by mark shape and line dash
+  (bars by fill pattern), and a legend appears only with more than one series.
+- Line and area series above 400 points are downsampled to each bucket's lowest and highest real
+  sample, so peaks and gaps survive; the table view keeps every sample. Bar charts are for tens of
+  categories, not thousands.
+- `Meter` takes a limit and optional `warnAt` and `dangerAt` and shows a word and icon with the
+  colour; `value={null}` shows "Not measured".
+- Shared maths is in `charts/scale.ts` (linear and time scales, nice ticks) with unit tests.
 
 ## Checks
 

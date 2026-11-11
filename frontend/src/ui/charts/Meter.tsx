@@ -60,12 +60,16 @@ export function Meter({
       </div>
       <div
         className="ui-meter__track"
-        role="meter"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={max}
-        aria-valuenow={value ?? undefined}
-        aria-valuetext={`${text}. ${word}.`}
+        {...(value === null
+          ? {}
+          : {
+              role: "meter",
+              "aria-label": label,
+              "aria-valuemin": 0,
+              "aria-valuemax": max,
+              "aria-valuenow": value,
+              "aria-valuetext": `${text}. ${word}.`,
+            })}
       >
         <svg viewBox="0 0 100 1" preserveAspectRatio="none" aria-hidden="true" focusable="false">
           <rect className="ui-meter__fill" x={0} y={0} width={share * 100} height={1} />

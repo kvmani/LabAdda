@@ -3,18 +3,14 @@ import { ChartFrame } from "./ChartFrame";
 import { ChartPlot } from "./ChartPlot";
 import { downsample } from "./downsample";
 import { defaultValueFormat, formatFullTime, hasNoData, makeTimeFormatter, withUnit } from "./format";
-import { DASHES, Mark } from "./marks";
-import { areaPath, linePath, runs } from "./paths";
-import { extent, linearScale, niceTicks, timeTicks } from "./scale";
+import { extent, linearScale, niceTicks } from "./scale";
 import { SeriesTable } from "./SeriesTable";
 import type { ChartBaseProps } from "./types";
 import { useActivePoint } from "./useActivePoint";
-import { ValueAxis } from "./ValueAxis";
+import { MARGIN, TimeDrawing } from "./TimeDrawing";
 
 type TimeChartProps = ChartBaseProps & { area: boolean };
 
-const MARGIN = { top: 18, right: 12, bottom: 28, left: 48 };
-const MARK_LIMIT = 40;
 const MAX_SERIES = 4;
 
 /** Line and area charts share everything but the fill, so one component draws both. */
@@ -34,7 +30,11 @@ export function TimeChart({ area, height = 240, ...props }: TimeChartProps) {
   const point = active ? drawn[active.series]?.[active.index] : undefined;
   const readout =
     active && point
-      ? `${series[active.series]?.label ?? ""}, ${formatFullTime(point.t)}, ${withUnit(point.value, unit, formatValue)}`
+      ? [
+          series[active.series]?.label ?? "",
+          formatFullTime(point.t),
+          withUnit(point.value, unit, formatValue),
+        ].join(", ")
       : null;
 
   function pointer(x: number | null, width: number) {
@@ -76,71 +76,11 @@ export function TimeChart({ area, height = 240, ...props }: TimeChartProps) {
         handlers={handlers}
         onPointer={pointer}
       >
-        {(width) => {
-          const [t0, t1] = times ?? [0, 1];
-          const x = linearScale([t0, t1], [MARGIN.left, width - MARGIN.right]);
-          const y = linearScale([axis.min, axis.max], [height - MARGIN.bottom, MARGIN.top]);
-          const marked = drawn.reduce((sum, points) => sum + points.length, 0) <= MARK_LIMIT;
-          return (
-            <>
-              <ValueAxis
-                ticks={axis.ticks}
-                y={y}
-                left={MARGIN.left}
-                right={width - MARGIN.right}
-                unit={unit}
-                format={formatValue}
-              />
-              {timeTicks(t0, t1, width < 480 ? 3 : 6).map((tick) => (
-                <text key={tick} className="ui-chart__tick" x={x(tick)} y={height - 8} textAnchor="middle">
-                  {formatTime(tick)}
-                </text>
-              ))}
-              {drawn.map((points, index) => (
-                <g key={series[index]?.label} className={`ui-chart__s${index}`}>
-                  {area && <path className="ui-chart__area" d={areaPath(points, x, y, y(axis.min))} />}
-                  <path
-                    className="ui-chart__line"
-                    d={linePath(points, x, y)}
-                    strokeDasharray={DASHES[index]}
-                  />
-                  {runs(points).flatMap((run) =>
-                    run.length === 1 || marked
-                      ? run.map((p) => (
-                          <Mark
-                            key={p.t}
-                            className="ui-chart__mark"
-                            shape={index}
-                            x={x(p.t)}
-                            y={y(p.value ?? 0)}
-                            size={3}
-                          />
-                        ))
-                      : [],
-                  )}
-                </g>
-              ))}
-              {active && point && point.value !== null && (
-                <g className={`ui-chart__s${active.series}`}>
-                  <line
-                    className="ui-chart__guide"
-                    x1={x(point.t)}
-                    x2={x(point.t)}
-                    y1={MARGIN.top}
-                    y2={height - MARGIN.bottom}
-                  />
-                  <Mark
-                    className="ui-chart__active"
-                    shape={active.series}
-                    x={x(point.t)}
-                    y={y(point.value)}
-                    size={6}
-                  />
-                </g>
-              )}
-            </>
-          );
-        }}
+        {(width) => (
+          <TimeDrawing
+            {...{ width, height, drawn, area, axis, times, unit, formatTime, formatValue, active }}
+          />
+        )}
       </ChartPlot>
     </ChartFrame>
   );

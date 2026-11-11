@@ -14,7 +14,7 @@ export function ValueAxis({ ticks, y, left, right, unit, format }: ValueAxisProp
   return (
     <g>
       {unit && (
-        <text className="ui-chart__tick" x={0} y={10}>
+        <text className="ui-chart__tick" x={0} y={8}>
           {unit}
         </text>
       )}

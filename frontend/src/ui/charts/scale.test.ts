@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { downsample } from "./downsample";
+import { timeFormatOptions } from "./format";
 import { extent, linearScale, niceTicks, timeScale, timeTicks } from "./scale";
 
 describe("linearScale", () => {
@@ -105,5 +106,19 @@ describe("downsample", () => {
   it("keeps a gap visible", () => {
     const gappy = many.map((p) => (p.t >= 500 && p.t < 520 ? { t: p.t, value: null } : p));
     expect(downsample(gappy, 100).some((p) => p.value === null)).toBe(true);
+  });
+});
+
+describe("timeFormatOptions", () => {
+  const HOUR = 3_600_000;
+
+  it("uses clock time inside a day, weekday and time inside a week, dates beyond", () => {
+    expect(timeFormatOptions(6 * HOUR, HOUR)).toEqual({ hour: "2-digit", minute: "2-digit" });
+    expect(timeFormatOptions(47 * HOUR, HOUR)).toMatchObject({ weekday: "short", hour: "2-digit" });
+    expect(timeFormatOptions(30 * 24 * HOUR, HOUR)).toEqual({ day: "numeric", month: "short" });
+  });
+
+  it("drops the time of day when samples are a day apart", () => {
+    expect(timeFormatOptions(6 * 24 * HOUR, 24 * HOUR)).toEqual({ weekday: "short", day: "numeric" });
   });
 });

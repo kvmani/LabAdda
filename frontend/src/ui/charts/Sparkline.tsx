@@ -23,9 +23,10 @@ export function Sparkline({ label, points, unit, formatValue = defaultValueForma
   const t = extent(drawn.map((point) => point.t));
   const v = extent(drawn.map((point) => point.value ?? NaN));
   const latest = [...points].reverse().find((point) => point.value !== null)?.value ?? null;
+  const show = (value: number) => withUnit(value, unit, formatValue);
   const summary =
     v && latest !== null
-      ? `${label} trend: latest ${withUnit(latest, unit, formatValue)}, lowest ${withUnit(v[0], unit, formatValue)}, highest ${withUnit(v[1], unit, formatValue)}`
+      ? `${label} trend: latest ${show(latest)}, lowest ${show(v[0])}, highest ${show(v[1])}`
       : `${label} trend: no data`;
   if (!t || !v) {
     return (

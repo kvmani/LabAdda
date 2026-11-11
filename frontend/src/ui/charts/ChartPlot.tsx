@@ -31,7 +31,7 @@ export function ChartPlot({ label, height, readout, handlers, onPointer, childre
         className="ui-chart__plot"
         role="application"
         aria-label={`${label}. Use the arrow keys to read each point.`}
-        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- one keyboard widget: arrow keys read points
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- one keyboard widget
         tabIndex={0}
         {...handlers}
         onPointerMove={(event) => {

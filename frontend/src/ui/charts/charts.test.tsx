@@ -209,7 +209,7 @@ describe("Meter", () => {
   it("shows not measured instead of zero", () => {
     render(<Meter label="Disk space" value={null} max={500} unit="GB" />);
     expect(screen.getAllByText("Not measured").length).toBeGreaterThan(0);
-    expect(screen.getByRole("meter").hasAttribute("aria-valuenow")).toBe(false);
+    expect(screen.queryByRole("meter")).toBeNull();
   });
 });
 

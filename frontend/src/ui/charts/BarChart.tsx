@@ -13,7 +13,7 @@ type BarChartProps = ChartBaseProps & {
   stacked?: boolean;
 };
 
-const MARGIN = { top: 18, right: 12, bottom: 28, left: 48 };
+const MARGIN = { top: 26, right: 12, bottom: 28, left: 48 };
 const MAX_SERIES = 4;
 const LABEL_SPACE = 64;
 
@@ -65,7 +65,11 @@ export function BarChart({ stacked = false, height = 240, ...props }: BarChartPr
   const axis = niceTicks(low, high, 5);
 
   const readout = active
-    ? `${series[active.series]?.label ?? ""}, ${formatFullTime(categories[active.index] ?? 0)}, ${withUnit(valueAt(active.series, active.index), unit, formatValue)}`
+    ? [
+        series[active.series]?.label ?? "",
+        formatFullTime(categories[active.index] ?? 0),
+        withUnit(valueAt(active.series, active.index), unit, formatValue),
+      ].join(", ")
     : null;
 
   function pointer(x: number | null, width: number) {

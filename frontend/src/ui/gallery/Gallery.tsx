@@ -40,6 +40,7 @@ import {
   type TreeNode,
 } from "..";
 import { ICONS, type IconName } from "../icons";
+import { ChartsSection } from "./ChartsSection";
 import "./gallery.css";
 
 /*
@@ -364,6 +365,10 @@ export function Gallery() {
                 initiallyExpanded={["root", "division"]}
               />
             </div>
+          </Section>
+
+          <Section title="Charts">
+            <ChartsSection />
           </Section>
         </main>
       </ToastProvider>

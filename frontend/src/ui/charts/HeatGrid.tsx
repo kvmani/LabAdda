@@ -42,7 +42,11 @@ export function HeatGrid({
   const empty =
     rows.length === 0 || columns.length === 0 || values.every((row) => row.every((value) => value === null));
   const readout = active
-    ? `${rows[active.series] ?? ""}, ${columns[active.index] ?? ""}, ${withUnit(cell(active.series, active.index), unit, formatValue)}`
+    ? [
+        rows[active.series] ?? "",
+        columns[active.index] ?? "",
+        withUnit(cell(active.series, active.index), unit, formatValue),
+      ].join(", ")
     : null;
 
   const tableRows: TableRow[] = rows.map((label, r) => ({ label, cells: columns.map((_, c) => cell(r, c)) }));
