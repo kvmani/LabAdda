@@ -3,6 +3,8 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSession } from "../session";
 import { INSTANCE } from "../config";
+import { Button, Card, TextInput } from "../ui";
+import "./auth.css";
 
 export function Login({ next }: { next: string }) {
   const { signIn, expired } = useSession();
@@ -14,6 +16,7 @@ export function Login({ next }: { next: string }) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!username.trim() || !password) return setError("Enter your username and password.");
     setBusy(true);
     setError(null);
     try {
@@ -28,48 +31,48 @@ export function Login({ next }: { next: string }) {
 
   return (
     <main className="auth">
-      <form className="card" onSubmit={submit} aria-labelledby="signin-title">
-        <h1 id="signin-title">LabAdda</h1>
-        <p className="muted">
-          Sign in to your research workspace{INSTANCE !== "pilot" ? ` · ${INSTANCE}` : ""}
-        </p>
-        {expired && <p className="notice">Your session ended. Sign in again to continue.</p>}
-        <label>
-          Username
-          <input
+      <Card>
+        <form className="auth__form" onSubmit={submit} aria-labelledby="signin-title">
+          <div>
+            <h1 className="auth__title" id="signin-title">
+              LabAdda
+            </h1>
+            <p className="auth__scope">
+              Sign in to your research workspace{INSTANCE !== "pilot" ? ` · ${INSTANCE}` : ""}
+            </p>
+          </div>
+          {expired && (
+            <p className="auth__notice" role="status">
+              Your session ended. Sign in again to continue.
+            </p>
+          )}
+          <TextInput
+            label="Username"
             name="username"
             autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            required
             // The sign-in page has one purpose, so starting in the username field is expected.
             // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
-        </label>
-        <label>
-          Password
-          <input
+          <TextInput
+            label="Password"
             name="password"
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
+            error={error}
           />
-        </label>
-        {error && (
-          <p className="error" role="alert">
-            {error}
+          <Button variant="primary" type="submit" busy={busy} busyLabel="Signing in…">
+            Sign in
+          </Button>
+          <p className="auth__aside">
+            First time here? Use the <Link to="/activate">activation link</Link> from your administrator.
           </p>
-        )}
-        <button type="submit" disabled={busy}>
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-        <p className="muted small">
-          First time here? Use the <Link to="/activate">activation link</Link> from your administrator.
-        </p>
-      </form>
+        </form>
+      </Card>
     </main>
   );
 }
@@ -85,6 +88,7 @@ export function Activate() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!token.trim() || !password) return setError("Enter the activation code and a new password.");
     if (password !== confirm) return setError("Passwords do not match.");
     try {
       await activate(token.trim(), password);
@@ -96,48 +100,39 @@ export function Activate() {
 
   return (
     <main className="auth">
-      <form className="card" onSubmit={submit}>
-        <h1>Set your password</h1>
-        <label>
-          Activation code
-          <input
+      <Card>
+        <form className="auth__form" onSubmit={submit}>
+          <h1 className="auth__title">Set your password</h1>
+          <TextInput
+            label="Activation code"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            required
             autoComplete="one-time-code"
           />
-        </label>
-        <label>
-          New password (at least 10 characters)
-          <input
+          <TextInput
+            label="New password (at least 10 characters)"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
             minLength={10}
             autoComplete="new-password"
           />
-        </label>
-        <label>
-          Confirm password
-          <input
+          <TextInput
+            label="Confirm password"
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            required
             autoComplete="new-password"
+            error={error}
           />
-        </label>
-        {error && (
-          <p className="error" role="alert">
-            {error}
+          <Button variant="primary" type="submit">
+            Activate account
+          </Button>
+          <p className="auth__aside">
+            <Link to="/">Back to sign in</Link>
           </p>
-        )}
-        <button type="submit">Activate account</button>
-        <p className="muted small">
-          <Link to="/">Back to sign in</Link>
-        </p>
-      </form>
+        </form>
+      </Card>
     </main>
   );
 }

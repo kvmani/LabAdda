@@ -178,15 +178,6 @@ label.inline input:not([type="checkbox"]) {
   color: var(--muted);
 }
 
-.auth {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-.auth .card {
-  width: min(380px, 100%);
-}
 .narrow {
   max-width: 640px;
 }
