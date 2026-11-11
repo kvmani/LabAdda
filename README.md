@@ -28,6 +28,7 @@ The repository holds a runnable application (FastAPI + PostgreSQL backend, React
 | [In-app help](docs/HELP-CENTER.md) | Help centre, setup checklist, sync checks (v1.0 contract) |
 | [TESTING.md](TESTING.md) | Test matrix and release evidence |
 | [REVIEW.md](REVIEW.md) | Independent review procedure and release decisions |
+| [Operator quickstart](docs/OPERATOR-QUICKSTART.md) | Install, first administrator, `labadda doctor`, backup, upgrade in five steps |
 | [Intranet deployment design](docs/DEPLOYMENT.md) | Runtime, offline release, staging, recovery, and site decisions |
 | [API contract](docs/API.md) | Endpoints, error codes, idempotency and socket messages |
 | [Data lifecycle requirements](docs/DATA-LIFECYCLE.md) | Future quotas, retention, user archives and safe re-import |

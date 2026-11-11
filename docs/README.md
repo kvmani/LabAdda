@@ -19,6 +19,7 @@ Read this map first; follow the relevant path rather than loading every document
 | To-do lists / collaboration | [Task implementation guide](development/tasks.md) | S8 in [specifications](../SPECIFICATIONS.md), C1 in [API](API.md), T37–T42 in [testing](../TESTING.md) |
 | Start and verify a checkout | [Repository README](../README.md) | [Testing](../TESTING.md), scripts/verify.sh |
 | Multi-user regression system | [Simulation guide](development/simulation.md) | Dedicated disposable runner, CI, root/prefix screenshots and TLS workloads |
+| Run a site: install, check, back up, upgrade | [Operator quickstart](OPERATOR-QUICKSTART.md) | [Deployment](DEPLOYMENT.md) |
 | Deployment and recovery | [Deployment](DEPLOYMENT.md) | [Recovery](RECOVERY.md), [commissioning](COMMISSIONING.md), [release evidence](RELEASE-EVIDENCE.md) |
 | Authorization/security review | [Repository rules](../AGENTS.md), [review plan](../REVIEW.md) | Relevant feature contracts and negative tests |
 | Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |

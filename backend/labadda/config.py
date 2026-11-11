@@ -7,6 +7,7 @@ instances supply their own values through an operator-owned environment file.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -98,8 +99,9 @@ def _timezone(value: str) -> str:
     return value
 
 
-def load_settings() -> Settings:
-    env = os.environ.get
+def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
+    """Read settings from the process environment, or from `environ` when a caller supplies one."""
+    env = (os.environ if environ is None else environ).get
     dist = env("LABADDA_FRONTEND_DIST")
     status_dir = env("LABADDA_STATUS_DIR")
     default_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"

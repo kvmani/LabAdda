@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -23,6 +24,26 @@ def alembic_config(url: str) -> Config:
     cfg.set_main_option("script_location", str(ROOT / "migrations"))
     cfg.attributes["database_url"] = url
     return cfg
+
+
+def run_doctor(args: argparse.Namespace) -> int:
+    """Run the read-only installation checks; exit 0 only when none failed."""
+    from . import doctor
+
+    environ = dict(os.environ)
+    if args.env_file is not None:
+        try:
+            environ.update(doctor.read_env_file(args.env_file))
+        except (OSError, ValueError):
+            print("The environment file could not be read as LABADDA_ settings.", file=sys.stderr)
+            return 2
+    host = doctor.live_host(environ, port=args.port)
+    results = doctor.run_checks(host)
+    if args.json:
+        print(json.dumps(doctor.as_report(results, host.now()), indent=2))
+    else:
+        print(doctor.format_report(results))
+    return 0 if doctor.passed(results) else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -44,6 +65,10 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("destination", type=Path)
     backup.add_argument("--release", required=True)
     backup.add_argument("--writers-quiesced", action="store_true", required=True)
+    doctor = sub.add_parser("doctor", help="check this installation; say in plain words how to fix problems")
+    doctor.add_argument("--json", action="store_true", help="print the report as JSON")
+    doctor.add_argument("--env-file", type=Path, help="read LABADDA_ settings from this file first")
+    doctor.add_argument("--port", type=int, help="the port the service listens on, if not in the settings")
     verify = sub.add_parser("verify-backup", help="re-check a finished backup bundle against its manifest")
     verify.add_argument("bundle", type=Path)
     verify.add_argument("--manifest-sha256", required=True)
@@ -98,6 +123,8 @@ def main(argv: list[str] | None = None) -> int:
     show_inventory = sub.add_parser("show-inventory", help="show sanitized inventory job and attempt status")
     show_inventory.add_argument("job_id", type=uuid.UUID)
     args = parser.parse_args(argv)
+    if args.cmd == "doctor":
+        return run_doctor(args)
     settings = load_settings()
 
     if args.cmd == "reconcile-charges":
@@ -271,8 +298,6 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     if args.cmd == "restore":
-        import os
-
         from .recovery import restore as restore_backup
 
         target_url = os.environ.get("LABADDA_RESTORE_DATABASE_URL")

@@ -146,3 +146,16 @@ count retention of finished bundles. The helper modules `site_environment.py` an
 `site_state.py` hold the environment-file parser and the lock/journal primitives that were split
 out of `lifecycle.py`. Tests: `backend/tests/test_backup_status.py` and `test_scheduled_backup.py`.
 Full description: [recovery](../RECOVERY.md#scheduled-backups-and-the-status-file).
+
+## `labadda doctor` (D2)
+
+`labadda doctor [--json] [--env-file FILE] [--port N]` runs read-only checks and exits 0 only
+when none failed. Logic and wording are in `backend/labadda/doctor.py`; the probes that touch
+the database, disk, network and certificate are in `doctor_host.py` and reach the checks
+through the injectable `Host`, so each check is unit-tested with a plain fake
+(`backend/tests/test_doctor.py`). A result holds a status (`pass`, `fail`, `skip`), a plain
+summary and a fix hint, and never a setting value; `skip` means not applicable or blocked by an
+earlier failure and does not fail the run. Setting errors echo only the setting's name. To add
+a check: write `check_<thing>(host, settings) -> CheckResult`, register it in `run_checks`, and
+add a passing and a failing test plus a line in the quickstart if staff need to know about it.
+The step-by-step path for operators is [the quickstart](../OPERATOR-QUICKSTART.md).
