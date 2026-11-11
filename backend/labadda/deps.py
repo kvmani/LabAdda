@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from . import policy
 from .config import Settings
 from .errors import Forbidden, NotFound, Unauthenticated
+from .metrics.activity import ACTIVITY
 from .models import AuthSession, User
 from .security import digest, session_valid, utcnow
 
@@ -85,9 +86,12 @@ def _load_actor(request: Request, db: Session, settings: Settings, kind: str) ->
         if request.method in UNSAFE_METHODS:
             sess.last_seen_at = now
             db.commit()
-    elif now - sess.last_seen_at > timedelta(minutes=1):
-        sess.last_seen_at = now
-        db.commit()
+    else:
+        if now - sess.last_seen_at > timedelta(minutes=1):
+            sess.last_seen_at = now
+            db.commit()
+        # Board-only panels stay outside people activity (AD-08); only normal sessions count.
+        ACTIVITY.record(db, user.id, settings, now=now)
     return Actor(user=user, session=sess)
 
 

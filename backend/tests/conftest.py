@@ -15,6 +15,8 @@ from labadda.cli import alembic_config
 from labadda.config import load_settings
 from labadda.db import session_factory
 from labadda.fixtures import fixture_password, reset_database, seed
+from labadda.metrics import REGISTRY
+from labadda.metrics.activity import ACTIVITY
 from labadda.security import login_limiter
 
 TEST_DB = os.environ.get(
@@ -35,6 +37,13 @@ def migrated():
     recreate_schema(TEST_DB)
     command.upgrade(alembic_config(TEST_DB), "head")
     return TEST_DB
+
+
+@pytest.fixture(autouse=True)
+def fresh_metrics():
+    # The registry and "seen today" set are process-wide, like a freshly started server.
+    REGISTRY.reset()
+    ACTIVITY.reset()
 
 
 @pytest.fixture

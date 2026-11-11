@@ -6,15 +6,18 @@ from sqlalchemy import create_engine, text
 
 
 def downgrade_legacy(config: Config, revision: str) -> None:
-    """Remove only synthetic P1 attributes before exercising an older downgrade guard.
+    """Remove only synthetic P1 and A3 records before exercising an older downgrade guard.
 
-    Login now records a staff date, which correctly blocks dropping staff columns.
-    These older tests exercise other data guards; they need a reconstructible staff
-    fixture so their original guards are reached. P1 guard tests never use this helper.
+    Login now records a staff date and an activity day, which correctly block dropping
+    staff columns and usage history. These older tests exercise other data guards; they
+    need a reconstructible staff fixture and no usage history so their original guards are
+    reached. P1 and A3 guard tests never use this helper.
     """
     engine = create_engine(config.attributes["database_url"])
     try:
         with engine.begin() as db:
+            db.execute(text("DELETE FROM activity_days"))
+            db.execute(text("DELETE FROM metric_samples"))
             db.execute(
                 text("""
                 UPDATE users SET employee_no=NULL, designation=NULL, contact_email=NULL,

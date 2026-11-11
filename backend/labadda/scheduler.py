@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import datetime
 
 from sqlalchemy import select
@@ -63,17 +64,25 @@ def process_due_reminders(db: Session, now: datetime | None = None, batch: int =
     return created
 
 
-async def run_forever(factory: sessionmaker, interval: int, on_tick=None) -> None:
+async def run_forever(
+    factory: sessionmaker, interval: int, jobs: tuple[Callable[[], None], ...] = ()
+) -> None:
+    """Deliver reminders, then run each job; one failing job never stops the others."""
     while True:
         try:
             with factory() as db:
                 count = await asyncio.to_thread(process_due_reminders, db)
                 if count:
                     log.info("reminders.delivered", extra={"count": count})
-            if on_tick:
-                await asyncio.to_thread(on_tick)
         except asyncio.CancelledError:
             raise
         except Exception:  # keep the runner alive; next tick retries
             log.exception("reminders.failed")
+        for job in jobs:
+            try:
+                await asyncio.to_thread(job)
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # keep the runner alive; next tick retries
+                log.exception("scheduler.job_failed", extra={"job": job.__name__})
         await asyncio.sleep(interval)
