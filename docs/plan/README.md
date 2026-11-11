@@ -54,7 +54,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 3 | Q2 | Frontend linter, formatter and strict types | — | done | [quality](quality.md#q2--frontend-linter-formatter-and-strict-types) |
 | 4 | U1 | Design tokens and core components | Q2 | done | [ui](ui.md#u1--design-tokens-and-core-components) |
 | 5 | U2 | Application shell refresh | U1 | done | [ui](ui.md#u2--application-shell-refresh) |
-| 6 | A1 | Admin console shell and navigation | U2 | next | [admin](admin.md#a1--admin-console-shell-and-navigation) |
+| 6 | A1 | Admin console shell and navigation | U2 | in progress | [admin](admin.md#a1--admin-console-shell-and-navigation) |
 | 7 | P1 | Staff record, people list and profile | A1, Q1 | queued | [people](people.md#p1--staff-record-people-list-and-profile) |
 | 8 | P2 | Change protocol; add, edit, transfer | P1 | queued | [people](people.md#p2--change-protocol-add-edit-transfer) |
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | queued | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
