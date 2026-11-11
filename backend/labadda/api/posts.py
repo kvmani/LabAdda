@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import audit, notify, policy
+from .. import audit, metrics, notify, policy
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Forbidden, Invalid, NotFound
@@ -226,6 +226,8 @@ def create_post(
         occurrence="created",
     )
     db.commit()
+    metrics.count_workspace("posts.created", ws)
+    metrics.count_attachments(ws, assets)
     _hub(request).publish(ws.id, {"type": "noticeboard.changed", "workspace_id": str(ws.id)})
     return _render(db, [post], actor, access.can_moderate, settings.api_prefix)[0]
 
@@ -264,6 +266,7 @@ def reply(
             occurrence="created",
         )
         db.commit()
+        metrics.count_workspace("replies.created", access.workspace)
         _hub(request).publish(
             parent.workspace_id, {"type": "noticeboard.changed", "workspace_id": str(parent.workspace_id)}
         )

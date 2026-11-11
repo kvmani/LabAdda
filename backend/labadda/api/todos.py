@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from .. import policy, task_events, task_history
+from .. import metrics, policy, task_events, task_history
 from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound, Unauthenticated
 from ..identity_locks import lock_identity
@@ -264,6 +264,13 @@ def tasks(
     return result
 
 
+def _count_task(db, list_id, name):
+    # Personal lists stay outside every analytics feature; only workspace lists are counted.
+    task_list = db.get(TodoList, list_id)
+    if task_list.workspace_id is not None:
+        metrics.count_workspace_on_commit(db, name, db.get(Workspace, task_list.workspace_id))
+
+
 def _create_task_row(db, user, list_id, body, fingerprint=None):
     """Stage task/history atomically; callers authorize, lock and commit."""
     fingerprint = fingerprint or _digest(body, list_id)
@@ -292,6 +299,9 @@ def _create_task_row(db, user, list_id, body, fingerprint=None):
     db.add(row)
     db.flush()
     task_history.record(db, row, user.id)
+    _count_task(db, list_id, "tasks.created")
+    if row.done:
+        _count_task(db, list_id, "tasks.completed")
     return row, True
 
 
@@ -332,6 +342,7 @@ def edit_task(
     if row.revision != body.revision:
         raise Conflict("revision_conflict", "This task changed. Refresh and review before saving again.")
     before = task_history.snapshot(row)
+    was_done = row.done
     status = body.status or (row.status if body.done == row.done else ("done" if body.done else "todo"))
     if body.status is not None and body.done != (status == "done"):
         raise Invalid("status_mismatch", "Completion must match the selected workflow state.")
@@ -340,6 +351,8 @@ def edit_task(
     row.status = status
     row.revision += 1
     task_history.record(db, row, user.id, before)
+    if row.done and not was_done:
+        _count_task(db, list_id, "tasks.completed")
     row.updated_at = utcnow()
     lock_identity(db, actor, get_settings(request))
     db.commit()

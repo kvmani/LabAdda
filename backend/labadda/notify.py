@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from . import policy
+from . import metrics, policy
 from .models import Notification, NotificationPreference, User, Workspace
 
 MENTION_RE = re.compile(r"(?<![\w@])@([a-z0-9][a-z0-9._-]{1,62})", re.IGNORECASE)
@@ -66,7 +66,12 @@ def create(
         .on_conflict_do_nothing(index_elements=["dedupe_key"])
         .returning(Notification.id)
     )
-    return len(db.execute(stmt).all())
+    created = len(db.execute(stmt).all())
+    # Personal-note reminders have no workspace and stay outside analytics.
+    if created and workspace_id is not None:
+        workspace = db.get(Workspace, uuid.UUID(str(workspace_id)))
+        metrics.count_workspace_on_commit(db, "notifications.created", workspace, created)
+    return created
 
 
 def mentioned_users(db: Session, body: str, workspace: Workspace, author_id) -> list[uuid.UUID]:

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import audit, people
+from .. import audit, metrics, people
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, origin_allowed
 from ..errors import Forbidden, Invalid, TooMany, Unauthenticated
@@ -112,11 +112,13 @@ def login(
             outcome="denied",
         )
         db.commit()
+        metrics.count("auth.signin_failed")
         raise Unauthenticated("invalid_credentials", "Username or password is incorrect.")
     people.record_sign_in(db, user, settings)
     token, sess = create_session(db, user, settings)
     audit.record(db, actor=user, action="auth.login", scope_type="identity", target_id=user.id)
     db.commit()
+    metrics.count("auth.signin_ok")
     _set_cookie(response, token, settings)
     return session_payload(user, sess, settings)
 

@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from .. import audit, policy
+from .. import audit, metrics, policy
 from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target, with_op
 from ..charges import charge_board_object, recharge_board
 from ..config import Settings
@@ -138,6 +138,7 @@ def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: d
             raise Invalid("invalid_board_op", "Upload a PNG or JPEG image before placing it on the board.")
         if fresh:
             asset.status, asset.board_workspace_id = "committed", workspace_id
+            metrics.count_attachments_on_commit(db, db.get(Workspace, workspace_id), [asset])
         return {
             "kind": kind,
             "data": {
@@ -208,7 +209,7 @@ def submit_op(
     actor: Actor = Depends(board_actor),
     db: Session = Depends(get_db),
 ):
-    policy.require_write(db, actor.user, workspace_id)
+    access = policy.require_write(db, actor.user, workspace_id)
     if actor.is_panel and body.type == "add" and (body.payload or {}).get("kind") == "image":
         # Shared panels have no file picker; images are placed from a desktop session.
         raise Forbidden("panel_not_allowed", "Images can be added from a desktop session.")
@@ -286,6 +287,7 @@ def submit_op(
         recharge_board(db, board, after)  # first write to a historical board completes its ledger
     base_revision = board.base_revision
     db.commit()
+    metrics.count_workspace("board.operations", access.workspace)
     state_cache.committed(workspace_id, base_revision, op)
     committed = op_json(op)
     request.app.state.hub.publish(
@@ -518,6 +520,8 @@ def publish_snapshot(
             broader=dest.id != source.id,
         )
         db.flush()
+        # Counted by the commit itself: the outcome-unknown path below may never confirm it.
+        metrics.count_workspace_on_commit(db, "posts.created", dest)
         lock_identity(db, identity, settings)
         commit_started = True
         db.commit()

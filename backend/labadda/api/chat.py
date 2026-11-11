@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from .. import notify, policy
+from .. import metrics, notify, policy
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound
 from ..identity_locks import lock_identity
@@ -160,6 +160,8 @@ def send(
     _mark_read(db, actor.id, workspace_id, msg.seq)
     lock_identity(db, actor, get_settings(request))
     db.commit()
+    metrics.count_workspace("chat.messages", access.workspace)
+    metrics.count_attachments(access.workspace, assets)
     db.expire(msg, ["attachments"])
     payload = message_json(msg, users_by_id(db, [actor.id]), get_settings(request).api_prefix)
     request.app.state.hub.publish(workspace_id, {"type": "chat.message", "message": payload})

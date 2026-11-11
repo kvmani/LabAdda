@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlalchemy import event
 from sqlalchemy.orm import Session, SessionTransaction
 
-from ..models import Workspace
+from ..models import Asset, Workspace
 from . import catalog
 from .registry import REGISTRY
 
@@ -42,6 +42,20 @@ def count_workspace_on_commit(db: Session, name: str, workspace: Workspace, amou
     for dimension in dimensions:
         catalog.check_dimension(entry, dimension)
     db.info.setdefault(_PENDING, []).append((name, dimensions, amount))
+
+
+def count_attachments(workspace: Workspace, assets: list[Asset]) -> None:
+    """Count files committed to a workspace; uploads only count once they have a destination."""
+    if assets:
+        count_workspace("uploads.count", workspace, len(assets))
+        count_workspace("uploads.bytes", workspace, sum(asset.size for asset in assets))
+
+
+def count_attachments_on_commit(db: Session, workspace: Workspace, assets: list[Asset]) -> None:
+    """``count_attachments`` applied when the session's outermost transaction commits."""
+    if assets:
+        count_workspace_on_commit(db, "uploads.count", workspace, len(assets))
+        count_workspace_on_commit(db, "uploads.bytes", workspace, sum(asset.size for asset in assets))
 
 
 @event.listens_for(Session, "after_commit")
