@@ -1,8 +1,14 @@
 # Developer task map
 
-Use [repository rules](../../AGENTS.md) first. Read one relevant feature guide,
-then its linked contract/tests; consult broader specifications when changing a
-boundary. Run the affected checks and update the same guide and ledger with code.
+Use [repository rules](../../AGENTS.md) first, then [the workflow](agent-workflow.md) and
+[engineering standards](standards.md). For screens, follow the [UI design system](ui-design-system.md).
+Read one relevant feature guide, then its linked contract/tests; consult broader specifications
+when changing a boundary. Run the affected checks and update the same guide, the
+[plan](../plan/README.md) and the ledger with the code.
+
+New v1.0 areas do not have feature guides yet. Their work-package cards name the modules to
+create; add a guide here (one file per area, under 150 lines) when the first package of an
+area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`, `ui-kit.md`.
 
 | Task | Minimal source path | Contract / checks |
 | --- | --- | --- |

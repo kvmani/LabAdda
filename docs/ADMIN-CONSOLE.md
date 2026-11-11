@@ -1,6 +1,6 @@
 # Administration, observability and policy safety — future contract
 
-Status: **normative later-phase contract**. Partial observation/proposal/delegation views exist; [P5-PROGRESS.md](P5-PROGRESS.md) records their limits. The full operational console is not implemented. Builds on S2, DATA-LIFECYCLE.md and RECOVERY.md. The goal is a complete operational view with safe actions, not an unrestricted content browser.
+Status: **normative long-term contract**. The part delivered in v1.0 is defined concretely in [ADMIN-CONSOLE-V1.md](ADMIN-CONSOLE-V1.md); read that first. Partial observation/proposal/delegation views exist; [P5-PROGRESS.md](P5-PROGRESS.md) records their limits. The full operational console is not implemented. Builds on S2, DATA-LIFECYCLE.md and RECOVERY.md. The goal is a complete operational view with safe actions, not an unrestricted content browser.
 
 ## Roles and access
 

@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Single local verification entry point. CI runs the same commands.
-#   scripts/verify.sh            backend tests, frontend typecheck/unit tests/build
+#   scripts/verify.sh            docs check, backend tests, frontend typecheck/unit tests/build
 #   scripts/verify.sh --e2e      also run browser flows through nginx (root + prefix)
 # Requires a disposable PostgreSQL reachable via LABADDA_TEST_DATABASE_URL (see README).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="${LABADDA_PYTHON:-$ROOT/.venv/bin}"
+
+echo "== documentation: links, size limits, plan consistency =="
+"$PY/python" "$ROOT/scripts/check_docs.py"
 
 echo "== backend: migrations, policy, API, realtime (pytest) =="
 ( cd "$ROOT/backend" && "$PY/python" -m pytest -q -p no:cacheprovider )

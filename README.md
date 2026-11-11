@@ -12,20 +12,27 @@ Each readable workspace has a **Storage** tab with shared file and logical-conte
 
 Administrators can save observation-only site capacity proposals and preview asset-budget/reserve scenarios. Previews show incomplete measurements and upper bounds; saving or previewing does not activate limits. See [API and current boundaries](docs/API.md#p51-site-capacity-proposals-and-previews).
 
-The repository holds a runnable application (FastAPI + PostgreSQL backend, React + Vite frontend) with fictional fixture data. See [ROADMAP.md](ROADMAP.md) for what is complete and what comes next.
+The repository holds a runnable application (FastAPI + PostgreSQL backend, React + Vite frontend) with fictional fixture data. See [the delivery plan](docs/plan/README.md) for what is complete (about half of v1.0) and what comes next.
 
 | Document | Use it for |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Repository rules and agent starting point |
 | [SPECIFICATIONS.md](SPECIFICATIONS.md) | Product scope, access rules, workflows, and service contracts |
-| [ROADMAP.md](ROADMAP.md) | Implementation order, milestone exits, and handoff ledger |
+| [Delivery plan](docs/plan/README.md) | v1.0 scope, completion percentages, ordered work packages |
+| [ROADMAP.md](ROADMAP.md) | Phase overview, standing decisions, and handoff ledger |
+| [Engineering standards](docs/development/standards.md) | How code is written here; recipes; self-review |
+| [Agent workflow](docs/development/agent-workflow.md) | Step-by-step protocol and ready-made prompts for coding agents |
+| [UI design system](docs/development/ui-design-system.md) | Tokens, components, layouts, charts, wording |
+| [People and organisation](docs/PEOPLE-AND-ORG.md) | Staff records, transfers to retirement, org chart, import (v1.0 contract) |
+| [Admin console v1](docs/ADMIN-CONSOLE-V1.md) | Overview, health, analytics, audit, events (v1.0 contract) |
+| [In-app help](docs/HELP-CENTER.md) | Help centre, setup checklist, sync checks (v1.0 contract) |
 | [TESTING.md](TESTING.md) | Test matrix and release evidence |
 | [REVIEW.md](REVIEW.md) | Independent review procedure and release decisions |
 | [Intranet deployment design](docs/DEPLOYMENT.md) | Runtime, offline release, staging, recovery, and site decisions |
 | [API contract](docs/API.md) | Endpoints, error codes, idempotency and socket messages |
 | [Data lifecycle requirements](docs/DATA-LIFECYCLE.md) | Future quotas, retention, user archives and safe re-import |
 | [Portable archive format](docs/ARCHIVE-FORMAT.md) | Future offline-readable packages, validation and round trips |
-| [Admin console requirements](docs/ADMIN-CONSOLE.md) | Future policy controls, analytics, logs and operational safety |
+| [Admin console long-term requirements](docs/ADMIN-CONSOLE.md) | Policy controls, approvals and lifecycle safety beyond v1.0 |
 | [Design sources](docs/REFERENCES.md) | Patterns taken from the four reference projects and agent guidance |
 
 The product display name and GitHub repository slug are both **LabAdda**. Use lowercase `labadda` for machine identifiers (package, CLI, environment variables, cookies, databases).
@@ -75,7 +82,7 @@ For frontend development with hot reload, run `npm run dev` in `frontend/`. It p
 ## Test
 
 ```bash
-scripts/verify.sh          # pytest on PostgreSQL, alembic drift check, typecheck, unit tests, production build
+scripts/verify.sh          # docs check, pytest on PostgreSQL, alembic drift check, typecheck, unit tests, production build
 scripts/verify.sh --e2e    # also starts root + /labadda-staging instances behind nginx and runs browser flows
 ```
 

@@ -4,7 +4,7 @@
 
 LabAdda gives research groups a common noticeboard, a live writing surface, and a group message stream. One sign-in gives an employee access to their home workspace and eligible parent units. Personal notes have their own entry in the shell. The intranet runtime runs on a single Ubuntu VM and serves desktop browsers and an office touch panel.
 
-Pilot with a fictional root, group, division, and two sibling sections, plus an invite-only project space and a user-created collaborative group spanning both sections. Then rehearse with two real sibling sections and their parent division after the site gates in [Deployment](docs/DEPLOYMENT.md) pass. The pilot includes local accounts, membership administration, user-created collaborative groups, posts and replies, approved attachments, dated reminders, live whiteboards, board snapshots, group chat, personal notes, and touch sessions. Internal identity federation is optional until the site confirms a provider. Later scope includes the P5 data lifecycle and administration contracts in S5–S7, direct messages, recurring reminders, rich collaborative document editing, full-text indexing across workspaces, SMTP delivery, and cross-site federation.
+Pilot with a fictional root, group, division, and two sibling sections, plus an invite-only project space and a user-created collaborative group spanning both sections. Then rehearse with two real sibling sections and their parent division after the site gates in [Deployment](docs/DEPLOYMENT.md) pass. The pilot includes local accounts, membership administration, user-created collaborative groups, posts and replies, approved attachments, dated reminders, live whiteboards, board snapshots, group chat, personal notes, and touch sessions. Internal identity federation is optional until the site confirms a provider. Version 1.0 adds the people and organisation management, admin console, in-app help and interface contracts in S9–S12; [the delivery plan](docs/plan/README.md) defines its exact scope and order. Later scope includes the P5 data lifecycle contracts in S5–S6 and the remainder of S7, direct messages, recurring reminders, rich collaborative document editing, full-text indexing across workspaces, SMTP delivery, and cross-site federation.
 
 ## S2. Workspace, identity, and permissions
 
@@ -77,13 +77,13 @@ Provisional rehearsal targets on a representative VM are 30 signed-in clients, 8
 
 [ARCHIVE-FORMAT.md](docs/ARCHIVE-FORMAT.md), requirements AF-01–AF-11, governs a versioned standard ZIP containing offline-readable static views, UTF-8 JSON/JSONL records, original permitted files, portable board geometry and complete integrity indexes. Export requires current content access; admin privilege alone never supplies it. Re-upload defaults to a bounded isolated read-only viewer. Selected materialization creates newly authorized destination records with provenance, current quotas and explicit audience confirmation, never restores source memberships, sessions or admin roles. These packages are distinct from operator database recovery under RECOVERY.md.
 
-## S7. Administrative control and operational observability (future)
+## S7. Administrative control and operational observability (long-term contract)
 
-[ADMIN-CONSOLE.md](docs/ADMIN-CONSOLE.md), requirements AC-01–AC-21, governs web policy configuration, safe dry runs/approval/activation, privacy-conscious site-wide usage/resource analytics, health, searchable actionable events and backup/recovery visibility. Operational completeness must not become a private-content access bypass. Destructive actions require current bounded plans, review, notice, verified prerequisites and auditable execution. Stale, unknown and unsupported observations must remain visibly distinct from healthy/zero. The acceptance matrix in TESTING.md and P5 delivery order in ROADMAP.md are mandatory release gates; this specification does not assert these features exist today.
+[ADMIN-CONSOLE.md](docs/ADMIN-CONSOLE.md), requirements AC-01–AC-21, governs web policy configuration, safe dry runs/approval/activation, privacy-conscious site-wide usage/resource analytics, health, searchable actionable events and backup/recovery visibility. Operational completeness must not become a private-content access bypass. Destructive actions require current bounded plans, review, notice, verified prerequisites and auditable execution. Stale, unknown and unsupported observations must remain visibly distinct from healthy/zero. The acceptance matrix in TESTING.md is a mandatory release gate for the full contract; this specification does not assert these features exist today. The part delivered in v1.0 is defined by S10.
 
 ## S8. Collaboration priority and tasks
 
-The owner-approved C1–C5 track in ROADMAP.md now precedes unfinished P5 work.
+The owner-approved C1–C5 track (see [ROADMAP.md](ROADMAP.md)) precedes unfinished P5 work.
 
 **CT-01 (C1).** Provide multiple named personal and shared workspace to-do lists.
 Personal lists are owner-only, including against administrators and colleagues.
@@ -254,3 +254,73 @@ Choices never change content grants or mandatory server admission controls. Pres
 preferences through recovery and refuse lossy populated downgrade. Dashboard and
 preferences must be reachable through desktop/mobile navigation; automated checks
 supplement, not replace, required physical/site/manual acceptance.
+
+## S9. People and organisation management (v1.0)
+
+[PEOPLE-AND-ORG.md](docs/PEOPLE-AND-ORG.md), requirements PO-01–PO-25, is the normative contract.
+In summary:
+
+- Each account carries a staff record (employee number, designation, contact, home unit,
+  employment status with effective date, revision). Status — invited, active, on leave,
+  suspended, retired, left — determines sign-in; `is_active` is derived from it.
+- Joining, editing, transfer, promotion, change of authority (Head, Deputy, acting until a
+  date), additional charge, leave and return, retirement or leaving, suspension and
+  reinstatement, and unit create, rename, move, merge, split, close and reopen are each a
+  **change** made in two steps: a preview that returns the exact plan and its consequences, and
+  an apply bound to that plan's digest. Apply is atomic and audited; a stale plan writes nothing.
+- Changes may take effect on a future day; a scheduled change that no longer matches is held
+  for review, never partly applied.
+- Guards protect the last administrator, units and groups without a steward, uniqueness and
+  the shape of the tree. Content is never removed or re-attributed; departed people's personal
+  notes and lists stay inaccessible to everyone.
+- Administrators manage people graphically: a searchable people list and profile with a
+  timeline, an organisation chart where dragging only proposes a change, an attention list,
+  and spreadsheet import with a dry run. Unit administrators may be appointed for a branch.
+- None of this grants content access. Plans and reports show names, roles, dates and counts;
+  the stewards of affected workspaces are told what needs reassigning.
+
+## S10. Admin console v1 (v1.0)
+
+[ADMIN-CONSOLE-V1.md](docs/ADMIN-CONSOLE-V1.md), requirements AD-01–AD-12, is the normative
+v1.0 profile of S7. It provides deep-linkable pages for Overview, People, Organisation,
+Activity, System health, Storage, Backups, Audit, Events, Settings and administrator Help.
+
+- Pages show metadata only and use one status vocabulary — healthy, degraded, unavailable,
+  stale, unknown, unsupported — in which missing data is never shown as zero or healthy.
+- Health items are sampled in the background and shown live. State changes raise deduplicated
+  operational events, each with plain-language guidance.
+- Usage analytics come from a fixed catalogue of bounded counters and one row per person per
+  active day. Figures for groups under five people are suppressed on the server. Projects and
+  collaborative groups appear only as totals.
+- The audit trail is searchable and exportable; exports are audited.
+- The console reports backup status written by the operator tooling; it does not run backups
+  or restores. Policy activation, destructive lifecycle actions and two-person approval remain
+  deferred with S5–S6.
+- Console queries must not slow collaboration: they read dedicated tables with bounded,
+  time-limited queries.
+
+## S11. In-app help and guidance (v1.0)
+
+[HELP-CENTER.md](docs/HELP-CENTER.md), requirements HP-01–HP-11, is the normative contract. Help
+for members, stewards, administrators and the server operator is bundled with the application,
+works offline, opens beside the screen it explains, is searchable locally, and is printable. A
+live setup checklist guides a new site. An automated check ties help pages to real routes,
+on-screen labels, and error and event codes; a change to any of those updates help in the same
+commit.
+
+## S12. Interface quality (v1.0)
+
+[ui-design-system.md](docs/development/ui-design-system.md), requirements UX-01–UX-14, is the
+normative contract: design tokens with light and dark themes, a shared component library, fixed
+layouts and breakpoints, designed loading/empty/error/conflict states, plain wording, WCAG 2.1
+AA, consequence-naming confirmations, local SVG charts with table equivalents, dashboard
+structure and refresh rules, graphical organisation management in which drag only proposes,
+and performance budgets. It refines S3 and does not change the workspace-first layout, the
+touch-panel layout or any access rule.
+
+## S13. Engineering quality (v1.0)
+
+[standards.md](docs/development/standards.md) and [AGENTS.md](AGENTS.md) are binding on all
+code. Formatting and lint gates, typed interfaces, size limits, the denial matrix for every
+endpoint, and synchronized contracts, help and plan status are part of the definition of done.
+T70 in TESTING.md is the release gate.

@@ -4,7 +4,7 @@ Read [task invariants](tasks.md), CT-10/T47 and the
 [API contract](../API.md#c3-conversation-to-task).
 
 Backend and web controls are delivered. Qualification evidence is recorded in the
-[ledger](../../ROADMAP.md) and [capture/check notes](../evidence/task-conversion/README.md).
+[ledger](../history/roadmap-to-2026-11-11.md) and [capture/check notes](../evidence/task-conversion/README.md).
 
 ## Sources and scope
 

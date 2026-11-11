@@ -227,3 +227,32 @@ for fresh-fixture root/prefix qualification with durable reports, screenshots,
 TLS multi-user workloads, negative flows and confirmed cleanup. Direct rehearsal
 now requires `--synthetic-target`; never target real user data. CI has a separate
 full-profile job. Local evidence and hosted CI status must be recorded separately.
+
+## v1.0 track acceptance (people, admin console, help, interface, quality)
+
+Contracts: [PEOPLE-AND-ORG.md](docs/PEOPLE-AND-ORG.md), [ADMIN-CONSOLE-V1.md](docs/ADMIN-CONSOLE-V1.md),
+[HELP-CENTER.md](docs/HELP-CENTER.md), [ui-design-system.md](docs/development/ui-design-system.md).
+Packages: [docs/plan/README.md](docs/plan/README.md). These rows are release gates for v1.0.
+The fictional scenario is in [the people track](docs/plan/people.md#scenario).
+
+| ID | Required evidence | Package |
+| --- | --- | --- |
+| T53 | Staff record migration backfills status from existing accounts; `is_active` always follows status; search, filter, sort and pagination over 500 generated people; profile and timeline; member 403, panel 401; date-only sign-in history | P1 |
+| T54 | Preview writes nothing; apply with a stale digest or revision returns 409 and writes nothing; two concurrent plans on one person: one wins; injected failure in the last step leaves every row unchanged; one parent audit row plus one per step with actor, before, after and reason | P2 |
+| T55 | Transfer: home and memberships change as planned; old-unit socket subscription revoked and delayed fetch returns the uniform 404; inherited access gained/lost matches real read requests; stewards of affected workspaces notified; administrator sees counts only | P2 |
+| T56 | Positions and authority: one current Head per unit; successor becomes steward; acting appointment ends on its date under an injected clock and the role reverts; leave and return; retirement blocked for the last administrator and for a group's last steward without a successor; suspended, retired and left users cannot sign in and live sessions end at once; reinstatement issues a new code and restores no access | P3 |
+| T57 | Organisation chart and unit changes: create, rename, move, merge, split, close, reopen; cycle and root protections; move preview counts equal real access after apply; merge keeps history readable and archives the source; 300 units and 2 000 people lay out within budget; drag proposes only; full keyboard path; axe clean | P4 |
+| T58 | Scheduled changes apply on the effective day in the site time zone, become `needs_review` after a conflicting change, can be cancelled and are idempotent when the scheduler runs twice; every attention item appears and clears | P5 |
+| T59 | Staff list import: dry run reports add, change, transfer, absent and errors with line numbers; nothing applied when a selected row is invalid; absent people never changed; formula-like cells inert; oversized and non-CSV rejected; file not stored | P6 |
+| T60 | Unit administrators act only inside their branch, cannot cross branches alone, cannot create administrators and gain no content access (existing content denial tests re-run as this user); my profile: password change ends other sessions; cannot see or end another person's session | P7, P8 |
+| T61 | **No content in any console response:** after seeding a recognisable post, chat message, note title and file name, none of those strings appears in any admin, people, analytics, health, audit, events or metrics response or CSV export | Every A and P package |
+| T62 | Metrics: registry concurrency; percentile accuracy; flush idempotent across a crash; roll-up across a site-local day boundary; retention; idempotent retries counted once; probes and assets excluded; unknown metric or dimension rejected; S4 workload stays within targets with metrics enabled (before/after p95 recorded) | A3 |
+| T63 | Health: every item returns each of its possible statuses from injected readings; missing or stale data is `unknown` or `stale`, never healthy or zero; recovery resolves the event; acknowledgement never turns a failing item green; malformed or missing backup status file yields `unknown`, never an error page; usage reader can read but not acknowledge | A4, A7 |
+| T64 | Analytics: figures for units under 5 people are suppressed on the server; overlapping filters cannot be subtracted to reveal one person; projects and groups appear only as totals; periods follow the site time zone; an empty installation shows `unknown` | A5 |
+| T65 | Audit explorer: combined filters; stable pagination during inserts; CSV formula escaping and row cap; export is itself audited; every audit action used in code has a catalogue sentence | A2 |
+| T66 | Overview: clean fixture states that nothing needs attention; seeded stale backup, stewardless unit and open event appear in severity order with working links; one request under 300 ms on the fixture; settings page shows no path, hostname or secret; banner is time-bounded, escaped and audited | A6, A7 |
+| T67 | Help check: fails on missing front matter, unknown route, a bold label absent from the frontend source, a broken link, a code without a page or a page without a code; every route has a page; raw HTML in help is not rendered; help loads with network limited to the server | H1–H4 |
+| T68 | Persona walkthrough using only in-app help: an administrator adds a person, transfers one, retires one with an acting successor, and reads system health; setup checklist items change only with real system state | H3 |
+| T69 | Design system: each `ui/` component has keyboard, focus and accessible-name tests; dialogs trap and restore focus; charts render empty, single-point, gap and 1 000-point series and offer a table view; axe-core has zero violations on the component gallery in both themes at 1400 px and 390 px; bundle budget met | U1–U4 |
+| T70 | Quality gates: formatter and linter checks pass for Python and TypeScript; no `any` in `frontend/src`; no hand-written source file over 400 lines; documentation check passes; backend test and browser check counts are not lower than before each mechanical package | Q1–Q5 |
+| T71 | Operation: `labadda doctor` passes and fails each check correctly and prints no secret; backup status file written atomically on success and failure and validated by the shared schema; quickstart followed end to end on the local stack by someone other than its author | D2, D3 |

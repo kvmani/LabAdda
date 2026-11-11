@@ -4,7 +4,12 @@ Read this map first; follow the relevant path rather than loading every document
 
 | Need | Start here | Follow only as needed |
 | --- | --- | --- |
-| Current work and next stage | [Roadmap priority and latest ledger](../ROADMAP.md) | [Developer task map](development/README.md) |
+| **What to build next; how complete the project is** | [v1.0 delivery plan](plan/README.md) | Track cards: [quality](plan/quality.md), [interface](plan/ui.md), [admin console](plan/admin.md), [people and organisation](plan/people.md), [help](plan/help.md), [deployment](plan/deployment.md) |
+| How to work (protocol, handoff, prompts) | [Agent workflow](development/agent-workflow.md) | [Engineering standards](development/standards.md), [UI design system](development/ui-design-system.md) |
+| People and organisation management | [Contract PO-01–25](PEOPLE-AND-ORG.md) | [Track P cards](plan/people.md), T53–T60 |
+| Admin console, health, analytics | [v1.0 profile AD-01–12](ADMIN-CONSOLE-V1.md) | [Long-term contract](ADMIN-CONSOLE.md), [track A cards](plan/admin.md), T61–T66 |
+| In-app help | [Contract HP-01–11](HELP-CENTER.md) | [Track H cards and page list](plan/help.md), T67–T68 |
+| Phase overview and latest handoff | [Roadmap](../ROADMAP.md) | [Developer task map](development/README.md); [archived ledger](history/roadmap-to-2026-11-11.md) only for old evidence |
 | Review collaboration screenshots | [Five-person capture guide](evidence/collaboration-review/README.md) | Research scenario, reproducible gallery and current feature limits |
 | Chat, threads and private sharing | [Chat user guide](usage/chat.md) | [Implementation guide](development/chat.md), C4 thread/file checks |
 | My day overview | [My day usage](usage/dashboard.md) | [Developer guide](development/dashboard.md), active work, private deadlines, mentions and unread source bounds |
@@ -19,14 +24,12 @@ Read this map first; follow the relevant path rather than loading every document
 | Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |
 | Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
 
-Current priority: operational automation and deployment readiness, with the
-[latest local evidence](evidence/operations/README.md) and dedicated collaboration
-regression system. C1–C4 software core and C5 My day/
-owner alert preferences are delivered and locally tested. Personal cross-session
-task updates and automatic assignment/deadline alerts remain optional extensions.
-Further archive/export/inventory expansion is deferred. Representative-site,
-physical-device and manual acceptance gates remain open.
+Current priority: the v1.0 tracks in the [delivery plan](plan/README.md), starting with the
+quality gates (Q1, Q2) and the design system (U1). The collaboration product (P1–P3, C1–C5) and
+the operations tooling are delivered and locally tested; representative-site, physical-device
+and manual acceptance gates remain open (track D). Archive, quota and retention work (P5.2+)
+is deferred beyond v1.0.
 
-Specifications describe required behaviour; feature guides describe implementation;
-the roadmap's latest ledger entries record delivered evidence and outstanding work.
-Historical ledger entries are snapshots, not the current product status.
+Specifications describe required behaviour; plan cards say what to build next; feature guides
+describe implementation; the roadmap ledger records delivered evidence. Files under `history/`
+and `evidence/` are snapshots, not the current product status.
