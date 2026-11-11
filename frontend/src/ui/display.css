@@ -6,7 +6,6 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
   padding: var(--space-5);
-  margin-bottom: var(--space-4);
   font-family: var(--font-ui);
   font-size: var(--text-md);
   line-height: var(--line-height);
@@ -33,7 +32,6 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-5);
   font-family: var(--font-ui);
   color: var(--text);
 }

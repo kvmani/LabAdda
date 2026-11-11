@@ -8,7 +8,7 @@ when changing a boundary. Run the affected checks and update the same guide, the
 
 New v1.0 areas do not have feature guides yet. Their work-package cards name the modules to
 create; add a guide here (one file per area, under 150 lines) when the first package of an
-area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`, `ui-kit.md`.
+area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`.
 
 | Task | Minimal source path | Contract / checks |
 | --- | --- | --- |
@@ -21,6 +21,7 @@ area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`, `ui
 | Daily owner dashboard | [Dashboard guide](dashboard.md) → api/dashboard.py, pages/Dashboard.tsx | CT-14, T51, test_dashboard.py |
 | Owner alert preferences | [Preferences guide](alert-preferences.md) → api/alert_preferences.py, notify.py | CT-15, T52, test_alert_preferences.py |
 | Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
+| Shared UI components, tokens, theme | [UI kit guide](ui-kit.md) → frontend/src/ui/ | UX-01–UX-14, T69, src/ui/*.test.tsx, e2e/ui-kit.mjs |
 | Workspace/browser navigation | frontend/src/App.tsx, components/Shell.tsx, pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |
 | Schema and recovery | backend/labadda/models.py, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |
 | Shared task update signals | [Update guide](task-updates.md) → task_events.py and task routers | CT-09, T46, test_task_events.py |

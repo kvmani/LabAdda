@@ -28,5 +28,7 @@ if [[ "${1:-}" == "--e2e" ]]; then
   "$ROOT/scripts/proxy-stack.sh" start
   trap '"$ROOT/scripts/proxy-stack.sh" stop' EXIT
   node "$ROOT/e2e/flows.mjs" "http://127.0.0.1:${LABADDA_PROXY_PORT:-8080}" "" /labadda-staging
+  echo "== component gallery: accessibility, themes and focus (Vite dev server) =="
+  node "$ROOT/e2e/ui-kit.mjs"
 fi
 echo "verify: OK"

@@ -24,7 +24,7 @@ outside groups, e-mail delivery, multi-site federation (P6).
 
 ## Status at a glance
 
-Last updated: 2026-11-11 (after Q1 and Q2). Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-11 (after Q1, Q2 and U1). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |
@@ -33,10 +33,10 @@ remaining effort, and are estimates — the package table below is the precise r
 | Deployment, upgrade, backup, recovery tooling | 15 % | 75 % | Rehearsal on a real Ubuntu host, scheduled backups with status, operator quickstart, release 1.0 |
 | Admin console, health and analytics | 20 % | 15 % | Almost all: console shell, metrics, health, activity, overview, audit, events, backups, settings |
 | People and organisation management | 12 % | 20 % | Staff record, change protocol, transfers to retirement, positions, org chart, import, unit administrators |
-| Interface quality and design system | 10 % | 30 % | Tokens, component library, shell refresh, charts, migration of existing screens |
+| Interface quality and design system | 10 % | 45 % | Shell refresh (U2), charts (U3), moving existing screens onto the kit (U4) |
 | In-app help and onboarding | 6 % | 0 % | Framework, all content, setup checklist, sync check |
 | Code uniformity and quality gates | 7 % | 70 % | Readable rewrite of compressed modules and the deferred rules (Q3), module splits (Q4) |
-| **Overall toward v1.0** | 100 % | **≈ 52 %** | |
+| **Overall toward v1.0** | 100 % | **≈ 54 %** | |
 
 What the 50 % already delivered includes: 25 migrations, about 100 API endpoints, 573 backend
 tests, 465 browser checks across root and prefixed instances, a 30-client TLS workload rehearsal
@@ -52,14 +52,14 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 1 | Q5 | Documentation gate (`check_docs.py`) and agent guidance | — | done | [quality](quality.md#q5--documentation-gate) |
 | 2 | Q1 | Python formatter and linter gate | — | done | [quality](quality.md#q1--python-formatter-and-linter-gate) |
 | 3 | Q2 | Frontend linter, formatter and strict types | — | done | [quality](quality.md#q2--frontend-linter-formatter-and-strict-types) |
-| 4 | U1 | Design tokens and core components | Q2 | in progress | [ui](ui.md#u1--design-tokens-and-core-components) |
-| 5 | U2 | Application shell refresh | U1 | queued | [ui](ui.md#u2--application-shell-refresh) |
+| 4 | U1 | Design tokens and core components | Q2 | done | [ui](ui.md#u1--design-tokens-and-core-components) |
+| 5 | U2 | Application shell refresh | U1 | next | [ui](ui.md#u2--application-shell-refresh) |
 | 6 | A1 | Admin console shell and navigation | U2 | queued | [admin](admin.md#a1--admin-console-shell-and-navigation) |
 | 7 | P1 | Staff record, people list and profile | A1, Q1 | queued | [people](people.md#p1--staff-record-people-list-and-profile) |
 | 8 | P2 | Change protocol; add, edit, transfer | P1 | queued | [people](people.md#p2--change-protocol-add-edit-transfer) |
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | queued | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
 | 10 | A2 | Audit explorer | A1 | queued | [admin](admin.md#a2--audit-explorer) |
-| 11 | U3 | Charts kit | U1 | queued | [ui](ui.md#u3--charts-kit) |
+| 11 | U3 | Charts kit | U1 | next | [ui](ui.md#u3--charts-kit) |
 | 12 | A3 | Metrics foundation | Q1 | next | [admin](admin.md#a3--metrics-foundation) |
 | 13 | A4 | System health and operational events | A1, A3, U3 | queued | [admin](admin.md#a4--system-health-and-operational-events) |
 | 14 | A5 | Usage analytics | A3, U3, P1 | queued | [admin](admin.md#a5--usage-analytics) |

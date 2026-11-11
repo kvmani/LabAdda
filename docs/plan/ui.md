@@ -5,6 +5,10 @@ Goal of the track: one coherent, modern, accessible look, built from shared comp
 
 ### U1 · Design tokens and core components
 
+**Status: done (2026-11-11).** 31 components, tokens and theme choice in `frontend/src/ui/`,
+gallery at `/_ui` (development only), [UI kit guide](../development/ui-kit.md). Legacy screens
+stay on a fixed light palette until U2/U4 move them (see the guide).
+
 Size L. Depends on Q2.
 
 **Goal.** `frontend/src/ui/` exists with tokens and the components that every later package uses.

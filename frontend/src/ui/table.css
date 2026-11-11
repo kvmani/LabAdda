@@ -43,7 +43,7 @@
 .ui-table tbody tr:hover {
   background: var(--surface-sunken);
 }
-.ui-table__cell--end {
+.ui-table .ui-table__cell--end {
   text-align: right;
 }
 .ui-table__sort {

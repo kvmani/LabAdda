@@ -6,8 +6,9 @@ Look and behaviour: [ui-design-system.md](../docs/development/ui-design-system.m
 
 ## Where things go
 
-- Shared components and tokens in `src/ui/` (charts in `src/ui/charts/`). Use these first; add
-  a variant there rather than restyling in a page.
+- Shared components and tokens in `src/ui/` (charts in `src/ui/charts/`); import from `../ui`.
+  Use these first; add a variant there rather than restyling in a page. Guide:
+  [ui-kit.md](../docs/development/ui-kit.md); every component and state is shown at `/_ui` in dev.
 - New feature code in `src/features/<feature>/` (components, hooks, `types.ts`). `src/pages/`
   holds one thin file per route.
 - All requests go through `api<Type>(...)` in `src/api.ts`. Never call `fetch` directly.

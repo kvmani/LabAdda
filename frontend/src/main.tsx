@@ -8,9 +8,19 @@ import { SessionProvider } from "./session";
 import "./ui/tokens.css";
 import "./styles.css";
 
+// The component gallery exists only in development builds; production removes this branch.
+const Gallery = import.meta.env.DEV
+  ? React.lazy(() => import("./ui/gallery/Gallery").then((module) => ({ default: module.Gallery })))
+  : null;
+const showGallery = Gallery !== null && window.location.pathname.slice(BASE.length) === "/_ui";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {PANEL ? (
+    {showGallery && Gallery ? (
+      <React.Suspense fallback={null}>
+        <Gallery />
+      </React.Suspense>
+    ) : PANEL ? (
       <PanelApp />
     ) : (
       <BrowserRouter basename={BASE || "/"}>

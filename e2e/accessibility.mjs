@@ -129,7 +129,7 @@ try {
     await audit(page, `${tag} noticeboard`);
     for (const [path, ready, label] of [
       [`/w/${section}/board`, ".canvas", "whiteboard"],
-      [`/w/${section}/chat`, "#chat-input", "chat"],
+      [`/w/${section}/chat`, "form[aria-label='Send chat message']", "chat"],
       [`/w/${group}/members`, "table", "group members"],
       ["/notes", "form", "my notes"],
       ["/usage", "table", "storage usage"],

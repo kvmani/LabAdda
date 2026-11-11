@@ -39,6 +39,7 @@ are the operating system's; no font files are downloaded or bundled.
 
 Shared components live in `frontend/src/ui/`, one file each, with typed props and a Vitest file.
 A page may not restyle a component; add a variant to the component instead.
+Components set no outer margins; the layout around them spaces them with `gap` or padding.
 
 | Component | Purpose and required behaviour |
 | --- | --- |
