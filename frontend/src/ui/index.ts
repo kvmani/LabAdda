@@ -34,3 +34,13 @@ export { ToastProvider, useToast } from "./Toast";
 export { Tooltip } from "./Tooltip";
 export { TreeView, type TreeNode } from "./TreeView";
 export { readThemeChoice, saveThemeChoice, type ThemeChoice } from "./theme";
+export {
+  AreaChart,
+  BarChart,
+  HeatGrid,
+  LineChart,
+  Meter,
+  Sparkline,
+  type ChartPoint,
+  type Series,
+} from "./charts";

@@ -1,0 +1,215 @@
+/* Chart styles (UX-09). Colours come only from tokens; series colours are --chart-1 to --chart-4. */
+.ui-chart {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  color: var(--text);
+}
+.ui-chart__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.ui-chart__title {
+  font-weight: 650;
+}
+.ui-chart__meta {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.ui-chart__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.ui-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+.ui-chart__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.ui-chart__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  fill: var(--series);
+}
+.ui-chart__s0 {
+  --series: var(--chart-1);
+}
+.ui-chart__s1 {
+  --series: var(--chart-2);
+}
+.ui-chart__s2 {
+  --series: var(--chart-3);
+}
+.ui-chart__s3 {
+  --series: var(--chart-4);
+}
+.ui-chart__plot {
+  border-radius: var(--radius-sm);
+}
+.ui-chart__plot:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.ui-chart__plot svg {
+  display: block;
+  max-width: 100%;
+}
+.ui-chart__readout {
+  min-height: 1.5em;
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.ui-chart__tick {
+  fill: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+.ui-chart__grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.ui-chart__axis {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.ui-chart__guide {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.ui-chart__line {
+  fill: none;
+  stroke: var(--series);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.ui-chart__area {
+  fill: var(--series);
+  fill-opacity: 0.16;
+  stroke: none;
+}
+.ui-chart__mark {
+  fill: var(--series);
+  stroke: var(--surface-card);
+  stroke-width: 1;
+}
+.ui-chart__active {
+  fill: var(--series);
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.ui-chart__bar {
+  fill: var(--series);
+}
+.ui-chart__bar--active {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.ui-chart__overlay {
+  pointer-events: none;
+}
+.ui-chart__pattern {
+  stroke: var(--surface-card);
+  stroke-width: 2;
+  stroke-opacity: 0.7;
+}
+.ui-chart__pattern-dot {
+  fill: var(--surface-card);
+  fill-opacity: 0.7;
+}
+.ui-chart__cell {
+  fill: var(--chart-1);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.ui-chart__cell--gap {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-dasharray: 3 2;
+}
+.ui-chart__cell--active {
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+.ui-sparkline {
+  display: inline-block;
+  width: 7.5rem;
+  height: 2rem;
+  vertical-align: middle;
+}
+
+.ui-meter {
+  --level: var(--chart-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  color: var(--text);
+}
+.ui-meter--warn {
+  --level: var(--warn);
+}
+.ui-meter--danger {
+  --level: var(--danger);
+}
+.ui-meter--unknown {
+  --level: var(--neutral);
+}
+.ui-meter__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+.ui-meter__label {
+  font-weight: 650;
+}
+.ui-meter__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--level);
+}
+.ui-meter__track {
+  height: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.ui-meter__track svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ui-meter__fill {
+  fill: var(--level);
+}
+.ui-meter__mark {
+  stroke: var(--text);
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.ui-meter__text {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
