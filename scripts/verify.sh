@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Single local verification entry point. CI runs the same commands.
-#   scripts/verify.sh            docs check, Python lint, backend tests, frontend lint/typecheck/unit tests/build
+#   scripts/verify.sh            docs and help checks, Python lint, backend tests, frontend lint/typecheck/unit tests/build
 #   scripts/verify.sh --e2e      also run browser flows through nginx (root + prefix)
 # Requires a disposable PostgreSQL reachable via LABADDA_TEST_DATABASE_URL (see README).
 set -euo pipefail
@@ -9,6 +9,9 @@ PY="${LABADDA_PYTHON:-$ROOT/.venv/bin}"
 
 echo "== documentation: links, size limits, plan consistency =="
 "$PY/python" "$ROOT/scripts/check_docs.py"
+
+echo "== help centre: front matter, sections, routes, on-screen labels, links =="
+"$PY/python" "$ROOT/scripts/check_help.py"
 
 echo "== python: Ruff format and lint (backend, scripts, e2e) =="
 "$PY/ruff" format --config "$ROOT/backend/pyproject.toml" --check "$ROOT/backend" "$ROOT/scripts" "$ROOT/e2e"
