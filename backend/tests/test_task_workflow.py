@@ -4,12 +4,11 @@ import hashlib
 import json
 import uuid
 
-from alembic import command
 import pytest
-from sqlalchemy import select, text
-
+from alembic import command
 from labadda.cli import alembic_config
-from labadda.models import TodoTask
+from sqlalchemy import text
+
 from tests.test_todos import new_list, task_body
 
 

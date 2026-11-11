@@ -2,12 +2,13 @@
 
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 from alembic import command
-from sqlalchemy import select
 from labadda import notify
 from labadda.cli import alembic_config
 from labadda.models import Notification, NotificationPreference
+from sqlalchemy import select
 
 
 def choices(revision=0, **override):
@@ -84,8 +85,8 @@ def test_concurrent_preferences_do_not_overwrite_and_downgrade_guard(as_user, se
 
 
 def test_expired_save_rolls_back_choices(as_user, db_factory, monkeypatch):
-    from labadda.api import alert_preferences
     from labadda import identity_locks
+    from labadda.api import alert_preferences
 
     api = as_user("ben")
     original = alert_preferences.lock_identity
@@ -102,6 +103,7 @@ def test_expired_save_rolls_back_choices(as_user, db_factory, monkeypatch):
 
 def test_skipped_scheduled_reminder_is_not_replayed_after_enable(as_user, db_factory):
     from datetime import timedelta
+
     from labadda.scheduler import process_due_reminders
     from labadda.security import utcnow
 

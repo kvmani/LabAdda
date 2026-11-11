@@ -1,16 +1,16 @@
 """T48: reviewed board context, independent source grants and durable retry."""
 
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-import time
 
 import pytest
 from alembic import command
+from labadda.cli import alembic_config
+from labadda.models import Board, Membership, TodoChange, TodoSource, TodoTask, Workspace
 from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
-from labadda.cli import alembic_config
-from labadda.models import Board, Membership, TodoSource, TodoTask, TodoChange, Workspace
 from tests.test_chat_board import stroke
 from tests.test_panel import pair
 from tests.test_todos import new_list
@@ -163,8 +163,8 @@ def test_rollback_and_populated_downgrade_guard(as_user, ids, settings, db_facto
 
 
 def test_source_view_final_grant_recheck_and_expiry_before_commit(as_user, ids, db_factory, monkeypatch):
-    from labadda.api import task_board_conversion
     from labadda import identity_locks
+    from labadda.api import task_board_conversion
 
     api = as_user("ben")
     ws = ids["workspaces"]["section_a"]

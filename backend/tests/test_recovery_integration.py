@@ -7,13 +7,13 @@ from dataclasses import replace
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-
 from labadda.app import create_app
 from labadda.recovery import RecoveryError, backup, restore
+from sqlalchemy import create_engine, text
+
 from tests.conftest import Api
 from tests.test_chat_board import stroke
-from tests.test_panel import pair, PANEL
+from tests.test_panel import PANEL, pair
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("LABADDA_RECOVERY_TESTS") != "1",
@@ -36,6 +36,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(
     assert upload.status_code == 201
     asset = upload.json()
     from io import BytesIO
+
     from PIL import Image
 
     image = BytesIO()
@@ -96,10 +97,11 @@ def test_full_recovery_preserves_content_and_revokes_credentials(
     )
     assert granted.status_code == 201
     assert ben.get("/admin/usage").status_code == 200
-    from labadda.models import UploadReservation
-    from labadda.db import session_factory
-    from labadda.security import utcnow
     from datetime import timedelta
+
+    from labadda.db import session_factory
+    from labadda.models import UploadReservation
+    from labadda.security import utcnow
 
     with session_factory(settings.database_url)() as db:
         db.add(
@@ -191,7 +193,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(
         occupied.dispose()
         result = restore(bundle, sha, target_url, target_assets, isolated_target=True)
         assert result["sessions_revoked"]
-        from labadda.models import InventoryJob, InventoryAttempt
+        from labadda.models import InventoryAttempt, InventoryJob
 
         with session_factory(target_url)() as db:
             assert db.get(InventoryJob, job_id).state == "paused"

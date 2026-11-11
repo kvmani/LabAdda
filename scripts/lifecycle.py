@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import fcntl
-import hashlib
 import json
 import os
 import re
@@ -29,11 +28,35 @@ import release
 TLS_ENV = {"PGSSLMODE", "PGSSLROOTCERT", "PGSSLCERT", "PGSSLKEY"}
 
 ALLOWED_ENV = set(
-    """PORT FRONTEND_DIST TRUSTED_ORIGINS DATABASE_URL BASE_PATH INSTANCE ENV COOKIE_NAME
-COOKIE_SECURE ASSET_DIR TIMEZONE SESSION_IDLE_MINUTES SESSION_ABSOLUTE_HOURS MAX_ATTACHMENTS
-MAX_ATTACHMENT_BYTES USER_QUOTA_BYTES RUN_SCHEDULER REMINDER_INTERVAL_SECONDS MAX_GROUPS_PER_USER
-MAX_GROUP_MEMBERS LOGIN_ATTEMPTS_PER_WINDOW LOGIN_WINDOW_SECONDS BOARD_COMPACT_THRESHOLD
-PANEL_IDLE_SECONDS PANEL_ABSOLUTE_MINUTES PANEL_PAIRING_SECONDS BOARD_KEEP_REVISIONS""".split()
+    [
+        "PORT",
+        "FRONTEND_DIST",
+        "TRUSTED_ORIGINS",
+        "DATABASE_URL",
+        "BASE_PATH",
+        "INSTANCE",
+        "ENV",
+        "COOKIE_NAME",
+        "COOKIE_SECURE",
+        "ASSET_DIR",
+        "TIMEZONE",
+        "SESSION_IDLE_MINUTES",
+        "SESSION_ABSOLUTE_HOURS",
+        "MAX_ATTACHMENTS",
+        "MAX_ATTACHMENT_BYTES",
+        "USER_QUOTA_BYTES",
+        "RUN_SCHEDULER",
+        "REMINDER_INTERVAL_SECONDS",
+        "MAX_GROUPS_PER_USER",
+        "MAX_GROUP_MEMBERS",
+        "LOGIN_ATTEMPTS_PER_WINDOW",
+        "LOGIN_WINDOW_SECONDS",
+        "BOARD_COMPACT_THRESHOLD",
+        "PANEL_IDLE_SECONDS",
+        "PANEL_ABSOLUTE_MINUTES",
+        "PANEL_PAIRING_SECONDS",
+        "BOARD_KEEP_REVISIONS",
+    ]
 )
 
 
@@ -363,7 +386,7 @@ def main(argv=None):
         )
         print(json.dumps(result, indent=2))
         return 0
-    except (operations.OperationsError, release.ReleaseError, OSError, ValueError) as error:
+    except (operations.OperationsError, release.ReleaseError, OSError, ValueError):
         # Never relay a runtime exception that could carry a credential-bearing URL.
         print(
             "Operation unconfirmed. Keep maintenance enabled; inspect the local journal and runbook.",

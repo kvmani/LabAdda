@@ -1,10 +1,12 @@
 """C5 owner overview: source grants, bounded priorities and final visibility."""
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
+
 import pytest
-from sqlalchemy import delete
 from labadda.models import Membership
+from sqlalchemy import delete
+
 from tests.test_todos import new_list
 
 
@@ -79,7 +81,7 @@ def test_dashboard_calendar_uses_configured_timezone(as_user, monkeypatch, app, 
     monkeypatch.setattr(app.state, "settings", replace(settings, timezone="Asia/Kolkata"))
     from labadda.api import dashboard
 
-    monkeypatch.setattr(dashboard, "utcnow", lambda: datetime(2026, 11, 10, 23, 30, tzinfo=timezone.utc))
+    monkeypatch.setattr(dashboard, "utcnow", lambda: datetime(2026, 11, 10, 23, 30, tzinfo=UTC))
     result = as_user("ben").get("/dashboard").json()
     assert result["timezone"] == "Asia/Kolkata" and result["today"] == "2026-11-11"
 

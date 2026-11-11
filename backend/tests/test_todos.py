@@ -1,14 +1,14 @@
 """T37/T38 personal and hierarchical shared to-do contracts on PostgreSQL."""
 
-from concurrent.futures import ThreadPoolExecutor
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from alembic import command
+from labadda.cli import alembic_config
 from sqlalchemy import text
 
-from labadda.cli import alembic_config
-from tests.test_panel import pair, PANEL
+from tests.test_panel import PANEL, pair
 
 
 def list_body(title="Research plan", workspace_id=None):
@@ -212,9 +212,9 @@ def test_downgrade_protects_user_content(as_user, settings, db_factory):
 
 
 def test_session_expiry_while_waiting_for_scope_lock_rolls_back(as_user, ids, monkeypatch):
-    from labadda.api import todos
+
     from labadda import identity_locks
-    from datetime import timedelta
+    from labadda.api import todos
 
     original = todos._scope
 
@@ -234,9 +234,10 @@ def test_session_expiry_while_waiting_for_scope_lock_rolls_back(as_user, ids, mo
 
 
 def test_workspace_row_writer_and_list_creation_do_not_deadlock(as_user, ids, db_factory):
-    from sqlalchemy import select
-    from labadda.models import Workspace
     import time
+
+    from labadda.models import Workspace
+    from sqlalchemy import select
 
     api = as_user("ben")
     ws = ids["workspaces"]["section_a"]

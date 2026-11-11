@@ -1,15 +1,13 @@
 """Synthetic job histories, restricted to the disposable proxy-stack databases."""
 
 from datetime import timedelta
-from pathlib import Path
-
-from sqlalchemy.engine import make_url
 
 from labadda import inventory_jobs as jobs
 from labadda.config import load_settings
 from labadda.db import session_factory
 from labadda.models import InventoryJob
 from labadda.security import utcnow
+from sqlalchemy.engine import make_url
 
 settings = load_settings()
 url = make_url(settings.database_url)

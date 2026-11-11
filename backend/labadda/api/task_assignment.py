@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from .. import policy, task_history, task_events
+from .. import policy, task_events, task_history
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound, Unauthenticated
 from ..identity_locks import lock_identity

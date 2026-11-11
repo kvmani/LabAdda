@@ -9,13 +9,13 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from .. import audit
+from ..capacity import forecast_capacity
 from ..config import Settings
 from ..deps import PANEL_HEADER, Actor, get_db, get_settings, require_admin
 from ..errors import Conflict, Forbidden, Unauthenticated
-from ..models import PolicyDraft
 from ..identity_locks import lock_identity
+from ..models import PolicyDraft
 from ..serialize import iso
-from ..capacity import forecast_capacity
 
 router = APIRouter(tags=["governance"])
 GiB = 1024**3

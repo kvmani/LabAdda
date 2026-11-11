@@ -4,10 +4,9 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
-from starlette.websockets import WebSocketDisconnect
-
 from labadda.models import AuthSession, PanelPairing
 from labadda.security import utcnow
+from starlette.websockets import WebSocketDisconnect
 
 PANEL = {"X-LabAdda-Panel": "1"}
 

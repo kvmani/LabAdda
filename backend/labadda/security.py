@@ -7,7 +7,7 @@ import secrets
 import threading
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
@@ -25,7 +25,7 @@ MIN_PASSWORD_LENGTH = 10
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def hash_password(password: str) -> str:

@@ -7,7 +7,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 
 from .charges import BOARD_METHOD, TEXT_METHOD
-from .models import Asset, Board, ContentCharge, Post, ChatMessage
+from .models import Asset, Board, ChatMessage, ContentCharge, Post
 from .security import utcnow
 from .serialize import iso
 

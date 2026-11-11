@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
+
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict
 from ..identity_locks import lock_identity

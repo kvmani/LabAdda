@@ -1,8 +1,8 @@
 """Durable operator inventory attempts with fenced leases."""
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0016"
 down_revision = "0015"

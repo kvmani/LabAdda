@@ -5,14 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
-import ssl
 import signal
-from contextlib import contextmanager
+import ssl
 import sys
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 
 

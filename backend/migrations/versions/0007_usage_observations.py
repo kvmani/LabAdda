@@ -1,8 +1,8 @@
 """Private bounded site measurement history, not an enforcement ledger."""
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0007"
 down_revision = "0006"

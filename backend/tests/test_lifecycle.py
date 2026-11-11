@@ -1,6 +1,5 @@
 """Operational sequencing and fail-closed behavior without touching host services."""
 
-import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -130,14 +129,12 @@ def test_upgrade_fail_closed_and_order(configured, failure):
 def test_lock_and_private_directory(tmp_path):
     root = tmp_path / "root"
     root.mkdir()
-    with life.locked(root):
-        with pytest.raises(life.operations.OperationsError, match="Another"):
-            with life.locked(root):
-                pass
-    (root / "operations").chmod(0o755)
-    with pytest.raises(life.operations.OperationsError, match="private"):
+    with life.locked(root), pytest.raises(life.operations.OperationsError, match="Another"):
         with life.locked(root):
             pass
+    (root / "operations").chmod(0o755)
+    with pytest.raises(life.operations.OperationsError, match="private"), life.locked(root):
+        pass
 
 
 def test_command_timeout_and_redaction():

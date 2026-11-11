@@ -1,21 +1,21 @@
 """C1 scoped to-do lists: bounded requests, durable creation and revisioned edits."""
 
-from datetime import date
 import hashlib
 import json
-from typing import Literal
 import uuid
+from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from .. import policy, task_history, task_events
-from ..deps import Actor, PANEL_HEADER, current_actor, get_db, get_settings
+from .. import policy, task_events, task_history
+from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound, Unauthenticated
 from ..identity_locks import lock_identity
-from ..models import TodoList, TodoTask, TodoChange, Workspace, User
+from ..models import TodoChange, TodoList, TodoTask, User, Workspace
 from ..security import utcnow
 from ..serialize import iso
 

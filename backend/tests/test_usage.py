@@ -1,6 +1,7 @@
 """T17/T28/T30: partial meters never imply complete accounting or expose content."""
 
 import json
+from datetime import UTC
 
 
 def upload(api):
@@ -51,7 +52,7 @@ def test_observation_history_is_explicit_and_audited(as_user):
 
 def test_saved_history_is_bounded(as_user, db_factory):
     from labadda.models import UsageObservation
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
 
     admin = as_user("admin")
     # Backfill old synthetic samples; exercise one real observation/prune commit.
@@ -73,10 +74,11 @@ def test_usage_cannot_select_another_user(as_user, ids):
 
 
 def test_record_timestamp_is_actual_observation_clock(as_user, monkeypatch):
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from labadda.api import usage
 
-    point = datetime(2032, 1, 1, tzinfo=timezone.utc)
+    point = datetime(2032, 1, 1, tzinfo=UTC)
     monkeypatch.setattr(usage, "utcnow", lambda: point)
     admin = as_user("admin")
     result = admin.post("/admin/usage-observations", json={}).json()
@@ -109,9 +111,8 @@ def test_database_physical_storage_is_site_only_and_categorized(as_user, ids):
 
 
 def test_database_measurement_unavailable_is_unknown_not_zero(as_user, monkeypatch):
-    from sqlalchemy.exc import OperationalError
-
     from labadda.api import usage
+    from sqlalchemy.exc import OperationalError
 
     def fail(*_a, **_k):
         raise OperationalError("select", {}, Exception("timeout"))

@@ -68,8 +68,9 @@ def test_history_survives_downgrade_attempt(as_user, settings):
 @pytest.mark.parametrize("change", ["demote", "revoke"])
 def test_queued_proposal_rechecks_authority(make_client, db_factory, monkeypatch, change):
     import threading
-    from sqlalchemy import text
+
     from labadda.api import governance
+    from sqlalchemy import text
 
     admin = make_client("admin")
     entered, resume = threading.Event(), threading.Event()

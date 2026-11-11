@@ -1,7 +1,7 @@
 """Conversation-to-task conversion with explicit audience and protected provenance."""
 
-from typing import Literal
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import Field
@@ -14,9 +14,8 @@ from ..errors import Invalid, NotFound
 from ..identity_locks import lock_identity
 from ..models import ChatMessage, Post, TodoSource, TodoTask, Workspace
 from ..serialize import iso
-from .todos import TaskCreate, _actor, _create_task_row, _digest, _list, _task_json, _lock_source_read
-
 from .task_board_conversion import board_source
+from .todos import TaskCreate, _actor, _create_task_row, _digest, _list, _lock_source_read, _task_json
 
 router = APIRouter(prefix="/todos", tags=["todos"])
 

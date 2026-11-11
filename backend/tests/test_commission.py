@@ -112,6 +112,7 @@ def test_nonpublic_existing_content_refused(tmp_path):
     """Real PostgreSQL, separate unique disposable database; public is empty."""
     import os
     import uuid
+
     from sqlalchemy import create_engine, text
     from sqlalchemy.engine import make_url
 

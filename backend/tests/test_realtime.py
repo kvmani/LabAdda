@@ -21,17 +21,18 @@ def recv_until(conn, kind, limit=10):
 
 def test_unauthenticated_socket_rejected(make_client, settings):
     api = make_client()
-    with pytest.raises(WebSocketDisconnect):
-        with api.client.websocket_connect(ws_url(settings)) as conn:
-            conn.receive_json()
+    with pytest.raises(WebSocketDisconnect), api.client.websocket_connect(ws_url(settings)) as conn:
+        conn.receive_json()
 
 
 def test_bad_origin_rejected(as_user, settings):
-    with pytest.raises(WebSocketDisconnect):
-        with as_user("ben").client.websocket_connect(
+    with (
+        pytest.raises(WebSocketDisconnect),
+        as_user("ben").client.websocket_connect(
             ws_url(settings), headers={"origin": "http://evil.example"}
-        ) as c:
-            c.receive_json()
+        ) as c,
+    ):
+        c.receive_json()
 
 
 def test_subscribe_scope_and_live_chat(as_user, ids, settings):
@@ -189,6 +190,7 @@ def test_revocation_during_batch_stops_remaining_content(settings, monkeypatch):
     import asyncio
     import json
     import uuid
+
     from labadda.realtime import Connection, Hub
 
     async def scenario():
@@ -228,6 +230,7 @@ def test_stalled_revocation_control_does_not_block_healthy_delivery(settings, mo
     import asyncio
     import json
     import uuid
+
     from labadda import realtime
 
     async def scenario():
@@ -270,6 +273,7 @@ def test_stale_batch_decision_cannot_restore_write_or_drop_new_subscription(
     import asyncio
     import threading
     import uuid
+
     from labadda.realtime import Connection, Hub
 
     async def scenario():
@@ -317,6 +321,7 @@ def test_batch_timeout_does_not_cancel_transport_cleanup(settings, monkeypatch):
     import asyncio
     import json
     import uuid
+
     from labadda import realtime
 
     async def scenario():

@@ -1,14 +1,14 @@
 """T45 scoped immutable discussion, retry identity and monotonic append sequence."""
 
-from concurrent.futures import ThreadPoolExecutor
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
-from alembic import command
 import pytest
-from sqlalchemy import delete, select
-
+from alembic import command
 from labadda.cli import alembic_config
 from labadda.models import Membership, TodoComment, Workspace
+from sqlalchemy import delete, select
+
 from tests.test_task_assignment import task
 
 
@@ -153,8 +153,8 @@ def test_capacity_replay_at_limit(as_user, db_factory):
 
 
 def test_expiry_before_commit_does_not_append(as_user, monkeypatch, db_factory):
-    from labadda.api import task_comments
     from labadda import identity_locks
+    from labadda.api import task_comments
 
     api = as_user("ben")
     _, _, path = task(api)

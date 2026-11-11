@@ -8,14 +8,13 @@ from dataclasses import replace
 import pytest
 from alembic import command
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-
 from labadda.app import create_app
 from labadda.cli import alembic_config
 from labadda.config import load_settings
 from labadda.db import session_factory
 from labadda.fixtures import fixture_password, reset_database, seed
 from labadda.security import login_limiter
+from sqlalchemy import create_engine, text
 
 TEST_DB = os.environ.get(
     "LABADDA_TEST_DATABASE_URL", "postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test"

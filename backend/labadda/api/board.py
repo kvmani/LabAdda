@@ -26,12 +26,12 @@ from sqlalchemy.orm import Session
 from .. import audit, policy
 from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target, with_op
 from ..charges import charge_board_object, recharge_board
+from ..config import Settings
 from ..deps import Actor, board_actor, current_actor, get_db, get_settings
 from ..errors import ApiError, Conflict, Forbidden, Invalid, NotFound
-from ..config import Settings
 from ..identity_locks import lock_identity
-from ..reservations import check_original_capacity
 from ..models import Asset, Board, BoardOp, Post, Workspace
+from ..reservations import check_original_capacity
 from ..serialize import iso
 from ..storage import AssetStore
 

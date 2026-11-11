@@ -1,9 +1,9 @@
 """T12 archive validation and activation failure paths (no database required)."""
 
+import hashlib
 import importlib.util
 import io
 import json
-import hashlib
 import tarfile
 from pathlib import Path
 
@@ -17,9 +17,8 @@ spec.loader.exec_module(release)
 
 
 def candidate(tmp_path, *, extra=None, change=None, member_type=None):
-    files = {
-        name: b"fixture"
-        for name in (
+    files = dict.fromkeys(
+        (
             "backend/labadda/app.py",
             "backend/alembic.ini",
             "backend/requirements.lock",
@@ -27,8 +26,9 @@ def candidate(tmp_path, *, extra=None, change=None, member_type=None):
             "scripts/release.py",
             "docs/RELEASES.md",
             "wheelhouse/example.whl",
-        )
-    }
+        ),
+        b"fixture",
+    )
     manifest = {
         "format": 1,
         "release": "candidate",

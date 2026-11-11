@@ -2,13 +2,14 @@
 
 import uuid
 from io import BytesIO
-from PIL import Image
+
 import pytest
 from alembic import command
-from sqlalchemy import select, delete
 from labadda.cli import alembic_config
-from labadda.models import Asset, Membership, ChatMessage
+from labadda.models import Asset, ChatMessage, Membership
 from labadda.workspace_usage import workspace_observation
+from PIL import Image
+from sqlalchemy import delete, select
 
 
 def upload(api, png=False):
@@ -97,8 +98,8 @@ def test_other_owner_and_cross_destination_reuse_are_denied(as_user, ids):
 
 
 def test_file_binding_rolls_back_with_expired_identity(as_user, ids, db_factory, monkeypatch):
-    from labadda.api import chat
     from labadda import identity_locks
+    from labadda.api import chat
 
     api = as_user("ben")
     asset, _ = upload(api)

@@ -1,7 +1,7 @@
 """Bind validated stored assets to one chat destination."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0024"
 down_revision = "0023"

@@ -1,7 +1,4 @@
-from pathlib import Path
-
 import pytest
-
 from labadda.recovery import RecoveryError, copy_assets, inventory, verify_bundle, write_manifest
 
 
@@ -106,7 +103,7 @@ def test_restore_refuses_wrong_manifest_digest_before_database_access(tmp_path):
 
 
 def test_restore_does_not_overwrite_assets(tmp_path):
-    from labadda.recovery import restore, file_hash
+    from labadda.recovery import file_hash, restore
 
     root = bundle(tmp_path)
     assets = tmp_path / "assets"
@@ -124,7 +121,7 @@ def test_restore_cli_requires_explicit_target(monkeypatch, capsys):
 
 
 def test_restore_refuses_asset_overlap_without_modifying_bundle(tmp_path):
-    from labadda.recovery import restore, file_hash
+    from labadda.recovery import file_hash, restore
 
     root = bundle(tmp_path)
     before = inventory(root)

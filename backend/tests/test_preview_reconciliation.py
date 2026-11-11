@@ -3,10 +3,10 @@
 import hashlib
 
 import pytest
-from sqlalchemy import func, select
-
 from labadda.models import Asset, StorageInspection
 from labadda.preview_reconciliation import reconcile_previews
+from sqlalchemy import func, select
+
 from tests.test_preview_integrity import image_upload
 
 
@@ -165,6 +165,7 @@ def test_cursor_can_continue_past_an_unrepairable_batch(as_user, db_factory, set
 def test_growing_file_cannot_exceed_per_file_read_bound(as_user, db_factory, settings, monkeypatch):
     _, original, _ = legacy(as_user, db_factory, settings)
     import os
+
     from labadda import preview_reconciliation
 
     cap = original.stat().st_size + 10
@@ -237,6 +238,7 @@ def test_lost_commit_reply_recovers_atomic_application_receipt(as_user, db_facto
 
 def test_operator_cli_dry_run_and_explicit_apply(as_user, db_factory, settings, monkeypatch, capsys):
     import json
+
     from labadda import cli
 
     asset_id, _, _ = legacy(as_user, db_factory, settings)

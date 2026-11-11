@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.orm import Session
 
-from ..deps import Actor, PANEL_HEADER, current_actor, get_db
+from ..deps import PANEL_HEADER, Actor, current_actor, get_db
 from ..errors import NotFound, Unauthenticated
 from ..inventory_jobs import describe
 from ..models import InventoryJob

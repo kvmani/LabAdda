@@ -1,11 +1,12 @@
 """C4 threads preserve actual scope, retry identity and current authority."""
 
 import uuid
+
 import pytest
 from alembic import command
-from sqlalchemy import select, delete
 from labadda.cli import alembic_config
-from labadda.models import ChatMessage, Membership
+from labadda.models import ChatMessage
+from sqlalchemy import select
 
 
 def post(api, ws, body="Research root", parent=None, key=None):
@@ -55,8 +56,8 @@ def test_thread_scope_and_parent_spoofing(as_user, ids, scope, allowed, denied):
 
 
 def test_replay_after_revocation_and_expiry_before_commit(as_user, ids, db_factory, monkeypatch):
-    from labadda.api import chat
     from labadda import identity_locks
+    from labadda.api import chat
 
     api = as_user("ben")
     ws = ids["workspaces"]["section_a"]
@@ -87,6 +88,7 @@ def test_thread_downgrade_guard(as_user, ids, settings):
 def test_two_authors_cannot_commit_higher_sequence_first(as_user, ids, db_factory, monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event
+
     from labadda.api import chat
 
     ben, asha = as_user("ben"), as_user("asha")

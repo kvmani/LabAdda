@@ -4,12 +4,12 @@ from types import SimpleNamespace
 
 import pytest
 from alembic import command
-from sqlalchemy import text
-
 from labadda.api.governance import CapacityProfile
 from labadda.capacity import forecast_capacity
 from labadda.cli import alembic_config
 from labadda.fixtures import fixture_password
+from sqlalchemy import text
+
 from tests.test_panel import pair
 
 GiB = 1024**3

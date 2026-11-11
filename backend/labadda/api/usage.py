@@ -16,7 +16,6 @@ from ..models import Asset, StorageInspection, UploadReservation, UsageObservati
 from ..security import utcnow
 from ..serialize import iso
 from ..workspace_usage import workspace_observation
-
 from .capabilities import require_usage_reader
 
 router = APIRouter(tags=["usage"])
@@ -171,7 +170,7 @@ def database_physical(db) -> dict:
     unknown = {
         "state": "unknown",
         "database_bytes": None,
-        "categories": {k: None for k in DATABASE_CATEGORIES},
+        "categories": dict.fromkeys(DATABASE_CATEGORIES),
         "other_bytes": None,
         "board_history": {"retained_operations": None, "snapshots": None},
     }

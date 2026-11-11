@@ -1,16 +1,16 @@
 """T16 foundation: measured original bytes cannot over-admit concurrent uploads."""
 
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import timedelta
-import threading
 
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
-
 from labadda.app import create_app
 from labadda.models import Asset, UploadReservation
 from labadda.security import utcnow
+from sqlalchemy import func, select
+
 from tests.conftest import Api
 
 PDF = b"%PDF-1.4\nfixture\n%%EOF"
@@ -171,8 +171,9 @@ def test_lost_commit_reply_never_deletes_a_durable_asset(as_user, app, db_factor
 def test_preview_write_failure_removes_only_this_attempt_files(as_user, app, db_factory, monkeypatch):
     import os
     from io import BytesIO
-    from PIL import Image
+
     import pytest
+    from PIL import Image
 
     original = os.open
 

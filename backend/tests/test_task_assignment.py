@@ -1,14 +1,13 @@
 """T44 assignment never grants access; current-grant aggregate and lock safety."""
 
 from concurrent.futures import ThreadPoolExecutor
-import uuid
 
-from alembic import command
 import pytest
-from sqlalchemy import delete
-
+from alembic import command
 from labadda.cli import alembic_config
 from labadda.models import Membership, User
+from sqlalchemy import delete
+
 from tests.test_todos import new_list, task_body
 
 
@@ -190,6 +189,7 @@ def test_migration_protects_current_and_past_assignments(as_user, ids, settings)
 
 def test_target_deactivation_while_assignment_waits_rejects_stale_eligibility(as_user, ids, db_factory):
     import time
+
     from sqlalchemy import select, text
 
     api = as_user("ben")

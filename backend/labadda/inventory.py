@@ -6,10 +6,10 @@ store's two-level layout is traversed. No names, keys or content enter receipts.
 
 import math
 import os
-from pathlib import Path
 import re
 import stat
 import time
+from pathlib import Path
 
 from sqlalchemy import select, text
 

@@ -4,11 +4,11 @@ from dataclasses import replace
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
-
 from labadda.app import create_app
 from labadda.models import Asset, Post, UploadReservation
 from labadda.security import utcnow
+from sqlalchemy import func, select
+
 from tests.conftest import Api
 from tests.test_board_p3 import publish
 from tests.test_chat_board import stroke
@@ -111,8 +111,9 @@ def test_snapshot_unknown_commit_retains_unconfirmed_files(as_user, ids, app, db
 
 
 def test_expiry_during_snapshot_storage_prevents_publish(as_user, ids, app, db_factory, monkeypatch):
-    from labadda import security
     from datetime import timedelta
+
+    from labadda import security
 
     ben = as_user("ben")
     w = ids["workspaces"]["section_a"]
@@ -142,6 +143,7 @@ def test_asset_publication_syncs_new_directory_ancestry(tmp_path, monkeypatch):
     import os
     import stat
     from pathlib import Path
+
     from labadda.storage import AssetStore
 
     root = tmp_path / "new-assets"

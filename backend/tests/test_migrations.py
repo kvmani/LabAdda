@@ -3,10 +3,9 @@
 import pytest
 import sqlalchemy
 from alembic import command
-from sqlalchemy import create_engine, text
-
 from labadda.app import expected_schema_head
 from labadda.cli import alembic_config
+from sqlalchemy import create_engine, text
 
 from .conftest import recreate_schema
 
@@ -26,15 +25,13 @@ def test_round_trip_and_group_guard(scratch_url):
     command.downgrade(cfg, "base")  # empty database: full downgrade succeeds
     command.upgrade(cfg, "0002")
     engine = create_engine(scratch_url)
-    with engine.begin() as conn:
-        with pytest.raises(sqlalchemy.exc.IntegrityError):
-            with conn.begin_nested():
-                conn.execute(
-                    text(
-                        "insert into workspaces (id, kind, name, description, archived, posting_policy)"
-                        " values (gen_random_uuid(), 'group', 'g', '', false, 'open')"
-                    )
-                )
+    with engine.begin() as conn, pytest.raises(sqlalchemy.exc.IntegrityError), conn.begin_nested():
+        conn.execute(
+            text(
+                "insert into workspaces (id, kind, name, description, archived, posting_policy)"
+                " values (gen_random_uuid(), 'group', 'g', '', false, 'open')"
+            )
+        )
     command.upgrade(cfg, "head")
     with engine.begin() as conn:
         conn.execute(

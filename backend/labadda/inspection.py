@@ -5,9 +5,9 @@ Run as the trusted host operator. A live filesystem is not a transactional snaps
 """
 
 import hashlib
+import os
 import stat
 import time
-import os
 from pathlib import Path
 
 from sqlalchemy import func, select, text

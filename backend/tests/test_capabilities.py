@@ -87,8 +87,9 @@ def test_invalid_grants_never_change_role(as_user, ids):
 
 
 def test_grant_and_identity_update_do_not_deadlock(make_client, ids, monkeypatch):
-    from concurrent.futures import ThreadPoolExecutor
     import threading
+    from concurrent.futures import ThreadPoolExecutor
+
     from labadda import audit
     from labadda.api import capabilities
 

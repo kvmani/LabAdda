@@ -9,19 +9,19 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, File, Header, Path, Request, UploadFile
 from fastapi.responses import FileResponse
-from starlette.concurrency import run_in_threadpool
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from .. import policy
-from ..reservations import consume_upload, release_upload, reserve_upload
 from ..config import Settings
 from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, panel_actor
 from ..errors import ApiError, Invalid, NotFound
-from ..models import Asset, Post, ChatMessage, UploadReceipt, UploadReservation
+from ..identity_locks import lock_identity
+from ..models import Asset, ChatMessage, Post, UploadReceipt, UploadReservation
+from ..reservations import consume_upload, release_upload, reserve_upload
 from ..security import utcnow
 from ..serialize import asset_json
-from ..identity_locks import lock_identity
 from ..storage import AssetStore, safe_display_name
 
 router = APIRouter(tags=["files"])

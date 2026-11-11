@@ -144,7 +144,7 @@ async def listen(
         while not stop.is_set():
             try:
                 msg = json.loads(await asyncio.wait_for(sock.recv(), timeout=0.5))
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             now = time.perf_counter()
             kind = msg.get("type")

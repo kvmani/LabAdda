@@ -1,16 +1,18 @@
 """Bounded personal collaboration overview; never a site-wide content inventory."""
 
 from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
+
 from .. import policy
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..models import ChatMessage, ChatRead, Note, TodoList, TodoTask, Workspace
 from ..security import utcnow
 from ..serialize import iso
-from .todos import _actor, _task_json
 from .notifications import _visible
+from .todos import _actor, _task_json
 
 router = APIRouter(tags=["dashboard"])
 

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
 import re
+import uuid
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field

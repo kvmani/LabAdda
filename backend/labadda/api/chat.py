@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from .. import notify, policy
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound
-from ..models import ChatMessage, ChatRead, Workspace, Asset
-from ..serialize import iso, user_brief, users_by_id, asset_json
 from ..identity_locks import lock_identity
+from ..models import Asset, ChatMessage, ChatRead, Workspace
+from ..serialize import asset_json, iso, user_brief, users_by_id
 from .todos import _actor, _scope, _scope_locks
 
 router = APIRouter(tags=["chat"])

@@ -42,23 +42,25 @@ class SimulationError(Exception):
 
 
 def run(argv, env, log: Path, timeout: float):
-    with log.open("ab") as output:
-        with subprocess.Popen(
+    with (
+        log.open("ab") as output,
+        subprocess.Popen(
             [str(a) for a in argv],
             cwd=ROOT,
             env=env,
             stdout=output,
             stderr=subprocess.STDOUT,
             start_new_session=True,
-        ) as process:
-            try:
-                result = process.wait(timeout=timeout)
-            except BaseException:
-                os.killpg(process.pid, signal.SIGKILL)
-                process.wait()
-                raise SimulationError("Stage interrupted or timed out") from None
-            if result:
-                raise SimulationError(f"Stage exited {result}; inspect its private synthetic log")
+        ) as process,
+    ):
+        try:
+            result = process.wait(timeout=timeout)
+        except BaseException:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
+            raise SimulationError("Stage interrupted or timed out") from None
+        if result:
+            raise SimulationError(f"Stage exited {result}; inspect its private synthetic log")
 
 
 def save(path: Path, report: dict):

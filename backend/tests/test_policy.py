@@ -1,7 +1,6 @@
 """T01: tree and grants across levels, siblings, project, archive, steward, admin, disabled."""
 
 import pytest
-
 from labadda import policy
 from labadda.models import User
 
@@ -127,7 +126,6 @@ def test_db_trigger_rejects_cycle(db_factory, ids):
     import uuid
 
     import sqlalchemy
-
     from labadda.models import Workspace
 
     with db_factory() as db:

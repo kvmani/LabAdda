@@ -1,17 +1,16 @@
 """T26 durable inventory leases and recovery; synthetic observation jobs only."""
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-import json
 
 import pytest
-from sqlalchemy import select, text
 from alembic import command
-
 from labadda import inventory_jobs as jobs
 from labadda.cli import alembic_config
-from labadda.models import InventoryJob, InventoryAttempt, StorageInspection
+from labadda.models import InventoryAttempt, InventoryJob, StorageInspection
 from labadda.security import utcnow
+from sqlalchemy import select, text
 
 
 def expire(factory, job_id):

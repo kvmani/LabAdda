@@ -1,7 +1,6 @@
 """P5.1 bounded referenced-file inspection must not repair or expose content."""
 
 import pytest
-
 from labadda.inspection import inspect_storage
 
 
@@ -67,6 +66,7 @@ def test_missing_asset_root_persists_failed_result(settings, db_factory):
 
 def test_preview_bytes_are_distinct_from_original_bytes(as_user, settings, db_factory):
     from io import BytesIO
+
     from PIL import Image
 
     stream = BytesIO()
@@ -86,6 +86,7 @@ def test_preview_bytes_are_distinct_from_original_bytes(as_user, settings, db_fa
 
 def test_file_budget_includes_previews(as_user, settings, db_factory):
     from io import BytesIO
+
     from PIL import Image
 
     stream = BytesIO()

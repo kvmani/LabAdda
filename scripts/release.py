@@ -17,8 +17,8 @@ import shutil
 import subprocess
 import sys
 import tarfile
-import uuid
 import tempfile
+import uuid
 import venv
 import zipfile
 from email.parser import BytesParser

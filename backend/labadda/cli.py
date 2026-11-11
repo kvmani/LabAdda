@@ -251,8 +251,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     if args.cmd == "restore":
-        from .recovery import restore as restore_backup
         import os
+
+        from .recovery import restore as restore_backup
 
         target_url = os.environ.get("LABADDA_RESTORE_DATABASE_URL")
         if not target_url:
@@ -285,7 +286,8 @@ def main(argv: list[str] | None = None) -> int:
         if not settings.fixtures_allowed:
             print("Refusing to load fixtures: LABADDA_ENV must be development or test.", file=sys.stderr)
             return 2
-        from .fixtures import reset_database, seed as run_seed
+        from .fixtures import reset_database
+        from .fixtures import seed as run_seed
 
         with session_factory(settings.database_url)() as db:
             if args.reset:

@@ -4,12 +4,12 @@ Lease loss may leave an unaccepted diagnostic scan receipt, never an accepted
 result from a stale attempt. Retries repeat a read-only scan from the beginning.
 """
 
-from datetime import timedelta
 import hashlib
 import json
 import re
 import time
 import uuid
+from datetime import timedelta
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, text

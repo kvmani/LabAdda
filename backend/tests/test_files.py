@@ -3,11 +3,10 @@
 import io
 from datetime import timedelta
 
-from PIL import Image
-
 from labadda.api.files import cleanup_provisional
 from labadda.models import Asset
 from labadda.security import utcnow
+from PIL import Image
 
 
 def png_bytes(trailer: bytes = b"") -> bytes:

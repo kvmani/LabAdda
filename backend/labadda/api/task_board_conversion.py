@@ -12,7 +12,7 @@ from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound
 from ..identity_locks import lock_identity
 from ..models import Board, TodoSource, TodoTask, Workspace
-from .todos import TaskCreate, _actor, _create_task_row, _digest, _list, _task_json, _lock_source_read
+from .todos import TaskCreate, _actor, _create_task_row, _digest, _list, _lock_source_read, _task_json
 
 router = APIRouter(prefix="/todos", tags=["todos"])
 

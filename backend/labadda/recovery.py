@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import tempfile
+from datetime import UTC
 from pathlib import Path
 
 
@@ -154,7 +155,8 @@ def backup(
     writers_quiesced: bool,
     pg_dump: str = "pg_dump",
 ) -> str:
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from sqlalchemy import create_engine, inspect, text
 
     if not writers_quiesced:
@@ -185,7 +187,7 @@ def backup(
                 schemas = conn.execute(text("select version_num from alembic_version")).scalars().all()
                 if len(schemas) != 1:
                     raise RecoveryError("Expected one schema head")
-                point = datetime.now(timezone.utc).isoformat()
+                point = datetime.now(UTC).isoformat()
                 pg_command(
                     pg_dump,
                     url,
@@ -223,6 +225,7 @@ def restore(
     pg_restore: str = "pg_restore",
 ) -> dict:
     from sqlalchemy import create_engine, text
+
     from .app import expected_schema_head
     from .storage import AssetStore
 

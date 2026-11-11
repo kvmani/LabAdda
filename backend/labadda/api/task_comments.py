@@ -13,9 +13,9 @@ from .. import task_events
 from ..deps import Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound
 from ..identity_locks import lock_identity
-from ..models import TodoComment, TodoTask, TodoList
-from .todos import _actor, _list
+from ..models import TodoComment, TodoList, TodoTask
 from ..serialize import iso
+from .todos import _actor, _list
 
 router = APIRouter(prefix="/todos", tags=["todos"])
 

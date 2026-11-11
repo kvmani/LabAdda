@@ -3,15 +3,12 @@
 import io
 import threading
 import time
-from dataclasses import replace
 
-import pytest
 from fastapi.testclient import TestClient
-from PIL import Image
-
 from labadda.app import create_app
 from labadda.boardstate import compact
 from labadda.models import Board
+from PIL import Image
 
 from .test_files import png_bytes
 

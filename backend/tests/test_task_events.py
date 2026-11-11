@@ -3,13 +3,13 @@
 import uuid
 
 import pytest
+from labadda.models import Membership, TodoComment, TodoList, TodoTask
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from labadda.models import Membership, TodoList, TodoTask, TodoComment
 from tests.test_realtime import recv_until, shared_loop_sockets
-from tests.test_todos import task_body
 from tests.test_task_assignment import task
+from tests.test_todos import task_body
 
 
 def test_mutations_publish_only_after_commit_and_replays_stay_quiet(

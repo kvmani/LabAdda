@@ -1,8 +1,8 @@
 """Read-only referenced-file inspection receipts."""
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0008"
 down_revision = "0007"

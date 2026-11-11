@@ -6,14 +6,14 @@ from types import SimpleNamespace
 
 import pytest
 from alembic import command
-from PIL import Image
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
-
 from labadda.cli import alembic_config
 from labadda.inspection import inspect_storage
 from labadda.models import Asset
 from labadda.recovery import RecoveryError, _verify_asset_reference
+from PIL import Image
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+
 from tests.test_board_p3 import publish
 from tests.test_chat_board import stroke
 
