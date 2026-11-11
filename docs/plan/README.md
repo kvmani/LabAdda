@@ -60,8 +60,8 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 7 | P1 | Staff record, people list and profile | A1, Q1 | done | [people](people.md#p1--staff-record-people-list-and-profile) |
 | 8 | P2 | Change protocol; add, edit, transfer | P1 | in progress | [people](people.md#p2--change-protocol-add-edit-transfer) |
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | queued | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
-| 10 | A2 | Audit explorer | A1 | in progress | [admin](admin.md#a2--audit-explorer) |
-| 11 | U3 | Charts kit | U1 | in progress | [ui](ui.md#u3--charts-kit) |
+| 10 | A2 | Audit explorer | A1 | done | [admin](admin.md#a2--audit-explorer) |
+| 11 | U3 | Charts kit | U1 | done | [ui](ui.md#u3--charts-kit) |
 | 12 | A3 | Metrics foundation | Q1 | in progress | [admin](admin.md#a3--metrics-foundation) |
 | 13 | A4 | System health and operational events | A1, A3, U3 | queued | [admin](admin.md#a4--system-health-and-operational-events) |
 | 14 | A5 | Usage analytics | A3, U3, P1 | queued | [admin](admin.md#a5--usage-analytics) |
@@ -69,18 +69,18 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 16 | P4 | Organisation chart and unit changes | P2 | queued | [people](people.md#p4--organisation-chart-and-unit-changes) |
 | 17 | P5 | Scheduled changes and attention list | P3, P4 | queued | [people](people.md#p5--scheduled-changes-and-attention-list) |
 | 18 | H1 | Help centre framework and sync check | U2 | done | [help](help.md#h1--help-centre-framework-and-sync-check) |
-| 19 | H2 | Help for members and stewards | H1 | in progress | [help](help.md#h2--help-for-members-and-stewards) |
+| 19 | H2 | Help for members and stewards | H1 | done | [help](help.md#h2--help-for-members-and-stewards) |
 | 20 | H3 | Administrator handbook and setup checklist | H1, P5, A6 | queued | [help](help.md#h3--administrator-handbook-and-setup-checklist) |
 | 21 | P6 | Staff list import and bulk changes | P3 | queued | [people](people.md#p6--staff-list-import-and-bulk-changes) |
-| 22 | D3 | Scheduled backups with status file | — | in progress | [deployment](deployment.md#d3--scheduled-backups-with-status-file) |
-| 23 | A7 | Backups page, settings and site notice | A1, D3 | queued | [admin](admin.md#a7--backups-page-settings-and-site-notice) |
+| 22 | D3 | Scheduled backups with status file | — | done | [deployment](deployment.md#d3--scheduled-backups-with-status-file) |
+| 23 | A7 | Backups page, settings and site notice | A1, D3 | in progress | [admin](admin.md#a7--backups-page-settings-and-site-notice) |
 | 24 | P7 | Unit administrators | P4 | queued | [people](people.md#p7--unit-administrators) |
-| 25 | P8 | My profile and sessions | U2 | next | [people](people.md#p8--my-profile-and-sessions) |
-| 26 | U4 | Move existing screens onto the design system | U2 | next | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
+| 25 | P8 | My profile and sessions | U2 | in progress | [people](people.md#p8--my-profile-and-sessions) |
+| 26 | U4 | Move existing screens onto the design system | U2 | in progress | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
 | 27 | Q3 | Readable rewrite of compressed modules | Q1, Q2 | queued | [quality](quality.md#q3--readable-rewrite-of-compressed-modules) |
 | 28 | Q4 | Split oversized modules | Q3 | queued | [quality](quality.md#q4--split-oversized-modules) |
 | 29 | H4 | Operator handbook, first-use welcome, what's new | H1, D2 | queued | [help](help.md#h4--operator-handbook-first-use-welcome-whats-new) |
-| 30 | D2 | Operator quickstart and `labadda doctor` | — | in progress | [deployment](deployment.md#d2--operator-quickstart-and-labadda-doctor) |
+| 30 | D2 | Operator quickstart and `labadda doctor` | — | done | [deployment](deployment.md#d2--operator-quickstart-and-labadda-doctor) |
 | 31 | D1 | Rehearsal on a disposable Ubuntu 24.04 host | — | owner | [deployment](deployment.md#d1--rehearsal-on-a-disposable-ubuntu-2404-host) |
 | 32 | D4 | Site acceptance | D1, all above | owner | [deployment](deployment.md#d4--site-acceptance) |
 | 33 | D5 | Release 1.0 | D4 | queued | [deployment](deployment.md#d5--release-10) |
