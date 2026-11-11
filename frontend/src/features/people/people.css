@@ -1,0 +1,34 @@
+/* Staff screens keep controls and table scrolling inside the shared content region. */
+.people-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-4);
+  align-items: end;
+}
+.people-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.people-record {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+.people-record dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.people-record dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.people-history {
+  padding-inline-start: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}
+.people-history li {
+  overflow-wrap: anywhere;
+}

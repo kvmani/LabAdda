@@ -67,6 +67,7 @@ async function checkAdmin(admin, base) {
   const navigation = page.getByRole("navigation", { name: "Administration", exact: true });
   check((await navigation.getByRole("link").count()) === 11, base + " eleven administrator sections");
   await navigation.getByRole("link", { name: "People", exact: true }).click();
+  await page.getByRole("link", { name: "Basic account tools", exact: true }).click();
   await page.getByRole("heading", { name: "Accounts", exact: true }).waitFor();
   check(await page.getByLabel("Username", { exact: true }).isVisible(), base + " basic accounts preserved");
   check(
@@ -140,24 +141,40 @@ async function checkAuthorityRace(admin, base) {
     await page.getByRole("heading", { name: "System health", exact: true }).isVisible(),
     base + " late navigation authority cannot replace the current page",
   );
-  await page.route(
-    "**/api/v1/admin/console",
-    (route) =>
-      route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: { code: "synthetic_unavailable", message: "Synthetic lookup unavailable." },
-        }),
+}
+
+async function checkLookupRecovery(admin, base) {
+  const { page } = admin;
+  // Failure/retry is independent of the preceding history-navigation race.
+  await page.goto(origin + base + "/admin/health");
+  await page.getByRole("heading", { name: "System health", exact: true }).waitFor();
+  // Keep the lookup unavailable until the explicit retry; queued navigation lookups
+  // must not consume a one-response fault and turn this into a timing-dependent check.
+  const unavailable = (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: { code: "synthetic_unavailable", message: "Synthetic lookup unavailable." },
       }),
-    { times: 1 },
+    });
+  await page.route("**/api/v1/admin/console", unavailable);
+  const failedLookup = page.waitForResponse(
+    (response) => response.url().endsWith("/api/v1/admin/console") && response.status() === 503,
   );
   await page
     .getByRole("navigation", { name: "Administration", exact: true })
     .getByRole("link", { name: "Overview", exact: true })
     .click();
-  await page.getByRole("alert").waitFor();
+  await failedLookup;
+  await page.getByRole("alert").filter({ hasText: "Synthetic lookup unavailable." }).waitFor();
+  check(new URL(page.url()).pathname === base + "/admin", base + " failed lookup belongs to current section");
+  await page.unroute("**/api/v1/admin/console", unavailable);
+  const successfulLookup = page.waitForResponse(
+    (response) => response.url().endsWith("/api/v1/admin/console") && response.status() === 200,
+  );
   await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await successfulLookup;
   await page.getByRole("heading", { name: "Overview", exact: true }).waitFor();
   check(true, base + " failed authority lookup retries without stale content");
 }
@@ -214,6 +231,7 @@ try {
     await checkChunkRecovery(admin, base);
     await checkAdmin(admin, base);
     await checkAuthorityRace(admin, base);
+    await checkLookupRecovery(admin, base);
     await checkReader(admin, member, base);
     await Promise.all([admin.context.close(), member.context.close()]);
   }

@@ -23,6 +23,7 @@ PROFILES = {
     "quick": ("chat-attachments", "alert-preferences"),
     "full": (
         "admin-console",
+        "people",
         "flows",
         "todos",
         "task-assignment",

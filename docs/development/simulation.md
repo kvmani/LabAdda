@@ -29,7 +29,7 @@ refused. Inspect `--profile quick` first on a new development host.
 
 The **quick** profile runs five-person chat/file/private-group and alert/browser
 flows at root and prefix, then two TLS workloads of five clients/two drawers for
-20 seconds each. The **full** profile resets fixtures before each of eleven suites:
+20 seconds each. The **full** profile resets fixtures before each suite: administration console, staff directory and profiles,
 legacy collaboration/touch, personal/shared todos, assignments, task discussions,
 live task catch-up, conversation conversion, board references, chat threads,
 five-person chat attachments/private groups, dashboard and alert preferences.

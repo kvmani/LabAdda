@@ -8,7 +8,7 @@ import "./admin.css";
 /** Console navigation reflects current server authority, not administrator-looking links. */
 export function AdminLayout() {
   const location = useLocation();
-  return <ConsoleFrame key={location.key} />;
+  return <ConsoleFrame key={location.pathname} />;
 }
 
 function ConsoleFrame() {
@@ -21,7 +21,9 @@ function ConsoleFrame() {
   if (!result.access) return <ErrorState message={result.error} onRetry={() => setRetry(retry + 1)} />;
   const access = result.access;
   const entries = SECTIONS.filter((entry) => access.sections.includes(entry.key));
-  const selected = SECTIONS.find((entry) => entry.path === pathname);
+  const selected = SECTIONS.find(
+    (entry) => entry.path === pathname || (entry.key === "people" && pathname === "/admin/people/basic"),
+  );
   const allowed = selected && access.sections.includes(selected.key);
   return (
     <div className="admin-console">
@@ -30,7 +32,7 @@ function ConsoleFrame() {
         {access.read_only && <Tag>Read-only access</Tag>}
         <nav aria-label="Administration" className="admin-console__links">
           {entries.map((entry) => (
-            <NavLink key={entry.key} to={entry.path} end>
+            <NavLink key={entry.key} to={entry.path} end={entry.key === "overview"}>
               {entry.label}
             </NavLink>
           ))}
@@ -38,7 +40,7 @@ function ConsoleFrame() {
         <div className="admin-console__switcher">
           <Select
             label="Administration section"
-            value={allowed ? pathname : ""}
+            value={allowed ? selected.path : ""}
             placeholder={allowed ? undefined : "Choose a section"}
             options={entries.map((entry) => ({ value: entry.path, label: entry.label }))}
             onChange={(event) => navigate(event.target.value)}

@@ -89,3 +89,41 @@ describe("error helpers", () => {
     expect(errorCode(new ApiError(409, "stale_revision", "x"))).toBe("stale_revision");
   });
 });
+
+describe("metadata report transport", () => {
+  it("returns CSV bytes while keeping the authenticated transport", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response("username\nben\n", {
+        headers: { "content-type": "text/csv; charset=utf-8" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const report = await api<Blob>("/admin/people/export.csv", { responseType: "blob" });
+    expect(await report.text()).toBe("username\nben\n");
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/v1/admin/people/export.csv",
+      expect.objectContaining({
+        credentials: "same-origin",
+      }),
+    );
+  });
+
+  it("keeps structured access denial instead of downloading an error as CSV", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: { code: "forbidden", message: "Administrator access required." },
+          }),
+          { status: 403, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+    await expect(api("/admin/people/export.csv", { responseType: "blob" })).rejects.toMatchObject({
+      status: 403,
+      code: "forbidden",
+      message: "Administrator access required.",
+    });
+  });
+});

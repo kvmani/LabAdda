@@ -9,6 +9,8 @@ type SearchInputProps = {
   /** Called with the trimmed text after typing pauses for `delay` milliseconds, and on clear. */
   onSearch: (query: string) => void;
   initialValue?: string;
+  /** Synchronise URL-driven search without replacing the focused input. */
+  value?: string;
   placeholder?: string;
   /** Number of results for the current query; announced to screen readers when it changes. */
   resultCount?: number | null;
@@ -20,15 +22,20 @@ export function SearchInput({
   label,
   onSearch,
   initialValue = "",
+  value: externalValue,
   placeholder,
   resultCount = null,
   delay = 300,
 }: SearchInputProps) {
   const id = useId();
-  const [value, setValue] = useState(initialValue);
+  const [value, setValue] = useState(externalValue ?? initialValue);
   const onSearchRef = useRef(onSearch);
   onSearchRef.current = onSearch;
   const first = useRef(true);
+
+  useEffect(() => {
+    if (externalValue !== undefined) setValue(externalValue);
+  }, [externalValue]);
 
   useEffect(() => {
     if (first.current) {

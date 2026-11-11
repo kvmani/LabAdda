@@ -34,6 +34,10 @@ import { Button, DataTable, PageHeader, type Column } from "../ui";
   plain sentences and `requireReason` when the API takes a reason.
 - Success after a save: `useToast()("Note saved.")` inside `ToastProvider`. Errors stay inline.
 
+`SearchInput` accepts an optional controlled `value` for URL-driven filters. It
+updates the existing input, preserving focus; `initialValue` remains the
+uncontrolled starting value. Keep `onSearch` idempotent for unchanged queries.
+
 ## Adding or changing a component
 
 1. Write the component in its own file, typed props with a one-line doc comment each where the

@@ -5,6 +5,7 @@ import { Governance } from "../../components/Governance";
 import { Operations } from "../../pages/Operations";
 import { AdminLayout } from "./AdminLayout";
 import { BasicAdministration } from "./BasicAdministration";
+import { PeoplePage } from "../people/PeoplePage";
 import { Settings } from "./Settings";
 import { SECTIONS, type ConsoleAccess } from "./console";
 
@@ -58,8 +59,10 @@ export function AdminConsole() {
             key={section.key}
             path={section.key === "overview" ? "" : section.key}
             element={
-              section.key === "people" || section.key === "org" ? (
-                <Basic area={section.key} />
+              section.key === "people" ? (
+                <PeoplePage />
+              ) : section.key === "org" ? (
+                <Basic area="org" />
               ) : section.key === "storage" ? (
                 <Storage />
               ) : section.key === "settings" ? (
@@ -70,6 +73,7 @@ export function AdminConsole() {
             }
           />
         ))}
+        <Route path="people/basic" element={<Basic area="people" />} />
         <Route path="*" element={null} />
       </Route>
     </Routes>

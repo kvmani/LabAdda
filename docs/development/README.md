@@ -19,7 +19,7 @@ area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`.
 | Chat threads / colleague communication | [Chat guide](chat.md) → api/chat.py | CT-12, T49, test_chat_threads.py |
 | Daily owner dashboard | [Dashboard guide](dashboard.md) → api/dashboard.py, pages/Dashboard.tsx | CT-14, T51, test_dashboard.py |
 | Owner alert preferences | [Preferences guide](alert-preferences.md) → api/alert_preferences.py, notify.py | CT-15, T52, test_alert_preferences.py |
-| Staff records / people directory | [People guide](people.md) → people.py, models.py, api/auth.py | PO-01–03/20, test_people_state.py, test_staff_migration.py; P1 in progress |
+| Staff records / people directory | [People guide](people.md) → people.py, api/people.py, features/people/ | PO-01–03/20, test_people_*.py, test_staff_migration.py, e2e/people.mjs |
 | Admin console routing / operational access | [Console guide](admin-console.md) → policy.py, deps.py, api/capabilities.py | AD-01–02, test_console.py, test_capabilities.py |
 | Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
 | Shared UI components, tokens, theme | [UI kit guide](ui-kit.md) → frontend/src/ui/ | UX-01–UX-14, T69, src/ui/*.test.tsx, e2e/ui-kit.mjs |

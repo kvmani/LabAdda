@@ -30,12 +30,15 @@ type Options = {
   body?: unknown;
   form?: FormData;
   uploadKey?: string;
+  responseType?: "blob";
   params?: Record<string, string | number | undefined | null>;
 };
 
 export async function api<T = unknown>(path: string, opts: Options = {}): Promise<T> {
   const method = opts.method ?? (opts.body || opts.form ? "POST" : "GET");
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = {
+    Accept: opts.responseType === "blob" ? "*/*" : "application/json",
+  };
   if (opts.uploadKey) headers["Idempotency-Key"] = opts.uploadKey;
   // A panel never falls back to a desktop session that might exist in the same browser.
   if (PANEL) headers["X-LabAdda-Panel"] = "1";
@@ -62,7 +65,8 @@ export async function api<T = unknown>(path: string, opts: Options = {}): Promis
   }
   let data: unknown = null;
   try {
-    if (res.headers.get("content-type")?.includes("json")) data = await res.json();
+    if (res.ok && opts.responseType === "blob") data = await res.blob();
+    else if (res.headers.get("content-type")?.includes("json")) data = await res.json();
     else if (res.ok && res.status !== 204) throw new Error("Unexpected response type");
   } catch {
     throw new ApiError(

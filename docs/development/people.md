@@ -68,8 +68,34 @@ filter-bound cursors and demotion during read), `test_people_profile.py` (privac
 retained/upward-only access and denied cases), `test_people_export.py` (formula
 escaping, bounds, privacy and post-commit demotion). No runtime dependency added.
 
-## Remaining P1 work
+## Web directory and profiles
 
-List/profile web screens with URL filters, Record/Access/Timeline drawer and CSV
-controls. Keep legacy admin endpoints working until P4. No staff edit/transfer/
-status-change UI or new capability in P1.
+`frontend/src/features/people/` owns the read-only screen at `/admin/people`.
+`usePeopleNavigation` keeps filters, paging, selected person and profile tab in the
+URL. `model.peopleUrl` excludes profile parameters from reads and cursors from
+reports. Server sorting covers all matching rows; the table never sorts a single
+page as if it were the complete directory. Home-unit choices show full paths and
+exclude projects. Calendar dates use UTC formatting without browser-zone shifts.
+
+`usePeopleData` isolates URL/retry generations; identity changes remount the drawer.
+A current 401/403 clears every metadata region. Old scopes cannot restore data.
+`ExportReport` ignores completed requests after its filter scope unmounts, checks
+CSV type and releases object URLs. `api.ts` preserves structured JSON errors in
+binary mode. `SearchInput.value` synchronises browser navigation without replacing
+the focused input. Console authority checks follow pathname changes, preserving
+list and drawer focus during query-only navigation.
+
+Record, Access and Timeline tabs use shared Drawer/Tabs controls. Appointments and
+scheduled changes are explicitly pending P3/P5. Legacy account tools remain at
+`/admin/people/basic`; endpoints remain working until P4. No new staff edit,
+transfer or status-change UI and no new capability in P1. The help-centre framework
+is still H1; the console's help link remains its honest placeholder.
+
+`e2e/people.mjs` tests both routes: paging, URL filters/refresh, keyboard drawer
+close/focus return, site-calendar dates, upward access, plain history, actual CSV
+download, desktop/phone axe, member denial, late-filter responses and real authority
+revocation while a success is held. Its companion fixture refuses every database
+except the disposable proxy databases. The full simulation registers this suite.
+`e2e/admin-console.mjs` still checks the original basic account tools and authority
+boundaries. Unit tests cover URL/CSV/date boundaries, controlled search focus and
+stale export denial. Run suites sequentially; proxy startup resets test data.
