@@ -4,9 +4,10 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
+from starlette.websockets import WebSocketDisconnect
+
 from labadda.models import AuthSession, PanelPairing
 from labadda.security import utcnow
-from starlette.websockets import WebSocketDisconnect
 
 PANEL = {"X-LabAdda-Panel": "1"}
 
@@ -231,9 +232,12 @@ def test_archive_freezes_panel_drawing(as_user, make_client, ids):
 def test_panel_socket_gets_board_events_only(as_user, make_client, ids, settings):
     panel = pair(as_user, make_client, ids)
     a = ws(ids)
-    with pytest.raises(WebSocketDisconnect):  # without the panel flag the kiosk has no normal session
-        with panel.api.client.websocket_connect(f"{settings.base_path}/ws/") as c:
-            c.receive_json()
+    # Without the panel flag the kiosk has no normal session.
+    with (
+        pytest.raises(WebSocketDisconnect),
+        panel.api.client.websocket_connect(f"{settings.base_path}/ws/") as c,
+    ):
+        c.receive_json()
     with panel.api.client.websocket_connect(f"{settings.base_path}/ws/?panel=1") as conn:
         assert conn.receive_json()["type"] == "hello"
         conn.send_json({"type": "subscribe", "workspace_id": ws(ids, "division")})

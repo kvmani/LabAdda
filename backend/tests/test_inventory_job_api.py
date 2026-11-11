@@ -5,11 +5,11 @@ import uuid
 from datetime import timedelta
 
 import pytest
+from sqlalchemy import delete
+
 from labadda import inventory_jobs as jobs
 from labadda.models import InventoryJob, UsageReaderGrant, User
 from labadda.security import utcnow
-from sqlalchemy import delete
-
 from tests.test_panel import PANEL, pair
 
 

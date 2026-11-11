@@ -3,10 +3,10 @@
 import uuid
 
 import pytest
-from labadda.models import Membership, TodoComment, TodoList, TodoTask
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from labadda.models import Membership, TodoComment, TodoList, TodoTask
 from tests.test_realtime import recv_until, shared_loop_sockets
 from tests.test_task_assignment import task
 from tests.test_todos import task_body
@@ -75,7 +75,7 @@ def test_personal_mutations_never_enter_workspace_channels(as_user, app, monkeyp
     events = []
     monkeypatch.setattr(app.state.hub, "publish", lambda *args: events.append(args))
     api = as_user("ben")
-    row, created, path = task(api)
+    row, _created, path = task(api)
     api.put("/todos/lists/" + row["id"], json={"revision": 1, "title": "Private rename"})
     fields = task_body()
     fields.pop("client_id")
@@ -117,7 +117,7 @@ def test_commit_failure_emits_nothing(as_user, ids, app, db_factory, monkeypatch
 def test_delivery_rechecks_grants_and_reconnect_reads_durable_state(as_user, ids, settings, app, db_factory):
     workspace = ids["workspaces"]["section_a"]
     ben, asha = as_user("ben"), as_user("asha")
-    row, created, path = task(asha, workspace)
+    _row, _created, path = task(asha, workspace)
     with shared_loop_sockets(app, settings, [ben, asha], workspace) as (ben_ws, asha_ws):
         # Bypass explicit socket revocation: delivery itself must enforce the new grant.
         with db_factory() as db:

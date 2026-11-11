@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 from fastapi.testclient import TestClient
+
 from labadda.app import create_app, expected_schema_head
 from labadda.fixtures import fixture_password
 

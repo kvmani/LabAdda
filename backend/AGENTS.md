@@ -42,6 +42,11 @@ cd backend
 ../.venv/bin/python -m pytest tests/test_<feature>.py -q    # while iterating
 ../.venv/bin/python -m pytest -q                            # whole backend suite
 LABADDA_DATABASE_URL=$LABADDA_TEST_DATABASE_URL ../.venv/bin/alembic check   # model/migration drift
+../.venv/bin/ruff format . && ../.venv/bin/ruff check --fix .                  # format and lint gate
 ```
+
+Ruff runs in `scripts/verify.sh` and must pass. Fix the code rather than silencing a rule. A
+`# noqa: <code> — <reason>` is allowed only at a deliberate boundary, with the reason on the line.
+Rules deferred to package Q3 are listed in `pyproject.toml`; do not add new deferrals.
 
 Run one pytest session at a time: the fixtures recreate the test schema.

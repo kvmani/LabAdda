@@ -136,7 +136,7 @@ class Hub:
                     ):
                         return
                     await conn.ws.send_text(json.dumps(payload))
-        except Exception:
+        except Exception:  # noqa: BLE001 — any transport failure closes this connection only
             # A batch timeout must not cancel an already-started transport cleanup.
             await asyncio.shield(self._close(conn, "send_failed"))
 
@@ -269,12 +269,12 @@ class Hub:
             async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
                 async with conn.send_lock:
                     await conn.ws.send_text(json.dumps({"type": "session_ended", "reason": reason}))
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 — best-effort notice on a connection being closed
             pass
         try:
             async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
                 await conn.ws.close(code=4401)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 — best-effort close of a connection that may be dead
             pass
         for ws_id in subs:
             await self._presence(ws_id)
@@ -367,7 +367,7 @@ class Hub:
                     await self._handle(conn, msg)
                 except (ValueError, KeyError, TypeError):
                     await self._send(conn, {"type": "error", "code": "bad_message"})
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 — a broken socket ends this connection; cleanup runs below
             pass
         finally:
             self.connections.discard(conn)

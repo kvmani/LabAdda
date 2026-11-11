@@ -126,13 +126,13 @@ def _persist_upload(request, db, actor, settings, data, content_type, filename, 
                         return asset_json(_authorized_asset(fresh, reader, candidate_id), settings.api_prefix)
             except ApiError:
                 raise
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 — any failure while confirming leaves the outcome unknown
                 pass
             raise ApiError(
                 "upload_commit_unknown",
                 "Upload outcome is uncertain. Storage was retained for inspection; do not retry blindly.",
                 status=503,
-            )
+            ) from None
         try:
             if stored is not None:
                 _store(request).delete(stored.storage_key)

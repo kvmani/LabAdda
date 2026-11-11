@@ -78,7 +78,8 @@ def load_site(path: Path) -> dict:
     if not isinstance(base, str) or (base and not re.fullmatch(r"(?:/[A-Za-z0-9_-]+)+", base)):
         raise OperationsError("Invalid URL prefix")
     root, backup = Path(site["root"]), Path(site["backup_root"])
-    if any(root.is_relative_to(Path(p)) for p in ("/home", "/root", "/tmp", "/var/tmp")):
+    forbidden_roots = ("/home", "/root", "/tmp", "/var/tmp")  # noqa: S108 — a denylist, not a temp file
+    if any(root.is_relative_to(Path(p)) for p in forbidden_roots):
         raise OperationsError(
             "System service requires a persistent root outside home and temporary directories"
         )
@@ -87,7 +88,7 @@ def load_site(path: Path) -> dict:
     for field in ("env_file", "tls_certificate", "tls_key"):
         if Path(site[field]).is_relative_to(root) or Path(site[field]).is_relative_to(backup):
             raise OperationsError("Configuration and TLS keys must be outside the instance root")
-    if len(set(site[f] for f in ("env_file", "tls_certificate", "tls_key"))) != 3:
+    if len({site[f] for f in ("env_file", "tls_certificate", "tls_key")}) != 3:
         raise OperationsError("Configuration and TLS files must be distinct")
     return site
 

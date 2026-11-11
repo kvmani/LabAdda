@@ -45,6 +45,10 @@ ignore = [
   "PLR0911", "PLR0912", "PLR0915", "PLR0917",
 ]
 
+[tool.ruff.lint.isort]
+# Stated explicitly so import order is the same whether Ruff runs from the root or backend/.
+known-first-party = ["labadda"]
+
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI declares request parameters through these calls in argument defaults.
 extend-immutable-calls = [
@@ -54,8 +58,18 @@ extend-immutable-calls = [
 
 [tool.ruff.lint.per-file-ignores]
 # Tests import inside test functions on purpose, to scope monkeypatching and optional modules.
-"**/tests/*.py" = ["S105", "S106", "S108", "PLC0415"]
+# Tests import inside test functions on purpose, to scope monkeypatching and optional modules,
+# and use non-ASCII text on purpose to prove Unicode round trips.
+"**/tests/*.py" = ["S105", "S106", "S108", "PLC0415", "RUF001"]
+# Operator tools run fixed argument lists without a shell; git is resolved from the build host's PATH.
+"**/scripts/*.py" = ["S603", "S607"]
+"**/labadda/recovery.py" = ["S603"]
+# Random coordinates for synthetic drawing load and fixture art, not for security.
+"**/scripts/soak.py" = ["S311"]
+"**/scripts/rehearsal.py" = ["S311"]
+"**/scripts/generate-research-art.py" = ["S311"]
 # Pushed migrations are frozen (AGENTS.md), so their long SQL strings stay as written.
 "**/migrations/**" = ["N999", "E501"]
 # Each subcommand imports only what it runs, so `labadda --help` and small commands stay fast.
-"**/labadda/cli.py" = ["PLC0415"]
+# Each subcommand maps any failure to a safe operator message and a non-zero exit code.
+"**/labadda/cli.py" = ["PLC0415", "BLE001"]

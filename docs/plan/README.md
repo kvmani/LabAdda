@@ -24,7 +24,7 @@ outside groups, e-mail delivery, multi-site federation (P6).
 
 ## Status at a glance
 
-Last updated: 2026-11-11. Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-11 (after Q1). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |
@@ -35,7 +35,7 @@ remaining effort, and are estimates — the package table below is the precise r
 | People and organisation management | 12 % | 20 % | Staff record, change protocol, transfers to retirement, positions, org chart, import, unit administrators |
 | Interface quality and design system | 10 % | 30 % | Tokens, component library, shell refresh, charts, migration of existing screens |
 | In-app help and onboarding | 6 % | 0 % | Framework, all content, setup checklist, sync check |
-| Code uniformity and quality gates | 7 % | 45 % | Formatter and linter gates, typed frontend, readable rewrite of compressed modules |
+| Code uniformity and quality gates | 7 % | 55 % | Frontend lint gate and types (Q2), readable rewrite of compressed modules (Q3), splits (Q4) |
 | **Overall toward v1.0** | 100 % | **≈ 50 %** | |
 
 What the 50 % already delivered includes: 25 migrations, about 100 API endpoints, 573 backend
@@ -50,7 +50,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | # | ID | Package | Depends on | Status | Card |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Q5 | Documentation gate (`check_docs.py`) and agent guidance | — | done | [quality](quality.md#q5--documentation-gate) |
-| 2 | Q1 | Python formatter and linter gate | — | in progress | [quality](quality.md#q1--python-formatter-and-linter-gate) |
+| 2 | Q1 | Python formatter and linter gate | — | done | [quality](quality.md#q1--python-formatter-and-linter-gate) |
 | 3 | Q2 | Frontend linter, formatter and strict types | — | in progress | [quality](quality.md#q2--frontend-linter-formatter-and-strict-types) |
 | 4 | U1 | Design tokens and core components | Q2 | queued | [ui](ui.md#u1--design-tokens-and-core-components) |
 | 5 | U2 | Application shell refresh | U1 | queued | [ui](ui.md#u2--application-shell-refresh) |

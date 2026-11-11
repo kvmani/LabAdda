@@ -170,7 +170,7 @@ def reconcile_previews(
                     )
                 except ReconciliationStopped:
                     raise
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 — an unreadable file becomes a reported issue
                     code = str(exc) if isinstance(exc, UnsafeFile) else "validation_unavailable"
                     issue(row.id, code)
                     plan.append([str(row.id), code])
@@ -209,7 +209,7 @@ def reconcile_previews(
             commit_started = True
             db.commit()
         return {"id": str(receipt_id), "status": "completed", "summary": summary}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — any failure is reported as a stopped or uncertain receipt
         if commit_started:
             # A lost commit reply must not overwrite a possibly completed job.
             with factory() as fresh:

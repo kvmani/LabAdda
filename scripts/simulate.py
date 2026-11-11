@@ -55,7 +55,7 @@ def run(argv, env, log: Path, timeout: float):
     ):
         try:
             result = process.wait(timeout=timeout)
-        except BaseException:
+        except BaseException:  # noqa: BLE001 — kill the child on timeout or interrupt, then report it
             os.killpg(process.pid, signal.SIGKILL)
             process.wait()
             raise SimulationError("Stage interrupted or timed out") from None
@@ -94,7 +94,7 @@ def environment(out: Path, *, tls=False) -> dict:
         LABADDA_LOGIN_ATTEMPTS_PER_WINDOW="200" if tls else "10",
         LABADDA_E2E_SHOTS=str(out),
         LABADDA_CHROMIUM=os.environ.get("LABADDA_CHROMIUM", "/usr/bin/chromium"),
-        LABADDA_FIXTURE_PASSWORD="fixture-pass-123",
+        LABADDA_FIXTURE_PASSWORD="fixture-pass-123",  # noqa: S106 — documented development fixture password
     )
     return env
 

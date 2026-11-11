@@ -6,11 +6,11 @@ from dataclasses import replace
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
+
 from labadda.app import create_app
 from labadda.models import Asset, UploadReservation
 from labadda.security import utcnow
-from sqlalchemy import func, select
-
 from tests.conftest import Api
 
 PDF = b"%PDF-1.4\nfixture\n%%EOF"
@@ -197,6 +197,7 @@ def test_preview_write_failure_removes_only_this_attempt_files(as_user, app, db_
 
 def test_storage_key_collision_never_overwrites_existing_bytes(as_user, app, db_factory, monkeypatch):
     import pytest
+
     from labadda import storage
 
     key = "a" * 24

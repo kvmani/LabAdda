@@ -5,11 +5,12 @@ from io import BytesIO
 
 import pytest
 from alembic import command
+from PIL import Image
+from sqlalchemy import delete, select
+
 from labadda.cli import alembic_config
 from labadda.models import Asset, ChatMessage, Membership
 from labadda.workspace_usage import workspace_observation
-from PIL import Image
-from sqlalchemy import delete, select
 
 
 def upload(api, png=False):

@@ -42,12 +42,12 @@ class Access:
 
 def direct_grants(db: Session, user_id: uuid.UUID) -> dict[uuid.UUID, str]:
     rows = db.execute(select(Membership.workspace_id, Membership.role).where(Membership.user_id == user_id))
-    return {ws_id: role for ws_id, role in rows}
+    return dict(rows.all())
 
 
 def _org_parents(db: Session) -> dict[uuid.UUID, uuid.UUID | None]:
     rows = db.execute(select(Workspace.id, Workspace.parent_id).where(Workspace.kind == "org"))
-    return {ws_id: parent for ws_id, parent in rows}
+    return dict(rows.all())
 
 
 def ancestors(parents: dict[uuid.UUID, uuid.UUID | None], ws_id: uuid.UUID) -> list[uuid.UUID]:
@@ -143,4 +143,4 @@ def direct_grants_for_workspace(db: Session, workspace_id: uuid.UUID) -> dict[uu
     rows = db.execute(
         select(Membership.user_id, Membership.role).where(Membership.workspace_id == workspace_id)
     )
-    return {uid: role for uid, role in rows}
+    return dict(rows.all())

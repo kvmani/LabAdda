@@ -6,9 +6,9 @@ import uuid
 
 import pytest
 from alembic import command
-from labadda.cli import alembic_config
 from sqlalchemy import text
 
+from labadda.cli import alembic_config
 from tests.test_todos import new_list, task_body
 
 

@@ -4,9 +4,10 @@ import uuid
 
 import pytest
 from alembic import command
+from sqlalchemy import select
+
 from labadda.cli import alembic_config
 from labadda.models import ChatMessage
-from sqlalchemy import select
 
 
 def post(api, ws, body="Research root", parent=None, key=None):

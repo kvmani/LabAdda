@@ -130,7 +130,7 @@ def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: d
         try:
             asset_id = uuid.UUID(str(data.get("asset_id")))
         except ValueError:
-            raise Invalid("invalid_board_op", "Unknown image.")
+            raise Invalid("invalid_board_op", "Unknown image.") from None
         asset = db.get(Asset, asset_id, with_for_update=True)
         reusable = asset is not None and asset.board_workspace_id == workspace_id
         fresh = asset is not None and asset.status == "provisional" and asset.owner_id == actor.id
@@ -465,7 +465,7 @@ def publish_snapshot(
     if body.destination_id not in allowed:
         raise NotFound()
     dest = policy.require_write(db, actor.user, body.destination_id).workspace
-    if dest.id != source.id and body.confirm_audience != dest.id:
+    if dest.id not in (source.id, body.confirm_audience):
         raise Invalid(
             "confirmation_required", f"Confirm that everyone who can read {dest.name} will see this snapshot."
         )
@@ -537,7 +537,7 @@ def publish_snapshot(
                     confirmed = True
         except ApiError:
             raise
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 — any failure while confirming leaves the outcome unknown
             pass
         if not confirmed:
             raise ApiError(
@@ -545,7 +545,7 @@ def publish_snapshot(
                 "Snapshot outcome is uncertain. Storage was retained for inspection; check the noticeboard "
                 "before retrying.",
                 status=503,
-            )
+            ) from None
     destination_id = body.destination_id
     request.app.state.hub.publish(
         destination_id, {"type": "noticeboard.changed", "workspace_id": str(destination_id)}

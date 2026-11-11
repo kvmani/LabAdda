@@ -61,7 +61,7 @@ def _event(db, job, action):
 
 def enqueue(factory, request_key: str, parameters: dict) -> uuid.UUID:
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", request_key):
-        raise ValueError("Use an 8–64 character opaque request key")
+        raise ValueError("Use an opaque request key of 8 to 64 characters")
     payload = InventoryParameters.model_validate(parameters).model_dump()
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     with factory() as db:

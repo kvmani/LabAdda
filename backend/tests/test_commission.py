@@ -24,7 +24,7 @@ def target(tmp_path):
 
 @pytest.mark.parametrize("failure", ["service", "database", "migrate", "schema", "unloaded", None])
 def test_initialize_never_starts_or_opens_traffic(target, failure):
-    site, root, candidate = target
+    site, root, _candidate = target
 
     def command(args, **kwargs):
         assert args[1] == "show"
@@ -63,19 +63,19 @@ def test_initialize_never_starts_or_opens_traffic(target, failure):
 
 
 def test_live_instance_refused_before_mutation(target):
-    site, root, candidate = target
+    site, root, _candidate = target
     (root / "current").symlink_to("releases/candidate")
     with (
         patch.object(commission.release, "validate_installed"),
         patch.object(commission.lifecycle, "runtime_environment", return_value={}),
+        pytest.raises(commission.operations.OperationsError, match="without a current"),
     ):
-        with pytest.raises(commission.operations.OperationsError, match="without a current"):
-            commission.prepare(site, "candidate", "initialize")
+        commission.prepare(site, "candidate", "initialize")
     assert not (root / "operations").exists()
 
 
 def test_restore_requires_absent_assets_and_trusted_digest(target, tmp_path):
-    site, root, candidate = target
+    site, _root, _candidate = target
     bundle = tmp_path / "bundle"
     bundle.mkdir()
     (bundle / "manifest.json").write_text("{}")
@@ -96,7 +96,7 @@ def test_restore_requires_absent_assets_and_trusted_digest(target, tmp_path):
 
 
 def test_plan_never_checks_database_or_creates_state(target):
-    site, root, candidate = target
+    site, root, _candidate = target
     with (
         patch.object(commission.release, "validate_installed"),
         patch.object(commission.lifecycle, "runtime_environment", return_value={}),

@@ -4,10 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from alembic import command
-from labadda.cli import alembic_config
-from labadda.models import Membership, User
 from sqlalchemy import delete
 
+from labadda.cli import alembic_config
+from labadda.models import Membership, User
 from tests.test_todos import new_list, task_body
 
 
@@ -20,7 +20,7 @@ def task(api, workspace=None):
 
 def test_shared_assignment_history_and_mine(as_user, ids):
     ben = as_user("ben")
-    row, created, path = task(ben, ids["workspaces"]["section_a"])
+    _row, created, path = task(ben, ids["workspaces"]["section_a"])
     response = ben.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 1})
     assert response.status_code == 200, response.text
     assigned = response.json()
@@ -86,7 +86,7 @@ def test_upward_and_direct_group_project_eligibility(as_user, ids):
 
 def test_revocation_hides_mine_without_rewriting_assignment(as_user, ids):
     ben = as_user("ben")
-    _, created, path = task(ben, ids["workspaces"]["section_a"])
+    _, _created, path = task(ben, ids["workspaces"]["section_a"])
     ben.put(path + "/assignee", json={"user_id": ids["users"]["ben"], "revision": 1})
     assert len(ben.get("/todos/mine").json()["items"]) == 1
     as_user("admin").delete(
@@ -99,14 +99,14 @@ def test_revocation_hides_mine_without_rewriting_assignment(as_user, ids):
 
 def test_directory_and_mine_filter_pages(as_user, ids):
     api = as_user("ben")
-    row, _, path = task(api, ids["workspaces"]["division"])
+    row, _, _path = task(api, ids["workspaces"]["division"])
     directory = f"/todos/lists/{row['id']}/assignees"
     first = api.get(directory + "?limit=1").json()
     second = api.get(directory + "?limit=1&after=" + first["next_cursor"]).json()
     assert first["items"][0]["id"] != second["items"][0]["id"]
     assert api.get(directory + "?q=Ben").json()["items"][0]["id"] == ids["users"]["ben"]
     assert api.get(directory + "?q=%25").json()["items"] == []
-    for i in range(3):
+    for _i in range(3):
         task(api)
     page = api.get("/todos/mine?limit=2").json()
     following = api.get("/todos/mine?limit=2&after=" + page["next_cursor"]).json()

@@ -112,7 +112,7 @@ A work package (or any change) is done only when every line below is true:
 ## 5. Commands
 
 ```bash
-scripts/verify.sh                 # docs check, backend tests, migration drift, typecheck, unit tests, build
+scripts/verify.sh                 # docs check, Ruff, backend tests, migration drift, typecheck, unit tests, build
 scripts/verify.sh --e2e           # the above plus browser flows through nginx at / and /labadda-staging
 python3 scripts/check_docs.py     # links, size limits and plan consistency only (seconds)
 cd backend && ../.venv/bin/python -m pytest tests/test_<area>.py -q   # one area while iterating

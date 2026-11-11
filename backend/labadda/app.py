@@ -174,7 +174,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             with factory() as db:
                 current = db.execute(text("select version_num from alembic_version")).scalar()
-        except Exception:
+        except Exception:  # noqa: BLE001 — readiness reports any database failure as unavailable
             return JSONResponse({"status": "unavailable"}, status_code=503)
         if current != expected_schema_head():
             return JSONResponse({"status": "schema_mismatch"}, status_code=503)

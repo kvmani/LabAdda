@@ -3,10 +3,10 @@
 import hashlib
 
 import pytest
-from labadda.models import Asset, StorageInspection
-from labadda.preview_reconciliation import reconcile_previews
 from sqlalchemy import func, select
 
+from labadda.models import Asset, StorageInspection
+from labadda.preview_reconciliation import reconcile_previews
 from tests.test_preview_integrity import image_upload
 
 
@@ -58,10 +58,10 @@ def test_dry_run_and_reviewed_application_only_fill_verified_metadata(as_user, d
 @pytest.mark.parametrize(
     "options",
     [
-        dict(apply=True),
-        dict(apply=True, expected_plan="a" * 64),
-        dict(apply=True, writers_quiesced=True, expected_plan="invalid"),
-        dict(expected_plan="a" * 64),
+        {"apply": True},
+        {"apply": True, "expected_plan": "a" * 64},
+        {"apply": True, "writers_quiesced": True, "expected_plan": "invalid"},
+        {"expected_plan": "a" * 64},
     ],
 )
 def test_application_confirmation_is_required_before_any_work(db_factory, settings, ids, options):
@@ -116,9 +116,12 @@ def test_bounded_batches_are_explicit_and_completed_plan_cannot_repeat(as_user, 
     planned = run(db_factory, settings, max_assets=1)
     assert planned["summary"]["more_unknown_assets"] is True
     assert planned["summary"]["checked_assets"] == 1
-    args = dict(
-        max_assets=1, apply=True, writers_quiesced=True, expected_plan=planned["summary"]["plan_digest"]
-    )
+    args = {
+        "max_assets": 1,
+        "apply": True,
+        "writers_quiesced": True,
+        "expected_plan": planned["summary"]["plan_digest"],
+    }
     assert run(db_factory, settings, **args)["summary"]["applied_count"] == 1
     assert run(db_factory, settings, **args)["summary"]["stop_reason"] == "plan_changed"
     with db_factory() as db:

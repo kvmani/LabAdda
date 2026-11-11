@@ -235,7 +235,7 @@ def create_workspace(
         db.flush()
     except IntegrityError:
         db.rollback()
-        raise Invalid("invalid_parent", "The organization already has a root.")
+        raise Invalid("invalid_parent", "The organization already has a root.") from None
     audit.record(
         db,
         actor=actor.user,
@@ -290,7 +290,7 @@ def update_workspace(
         db.commit()
     except (IntegrityError, DBAPIError):
         db.rollback()
-        raise Invalid("cycle", "That move would break the organization tree.")
+        raise Invalid("cycle", "That move would break the organization tree.") from None
     _hub(request).revalidate_all()
     return workspace_json(ws)
 

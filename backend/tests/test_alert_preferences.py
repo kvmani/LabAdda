@@ -5,10 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from alembic import command
+from sqlalchemy import select
+
 from labadda import notify
 from labadda.cli import alembic_config
 from labadda.models import Notification, NotificationPreference
-from sqlalchemy import select
 
 
 def choices(revision=0, **override):

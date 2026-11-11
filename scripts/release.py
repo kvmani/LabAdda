@@ -397,6 +397,7 @@ with create_engine(s.database_url, connect_args={'connect_timeout': 10}).connect
         text=True,
         capture_output=True,
         env=runtime_env,
+        check=False,  # the return code is inspected below so stderr is never relayed
     )
     if result.returncode:
         # SQLAlchemy exceptions can contain connection details. Do not relay stderr.

@@ -5,10 +5,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from alembic import command
-from labadda.cli import alembic_config
-from labadda.models import Membership, TodoComment, Workspace
 from sqlalchemy import delete, select
 
+from labadda.cli import alembic_config
+from labadda.models import Membership, TodoComment, Workspace
 from tests.test_task_assignment import task
 
 
@@ -111,7 +111,7 @@ def test_comment_validation(as_user, text):
 
 def test_panel_csrf_and_wrong_task_parent(as_user):
     api = as_user("ben")
-    row, created, path = task(api)
+    _row, created, path = task(api)
     other, _, _ = task(api)
     assert api.get(path + "/comments", headers={"X-LabAdda-Panel": "1"}).status_code == 401
     assert api.get(path + "/comments?panel=1").status_code == 401
@@ -140,7 +140,7 @@ def test_read_rechecks_grants_after_serialization(as_user, ids, db_factory, monk
 
 def test_capacity_replay_at_limit(as_user, db_factory):
     api = as_user("ben")
-    _, created, path = task(api)
+    _, _created, path = task(api)
     payload = body()
     saved = api.post(path + "/comments", json=payload).json()
     with db_factory() as db:

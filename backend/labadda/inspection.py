@@ -172,7 +172,7 @@ def inspect_storage(
     except BudgetExceeded:
         summary["selected_pass_complete"] = False
         summary["stop_reason"] = "budget_exhausted"
-    except Exception:
+    except Exception:  # noqa: BLE001 — any failure ends the pass as failed in its receipt
         status = "failed"
         summary["selected_pass_complete"] = False
         summary["stop_reason"] = "inspection_unavailable"

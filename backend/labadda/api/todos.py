@@ -89,6 +89,8 @@ def _scope(db, user, workspace_id, write=False):
         if write:
             _scope_locks(db, workspace_id)
         return (policy.require_write if write else policy.require_read)(db, user, workspace_id)
+    # A personal list has no workspace, so there is no workspace access to return.
+    return None
 
 
 def _list(db, user, list_id, write=False):

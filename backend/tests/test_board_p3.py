@@ -5,10 +5,11 @@ import threading
 import time
 
 from fastapi.testclient import TestClient
+from PIL import Image
+
 from labadda.app import create_app
 from labadda.boardstate import compact
 from labadda.models import Board
-from PIL import Image
 
 from .test_files import png_bytes
 
@@ -376,7 +377,7 @@ def test_state_cache_matches_rebuild_under_concurrency(as_user, ids, db_factory)
                     json={"op_id": f"op-{tag}-u{i:02d}", "epoch": 1, "type": "undo"},
                 )
 
-    threads = [threading.Thread(target=draw, args=(u, t)) for u, t in zip(users, ("b", "a"))]
+    threads = [threading.Thread(target=draw, args=(u, t)) for u, t in zip(users, ("b", "a"), strict=False)]
     [t.start() for t in threads]
     [t.join() for t in threads]
     users[1].post(

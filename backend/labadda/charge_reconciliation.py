@@ -329,7 +329,7 @@ def reconcile_content_charges(
             commit_started = True
             db.commit()
         return {"id": str(receipt_id), "status": "completed", "summary": summary}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — any failure is reported as a stopped or uncertain receipt
         if commit_started:
             # A lost commit reply must not overwrite a possibly completed run.
             with factory() as fresh:

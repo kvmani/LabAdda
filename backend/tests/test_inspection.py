@@ -1,6 +1,7 @@
 """P5.1 bounded referenced-file inspection must not repair or expose content."""
 
 import pytest
+
 from labadda.inspection import inspect_storage
 
 

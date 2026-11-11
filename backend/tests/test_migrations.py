@@ -3,9 +3,10 @@
 import pytest
 import sqlalchemy
 from alembic import command
+from sqlalchemy import create_engine, text
+
 from labadda.app import expected_schema_head
 from labadda.cli import alembic_config
-from sqlalchemy import create_engine, text
 
 from .conftest import recreate_schema
 

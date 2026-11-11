@@ -3,10 +3,10 @@
 import uuid
 
 import pytest
-from labadda.models import Asset
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
+from labadda.models import Asset
 from tests.test_chat_board import stroke
 from tests.test_files import png_bytes
 from tests.test_panel import pair

@@ -99,7 +99,7 @@ def inventory_storage(
         if len(rows) > max_assets:
             summary["stop_reason"] = "reference_budget_exhausted"
             raise InventoryLimit()
-        references = {key: preview for key, preview in rows}
+        references = dict(rows)
         summary["observed_asset_rows"] = len(rows)
         check_time()
         flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
@@ -171,7 +171,7 @@ def inventory_storage(
         summary["state"] = "observed" if not summary["issue_count"] else "partial"
     except InventoryLimit:
         summary.setdefault("stop_reason", "scan_budget_exhausted")
-    except Exception:
+    except Exception:  # noqa: BLE001 — any failure ends the pass as failed in its receipt
         status = "failed"
         summary["stop_reason"] = "inventory_unavailable"
     summary["selected_pass_complete"] = status == "completed" and not summary["issue_count"]

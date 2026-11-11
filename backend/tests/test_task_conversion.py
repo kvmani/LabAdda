@@ -4,11 +4,11 @@ import uuid
 
 import pytest
 from alembic import command
-from labadda.cli import alembic_config
-from labadda.models import Membership, Post, TodoChange, TodoSource, TodoTask, Workspace
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from labadda.cli import alembic_config
+from labadda.models import Membership, Post, TodoChange, TodoSource, TodoTask, Workspace
 from tests.test_panel import pair
 from tests.test_todos import new_list
 
@@ -172,8 +172,9 @@ def test_source_deleted_while_conversion_waits_is_not_accepted(as_user, ids, db_
     import time
     from concurrent.futures import ThreadPoolExecutor
 
-    from labadda.security import utcnow
     from sqlalchemy import text
+
+    from labadda.security import utcnow
 
     ben = as_user("ben")
     workspace = ids["workspaces"]["section_a"]

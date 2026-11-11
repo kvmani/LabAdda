@@ -4,9 +4,10 @@ import json
 import os
 
 import pytest
+from sqlalchemy import select
+
 from labadda.inventory import inventory_storage
 from labadda.models import Asset, StorageInspection
-from sqlalchemy import select
 
 
 def test_inventory_classification_and_private_receipt(as_user, settings, db_factory):

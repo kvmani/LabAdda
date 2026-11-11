@@ -6,11 +6,12 @@ from datetime import timedelta
 
 import pytest
 from alembic import command
+from sqlalchemy import select, text
+
 from labadda import inventory_jobs as jobs
 from labadda.cli import alembic_config
 from labadda.models import InventoryAttempt, InventoryJob, StorageInspection
 from labadda.security import utcnow
-from sqlalchemy import select, text
 
 
 def expire(factory, job_id):

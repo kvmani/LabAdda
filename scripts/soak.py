@@ -31,7 +31,7 @@ def pct(values: list[float], p: float) -> float:
     if not values:
         return float("nan")
     values = sorted(values)
-    return values[min(len(values) - 1, int(round(p / 100 * (len(values) - 1))))]
+    return values[min(len(values) - 1, round(p / 100 * (len(values) - 1)))]
 
 
 def report_passes(report: dict, *, enforce_targets: bool) -> bool:

@@ -187,7 +187,7 @@ def test_parallel_drawing_sequences_without_gaps(as_user, ids):
             if r.status_code != 200:
                 errors.append(r.text)
 
-    threads = [threading.Thread(target=draw, args=(u, t)) for u, t in zip(users, ("b", "a"))]
+    threads = [threading.Thread(target=draw, args=(u, t)) for u, t in zip(users, ("b", "a"), strict=False)]
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert not errors

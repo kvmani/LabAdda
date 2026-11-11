@@ -4,9 +4,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from labadda.models import Membership
 from sqlalchemy import delete
 
+from labadda.models import Membership
 from tests.test_todos import new_list
 
 

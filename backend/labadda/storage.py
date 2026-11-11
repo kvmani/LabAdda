@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import logging
@@ -137,17 +138,15 @@ class AssetStore:
                 if img.width * img.height > Image.MAX_IMAGE_PIXELS:
                     raise Invalid("image_too_large", "The image exceeds the supported pixel limit.")
                 img.load()
-                img = img.convert("RGBA") if img.mode in ("P", "LA", "RGBA") else img.convert("RGB")
-                img.thumbnail((PREVIEW_MAX, PREVIEW_MAX))
+                preview = img.convert("RGBA") if img.mode in ("P", "LA", "RGBA") else img.convert("RGB")
+                preview.thumbnail((PREVIEW_MAX, PREVIEW_MAX))
                 out = io.BytesIO()
-                img.save(out, format="PNG")
+                preview.save(out, format="PNG")
                 return out.getvalue()
         except (UnidentifiedImageError, OSError, Image.DecompressionBombError, ValueError):
-            raise Invalid("invalid_image", "The image could not be read.")
+            raise Invalid("invalid_image", "The image could not be read.") from None
 
     def delete(self, storage_key: str) -> None:
         for preview in (False, True):
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 self.path(storage_key, preview).unlink()
-            except FileNotFoundError:
-                pass

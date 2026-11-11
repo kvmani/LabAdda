@@ -56,6 +56,7 @@ def test_csrf_required(as_user):
 
 def test_history_survives_downgrade_attempt(as_user, settings):
     from alembic import command
+
     from labadda.cli import alembic_config
 
     admin = as_user("admin")
@@ -69,8 +70,9 @@ def test_history_survives_downgrade_attempt(as_user, settings):
 def test_queued_proposal_rechecks_authority(make_client, db_factory, monkeypatch, change):
     import threading
 
-    from labadda.api import governance
     from sqlalchemy import text
+
+    from labadda.api import governance
 
     admin = make_client("admin")
     entered, resume = threading.Event(), threading.Event()

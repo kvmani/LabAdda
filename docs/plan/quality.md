@@ -12,6 +12,10 @@ a valid status. It runs first in `scripts/verify.sh` and is covered by
 
 ### Q1 · Python formatter and linter gate
 
+**Status: done (2026-11-11).** Ruff 0.17.4 formats and lints `backend/`, `scripts/` and `e2e/`
+from `scripts/verify.sh`. Every exemption in `backend/pyproject.toml` states its reason. The
+four function-size rules are deferred to Q3.
+
 Size M. Depends on nothing.
 
 **Goal.** All Python in `backend/` and `scripts/` is formatted by Ruff and passes a fixed lint
@@ -113,9 +117,13 @@ after each function. Order (worst first):
 - Browser checks: every `e2e/*.mjs` — extract shared `login`, `call` and `check` helpers into
   `e2e/lib/harness.mjs` first, then rewrite each suite to use them.
 
+Last commit of the package: remove the Q1 deferral of `PLR0911`, `PLR0912`, `PLR0915` and
+`PLR0917` from the `ignore` list in `backend/pyproject.toml` (the comment there names Q3) and fix
+what they report, splitting functions by responsibility.
+
 **Acceptance.** Test and browser-check counts unchanged and green after every commit. No public
 contract changed (`git diff docs/API.md` is empty). Each rewritten file meets the limits in
-standards §2.
+standards §2. `ruff check` passes with the four function-size rules enabled.
 
 **Not in this package.** Behaviour changes, bug fixes (record any bug you find in the handoff
 entry with a failing-case description), visual changes.

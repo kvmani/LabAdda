@@ -5,9 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from alembic import command
-from labadda.cli import alembic_config
 from sqlalchemy import text
 
+from labadda.cli import alembic_config
 from tests.test_panel import PANEL, pair
 
 
@@ -167,7 +167,7 @@ def test_cursor_pages_are_scoped_and_bounded(as_user):
 
 def test_panel_markers_and_csrf_refused(as_user, make_client, ids):
     api = as_user("ben")
-    row = new_list(api)
+    new_list(api)
     panel = pair(as_user, make_client, ids)
     assert panel.api.get("/todos/lists", headers=PANEL).status_code == 401
     assert api.get("/todos/lists", headers=PANEL).status_code == 401
@@ -236,8 +236,9 @@ def test_session_expiry_while_waiting_for_scope_lock_rolls_back(as_user, ids, mo
 def test_workspace_row_writer_and_list_creation_do_not_deadlock(as_user, ids, db_factory):
     import time
 
-    from labadda.models import Workspace
     from sqlalchemy import select
+
+    from labadda.models import Workspace
 
     api = as_user("ben")
     ws = ids["workspaces"]["section_a"]

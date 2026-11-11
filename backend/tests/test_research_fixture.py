@@ -27,7 +27,7 @@ def test_research_art_is_deterministic_and_native(tmp_path):
     for obj in objects:
         normalized = _validate_add(None, None, None, {"kind": obj["kind"], "data": obj["data"]})
         assert normalized["data"] == obj["data"]
-    svg = ElementTree.parse(ART / "research-plan.svg")
+    svg = ElementTree.parse(ART / "research-plan.svg")  # noqa: S314 — committed fixture file
     assert len(svg.findall(".//{http://www.w3.org/2000/svg}polyline")) == sum(
         o["kind"] == "stroke" for o in objects
     )

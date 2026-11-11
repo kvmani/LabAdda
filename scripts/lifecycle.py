@@ -27,37 +27,35 @@ import release
 
 TLS_ENV = {"PGSSLMODE", "PGSSLROOTCERT", "PGSSLCERT", "PGSSLKEY"}
 
-ALLOWED_ENV = set(
-    [
-        "PORT",
-        "FRONTEND_DIST",
-        "TRUSTED_ORIGINS",
-        "DATABASE_URL",
-        "BASE_PATH",
-        "INSTANCE",
-        "ENV",
-        "COOKIE_NAME",
-        "COOKIE_SECURE",
-        "ASSET_DIR",
-        "TIMEZONE",
-        "SESSION_IDLE_MINUTES",
-        "SESSION_ABSOLUTE_HOURS",
-        "MAX_ATTACHMENTS",
-        "MAX_ATTACHMENT_BYTES",
-        "USER_QUOTA_BYTES",
-        "RUN_SCHEDULER",
-        "REMINDER_INTERVAL_SECONDS",
-        "MAX_GROUPS_PER_USER",
-        "MAX_GROUP_MEMBERS",
-        "LOGIN_ATTEMPTS_PER_WINDOW",
-        "LOGIN_WINDOW_SECONDS",
-        "BOARD_COMPACT_THRESHOLD",
-        "PANEL_IDLE_SECONDS",
-        "PANEL_ABSOLUTE_MINUTES",
-        "PANEL_PAIRING_SECONDS",
-        "BOARD_KEEP_REVISIONS",
-    ]
-)
+ALLOWED_ENV = {
+    "PORT",
+    "FRONTEND_DIST",
+    "TRUSTED_ORIGINS",
+    "DATABASE_URL",
+    "BASE_PATH",
+    "INSTANCE",
+    "ENV",
+    "COOKIE_NAME",
+    "COOKIE_SECURE",
+    "ASSET_DIR",
+    "TIMEZONE",
+    "SESSION_IDLE_MINUTES",
+    "SESSION_ABSOLUTE_HOURS",
+    "MAX_ATTACHMENTS",
+    "MAX_ATTACHMENT_BYTES",
+    "USER_QUOTA_BYTES",
+    "RUN_SCHEDULER",
+    "REMINDER_INTERVAL_SECONDS",
+    "MAX_GROUPS_PER_USER",
+    "MAX_GROUP_MEMBERS",
+    "LOGIN_ATTEMPTS_PER_WINDOW",
+    "LOGIN_WINDOW_SECONDS",
+    "BOARD_COMPACT_THRESHOLD",
+    "PANEL_IDLE_SECONDS",
+    "PANEL_ABSOLUTE_MINUTES",
+    "PANEL_PAIRING_SECONDS",
+    "BOARD_KEEP_REVISIONS",
+}
 
 
 def runtime_environment(site: dict) -> dict:
@@ -130,7 +128,7 @@ def command(argv, *, env=None, cwd=None, timeout=120) -> str:
     ) as process:
         try:
             stdout, _ = process.communicate(timeout=timeout)
-        except BaseException:
+        except BaseException:  # noqa: BLE001 — kill the child on timeout or interrupt, then report it
             os.killpg(process.pid, signal.SIGKILL)
             process.wait()
             raise operations.OperationsError(

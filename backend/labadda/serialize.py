@@ -29,7 +29,7 @@ def user_brief(user: User | None) -> dict | None:
 
 
 def users_by_id(db: Session, ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, User]:
-    ids = set(i for i in ids if i)
+    ids = {i for i in ids if i}
     if not ids:
         return {}
     return {u.id: u for u in db.scalars(select(User).where(User.id.in_(ids)))}

@@ -51,8 +51,9 @@ def test_observation_history_is_explicit_and_audited(as_user):
 
 
 def test_saved_history_is_bounded(as_user, db_factory):
-    from labadda.models import UsageObservation
     from sqlalchemy import func, select
+
+    from labadda.models import UsageObservation
 
     admin = as_user("admin")
     # Backfill old synthetic samples; exercise one real observation/prune commit.
@@ -111,8 +112,9 @@ def test_database_physical_storage_is_site_only_and_categorized(as_user, ids):
 
 
 def test_database_measurement_unavailable_is_unknown_not_zero(as_user, monkeypatch):
-    from labadda.api import usage
     from sqlalchemy.exc import OperationalError
+
+    from labadda.api import usage
 
     def fail(*_a, **_k):
         raise OperationalError("select", {}, Exception("timeout"))

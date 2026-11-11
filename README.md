@@ -82,7 +82,7 @@ For frontend development with hot reload, run `npm run dev` in `frontend/`. It p
 ## Test
 
 ```bash
-scripts/verify.sh          # docs check, pytest on PostgreSQL, alembic drift check, typecheck, unit tests, production build
+scripts/verify.sh          # docs check, Ruff format/lint, pytest on PostgreSQL, alembic drift check, typecheck, unit tests, production build
 scripts/verify.sh --e2e    # also starts root + /labadda-staging instances behind nginx and runs browser flows
 ```
 
@@ -103,6 +103,13 @@ Drawing soak (8 drawers). It measures committed-update latency and checks for lo
 scripts/proxy-stack.sh start
 .venv/bin/python scripts/soak.py --drawers 8 --seconds 120
 scripts/proxy-stack.sh stop
+```
+
+Python formatting and linting use Ruff with the configuration in `backend/pyproject.toml`. Before committing, run:
+
+```bash
+.venv/bin/ruff format --config backend/pyproject.toml backend scripts e2e
+.venv/bin/ruff check --config backend/pyproject.toml --fix backend scripts e2e
 ```
 
 `LABADDA_TEST_DATABASE_URL` selects the disposable test database. The default is `labadda_test` on localhost. The e2e stack uses `labadda_e2e_root` and `labadda_e2e_prefix`. Create both like `labadda_test`. CI (`.github/workflows/ci.yml`) runs `scripts/verify.sh` on the same locked dependencies.

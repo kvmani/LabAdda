@@ -10,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 # CLI modules share a directory at runtime; make that explicit for importlib tests.
 sys.path.insert(0, str(ROOT / "scripts"))
-import lifecycle as life
+import lifecycle as life  # noqa: E402 — needs the scripts directory on sys.path first
 
 
 @pytest.fixture
@@ -108,7 +108,12 @@ def test_upgrade_fail_closed_and_order(configured, failure):
         patch.object(life, "wait_ready", side_effect=lambda site: probe(site, direct=True)["passed"]),
         patch.object(life.release, "switch") as switch,
     ):
-        kwargs = dict(candidate="next", expected_schema="0025", apply=True, external_writers_stopped=True)
+        kwargs = {
+            "candidate": "next",
+            "expected_schema": "0025",
+            "apply": True,
+            "external_writers_stopped": True,
+        }
         if failure:
             with pytest.raises(life.operations.OperationsError):
                 life.maintenance(configured, "upgrade", "old", **kwargs)
@@ -129,9 +134,12 @@ def test_upgrade_fail_closed_and_order(configured, failure):
 def test_lock_and_private_directory(tmp_path):
     root = tmp_path / "root"
     root.mkdir()
-    with life.locked(root), pytest.raises(life.operations.OperationsError, match="Another"):
-        with life.locked(root):
-            pass
+    with (
+        life.locked(root),
+        pytest.raises(life.operations.OperationsError, match="Another"),
+        life.locked(root),
+    ):
+        pass
     (root / "operations").chmod(0o755)
     with pytest.raises(life.operations.OperationsError, match="private"), life.locked(root):
         pass

@@ -6,11 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from alembic import command
-from labadda.cli import alembic_config
-from labadda.models import Board, Membership, TodoChange, TodoSource, TodoTask, Workspace
 from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
+from labadda.cli import alembic_config
+from labadda.models import Board, Membership, TodoChange, TodoSource, TodoTask, Workspace
 from tests.test_chat_board import stroke
 from tests.test_panel import pair
 from tests.test_todos import new_list
@@ -93,7 +93,7 @@ def test_restore_and_purge_preserve_recorded_context_and_copy(as_user, ids, db_f
 def test_source_reader_and_destination_writer_and_panel(as_user, ids, make_client, db_factory):
     api = as_user("ben")
     ws = ids["workspaces"]["section_a"]
-    target, url, body = prepare(api, ws)
+    _target, url, body = prepare(api, ws)
     assert api.client.post(api.url(url), json=body).status_code == 403
     for name in ["chen", "dana", "admin"]:
         own = new_list(as_user(name))

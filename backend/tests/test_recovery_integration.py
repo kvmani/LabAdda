@@ -7,10 +7,10 @@ from dataclasses import replace
 
 import pytest
 from fastapi.testclient import TestClient
-from labadda.app import create_app
-from labadda.recovery import RecoveryError, backup, restore
 from sqlalchemy import create_engine, text
 
+from labadda.app import create_app
+from labadda.recovery import RecoveryError, backup, restore
 from tests.conftest import Api
 from tests.test_chat_board import stroke
 from tests.test_panel import PANEL, pair
