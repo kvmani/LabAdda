@@ -34,9 +34,9 @@ try {
     const admin = await login(base, "admin"),
       ben = await login(base, "ben");
     await ben.page.goto(origin + base + "/operations");
-    await ben.page.getByRole("alert").filter({ hasText: "Operational read access is required" }).waitFor();
+    await ben.page.waitForURL((url) => !/\/(admin|operations)(\/|$)/.test(url.pathname));
     check(true, base + ": observer access starts denied");
-    await admin.page.goto(origin + base + "/admin");
+    await admin.page.goto(origin + base + "/admin/settings");
     await admin.page.getByLabel("Operational reader account").selectOption({ label: "ben" });
     await admin.page.getByLabel("Access change reason").fill("Synthetic storage observation walkthrough");
     await admin.page.getByLabel("Confirm administrator password").fill("incorrect-fixture-password");
@@ -53,7 +53,7 @@ try {
       (await admin.page.getByLabel("Confirm administrator password").inputValue()) === "",
       base + ": password cleared after operation",
     );
-    await ben.page.reload();
+    await ben.page.goto(origin + base + "/operations");
     await ben.page.getByRole("heading", { name: "Partial site measurement" }).waitFor();
     await ben.page.screenshot({
       path: out + (base ? "/observer-prefix.png" : "/observer-root.png"),

@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILES = {
     "quick": ("chat-attachments", "alert-preferences"),
     "full": (
+        "admin-console",
         "flows",
         "todos",
         "task-assignment",

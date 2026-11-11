@@ -41,7 +41,7 @@ unit-tested; `Dialog` and `Drawer` trap and restore focus; `DataTable` sorts and
 ### U2 · Application shell refresh
 
 **Status: done (2026-11-11).** `frontend/src/features/shell/` (Shell, TopBar, RailNav,
-WorkspaceSwitcher). Decisions taken while building it, for the owner to review:
+WorkspaceSwitcher). Decisions taken while building it, accepted by the owner on 2026-11-11:
 
 - The rail stays a list of links, not a `TreeView`. People see few workspaces (their unit, its
   ancestors, projects and groups); links keep normal navigation semantics (Tab, open in a new

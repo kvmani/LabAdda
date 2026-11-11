@@ -19,7 +19,7 @@ try {
   for (const base of ["", "/labadda-staging"]) {
     const context = await browser.newContext({ viewport: { width: 1400, height: 1100 } });
     const page = await context.newPage();
-    await page.goto("http://127.0.0.1:8080" + base + "/admin");
+    await page.goto("http://127.0.0.1:8080" + base + "/admin/storage");
     await page.getByLabel("Username").fill("admin");
     await page.getByLabel("Password").fill(process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();

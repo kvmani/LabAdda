@@ -24,23 +24,24 @@ outside groups, e-mail delivery, multi-site federation (P6).
 
 ## Status at a glance
 
-Last updated: 2026-11-11 (after Q1, Q2, U1 and U2). Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-11 (after Q1, Q2, U1, U2 and A1). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |
 | --- | --- | --- | --- |
 | Collaboration features (P1–P3, C1–C5) | 30 % | 90 % | Optional task alerts; site and device acceptance |
 | Deployment, upgrade, backup, recovery tooling | 15 % | 75 % | Rehearsal on a real Ubuntu host, scheduled backups with status, operator quickstart, release 1.0 |
-| Admin console, health and analytics | 20 % | 15 % | Almost all: console shell, metrics, health, activity, overview, audit, events, backups, settings |
+| Admin console, health and analytics | 20 % | 20 % | Metrics, health, activity, overview, audit, events, backups and general settings |
 | People and organisation management | 12 % | 20 % | Staff record, change protocol, transfers to retirement, positions, org chart, import, unit administrators |
 | Interface quality and design system | 10 % | 60 % | Charts (U3), moving existing screens onto the kit and enabling the dark theme (U4) |
 | In-app help and onboarding | 6 % | 0 % | Framework, all content, setup checklist, sync check |
 | Code uniformity and quality gates | 7 % | 70 % | Readable rewrite of compressed modules and the deferred rules (Q3), module splits (Q4) |
-| **Overall toward v1.0** | 100 % | **≈ 55 %** | |
+| **Overall toward v1.0** | 100 % | **≈ 56 %** | |
 
-What the 50 % already delivered includes: 25 migrations, about 100 API endpoints, 573 backend
-tests, 465 browser checks across root and prefixed instances, a 30-client TLS workload rehearsal
-within targets, and offline release, backup, restore and commissioning tooling verified locally.
+The delivered foundation includes 25 migrations, about 100 API endpoints and 605 backend
+tests. The collaboration profile passed 465 root/prefix browser checks in U2; A1 adds 50
+console checks and validates nine existing admin/tool suites. Thirty-client TLS workload
+rehearsals and offline release, backup, restore and commissioning are verified locally.
 
 ## Order of work
 
@@ -54,11 +55,11 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 3 | Q2 | Frontend linter, formatter and strict types | — | done | [quality](quality.md#q2--frontend-linter-formatter-and-strict-types) |
 | 4 | U1 | Design tokens and core components | Q2 | done | [ui](ui.md#u1--design-tokens-and-core-components) |
 | 5 | U2 | Application shell refresh | U1 | done | [ui](ui.md#u2--application-shell-refresh) |
-| 6 | A1 | Admin console shell and navigation | U2 | in progress | [admin](admin.md#a1--admin-console-shell-and-navigation) |
-| 7 | P1 | Staff record, people list and profile | A1, Q1 | queued | [people](people.md#p1--staff-record-people-list-and-profile) |
+| 6 | A1 | Admin console shell and navigation | U2 | done | [admin](admin.md#a1--admin-console-shell-and-navigation) |
+| 7 | P1 | Staff record, people list and profile | A1, Q1 | next | [people](people.md#p1--staff-record-people-list-and-profile) |
 | 8 | P2 | Change protocol; add, edit, transfer | P1 | queued | [people](people.md#p2--change-protocol-add-edit-transfer) |
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | queued | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
-| 10 | A2 | Audit explorer | A1 | queued | [admin](admin.md#a2--audit-explorer) |
+| 10 | A2 | Audit explorer | A1 | next | [admin](admin.md#a2--audit-explorer) |
 | 11 | U3 | Charts kit | U1 | next | [ui](ui.md#u3--charts-kit) |
 | 12 | A3 | Metrics foundation | Q1 | next | [admin](admin.md#a3--metrics-foundation) |
 | 13 | A4 | System health and operational events | A1, A3, U3 | queued | [admin](admin.md#a4--system-health-and-operational-events) |

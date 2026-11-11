@@ -6,8 +6,7 @@ Read one relevant feature guide, then its linked contract/tests; consult broader
 when changing a boundary. Run the affected checks and update the same guide, the
 [plan](../plan/README.md) and the ledger with the code.
 
-New v1.0 areas do not have feature guides yet. Their work-package cards name the modules to
-create; add a guide here (one file per area, under 150 lines) when the first package of an
+For the remaining v1.0 areas, work-package cards name the modules to create; add a guide here (one file per area, under 150 lines) when the first package of an
 area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`.
 
 | Task | Minimal source path | Contract / checks |

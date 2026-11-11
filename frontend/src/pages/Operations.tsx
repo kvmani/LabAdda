@@ -23,7 +23,7 @@ export function Operations() {
   }, []);
   return (
     <section>
-      <h1>Operational storage observations</h1>
+      <h2>Operational storage observations</h2>
       <p>Read-only metadata. Operational access grants no private content or administration rights.</p>
       <button onClick={load}>Refresh operational observations</button>
       {error && (

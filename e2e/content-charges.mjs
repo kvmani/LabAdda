@@ -123,7 +123,7 @@ try {
       "update boards set charges_epoch = null; delete from content_charges where item_type = 'board_object'",
     );
     const admin = await signIn(base, "admin");
-    await admin.page.goto(origin + base + "/admin");
+    await admin.page.goto(origin + base + "/admin/storage");
     await admin.page.getByText(/Whiteboard totals are a lower bound: 1 board/).waitFor();
     check(true, `${tag}: an unreconciled historical board is reported as a lower bound, not zero`);
     await admin.page.screenshot({

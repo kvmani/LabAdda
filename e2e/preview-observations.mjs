@@ -67,7 +67,7 @@ try {
       path: output + (base ? "/user-prefix.png" : "/user-root.png"),
       fullPage: true,
     });
-    await admin.page.goto(origin + base + "/admin");
+    await admin.page.goto(origin + base + "/admin/storage");
     await admin.page.getByText("Previews with recorded measurements", { exact: true }).waitFor();
     check(
       !(await admin.page.locator("body").innerText()).includes("private-derivative-fixture"),

@@ -67,9 +67,10 @@ export function TopBar({
           <Icon name="help" />
           <span className="shell-topbar__label">Help</span>
         </Link>
-        {session?.user.is_admin && (
+        {(session?.user.is_admin || operations) && (
           <NavLink to="/admin" className="shell-topbar__link">
-            Administration
+            <Icon name="unit" />
+            <span className="shell-topbar__label">Administration</span>
           </NavLink>
         )}
         <Menu

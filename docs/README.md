@@ -24,8 +24,7 @@ Read this map first; follow the relevant path rather than loading every document
 | Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |
 | Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
 
-Current priority: the v1.0 tracks in the [delivery plan](plan/README.md), starting with the
-quality gates (Q1, Q2) and the design system (U1). The collaboration product (P1–P3, C1–C5) and
+Current priority: the v1.0 tracks in the [delivery plan](plan/README.md), with A1 console navigation delivered and P1 staff records next. The collaboration product (P1–P3, C1–C5) and
 the operations tooling are delivered and locally tested; representative-site, physical-device
 and manual acceptance gates remain open (track D). Archive, quota and retention work (P5.2+)
 is deferred beyond v1.0.

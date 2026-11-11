@@ -33,7 +33,7 @@ async function signIn(base, name) {
 try {
   for (const base of ["", "/labadda-staging"]) {
     const { ctx, page } = await signIn(base, "admin");
-    await page.goto(origin + base + "/admin");
+    await page.goto(origin + base + "/admin/storage");
     await page.getByRole("heading", { name: "Site proposal revision 0" }).waitFor();
     await page.getByLabel("Proposed user limit (MiB)").fill("750");
     await page.getByLabel("Proposal reason").fill("Synthetic browser capacity review");

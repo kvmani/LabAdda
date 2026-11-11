@@ -30,7 +30,7 @@ async function login(base, username) {
 try {
   for (const base of ["", "/labadda-staging"]) {
     const admin = await login(base, "admin");
-    await admin.page.goto(origin + base + "/admin");
+    await admin.page.goto(origin + base + "/admin/storage");
     const region = admin.page.getByRole("region", { name: "Inventory jobs", exact: true });
     await region.getByRole("button", { name: "Older inventory jobs" }).waitFor();
     const first = await region.getByRole("button", { name: /View attempts for/ }).allTextContents();
@@ -115,6 +115,7 @@ try {
       base + " delayed detail discarded after filter change",
     );
     await admin.page.setViewportSize({ width: 1400, height: 1100 });
+    await admin.page.goto(origin + base + "/admin/settings");
     await admin.page.getByLabel("Operational reader account").selectOption({ label: "ben" });
     await admin.page.getByLabel("Access change reason").fill("Synthetic inventory job walkthrough");
     await admin.page.getByLabel("Confirm administrator password").fill(password);

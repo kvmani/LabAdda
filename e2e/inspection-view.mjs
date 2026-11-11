@@ -15,11 +15,13 @@ try {
       timezoneId: "Asia/Kolkata",
     });
     const page = await ctx.newPage();
-    await page.goto("http://127.0.0.1:8080" + base + "/admin");
+    await page.goto("http://127.0.0.1:8080" + base + "/admin/storage");
     await page.getByLabel("Username").fill("admin");
     await page.getByLabel("Password").fill(process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByRole("heading", { name: "Referenced file inspections" }).waitFor();
+    await page
+      .getByRole("heading", { name: "Storage inventories, inspections and reconciliations" })
+      .waitFor();
     const data = await (
       await ctx.request.get("http://127.0.0.1:8080" + base + "/api/v1/admin/storage-inspections")
     ).json();

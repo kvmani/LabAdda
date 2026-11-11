@@ -1,3 +1,6 @@
+import { lazy, Suspense } from "react";
+import { Skeleton } from "./ui";
+import { AdminBoundary } from "./features/admin/AdminBoundary";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Shell } from "./features/shell/Shell";
 import { useSession } from "./session";
@@ -8,13 +11,13 @@ import { MyTasks } from "./pages/MyTasks";
 import { Todos } from "./pages/Todos";
 import { Notes } from "./pages/Notes";
 import { NewGroup } from "./pages/NewGroup";
-import { Operations } from "./pages/Operations";
 import { Usage } from "./pages/Usage";
-import { Admin } from "./pages/Admin";
 
 import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
 import { Help } from "./pages/Help";
+
+const Admin = lazy(() => import("./pages/Admin"));
 
 function Home() {
   const { homeId, workspaces, loading } = useWorkspaces();
@@ -68,10 +71,19 @@ export function App() {
           <Route path="/todos" element={<Todos />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="/usage" element={<Usage />} />
-          <Route path="/operations" element={<Operations />} />
+          <Route path="/operations" element={<Navigate to="/admin/storage" replace />} />
           <Route path="/groups/new" element={<NewGroup />} />
           <Route path="/help" element={<Help />} />
-          <Route path="/admin" element={session.user.is_admin ? <Admin /> : <Navigate to="/" replace />} />
+          <Route
+            path="/admin/*"
+            element={
+              <AdminBoundary>
+                <Suspense fallback={<Skeleton label="Loading administration" />}>
+                  <Admin key={session.user.id} />
+                </Suspense>
+              </AdminBoundary>
+            }
+          />
           <Route
             path="*"
             element={

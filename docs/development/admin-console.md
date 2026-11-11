@@ -19,10 +19,32 @@ usage-reader checks delegate to the same policy. No new role/schema is introduce
 Checks: `tests/test_console.py`, `test_capabilities.py`, existing feature negative
 cases. The console never authorizes access to posts, notes, chat, files or boards.
 
-## Web delivery (next A1 slice)
+## Web delivery
 
-Lazy-load `features/admin/AdminLayout.tsx`; move accounts/units/memberships to basic
-People/Organisation, storage tools to `/admin/storage`, delegations to settings.
-Future sections render honest placeholders. Recheck server-provided sections on
-navigation; preserve `/operations` as a storage redirect. Add root/prefix browser
-checks and move existing admin-suite browser visits without changing their meaning.
+`pages/Admin.tsx` is the lazy console entry; `features/admin/AdminConsole.tsx`
+registers nested routes inside `AdminLayout`. Navigation is derived from
+`GET /admin/console`; ordinary members redirect home, delegates see only their
+six sections and cannot mount People/Organisation/Audit/Settings/Help. A frame
+remount per history entry plus generation invalidation prevents delayed access
+responses from rendering a prior route. Failed lookups have a retry state. `AdminBoundary` contains failed console code
+downloads/rendering so workspace navigation survives; explicit reload retries the
+failed module. The browser check blocks both Vite preload and import requests.
+
+Existing controls move without new data/actions: `BasicAdministration` holds
+People/Organisation; administrators get `Governance` at storage, delegates get
+the existing read-only `Operations` view; `Settings` holds `UsageReaders`.
+`/operations` redirects to storage. Future sections use honest placeholders.
+These basic controls retain their existing markup until P/U4; no new change
+protocol or quota enforcement is implied. Panel layout is unchanged.
+
+Browser checks: `e2e/admin-console.mjs` (root/prefix, role navigation, aliases,
+refresh, held/reordered lookup, failed lookup retry, grant/revocation, mobile and
+axe). Registered in the full simulation profile. Existing governance, capacity,
+inventory/inspection, previews and logical-charge suites now visit storage;
+delegation tools visit settings. `capabilities.mjs` checks the A1-required home
+redirect for members, then explicitly reopens the operations alias after a grant.
+The administration top-bar link now uses the existing compact icon/label pattern;
+controls wrap on phones, fixing administrator-name overflow found by the new test.
+
+Next by plan order: P1 staff records/basic directory, then P2 reviewed changes.
+General health, audit explorer, analytics and settings content remain their cards.

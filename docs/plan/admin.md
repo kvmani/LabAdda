@@ -8,6 +8,8 @@ title and file name, and asserts none of those strings appear in any response bo
 
 ### A1 · Admin console shell and navigation
 
+**Status: done (2026-11-11).** [Implementation and checks](../development/admin-console.md).
+
 Size M. Depends on U2.
 
 **Goal.** `/admin` becomes a console with its own navigation and one page per area; existing

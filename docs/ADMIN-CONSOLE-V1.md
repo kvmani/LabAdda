@@ -16,11 +16,14 @@ changed what — and can act on it safely. People and organisation screens are s
 
 ## Exists today
 
-A single `/admin` page with accounts, units, memberships, capacity proposals, partial storage
-observations, inventory receipts and jobs, and usage-reader delegations; `/operations` for
-delegated readers; `GET /admin/audit` (latest rows, no screen); `/healthz` and `/readyz`.
-Source: `frontend/src/pages/Admin.tsx`, `Operations.tsx`, `backend/labadda/api/admin.py`,
-`governance.py`, `usage.py`, `capabilities.py`, `inventory_jobs.py`.
+A lazy `/admin/*` console shell with current-authority navigation. Accounts and
+memberships live on basic People/Organisation pages, storage tools at `/admin/storage`,
+usage-reader delegation at `/admin/settings`; `/operations` redirects to storage.
+Other sections are honest placeholders until their packages land. Administrators
+and current operational readers retain their existing, separate permissions.
+Source: [console implementation guide](development/admin-console.md). Existing
+`GET /admin/audit` remains latest rows without an explorer; `/healthz` and `/readyz`
+remain operator probes. No overview, analytics or system-health sampling is implied.
 
 ## Rules for every console page
 

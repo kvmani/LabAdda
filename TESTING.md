@@ -256,3 +256,11 @@ The fictional scenario is in [the people track](docs/plan/people.md#scenario).
 | T69 | Design system: each `ui/` component has keyboard, focus and accessible-name tests; dialogs trap and restore focus; charts render empty, single-point, gap and 1 000-point series and offer a table view; axe-core has zero violations on the component gallery in both themes at 1400 px and 390 px; bundle budget met | U1–U4 |
 | T70 | Quality gates: formatter and linter checks pass for Python and TypeScript; no `any` in `frontend/src`; no hand-written source file over 400 lines; documentation check passes; backend test and browser check counts are not lower than before each mechanical package | Q1–Q5 |
 | T71 | Operation: `labadda doctor` passes and fails each check correctly and prints no secret; backup status file written atomically on success and failure and validated by the shared schema; quickstart followed end to end on the local stack by someone other than its author | D2, D3 |
+
+A1 console navigation: `test_console.py` covers the section matrix, all four
+private-content markers across applicable GET payloads, current delegation expiry,
+normal/panel/signed-out/deactivated denial and panel write rejection before CSRF.
+`e2e/admin-console.mjs` exercises root/prefix lazy routes, deep refresh, existing
+basic tools, role filtering, redirects, delayed authority, unavailable/retry,
+revocation, mobile overflow and WCAG checks. Existing tools keep their original
+assertions at the relocated routes; details in the [console guide](docs/development/admin-console.md).

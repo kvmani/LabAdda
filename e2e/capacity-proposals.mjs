@@ -40,7 +40,7 @@ try {
     });
     assert.equal(legacy.status(), 201);
     const before = await (await ben.ctx.request.get(api + "/usage")).json();
-    await admin.page.goto(origin + base + "/admin");
+    await admin.page.goto(origin + base + "/admin/storage");
     await admin.page.getByRole("heading", { name: "Site proposal revision 1" }).waitFor();
     check(
       await admin.page.getByText("Not recorded in version 1", { exact: true }).isVisible(),
