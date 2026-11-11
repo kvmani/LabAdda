@@ -50,8 +50,8 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | # | ID | Package | Depends on | Status | Card |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Q5 | Documentation gate (`check_docs.py`) and agent guidance | — | done | [quality](quality.md#q5--documentation-gate) |
-| 2 | Q1 | Python formatter and linter gate | — | next | [quality](quality.md#q1--python-formatter-and-linter-gate) |
-| 3 | Q2 | Frontend linter, formatter and strict types | — | next | [quality](quality.md#q2--frontend-linter-formatter-and-strict-types) |
+| 2 | Q1 | Python formatter and linter gate | — | in progress | [quality](quality.md#q1--python-formatter-and-linter-gate) |
+| 3 | Q2 | Frontend linter, formatter and strict types | — | in progress | [quality](quality.md#q2--frontend-linter-formatter-and-strict-types) |
 | 4 | U1 | Design tokens and core components | Q2 | queued | [ui](ui.md#u1--design-tokens-and-core-components) |
 | 5 | U2 | Application shell refresh | U1 | queued | [ui](ui.md#u2--application-shell-refresh) |
 | 6 | A1 | Admin console shell and navigation | U2 | queued | [admin](admin.md#a1--admin-console-shell-and-navigation) |
