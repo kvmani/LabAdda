@@ -4,12 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "typecheck": "tsc -b",
+    "help": "node scripts/build-help.mjs",
+    "dev": "npm run --silent help && vite",
+    "build": "npm run --silent help && tsc -b && vite build",
+    "typecheck": "npm run --silent help && tsc -b",
     "test": "vitest run",
-    "lint": "eslint . && prettier --check \"src/**/*.{ts,tsx,css}\" \"../e2e/*.mjs\" \"*.{js,ts}\"",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"../e2e/*.mjs\" \"*.{js,ts}\""
+    "lint": "npm run --silent help && eslint . && prettier --check \"src/**/*.{ts,tsx,css}\" \"../e2e/*.mjs\" \"*.{js,ts}\" \"scripts/*.mjs\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"../e2e/*.mjs\" \"*.{js,ts}\" \"scripts/*.mjs\""
   },
   "dependencies": {
     "react": "18.3.1",

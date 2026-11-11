@@ -10,3 +10,5 @@ var/
 .env
 *.tsbuildinfo
 e2e/node_modules/
+
+frontend/src/features/help/generated/

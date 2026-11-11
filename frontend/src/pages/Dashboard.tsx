@@ -6,6 +6,7 @@ import { api, errorMessage } from "../api";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import { fmtTime } from "../format";
+import { PageHeader } from "../ui";
 
 type Work = {
   id: string;
@@ -115,8 +116,10 @@ export function Dashboard() {
   }
   return (
     <section className="daily-dashboard">
-      <h1>My day</h1>
-      <p>Your personal work and currently accessible shared assignments, reminders and conversations.</p>
+      <PageHeader
+        title="My day"
+        scope="Your personal work and currently accessible shared assignments, reminders and conversations."
+      />
       <button type="button" disabled={loading} onClick={load}>
         Refresh My day
       </button>{" "}

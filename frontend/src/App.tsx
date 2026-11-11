@@ -15,9 +15,10 @@ import { Usage } from "./pages/Usage";
 
 import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
-import { Help } from "./pages/Help";
+import { HelpBoundary } from "./features/help/HelpBoundary";
 
 const Admin = lazy(() => import("./pages/Admin"));
+const Help = lazy(() => import("./pages/Help"));
 
 function Home() {
   const { homeId, workspaces, loading } = useWorkspaces();
@@ -73,7 +74,16 @@ export function App() {
           <Route path="/usage" element={<Usage />} />
           <Route path="/operations" element={<Navigate to="/admin/storage" replace />} />
           <Route path="/groups/new" element={<NewGroup />} />
-          <Route path="/help" element={<Help />} />
+          <Route
+            path="/help/*"
+            element={
+              <HelpBoundary>
+                <Suspense fallback={<Skeleton label="Loading help" />}>
+                  <Help />
+                </Suspense>
+              </HelpBoundary>
+            }
+          />
           <Route
             path="/admin/*"
             element={

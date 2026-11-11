@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { HelpEntryContext } from "./helpEntry";
 import { Icon } from "./Icon";
 import "./display.css";
 
@@ -8,12 +9,19 @@ type PageHeaderProps = {
   scope?: ReactNode;
   /** The page's main action, usually one primary Button. */
   action?: ReactNode;
-  /** Link to this page's help topic (UX-08). */
+  /** Plain link used when the help centre has no page for the current screen (UX-08). */
   helpHref?: string;
 };
 
 /** The heading block at the top of every page: title, scope, main action and help. */
 export function PageHeader({ title, scope, action, helpHref }: PageHeaderProps) {
+  const HelpEntry = useContext(HelpEntryContext);
+  const fallback = helpHref ? (
+    <a className="ui-page-header__help" href={helpHref}>
+      <Icon name="help" size="sm" />
+      <span>Help with this page</span>
+    </a>
+  ) : null;
   return (
     <header className="ui-page-header">
       <div className="ui-page-header__text">
@@ -21,12 +29,7 @@ export function PageHeader({ title, scope, action, helpHref }: PageHeaderProps) 
         {scope && <p className="ui-page-header__scope">{scope}</p>}
       </div>
       <div className="ui-page-header__actions">
-        {helpHref && (
-          <a className="ui-page-header__help" href={helpHref}>
-            <Icon name="help" size="sm" />
-            <span>Help with this page</span>
-          </a>
-        )}
+        {HelpEntry ? <HelpEntry fallback={fallback} /> : fallback}
         {action}
       </div>
     </header>

@@ -14,6 +14,7 @@ export { Drawer } from "./Drawer";
 export { EmptyState } from "./EmptyState";
 export { ErrorState } from "./ErrorState";
 export { Field, type ControlProps } from "./Field";
+export { HelpEntryContext, type HelpEntryProps } from "./helpEntry";
 export { Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export type { IconName } from "./icons";

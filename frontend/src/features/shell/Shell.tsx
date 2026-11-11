@@ -4,7 +4,9 @@ import { api } from "../../api";
 import { Notifications } from "../../components/Notifications";
 import { realtime, type ConnState } from "../../realtime";
 import { useSession } from "../../session";
+import { HelpEntryContext } from "../../ui";
 import { useWorkspaces } from "../../workspaces";
+import { HelpLink } from "../help/HelpLink";
 import { RailNav } from "./RailNav";
 import { TopBar } from "./TopBar";
 import "./shell.css";
@@ -69,34 +71,36 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [workspaces.map((workspace) => workspace.id).join(",")]);
 
   return (
-    <div className="shell">
-      {/* Moves focus programmatically: a "#main" href would resolve against <base href> under a prefix. */}
-      <a
-        href="#main"
-        className="shell-skip-link"
-        onClick={(event) => {
-          event.preventDefault();
-          document.getElementById("main")?.focus();
-        }}
-      >
-        Skip to main content
-      </a>
-      <TopBar
-        workspaces={workspaces}
-        currentId={currentId}
-        operations={operations}
-        connection={connection}
-        unread={unread}
-        notificationsOpen={notificationsOpen}
-        onToggleNotifications={() => setNotificationsOpen((open) => !open)}
-      />
-      {notificationsOpen && (
-        <Notifications onClose={() => setNotificationsOpen(false)} onChange={setUnread} />
-      )}
-      <RailNav workspaces={workspaces} currentId={currentId} operations={operations} error={error} />
-      <main className="shell-main" id="main" tabIndex={-1}>
-        {children}
-      </main>
-    </div>
+    <HelpEntryContext.Provider value={HelpLink}>
+      <div className="shell">
+        {/* Moves focus programmatically: a "#main" href would resolve against <base href> under a prefix. */}
+        <a
+          href="#main"
+          className="shell-skip-link"
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById("main")?.focus();
+          }}
+        >
+          Skip to main content
+        </a>
+        <TopBar
+          workspaces={workspaces}
+          currentId={currentId}
+          operations={operations}
+          connection={connection}
+          unread={unread}
+          notificationsOpen={notificationsOpen}
+          onToggleNotifications={() => setNotificationsOpen((open) => !open)}
+        />
+        {notificationsOpen && (
+          <Notifications onClose={() => setNotificationsOpen(false)} onChange={setUnread} />
+        )}
+        <RailNav workspaces={workspaces} currentId={currentId} operations={operations} error={error} />
+        <main className="shell-main" id="main" tabIndex={-1}>
+          {children}
+        </main>
+      </div>
+    </HelpEntryContext.Provider>
   );
 }

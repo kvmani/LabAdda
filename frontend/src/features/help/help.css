@@ -1,0 +1,97 @@
+/* Help centre: home shelves, readable article text and an A4 print layout (HP-10). */
+.help-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 960px;
+}
+.help-shelves {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.help-shelf__audience {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.help-shelf__empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+.help-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.help-list a {
+  display: block;
+  font-weight: 600;
+}
+.help-list__summary {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-md);
+}
+.help-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 760px;
+}
+.help-article {
+  font-size: var(--text-lg);
+  line-height: 1.6;
+}
+.help-article h2 {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: var(--text-xl);
+}
+.help-article p,
+.help-article ul,
+.help-article ol {
+  margin: 0 0 var(--space-3);
+}
+.help-article li {
+  margin-bottom: var(--space-2);
+}
+.help-updated {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+@media print {
+  .shell {
+    display: block;
+    min-height: 0;
+  }
+  .shell-topbar,
+  .shell-rail,
+  .shell-skip-link,
+  .notifications,
+  .help-noprint,
+  .ui-page-header__help {
+    display: none;
+  }
+  .shell-main {
+    padding: 0;
+  }
+  .help-page {
+    max-width: none;
+  }
+  .help-article h2 {
+    break-after: avoid;
+  }
+  .help-article li {
+    break-inside: avoid;
+  }
+}
+@page {
+  size: A4;
+  margin: 18mm;
+}
