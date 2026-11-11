@@ -10,6 +10,7 @@ from labadda.api.governance import CapacityProfile
 from labadda.capacity import forecast_capacity
 from labadda.cli import alembic_config
 from labadda.fixtures import fixture_password
+from tests.migration_helpers import downgrade_legacy
 from tests.test_panel import pair
 
 GiB = 1024**3
@@ -230,7 +231,7 @@ def test_capacity_history_blocks_incompatible_downgrade(as_user, settings):
     )
     assert result.status_code == 201
     with pytest.raises(RuntimeError, match="Capacity proposals exist"):
-        command.downgrade(alembic_config(settings.database_url), "0014")
+        downgrade_legacy(alembic_config(settings.database_url), "0014")
 
 
 def test_migration_round_trip_preserves_v1_proposal_exactly(as_user, settings):
@@ -241,7 +242,7 @@ def test_migration_round_trip_preserves_v1_proposal_exactly(as_user, settings):
     assert before.status_code == 201
     cfg = alembic_config(settings.database_url)
     try:
-        command.downgrade(cfg, "0014")
+        downgrade_legacy(cfg, "0014")
     finally:
         command.upgrade(cfg, "head")
     after = admin.get("/admin/policy-drafts").json()["drafts"][0]

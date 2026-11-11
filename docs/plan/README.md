@@ -38,7 +38,7 @@ remaining effort, and are estimates — the package table below is the precise r
 | Code uniformity and quality gates | 7 % | 70 % | Readable rewrite of compressed modules and the deferred rules (Q3), module splits (Q4) |
 | **Overall toward v1.0** | 100 % | **≈ 56 %** | |
 
-The delivered foundation includes 25 migrations, about 100 API endpoints and 605 backend
+The delivered foundation includes 26 migrations, about 100 API endpoints and 626 backend
 tests. The collaboration profile passed 465 root/prefix browser checks in U2; A1 adds 50
 console checks and validates nine existing admin/tool suites. Thirty-client TLS workload
 rehearsals and offline release, backup, restore and commissioning are verified locally.

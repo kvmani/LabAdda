@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import audit, memberships, policy
+from .. import audit, memberships, people, policy
 from ..config import Settings
 from ..deps import Actor, get_db, get_settings, require_console
 from ..errors import Conflict, Invalid, NotFound
@@ -77,6 +77,7 @@ def create_user(
         is_admin=body.is_admin,
         must_set_password=True,
     )
+    people.set_status(user, "invited", effective_on=people.site_date(settings))
     db.add(user)
     db.flush()
     token, cred = issue_credential(db, user, "activation", actor.user, settings)
@@ -87,6 +88,8 @@ def create_user(
         scope_type="identity",
         target_id=user.id,
         is_admin=body.is_admin,
+        status_before=None,
+        status_after=user.status,
     )
     db.commit()
     return {"user": _admin_user_json(user), "activation_token": token, "expires_at": iso(cred.expires_at)}
@@ -137,21 +140,24 @@ def update_user(
         )
         if active_admins <= 1 and user.is_active:
             raise Conflict("last_admin", "At least one active administrator must remain.")
-    if body.display_name is not None:
-        user.display_name = body.display_name.strip()
-    if body.is_admin is not None:
-        user.is_admin = body.is_admin
-    if body.is_active is not None and body.is_active != user.is_active:
-        user.is_active = body.is_active
-        if not body.is_active:
-            user.deactivated_at = utcnow()
-            revoke_user_sessions(db, user.id)
-        else:
-            user.deactivated_at = None
+    previously_active = user.is_active
+    changes = people.patch_legacy_record(
+        user,
+        display_name=body.display_name,
+        is_admin=body.is_admin,
+        is_active=body.is_active,
+        effective_on=people.site_date(get_settings(request)),
+    )
+    if previously_active and not user.is_active:
+        user.deactivated_at = utcnow()
+        revoke_user_sessions(db, user.id)
+    elif not previously_active and user.is_active:
+        user.deactivated_at = None
     audit.record(
         db,
         actor=actor.user,
         action="identity.update",
+        **changes,
         scope_type="identity",
         target_id=user.id,
         reason=body.reason,

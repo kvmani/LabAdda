@@ -2,6 +2,8 @@
 
 import pytest
 
+from tests.migration_helpers import downgrade_legacy
+
 
 def payload(revision=0, **profile):
     return {"base_revision": revision, "reason": "Synthetic capacity review", "profile": profile}
@@ -55,14 +57,13 @@ def test_csrf_required(as_user):
 
 
 def test_history_survives_downgrade_attempt(as_user, settings):
-    from alembic import command
 
     from labadda.cli import alembic_config
 
     admin = as_user("admin")
     assert admin.post("/admin/policy-drafts", json=payload()).status_code == 201
     with pytest.raises(RuntimeError, match="Policy drafts exist"):
-        command.downgrade(alembic_config(settings.database_url), "0005")
+        downgrade_legacy(alembic_config(settings.database_url), "0005")
     assert admin.get("/admin/policy-drafts").json()["latest_revision"] == 1
 
 

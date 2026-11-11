@@ -3,11 +3,11 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from alembic import command
 from sqlalchemy import delete
 
 from labadda.cli import alembic_config
 from labadda.models import Membership, User
+from tests.migration_helpers import downgrade_legacy
 from tests.test_todos import new_list, task_body
 
 
@@ -184,7 +184,7 @@ def test_migration_protects_current_and_past_assignments(as_user, ids, settings)
     api.put(path + "/assignee", json={"user_id": ids["users"]["ben"], "revision": 1})
     api.put(path + "/assignee", json={"user_id": None, "revision": 2})
     with pytest.raises(RuntimeError, match="Task assignments exist"):
-        command.downgrade(alembic_config(settings.database_url), "0018")
+        downgrade_legacy(alembic_config(settings.database_url), "0018")
 
 
 def test_target_deactivation_while_assignment_waits_rejects_stale_eligibility(as_user, ids, db_factory):

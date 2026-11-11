@@ -4,10 +4,10 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from alembic import command
 from sqlalchemy import text
 
 from labadda.cli import alembic_config
+from tests.migration_helpers import downgrade_legacy
 from tests.test_panel import PANEL, pair
 
 
@@ -206,7 +206,7 @@ def test_two_writers_cannot_overwrite_same_revision(as_user, ids):
 def test_downgrade_protects_user_content(as_user, settings, db_factory):
     new_list(as_user("ben"))
     with pytest.raises(RuntimeError, match="To-do lists exist"):
-        command.downgrade(alembic_config(settings.database_url), "0016")
+        downgrade_legacy(alembic_config(settings.database_url), "0016")
     with db_factory() as db:
         assert db.scalar(text("select count(*) from todo_lists")) == 1
 

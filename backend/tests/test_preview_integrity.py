@@ -5,7 +5,6 @@ from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
-from alembic import command
 from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -14,6 +13,7 @@ from labadda.cli import alembic_config
 from labadda.inspection import inspect_storage
 from labadda.models import Asset
 from labadda.recovery import RecoveryError, _verify_asset_reference
+from tests.migration_helpers import downgrade_legacy
 from tests.test_board_p3 import publish
 from tests.test_chat_board import stroke
 
@@ -139,4 +139,4 @@ def test_expected_preview_metadata_cannot_be_half_known_or_invalid(as_user, db_f
 def test_known_measurements_block_destructive_downgrade(as_user, settings):
     image_upload(as_user("ben"))
     with pytest.raises(RuntimeError, match="discard integrity evidence"):
-        command.downgrade(alembic_config(settings.database_url), "0012")
+        downgrade_legacy(alembic_config(settings.database_url), "0012")

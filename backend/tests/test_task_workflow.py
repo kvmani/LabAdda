@@ -9,6 +9,7 @@ from alembic import command
 from sqlalchemy import text
 
 from labadda.cli import alembic_config
+from tests.migration_helpers import downgrade_legacy
 from tests.test_todos import new_list, task_body
 
 
@@ -107,7 +108,7 @@ def test_migration_preserves_c1_request_replay_and_records_baseline(as_user, set
     api = as_user("ben")
     row = new_list(api)
     cfg = alembic_config(settings.database_url)
-    command.downgrade(cfg, "0017")
+    downgrade_legacy(cfg, "0017")
     body = task_body(done=False)
     digest = hashlib.sha256(
         json.dumps({"body": body, "scope": row["id"]}, sort_keys=True, separators=(",", ":")).encode()
@@ -148,4 +149,4 @@ def test_migration_preserves_c1_request_replay_and_records_baseline(as_user, set
         history[0]["action"] == "baseline" and history[0]["actor_id"] is None and history[0]["changes"] == {}
     )
     with pytest.raises(RuntimeError, match="Task history exists"):
-        command.downgrade(cfg, "0017")
+        downgrade_legacy(cfg, "0017")

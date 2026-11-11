@@ -4,11 +4,11 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from alembic import command
 from sqlalchemy import delete, select
 
 from labadda.cli import alembic_config
 from labadda.models import Membership, TodoComment, Workspace
+from tests.migration_helpers import downgrade_legacy
 from tests.test_task_assignment import task
 
 
@@ -177,4 +177,4 @@ def test_comment_history_protected_by_downgrade(as_user, settings):
     _, _, path = task(api)
     api.post(path + "/comments", json=body())
     with pytest.raises(RuntimeError, match="Task comments exist"):
-        command.downgrade(alembic_config(settings.database_url), "0019")
+        downgrade_legacy(alembic_config(settings.database_url), "0019")

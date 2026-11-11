@@ -22,7 +22,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_full_recovery_preserves_content_and_revokes_credentials(
-    settings, ids, as_user, make_client, tmp_path
+    settings, ids, as_user, make_client, tmp_path, db_factory
 ):
     assert shutil.which("pg_dump") and shutil.which("pg_restore"), "PostgreSQL 16 clients required"
     workspace = ids["workspaces"]["section_a"]
@@ -168,6 +168,23 @@ def test_full_recovery_preserves_content_and_revokes_credentials(
         == 200
     )
     bundle = tmp_path / "backup"
+    from datetime import date
+
+    from labadda import people
+    from labadda.models import User
+
+    with db_factory() as db:
+        person = db.get(User, ids["users"]["ben"])
+        people.set_status(db.get(User, ids["users"]["fay"]), "on_leave", leave_sign_in=False)
+        person.employee_no = "NW-100"
+        person.designation = "Research Officer"
+        person.contact_email = "ben@research.example"
+        person.contact_phone = "214"
+        person.joined_on = date(2025, 1, 15)
+        person.expected_return_on = date(2026, 12, 1)
+        person.revision = 7
+        db.commit()
+        staff_seen = person.last_seen_on
     sha = backup(
         settings.database_url, settings.asset_dir, bundle, "synthetic-release", writers_quiesced=True
     )
@@ -199,6 +216,18 @@ def test_full_recovery_preserves_content_and_revokes_credentials(
             assert db.get(InventoryJob, job_id).state == "paused"
             assert db.get(InventoryJob, job_id).lease_until is None
             assert db.get(InventoryAttempt, (job_id, 1)).state == "paused"
+        with session_factory(target_url)() as db:
+            person = db.get(User, ids["users"]["ben"])
+            blocked_leave = db.get(User, ids["users"]["fay"])
+            assert blocked_leave.status == "on_leave" and not blocked_leave.is_active
+            assert person.employee_no == "NW-100"
+            assert person.designation == "Research Officer"
+            assert person.contact_email == "ben@research.example"
+            assert person.contact_phone == "214"
+            assert person.joined_on == date(2025, 1, 15)
+            assert person.expected_return_on == date(2026, 12, 1)
+            assert person.revision == 7
+            assert person.last_seen_on == staff_seen
         restored = replace(settings, database_url=target_url, asset_dir=target_assets)
         with TestClient(create_app(restored)) as client:
             client.cookies.update(old_cookies)

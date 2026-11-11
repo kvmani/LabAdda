@@ -4,12 +4,12 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from alembic import command
 from sqlalchemy import select
 
 from labadda import notify
 from labadda.cli import alembic_config
 from labadda.models import Notification, NotificationPreference
+from tests.migration_helpers import downgrade_legacy
 
 
 def choices(revision=0, **override):
@@ -82,7 +82,7 @@ def test_concurrent_preferences_do_not_overwrite_and_downgrade_guard(as_user, se
         ]
     assert sorted(results) == [200, 409] and api.get("/notification-preferences").json()["revision"] == 1
     with pytest.raises(Exception, match="Notification preferences exist"):
-        command.downgrade(alembic_config(settings.database_url), "0024")
+        downgrade_legacy(alembic_config(settings.database_url), "0024")
 
 
 def test_expired_save_rolls_back_choices(as_user, db_factory, monkeypatch):

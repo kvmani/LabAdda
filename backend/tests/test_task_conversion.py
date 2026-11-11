@@ -3,12 +3,12 @@
 import uuid
 
 import pytest
-from alembic import command
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from labadda.cli import alembic_config
 from labadda.models import Membership, Post, TodoChange, TodoSource, TodoTask, Workspace
+from tests.migration_helpers import downgrade_legacy
 from tests.test_panel import pair
 from tests.test_todos import new_list
 
@@ -164,7 +164,7 @@ def test_populated_reference_blocks_lossy_downgrade(as_user, ids, settings):
     target = new_list(ben)
     assert ben.post(f"/todos/lists/{target['id']}/from-conversation", json=conversion(src)).status_code == 201
     with pytest.raises(Exception, match="Task sources exist"):
-        command.downgrade(alembic_config(settings.database_url), "0020")
+        downgrade_legacy(alembic_config(settings.database_url), "0020")
 
 
 @pytest.mark.parametrize("shared", [False, True])

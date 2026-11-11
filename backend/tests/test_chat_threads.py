@@ -3,11 +3,11 @@
 import uuid
 
 import pytest
-from alembic import command
 from sqlalchemy import select
 
 from labadda.cli import alembic_config
 from labadda.models import ChatMessage
+from tests.migration_helpers import downgrade_legacy
 
 
 def post(api, ws, body="Research root", parent=None, key=None):
@@ -83,7 +83,7 @@ def test_thread_downgrade_guard(as_user, ids, settings):
     root = post(api, ws).json()
     assert post(api, ws, "Kept reply", root["id"]).status_code == 201
     with pytest.raises(Exception, match="Chat replies exist"):
-        command.downgrade(alembic_config(settings.database_url), "0022")
+        downgrade_legacy(alembic_config(settings.database_url), "0022")
 
 
 def test_two_authors_cannot_commit_higher_sequence_first(as_user, ids, db_factory, monkeypatch):

@@ -425,3 +425,15 @@ Existing admin/usage endpoint rights and errors are preserved through the shared
 `deps.require_console(section, admin_only=...)` dependency. Delegation never permits
 identity, policy, audit, settings or write access. Legacy `/operations` web links
 redirect to `/admin/storage`; backend URLs and payloads remain compatible.
+
+## P1 · Staff-state foundation (schema0026)
+
+Existing identity/authentication response shapes and permission gates are unchanged.
+Legacy account creation records invited status; activation records active status.
+Legacy enable/disable keeps the employment state and access switch consistent,
+without adding any new administration right. Successful normal sign-in observes
+only the site-local date; no new timestamp/history endpoint is exposed. Staff
+changes advance the record revision; sign-in observations do not.
+
+The read-only people list/profile/timeline/export APIs are the next P1 slice and
+are not exposed yet. [Implementation/limits](development/people.md).

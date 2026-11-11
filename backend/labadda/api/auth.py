@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import audit
+from .. import audit, people
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, origin_allowed
 from ..errors import Forbidden, Invalid, TooMany, Unauthenticated
@@ -116,6 +116,7 @@ def login(
         )
         db.commit()
         raise Unauthenticated("invalid_credentials", "Username or password is incorrect.")
+    people.record_sign_in(db, user, settings)
     token, sess = create_session(db, user, settings)
     audit.record(db, actor=user, action="auth.login", scope_type="identity", target_id=user.id)
     db.commit()
@@ -176,11 +177,21 @@ def activate(
         )
     cred.used_at = now
     user.password_hash = hash_password(body.password)
+    status_before = user.status
     user.must_set_password = False
+    if user.status == "invited":
+        people.set_status(user, "active", effective_on=people.site_date(settings, now=now))
+    people.record_sign_in(db, user, settings, now=now)
     revoke_user_sessions(db, user.id)
     token, sess = create_session(db, user, settings)
     audit.record(
-        db, actor=user, action=f"auth.{cred.purpose}_redeemed", scope_type="identity", target_id=user.id
+        db,
+        actor=user,
+        action=f"auth.{cred.purpose}_redeemed",
+        scope_type="identity",
+        target_id=user.id,
+        status_before=status_before,
+        status_after=user.status,
     )
     db.commit()
     _set_cookie(response, token, settings)

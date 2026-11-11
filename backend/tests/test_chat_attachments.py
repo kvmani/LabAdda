@@ -4,13 +4,13 @@ import uuid
 from io import BytesIO
 
 import pytest
-from alembic import command
 from PIL import Image
 from sqlalchemy import delete, select
 
 from labadda.cli import alembic_config
 from labadda.models import Asset, ChatMessage, Membership
 from labadda.workspace_usage import workspace_observation
+from tests.migration_helpers import downgrade_legacy
 
 
 def upload(api, png=False):
@@ -133,4 +133,4 @@ def test_attachment_binding_blocks_lossy_downgrade(as_user, ids, settings):
         == 201
     )
     with pytest.raises(Exception, match="Chat attachments exist"):
-        command.downgrade(alembic_config(settings.database_url), "0023")
+        downgrade_legacy(alembic_config(settings.database_url), "0023")

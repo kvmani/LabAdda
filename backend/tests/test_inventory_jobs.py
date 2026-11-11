@@ -5,13 +5,13 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 import pytest
-from alembic import command
 from sqlalchemy import select, text
 
 from labadda import inventory_jobs as jobs
 from labadda.cli import alembic_config
 from labadda.models import InventoryAttempt, InventoryJob, StorageInspection
 from labadda.security import utcnow
+from tests.migration_helpers import downgrade_legacy
 
 
 def expire(factory, job_id):
@@ -170,7 +170,7 @@ def test_wrong_receipt_cannot_complete_attempt(db_factory, settings, ids):
 def test_migration_refuses_to_drop_job_history(db_factory, settings, ids):
     jobs.enqueue(db_factory, "migration-key", {})
     with pytest.raises(RuntimeError, match="Inventory jobs exist"):
-        command.downgrade(alembic_config(settings.database_url), "0015")
+        downgrade_legacy(alembic_config(settings.database_url), "0015")
     with db_factory() as db:
         from labadda.app import expected_schema_head
 

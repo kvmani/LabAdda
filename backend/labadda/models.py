@@ -66,7 +66,26 @@ class User(Base):
     created_at: Mapped[datetime] = _created()
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (CheckConstraint("username = lower(username)", name="ck_users_username_lower"),)
+    employee_no: Mapped[str | None] = mapped_column(String(64))
+    designation: Mapped[str | None] = mapped_column(String(120))
+    contact_email: Mapped[str | None] = mapped_column(String(254))
+    contact_phone: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
+    status_effective_on: Mapped[date | None] = mapped_column(Date)
+    expected_return_on: Mapped[date | None] = mapped_column(Date)
+    joined_on: Mapped[date | None] = mapped_column(Date)
+    last_seen_on: Mapped[date | None] = mapped_column(Date)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+
+    __table_args__ = (
+        CheckConstraint("username = lower(username)", name="ck_users_username_lower"),
+        UniqueConstraint("employee_no", name="uq_users_employee_no"),
+        CheckConstraint(
+            "status IN ('invited','active','on_leave','suspended','retired','left')",
+            name="ck_users_staff_status",
+        ),
+        CheckConstraint("revision > 0", name="ck_users_revision"),
+    )
 
 
 class CredentialToken(Base):

@@ -316,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "create-admin":
         from sqlalchemy import select
 
+        from . import audit, people
         from .api.auth import issue_credential
         from .models import User
 
@@ -325,9 +326,21 @@ def main(argv: list[str] | None = None) -> int:
                 print("That username already exists.", file=sys.stderr)
                 return 1
             user = User(username=username, display_name=args.display_name or username, is_admin=True)
+            people.set_status(user, "invited", effective_on=people.site_date(settings))
             db.add(user)
             db.flush()
             token, cred = issue_credential(db, user, "activation", None, settings)
+            audit.record(
+                db,
+                actor=None,
+                action="identity.create",
+                scope_type="identity",
+                target_id=user.id,
+                reason="Operator initial administrator setup",
+                status_before=None,
+                status_after=user.status,
+                is_admin=True,
+            )
             db.commit()
             print(f"Activation token for {username} (expires {cred.expires_at.isoformat()}):")
             print(token)

@@ -12,6 +12,7 @@ from labadda.charge_reconciliation import reconcile_content_charges
 from labadda.charges import BOARD_METHOD, TEXT_METHOD, board_key, board_object_bytes
 from labadda.cli import alembic_config
 from labadda.models import Board, ContentCharge, StorageInspection
+from tests.migration_helpers import downgrade_legacy
 
 from .conftest import recreate_schema
 
@@ -449,7 +450,7 @@ def test_migration_backfills_text_and_leaves_boards_unknown(migrated):
                 == 26
             )
             assert conn.execute(text("select charges_epoch from boards")).scalar() is None
-        command.downgrade(cfg, "0013")  # derived data: downgrade is allowed and keeps content
+        downgrade_legacy(cfg, "0013")  # derived data: downgrade is allowed and keeps content
         with engine.connect() as conn:
             assert conn.execute(text("select count(*) from posts")).scalar() == 1
     finally:

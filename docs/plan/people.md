@@ -27,6 +27,9 @@ Films is merged into Sensors.
 
 ### P1 · Staff record, people list and profile
 
+**Status: in progress (2026-11-11).** Schema/status/sign-in foundation verified;
+read-only directory/profile/export API and web delivery remain. [Guide](../development/people.md).
+
 Size M. Depends on A1, Q1.
 
 **Goal.** PO-01, PO-02, PO-03, PO-20: the staff record exists and administrators can find and

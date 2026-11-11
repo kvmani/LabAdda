@@ -7,7 +7,6 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
-from alembic import command
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, event, func, select, text
 from sqlalchemy.orm import Session
@@ -18,6 +17,7 @@ from labadda.models import Asset, AuthSession, Membership, UploadReceipt, Upload
 from labadda.reservations import release_upload, reserve_upload
 from labadda.security import utcnow
 from tests.conftest import Api
+from tests.migration_helpers import downgrade_legacy
 from tests.test_panel import pair
 
 PDF = b"%PDF-1.4\nreceipt fixture\n%%EOF"
@@ -237,7 +237,7 @@ def test_populated_receipt_history_blocks_downgrade(as_user, settings):
     # integrity migrations that protect populated Asset measurements.
     assert upload(as_user("ben"), data=b"<svg/>", media="image/svg+xml").status_code == 422
     with pytest.raises(RuntimeError, match="request identity history"):
-        command.downgrade(alembic_config(settings.database_url), "0011")
+        downgrade_legacy(alembic_config(settings.database_url), "0011")
 
 
 def test_expired_lease_failure_release_cannot_deadlock_new_admission(as_user, settings, ids, db_factory):

@@ -7,6 +7,7 @@ import os
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from . import people
 from .models import Membership, User, Workspace
 from .security import hash_password
 
@@ -102,10 +103,10 @@ def seed(db: Session) -> dict[str, object]:
             username=username,
             display_name=display,
             is_admin=is_admin,
-            is_active=active,
             password_hash=password_hash,
             must_set_password=False,
         )
+        people.set_status(u, "active" if active else "left")
         db.add(u)
         users[username] = u
     db.flush()

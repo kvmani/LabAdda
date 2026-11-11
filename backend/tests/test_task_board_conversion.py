@@ -5,12 +5,12 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from alembic import command
 from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
 from labadda.cli import alembic_config
 from labadda.models import Board, Membership, TodoChange, TodoSource, TodoTask, Workspace
+from tests.migration_helpers import downgrade_legacy
 from tests.test_chat_board import stroke
 from tests.test_panel import pair
 from tests.test_todos import new_list
@@ -160,7 +160,7 @@ def test_rollback_and_populated_downgrade_guard(as_user, ids, settings, db_facto
         )
     assert api.post(url, json=body).status_code == 201
     with pytest.raises(Exception, match="Task board references exist"):
-        command.downgrade(alembic_config(settings.database_url), "0021")
+        downgrade_legacy(alembic_config(settings.database_url), "0021")
 
 
 def test_source_view_final_grant_recheck_and_expiry_before_commit(as_user, ids, db_factory, monkeypatch):
