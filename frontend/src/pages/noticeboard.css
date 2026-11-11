@@ -1,0 +1,37 @@
+/* Noticeboard layout: feed on the left, upcoming items and search on the right. */
+.notice-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--space-4);
+  align-items: start;
+  max-width: 1280px;
+}
+.feed,
+.secondary {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.notice-layout__muted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.notice-layout__results {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+.notice-layout__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 900px) {
+  .notice-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

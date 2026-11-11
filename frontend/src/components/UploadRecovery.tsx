@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Button } from "../ui";
 import { UploadQueue, type UploadedAsset } from "../uploads";
+import "./upload-recovery.css";
 
 export function useUploadQueue(maxBytes: number, onComplete: (asset: UploadedAsset) => void) {
   const callback = useRef(onComplete);
@@ -17,33 +19,33 @@ export function UploadRecovery({ queue }: { queue: UploadQueue }) {
   const attempts = useSyncExternalStore(queue.subscribe, queue.snapshot);
   if (!attempts.length) return null;
   return (
-    <div className="notice" aria-label="Unresolved uploads">
+    <div className="upload-recovery" aria-label="Unresolved uploads">
       <p>
         Keep this view open until uploads are resolved. File contents and retry controls stay in memory only.
       </p>
-      <ul className="plain">
+      <ul>
         {attempts.map((a) => (
           <li key={a.key}>
             <strong>{a.file.name}</strong> <span role="status">{a.message}</span>
             {!a.busy && (
-              <span className="row wrap">
-                <button type="button" className="ghost small" onClick={() => void queue.check(a.key)}>
+              <span className="upload-recovery__actions">
+                <Button variant="quiet" size="sm" onClick={() => void queue.check(a.key)}>
                   Check upload result
-                </button>
+                </Button>
                 {a.retryable && (
-                  <button type="button" className="ghost small" onClick={() => void queue.send(a.key)}>
+                  <Button variant="quiet" size="sm" onClick={() => void queue.send(a.key)}>
                     Retry same file
-                  </button>
+                  </Button>
                 )}
-                <button type="button" className="ghost small" onClick={() => queue.dismiss(a.key)}>
+                <Button variant="quiet" size="sm" onClick={() => queue.dismiss(a.key)}>
                   Dismiss upload
-                </button>
+                </Button>
               </span>
             )}
           </li>
         ))}
       </ul>
-      <p className="muted small">
+      <p className="upload-recovery__note">
         Dismissing does not delete a stored file. Check My storage usage before choosing another copy.
       </p>
     </div>

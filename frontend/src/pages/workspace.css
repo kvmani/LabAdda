@@ -1,0 +1,5 @@
+/* Frame shared by every workspace tab: header, then tabs, then the tab's content. */
+.workspace {
+  display: grid;
+  gap: var(--space-4);
+}

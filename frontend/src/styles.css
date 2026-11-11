@@ -182,90 +182,15 @@ label.inline input:not([type="checkbox"]) {
   max-width: 640px;
 }
 
-.ws-header {
-  margin-bottom: 1rem;
-}
-.crumbs {
-  display: flex;
-  gap: 0.75rem;
-  font-size: 0.85rem;
-  margin-bottom: 0.25rem;
-}
-.crumbs a::after {
-  content: " ›";
-  color: var(--muted);
-}
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--legacy-line);
-  margin-top: 0.75rem;
-}
-.tab {
-  padding: 0.5rem 0.9rem;
-  text-decoration: none;
-  color: var(--muted);
-  border-bottom: 3px solid transparent;
-}
-.tab.active {
-  color: var(--ink);
-  border-bottom-color: var(--legacy-accent);
-  font-weight: 600;
-}
-
-.board-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 1rem;
-}
-.composer textarea {
-  margin: 0.5rem 0;
-}
-.post .body,
 .note .body,
 .messages .body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   margin: 0.4rem 0;
 }
-.post.official {
-  border-left: 4px solid var(--official);
-}
-.official-tag {
-  color: var(--official);
-  border-color: var(--official);
-  margin: 0 0.35rem 0 0;
-}
-.pin {
-  margin: 0 0.35rem 0 0;
-}
 .due {
   font-size: 0.9rem;
   color: var(--official);
-}
-.replies {
-  list-style: none;
-  padding: 0 0 0 1rem;
-  border-left: 2px solid var(--legacy-line);
-}
-.reply-form {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-.attachments {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-.attachments img {
-  max-width: 220px;
-  max-height: 160px;
-  border: 1px solid var(--legacy-line);
-  border-radius: 4px;
 }
 .chips {
   display: flex;

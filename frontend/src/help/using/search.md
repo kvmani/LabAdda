@@ -15,7 +15,7 @@ Search finds words in the posts and chat messages of one workspace. It looks onl
 1. Open the workspace you want to search.
 2. On the **Noticeboard** tab, find the card whose heading starts with **Search**.
 3. Type at least two letters in the box marked **Posts and chat**.
-4. Choose **Search**.
+4. Pause for a moment. Results appear by themselves; use the clear button in the box to start again.
 
 ## What happens next
 

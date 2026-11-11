@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, errorStatus } from "../api";
 import { kindLabel } from "../format";
 import { useSession } from "../session";
@@ -11,6 +11,8 @@ import { Chat } from "./Chat";
 import { Board } from "./Board";
 import { Members } from "./Members";
 import { WorkspaceUsage } from "./WorkspaceUsage";
+import { Breadcrumbs, PageHeader, Skeleton, Tabs } from "../ui";
+import "./workspace.css";
 
 type Detail = Workspace & { ancestors: { id: string; name: string }[] };
 const TABS = [
@@ -33,6 +35,7 @@ export function WorkspaceView() {
   const { workspaceId = "", tab = "noticeboard" } = useParams();
   const { workspaces } = useWorkspaces();
   const { session } = useSession();
+  const navigate = useNavigate();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [missing, setMissing] = useState(false);
   const listed = workspaces.find((w) => w.id === workspaceId);
@@ -62,61 +65,49 @@ export function WorkspaceView() {
 
   if (missing)
     return (
-      <section className="state" role="alert">
-        <h1>Workspace not available</h1>
-        <p>This workspace does not exist or you do not have access to it.</p>
-        <Link to="/">Go to your home workspace</Link>
-      </section>
+      <div role="alert">
+        <PageHeader
+          title="Workspace not available"
+          scope="This workspace does not exist or you do not have access to it."
+          action={<Link to="/">Go to your home workspace</Link>}
+        />
+      </div>
     );
-  if (!detail) return <p className="state">Loading workspace…</p>;
+  if (!detail) return <Skeleton lines={5} label="Loading workspace…" />;
   const ws: Workspace = { ...detail, unread_chat: listed?.unread_chat ?? 0 };
+  const tabs = TABS.map(([id, label]) => ({
+    id,
+    label: id === "chat" && ws.unread_chat > 0 ? `${label} (${ws.unread_chat} new)` : label,
+  }));
+  const crumbs = [...detail.ancestors].reverse().map((a) => ({ label: a.name, to: `/w/${a.id}/${tab}` }));
 
   return (
     <div className="workspace">
-      <header className="ws-header">
-        {detail.ancestors.length > 0 && (
-          <nav aria-label="Parent units" className="crumbs">
-            {[...detail.ancestors].reverse().map((a) => (
-              <Link key={a.id} to={`/w/${a.id}/${tab}`}>
-                {a.name}
-              </Link>
-            ))}
-          </nav>
+      {crumbs.length > 0 && <Breadcrumbs items={[...crumbs, { label: ws.name }]} />}
+      <PageHeader
+        title={ws.name}
+        scope={`${kindLabel(ws.kind)} · ${accessLabel(ws)}${ws.description ? ` — ${ws.description}` : ""}`}
+      />
+      <Tabs
+        label="Workspace features"
+        tabs={tabs}
+        selected={tab}
+        onSelect={(id) => navigate(`/w/${ws.id}/${id}`)}
+      >
+        {tab === "noticeboard" && <Noticeboard ws={ws} key={ws.id} />}
+        {tab === "todos" && <Todos ws={ws} key={ws.id} />}
+        {tab === "chat" && <Chat ws={ws} key={ws.id} />}
+        {tab === "board" && (
+          <Board
+            ws={ws}
+            key={ws.id}
+            userId={session?.user.id}
+            maxUploadBytes={session?.limits.max_attachment_bytes}
+          />
         )}
-        <h1>
-          {ws.name} <span className="tag">{kindLabel(ws.kind)}</span>
-        </h1>
-        <p className="muted">
-          {accessLabel(ws)}
-          {ws.description ? ` — ${ws.description}` : ""}
-        </p>
-        <nav className="tabs" aria-label="Workspace features">
-          {TABS.map(([key, label]) => (
-            <NavLink
-              key={key}
-              to={`/w/${ws.id}/${key}`}
-              className={() => "tab" + (tab === key ? " active" : "")}
-              aria-current={tab === key ? "page" : undefined}
-            >
-              {label}
-              {key === "chat" && ws.unread_chat > 0 ? ` (${ws.unread_chat} new)` : ""}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-      {tab === "noticeboard" && <Noticeboard ws={ws} key={ws.id} />}
-      {tab === "todos" && <Todos ws={ws} key={ws.id} />}
-      {tab === "chat" && <Chat ws={ws} key={ws.id} />}
-      {tab === "board" && (
-        <Board
-          ws={ws}
-          key={ws.id}
-          userId={session?.user.id}
-          maxUploadBytes={session?.limits.max_attachment_bytes}
-        />
-      )}
-      {tab === "members" && <Members ws={ws} key={ws.id} />}
-      {tab === "usage" && <WorkspaceUsage workspaceId={ws.id} key={ws.id} />}
+        {tab === "members" && <Members ws={ws} key={ws.id} />}
+        {tab === "usage" && <WorkspaceUsage workspaceId={ws.id} key={ws.id} />}
+      </Tabs>
     </div>
   );
 }

@@ -1,0 +1,78 @@
+/* A noticeboard post and its replies. */
+.post--official > .ui-card {
+  border-left: 4px solid var(--warn);
+}
+.post > .ui-card {
+  display: grid;
+  gap: var(--space-3);
+}
+.post-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.post-card__byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.post-card__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.post-card__meta {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.post-card__body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.post-card__due {
+  margin: 0;
+  color: var(--warn);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.post-card__error {
+  margin: 0;
+  color: var(--danger);
+}
+.post-card__form {
+  display: grid;
+  gap: var(--space-3);
+}
+.post-card__replies {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  list-style: none;
+  border-left: 2px solid var(--line);
+}
+.post-card__reply {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.post-card__reply > .ui-field {
+  flex: 1;
+}
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.attachments img {
+  max-width: 220px;
+  max-height: 160px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}

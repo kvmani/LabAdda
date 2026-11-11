@@ -1,0 +1,28 @@
+/* Pending or failed uploads that need a decision. */
+.upload-recovery {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--text);
+}
+.upload-recovery p,
+.upload-recovery ul {
+  margin: 0;
+}
+.upload-recovery ul {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.upload-recovery__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.upload-recovery__note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
