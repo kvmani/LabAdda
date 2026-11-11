@@ -15,6 +15,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Double,
     ForeignKey,
     Identity,
     Index,
@@ -722,3 +723,29 @@ class NotificationPreference(Base):
     reminders: Mapped[bool] = mapped_column(Boolean, nullable=False)
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
     __table_args__ = (CheckConstraint("revision > 0", name="ck_notification_preference_revision"),)
+
+
+class MetricSample(Base):
+    """One catalogued metric value per bucket (AD-08); dimensions never hold content or paths."""
+
+    __tablename__ = "metric_samples"
+    bucket_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    resolution: Mapped[str] = mapped_column(String(8), primary_key=True)
+    metric: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dimension: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[float] = mapped_column(Double, nullable=False)
+    samples: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    __table_args__ = (
+        CheckConstraint("resolution in ('minute','hour','day')", name="ck_metric_sample_resolution"),
+        CheckConstraint("samples >= 0", name="ck_metric_sample_samples"),
+        Index("ix_metric_samples_series", "metric", "resolution", "dimension", "bucket_start"),
+    )
+
+
+class ActivityDay(Base):
+    """A person made at least one signed-in request on this site-local day; nothing else."""
+
+    __tablename__ = "activity_days"
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    __table_args__ = (Index("ix_activity_days_day", "day"),)

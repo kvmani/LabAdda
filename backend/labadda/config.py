@@ -66,6 +66,11 @@ class Settings:
     panel_pairing_seconds: int = 120  # lifetime of a one-time panel pairing code
     board_compact_threshold: int = 2000  # compact when a board has this many uncompacted revisions
     board_keep_revisions: int = 500  # recent revisions kept for undo, restore and replay
+    metrics_flush_seconds: int = 60  # how often closed metric minutes are written (AD-08)
+    metrics_minute_retention_hours: int = 48
+    metrics_hour_retention_days: int = 35
+    metrics_day_retention_days: int = 730
+    activity_retention_days: int = 730  # per-person activity days (AD-08)
     extra: dict = field(default_factory=dict)
 
     @property
@@ -135,6 +140,21 @@ def load_settings() -> Settings:
         panel_absolute_minutes=int(env("LABADDA_PANEL_ABSOLUTE_MINUTES", "60")),
         panel_pairing_seconds=int(env("LABADDA_PANEL_PAIRING_SECONDS", "120")),
         board_keep_revisions=int(env("LABADDA_BOARD_KEEP_REVISIONS", "500")),
+        metrics_flush_seconds=_positive(
+            env("LABADDA_METRICS_FLUSH_SECONDS", "60"), "LABADDA_METRICS_FLUSH_SECONDS"
+        ),
+        metrics_minute_retention_hours=_positive(
+            env("LABADDA_METRICS_MINUTE_RETENTION_HOURS", "48"), "LABADDA_METRICS_MINUTE_RETENTION_HOURS"
+        ),
+        metrics_hour_retention_days=_positive(
+            env("LABADDA_METRICS_HOUR_RETENTION_DAYS", "35"), "LABADDA_METRICS_HOUR_RETENTION_DAYS"
+        ),
+        metrics_day_retention_days=_positive(
+            env("LABADDA_METRICS_DAY_RETENTION_DAYS", "730"), "LABADDA_METRICS_DAY_RETENTION_DAYS"
+        ),
+        activity_retention_days=_positive(
+            env("LABADDA_ACTIVITY_RETENTION_DAYS", "730"), "LABADDA_ACTIVITY_RETENTION_DAYS"
+        ),
     )
 
 
