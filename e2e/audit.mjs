@@ -84,14 +84,23 @@ async function filters(page, base) {
   check(true, base + " combined filters give a useful empty state");
   await page.getByRole("button", { name: "Clear audit filters" }).first().click();
   await page.getByLabel("Outcome", { exact: true }).selectOption("denied");
-  await page.getByRole("button", { name: /^Open details: .* signed in\.$/ }).first().waitFor();
+  await page
+    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .first()
+    .waitFor();
   await page.getByLabel("From date", { exact: true }).fill("2030-01-01");
   await page.getByText("No audit entries match these filters", { exact: true }).waitFor();
   await page.getByLabel("From date", { exact: true }).fill("2026-01-06");
   await page.getByLabel("To date", { exact: true }).fill("2026-01-06");
-  await page.getByRole("button", { name: /^Open details: .* signed in\.$/ }).first().waitFor();
+  await page
+    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .first()
+    .waitFor();
   await page.reload();
-  await page.getByRole("button", { name: /^Open details: .* signed in\.$/ }).first().waitFor();
+  await page
+    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .first()
+    .waitFor();
   check(
     (await page.getByLabel("Outcome", { exact: true }).inputValue()) === "denied" &&
       (await page.getByLabel("To date", { exact: true }).inputValue()) === "2026-01-06",
@@ -99,7 +108,10 @@ async function filters(page, base) {
   );
   await page.getByRole("button", { name: "Clear audit filters" }).first().click();
   await page.getByLabel("Done by", { exact: true }).selectOption({ label: "Ben Okafor (ben)" });
-  await page.getByRole("button", { name: /^Open details: .* signed in\.$/ }).first().waitFor();
+  await page
+    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .first()
+    .waitFor();
   check(true, base + " person filter applies");
   await page.getByRole("button", { name: "Clear audit filters" }).first().click();
 }

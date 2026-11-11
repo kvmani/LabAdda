@@ -56,7 +56,7 @@ Backend: `audit_catalog.py` is the single list of audit actions (group plus a pl
 and `AuditEvent(...)` call and fails when an `action=` literal, conditional or dynamic name (`auth.*_redeemed`,
 `inventory_job.*`) has no entry; add the entry in the same change as the new action. `audit_explorer.py` builds
 the filtered keyset query on `(created_at, id)` and shapes events; `api/audit.py` serves the list and the
-streamed export (administrators only, `require_console("audit", admin_only=True)`). Migration 0027 adds indexes
+streamed export (administrators only, `require_console("audit", admin_only=True)`). Migration 0028 adds indexes
 on `(created_at, id)`, actor, target and scope; its downgrade only drops indexes. Tests: `test_audit_catalog.py`,
 `test_audit_explorer.py` (filters, paging during inserts, formula escaping, cap, audited export, denials, no content).
 
