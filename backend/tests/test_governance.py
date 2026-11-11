@@ -95,7 +95,8 @@ def test_queued_proposal_rechecks_authority(make_client, db_factory, monkeypatch
             else:
                 db.execute(
                     text(
-                        "update auth_sessions set revoked_at=now() where user_id=(select id from users where username='admin')"
+                        "update auth_sessions set revoked_at=now() where user_id=(select id from users "
+                        "where username='admin')"
                     )
                 )
             db.commit()

@@ -118,7 +118,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if clean else 2
         except Exception:
             print(
-                "Charge reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the "
+                "Charge reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers "
+                "and the "
                 "reviewed plan. Only ledger rows are ever corrected; no content is changed.",
                 file=sys.stderr,
             )
@@ -143,7 +144,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if result["status"] == "completed" and result["summary"]["issue_count"] == 0 else 2
         except Exception:
             print(
-                "Preview reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers and the reviewed plan. No files are rewritten or deleted.",
+                "Preview reconciliation unconfirmed. Inspect its receipt; check budgets, stopped writers "
+                "and the reviewed plan. No files are rewritten or deleted.",
                 file=sys.stderr,
             )
             return 2
@@ -225,7 +227,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if result["status"] == "completed" and result["summary"]["issue_count"] == 0 else 2
         except Exception:
             print(
-                "Inspection failed. Check budgets, asset root and database access; no files were repaired or removed.",
+                "Inspection failed. Check budgets, asset root and database access; no files were repaired "
+                "or removed.",
                 file=sys.stderr,
             )
             return 2
@@ -245,7 +248,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except Exception:
             print(
-                "Backup failed; no readiness claim. Check stopped writers, paths, database access and PostgreSQL clients.",
+                "Backup failed; no readiness claim. Check stopped writers, paths, database access and "
+                "PostgreSQL clients.",
                 file=sys.stderr,
             )
             return 2
@@ -274,7 +278,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except Exception:
             print(
-                "Restore failed. Keep target isolated; inspect integrity, empty target, clients and access. Never activate a partial restore.",
+                "Restore failed. Keep target isolated; inspect integrity, empty target, clients and "
+                "access. Never activate a partial restore.",
                 file=sys.stderr,
             )
             return 2

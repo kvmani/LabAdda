@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
@@ -443,8 +444,6 @@ def publish_snapshot(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    from types import SimpleNamespace
-
     identity = SimpleNamespace(id=actor.id, session=SimpleNamespace(id=actor.session.id))
     # Generated originals share the same user serialization as upload admission.
     # This synchronous endpoint already runs in a worker thread.
@@ -543,7 +542,8 @@ def publish_snapshot(
         if not confirmed:
             raise ApiError(
                 "snapshot_commit_unknown",
-                "Snapshot outcome is uncertain. Storage was retained for inspection; check the noticeboard before retrying.",
+                "Snapshot outcome is uncertain. Storage was retained for inspection; check the noticeboard "
+                "before retrying.",
                 status=503,
             )
     destination_id = body.destination_id

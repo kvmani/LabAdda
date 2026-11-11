@@ -121,7 +121,8 @@ def test_waiting_reference_rechecks_locked_board_context(as_user, ids, db_factor
             writer.execute(text("select pg_stat_clear_snapshot()"))
             blocked = writer.scalar(
                 text(
-                    "select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%boards.workspace_id%FOR SHARE%')"
+                    "select exists(select 1 from pg_stat_activity where datname=current_database() and "
+                    "wait_event_type='Lock' and query like '%boards.workspace_id%FOR SHARE%')"
                 )
             )
             if blocked:

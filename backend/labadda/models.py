@@ -255,7 +255,8 @@ class Asset(Base):
     __table_args__ = (
         CheckConstraint("status in ('provisional','committed')", name="ck_asset_status"),
         CheckConstraint(
-            "status = 'provisional' or post_id is not null or board_workspace_id is not null or chat_message_id is not null",
+            "status = 'provisional' or post_id is not null or board_workspace_id is not null or "
+            "chat_message_id is not null",
             name="ck_asset_committed_owner",
         ),
         CheckConstraint(
@@ -264,7 +265,8 @@ class Asset(Base):
         CheckConstraint(
             "(preview_size is null and preview_sha256 is null) or "
             "(preview_size is not null and "
-            "((has_preview and preview_size > 0 and preview_sha256 is not null and length(preview_sha256) = 64) or "
+            "((has_preview and preview_size > 0 and preview_sha256 is not null and length(preview_sha256) "
+            "= 64) or "
             "(not has_preview and preview_size = 0 and preview_sha256 is null)))",
             name="ck_asset_preview_integrity",
         ),
@@ -683,7 +685,9 @@ class TodoSource(Base):
             "num_nonnulls(post_id, chat_message_id, board_workspace_id) <= 1", name="ck_todo_source_kind"
         ),
         CheckConstraint(
-            "(board_epoch is null) = (board_revision is null) and (board_epoch is null or (board_epoch > 0 and board_revision >= 0)) and (board_workspace_id is null or board_epoch is not null) and ((post_id is null and chat_message_id is null) or board_epoch is null)",
+            "(board_epoch is null) = (board_revision is null) and (board_epoch is null or (board_epoch > 0 "
+            "and board_revision >= 0)) and (board_workspace_id is null or board_epoch is not null) and "
+            "((post_id is null and chat_message_id is null) or board_epoch is null)",
             name="ck_todo_source_board",
         ),
     )

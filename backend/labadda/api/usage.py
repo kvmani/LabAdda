@@ -251,7 +251,8 @@ def record_observation(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    from .governance import lock_authority
+    # governance.py imports this module; a top-level import here would be circular.
+    from .governance import lock_authority  # noqa: PLC0415
 
     db.execute(text("select pg_advisory_xact_lock(hashtext('labadda_usage_observations'))"))
     lock_authority(db, actor, settings)

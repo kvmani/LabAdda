@@ -119,7 +119,10 @@ def test_migration_preserves_c1_request_replay_and_records_baseline(as_user, set
         creator = db.get(TodoList, row["id"]).created_by
         db.execute(
             text(
-                "insert into todo_tasks(id,list_id,created_by,client_id,create_digest,title,description,due_date,priority,checklist,done,revision) values(:id,:list,:creator,:client,:digest,:title,:description,:due,:priority,cast(:checklist as jsonb),false,7)"
+                "insert into todo_tasks(id,list_id,created_by,client_id,create_digest,title,"
+                "description,due_date,priority,checklist,done,revision) "
+                "values(:id,:list,:creator,:client,:digest,:title,:description,:due,:priority,"
+                "cast(:checklist as jsonb),false,7)"
             ),
             {
                 "id": task_id,

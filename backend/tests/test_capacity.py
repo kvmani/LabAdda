@@ -208,7 +208,8 @@ def test_authority_is_rechecked_after_measurement(as_user, db_factory, monkeypat
             sql = (
                 "update users set is_admin=false where username='admin'"
                 if change == "demote"
-                else "update auth_sessions set revoked_at=now() where user_id=(select id from users where username='admin')"
+                else "update auth_sessions set revoked_at=now() where user_id=(select id from users where "
+                "username='admin')"
             )
             db.execute(text(sql))
             db.commit()

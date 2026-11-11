@@ -382,7 +382,8 @@ require(s.cookie_name != 'labadda_session', 'Set a distinct instance cookie')
 require(s.cookie_secure and s.trusted_origins, 'Configure TLS cookies and trusted origins')
 require(all(o.startswith('https://') for o in s.trusted_origins), 'Trusted origins must use HTTPS')
 assets = s.asset_dir.resolve()
-require(s.asset_dir.is_absolute() and assets.is_dir() and os.access(assets, os.W_OK), 'Configure writable absolute asset directory')
+writable = s.asset_dir.is_absolute() and assets.is_dir() and os.access(assets, os.W_OK)
+require(writable, 'Configure writable absolute asset directory')
 require(not assets.is_relative_to(Path.cwd().resolve().parent), 'Assets must be outside all releases')
 with create_engine(s.database_url, connect_args={'connect_timeout': 10}).connect() as db:
     rows = db.execute(text('select version_num from alembic_version')).scalars().all()
@@ -400,7 +401,8 @@ with create_engine(s.database_url, connect_args={'connect_timeout': 10}).connect
     if result.returncode:
         # SQLAlchemy exceptions can contain connection details. Do not relay stderr.
         raise ReleaseError(
-            "Runtime preflight failed: check instance/TLS/cookie/assets settings and database/schema access; connection details suppressed"
+            "Runtime preflight failed: check instance/TLS/cookie/assets settings and database/schema "
+            "access; connection details suppressed"
         )
     schema = result.stdout.strip()
     if not re.fullmatch(r"[A-Za-z0-9_]+", schema):
@@ -469,7 +471,8 @@ def main() -> int:
                 raise ReleaseError("Observed database schema differs from operator expectation")
             switch(args.instance.resolve(), args.release, schema, rollback=args.command == "rollback")
             print(
-                "Pointer switched. Restart and run the documented readiness and functional probes before serving traffic."
+                "Pointer switched. Restart and run the documented readiness and functional probes before "
+                "serving traffic."
             )
         return 0
     except (

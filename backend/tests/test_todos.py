@@ -249,7 +249,8 @@ def test_workspace_row_writer_and_list_creation_do_not_deadlock(as_user, ids, db
         while time.monotonic() < deadline:
             blocked = writer.scalar(
                 text(
-                    "select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%FOR KEY SHARE%')"
+                    "select exists(select 1 from pg_stat_activity where datname=current_database() and "
+                    "wait_event_type='Lock' and query like '%FOR KEY SHARE%')"
                 )
             )
             if blocked:

@@ -35,6 +35,10 @@ FIELDS = {
 PATH_FIELDS = {"root", "env_file", "tls_certificate", "tls_key", "backup_root"}
 NAME = re.compile(r"[a-z][a-z0-9_-]{0,31}\Z")
 PATH = re.compile(r"/[A-Za-z0-9_./-]+\Z")
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; style-src 'self'; frame-ancestors 'none'"
+)
 
 
 def load_site(path: Path) -> dict:
@@ -140,7 +144,7 @@ server {{
     if (-f {root}/traffic/maintenance) {{ return 503; }}
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy same-origin always;
-    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; frame-ancestors 'none'" always;
+    add_header Content-Security-Policy "{CONTENT_SECURITY_POLICY}" always;
     location {base}/assets/ {{
         alias {root}/current/frontend/dist/assets/;
         add_header Cache-Control "public, max-age=31536000, immutable";

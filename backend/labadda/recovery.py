@@ -5,10 +5,19 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
+import subprocess
 import tempfile
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
+
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
+
+from .app import expected_schema_head
+from .inventory_jobs import pause_restored_jobs
+from .storage import AssetStore
 
 
 class RecoveryError(Exception):
@@ -90,8 +99,6 @@ def write_manifest(root: Path, *, schema: str, release: str, recovery_point: str
 
 
 def postgres_environment(url: str) -> dict:
-    from sqlalchemy.engine import make_url
-
     parsed = make_url(url)
     if parsed.get_backend_name() != "postgresql" or parsed.query:
         raise RecoveryError("Use a PostgreSQL URL without query options; configure TLS through PGSSL*")
@@ -99,7 +106,6 @@ def postgres_environment(url: str) -> dict:
         raise RecoveryError("Use an explicit host, port, username and password in the database URL")
     if any(k.startswith("PG") and not k.startswith("PGSSL") for k in os.environ):
         raise RecoveryError("Remove ambient PG connection selectors; use the explicit database URL")
-    import re
 
     if not parsed.database or not re.fullmatch(r"[A-Za-z0-9_-]+", parsed.database):
         raise RecoveryError("Use a simple explicit database name")
@@ -118,8 +124,6 @@ def postgres_environment(url: str) -> dict:
 
 
 def pg_command(program: str, url: str, *args: str | Path) -> None:
-    import subprocess
-
     try:
         subprocess.run(
             [program, *map(str, args)],
@@ -155,10 +159,6 @@ def backup(
     writers_quiesced: bool,
     pg_dump: str = "pg_dump",
 ) -> str:
-    from datetime import datetime
-
-    from sqlalchemy import create_engine, inspect, text
-
     if not writers_quiesced:
         raise RecoveryError("Stop app, sockets, scheduler and CLI writers before backup")
     assets = assets.absolute()
@@ -224,11 +224,6 @@ def restore(
     isolated_target: bool,
     pg_restore: str = "pg_restore",
 ) -> dict:
-    from sqlalchemy import create_engine, text
-
-    from .app import expected_schema_head
-    from .storage import AssetStore
-
     if not isolated_target:
         raise RecoveryError("Restore requires an isolated target kept off traffic")
     if assets.resolve().is_relative_to(bundle.resolve()) or bundle.resolve().is_relative_to(assets.resolve()):
@@ -262,7 +257,9 @@ def restore(
                     try:
                         objects = guard.scalar(
                             text(
-                                "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where left(n.nspname, 3) <> 'pg_' and n.nspname <> 'information_schema'"
+                                "select count(*) from pg_class c join pg_namespace n on "
+                                "n.oid=c.relnamespace where left(n.nspname, 3) <> 'pg_' and n.nspname <> "
+                                "'information_schema'"
                             )
                         )
                         if objects:
@@ -289,13 +286,15 @@ def restore(
                             store = AssetStore(staged_assets)
                             for row in conn.execute(
                                 text(
-                                    "select storage_key, size, sha256, has_preview, preview_size, preview_sha256 from assets where status = 'committed'"
+                                    "select storage_key, size, sha256, has_preview, preview_size, "
+                                    "preview_sha256 from assets where status = 'committed'"
                                 )
                             ):
                                 _verify_asset_reference(store, row)
                             conn.execute(
                                 text(
-                                    "update auth_sessions set revoked_at = coalesce(revoked_at, now()), end_reason = 'restore'"
+                                    "update auth_sessions set revoked_at = coalesce(revoked_at, now()), "
+                                    "end_reason = 'restore'"
                                 )
                             )
                             conn.execute(text("delete from panel_pairings"))
@@ -305,7 +304,6 @@ def restore(
                             conn.execute(text("delete from usage_reader_grants"))
                             conn.execute(text("delete from upload_receipts"))
                             conn.execute(text("delete from upload_reservations"))
-                            from .inventory_jobs import pause_restored_jobs
 
                             pause_restored_jobs(conn)
                         sync_tree(staged_assets)

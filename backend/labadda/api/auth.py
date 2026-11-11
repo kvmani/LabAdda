@@ -20,6 +20,7 @@ from ..security import (
     digest,
     hash_password,
     login_limiter,
+    new_token,
     revoke_user_sessions,
     utcnow,
     verify_password,
@@ -210,8 +211,6 @@ def change_password(
 def issue_credential(
     db: Session, user: User, purpose: str, actor, settings: Settings
 ) -> tuple[str, CredentialToken]:
-    from ..security import new_token
-
     token = new_token()
     cred = CredentialToken(
         user_id=user.id,

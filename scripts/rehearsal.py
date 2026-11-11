@@ -86,7 +86,7 @@ def ssl_context(cafile: str | None) -> ssl.SSLContext | None:
 async def activate(
     http: dict, api: str, activation: dict, *, wait_s: float = 15, max_wait_s: float = 900
 ) -> None:
-    """Activate one account, waiting out the server's per-client activation rate limit (never bypassing it)."""
+    """Activate one account, waiting out the per-client activation rate limit (never bypassing it)."""
     waited = 0.0
     while True:
         async with httpx.AsyncClient(**http) as fresh:

@@ -63,7 +63,8 @@ def test_single_root_and_flat_spaces(db_factory, ids):
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             db.execute(
                 text(
-                    "insert into workspaces (id, kind, name, description, parent_id, archived, posting_policy)"
+                    "insert into workspaces (id, kind, name, description, parent_id, archived, "
+                    "posting_policy)"
                     " values (gen_random_uuid(), 'group', 'g', '', :p, false, 'open')"
                 ),
                 {"p": ids["workspaces"]["root"]},

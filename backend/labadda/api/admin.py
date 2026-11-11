@@ -16,7 +16,7 @@ from ..config import Settings
 from ..deps import Actor, get_db, get_settings, require_admin
 from ..errors import Conflict, Invalid, NotFound
 from ..models import AuditEvent, Membership, User, Workspace
-from ..security import revoke_user_sessions
+from ..security import revoke_user_sessions, utcnow
 from ..serialize import iso, user_brief, workspace_json
 from .auth import issue_credential
 
@@ -141,8 +141,6 @@ def update_user(
     if body.is_active is not None and body.is_active != user.is_active:
         user.is_active = body.is_active
         if not body.is_active:
-            from ..security import utcnow
-
             user.deactivated_at = utcnow()
             revoke_user_sessions(db, user.id)
         else:

@@ -118,7 +118,8 @@ def test_provisional_files_and_pending_capacity_have_no_workspace_attribution(as
     with db_factory() as db:
         db.execute(
             text(
-                "insert into upload_reservations(id,user_id,bytes,expires_at) values(gen_random_uuid(),:id,123,now()+interval '10 minutes')"
+                "insert into upload_reservations(id,user_id,bytes,expires_at) "
+                "values(gen_random_uuid(),:id,123,now()+interval '10 minutes')"
             ),
             {"id": ids["users"]["ben"]},
         )

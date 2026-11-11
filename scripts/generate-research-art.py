@@ -144,12 +144,15 @@ def generate():
     polylines = [
         '<polyline points="'
         + " ".join(f"{x},{y}" for x, y in o["data"]["points"])
-        + f'" fill="none" stroke="{o["data"]["color"]}" stroke-width="{o["data"]["width"]}" stroke-linecap="round" stroke-linejoin="round"/>'
+        + f'" fill="none" stroke="{o["data"]["color"]}" stroke-width="{o["data"]["width"]}" '
+        + 'stroke-linecap="round" stroke-linejoin="round"/>'
         for o in ops
         if o["kind"] == "stroke"
     ]
     svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 730" width="1000" height="730"><title>Fictional Aurora research plan with five handwritten sticky notes</title><rect width="1000" height="730" fill="#fff"/>'
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 730" width="1000" '
+        'height="730"><title>Fictional Aurora research plan with five handwritten sticky '
+        'notes</title><rect width="1000" height="730" fill="#fff"/>'
         + "".join(papers + polylines)
         + "</svg>\n"
     )

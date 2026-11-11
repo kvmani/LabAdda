@@ -238,7 +238,8 @@ def tamper(db_factory, ids):
         db.execute(text("delete from content_charges where item_key = :k"), {"k": post_ids[1]})
         db.execute(
             text(
-                "insert into content_charges (item_type, item_key, user_id, workspace_id, method, state, bytes) "
+                "insert into content_charges (item_type, item_key, user_id, workspace_id, method, state, "
+                "bytes) "
                 "values ('chat', :k, :u, :w, 'utf8-text-v1', 'live', 5)"
             ),
             {"k": str(uuid.uuid4()), "u": ids["users"]["ben"], "w": ws(ids)},

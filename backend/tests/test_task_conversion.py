@@ -190,7 +190,8 @@ def test_source_deleted_while_conversion_waits_is_not_accepted(as_user, ids, db_
             writer.execute(text("select pg_stat_clear_snapshot()"))
             blocked = writer.scalar(
                 text(
-                    "select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%posts.id%FOR SHARE%')"
+                    "select exists(select 1 from pg_stat_activity where datname=current_database() and "
+                    "wait_event_type='Lock' and query like '%posts.id%FOR SHARE%')"
                 )
             )
             if blocked:

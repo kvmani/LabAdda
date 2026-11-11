@@ -168,8 +168,8 @@ def capacity_forecast(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    # Import locally to keep usage/capability/governance dependency wiring acyclic.
-    from .usage import filesystem_capacity, originals
+    # usage.py imports this module; a top-level import here would be circular.
+    from .usage import filesystem_capacity, originals  # noqa: PLC0415
 
     if request.headers.get(PANEL_HEADER) or request.query_params.get("panel") == "1":
         raise Unauthenticated()

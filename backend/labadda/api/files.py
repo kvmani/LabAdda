@@ -6,6 +6,7 @@ import hashlib
 import json
 import uuid
 from datetime import timedelta
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, File, Header, Path, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -68,8 +69,6 @@ async def upload(
 
 
 def _persist_upload(request, db, actor, settings, data, content_type, filename, request_key=None):
-    from types import SimpleNamespace
-
     # Immutable references avoid consulting expired request-ORM objects during
     # failure resolution through a fresh connection.
     identity = SimpleNamespace(id=actor.id, session=SimpleNamespace(id=actor.session.id))

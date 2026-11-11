@@ -37,7 +37,8 @@ def check_original_capacity(db, actor, settings, size):
     if used + pending + size > settings.user_quota_bytes:
         raise Invalid(
             "quota_exceeded",
-            "Your original-file allowance is exhausted, including pending uploads. Retry after they finish or contact an administrator.",
+            "Your original-file allowance is exhausted, including pending uploads. Retry after they finish "
+            "or contact an administrator.",
         )
 
 

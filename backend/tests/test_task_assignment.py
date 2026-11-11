@@ -205,7 +205,8 @@ def test_target_deactivation_while_assignment_waits_rejects_stale_eligibility(as
             writer.execute(text("select pg_stat_clear_snapshot()"))
             blocked = writer.scalar(
                 text(
-                    "select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%ORDER BY users.id FOR NO KEY UPDATE%')"
+                    "select exists(select 1 from pg_stat_activity where datname=current_database() and "
+                    "wait_event_type='Lock' and query like '%ORDER BY users.id FOR NO KEY UPDATE%')"
                 )
             )
             if blocked:

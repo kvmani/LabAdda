@@ -86,7 +86,8 @@ def test_lost_session_cannot_commit_after_reserving(as_user, app, db_factory, mo
         with db_factory() as db:
             db.execute(
                 text(
-                    "update auth_sessions set revoked_at=now() where user_id=(select id from users where username='ben')"
+                    "update auth_sessions set revoked_at=now() where user_id=(select id from users where "
+                    "username='ben')"
                 )
             )
             db.commit()
@@ -110,7 +111,8 @@ def test_expiry_during_storage_prevents_commit(as_user, app, db_factory, monkeyp
         with db_factory() as db:
             db.execute(
                 text(
-                    "update upload_reservations set created_at=now()-interval '2 hours', expires_at=now()-interval '1 hour'"
+                    "update upload_reservations set created_at=now()-interval '2 hours', "
+                    "expires_at=now()-interval '1 hour'"
                 )
             )
             db.commit()

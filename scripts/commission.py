@@ -23,7 +23,10 @@ from sqlalchemy import create_engine, text
 from labadda.config import load_settings
 engine = create_engine(load_settings().database_url, connect_args={'connect_timeout': 10})
 with engine.connect() as db:
-    count = db.execute(text("SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname <> 'information_schema'")).scalar_one()
+    count = db.execute(text(
+        "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+        "WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname <> 'information_schema'"
+    )).scalar_one()
     if count: raise SystemExit(1)
 engine.dispose()
 print('empty')
@@ -180,7 +183,8 @@ def main(argv=None):
         return 0
     except (operations.OperationsError, release.ReleaseError, OSError, ValueError):
         print(
-            "Commissioning unconfirmed. Keep target isolated; inspect its private journal and recovery runbook.",
+            "Commissioning unconfirmed. Keep target isolated; inspect its private journal and recovery "
+            "runbook.",
             file=sys.stderr,
         )
         return 1

@@ -34,16 +34,20 @@ MAX_ISSUE_SAMPLES = 100
 TEXT_DIFF = text("""
 WITH expected AS (
   SELECT 'post'::text AS t, id::text AS k, author_id AS u, workspace_id AS w,
-         CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'removed' END AS s, labadda_utf8_octets(body) AS b FROM posts
+         CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'removed' END AS s,
+         labadda_utf8_octets(body) AS b
+  FROM posts
   UNION ALL
   SELECT 'chat', id::text, author_id, workspace_id, 'live', labadda_utf8_octets(body) FROM chat_messages
   UNION ALL
-  SELECT 'note', id::text, owner_id, NULL, 'live', labadda_utf8_octets(title) + labadda_utf8_octets(body) FROM notes
+  SELECT 'note', id::text, owner_id, NULL, 'live', labadda_utf8_octets(title) + labadda_utf8_octets(body)
+  FROM notes
 ), ledger AS (
   SELECT item_type AS t, item_key AS k, user_id AS u, workspace_id AS w, state AS s, bytes AS b, method AS m
   FROM content_charges WHERE item_type IN ('post', 'chat', 'note')
 )
-SELECT coalesce(e.t, l.t) AS item_type, coalesce(e.k, l.k) AS item_key, e.u AS eu, e.w AS ew, e.s AS es, e.b AS eb,
+SELECT coalesce(e.t, l.t) AS item_type, coalesce(e.k, l.k) AS item_key,
+       e.u AS eu, e.w AS ew, e.s AS es, e.b AS eb,
        l.u AS lu, l.w AS lw, l.s AS ls, l.b AS lb, l.m AS lm
 FROM expected e FULL OUTER JOIN ledger l ON l.t = e.t AND l.k = e.k
 WHERE (coalesce(e.t, l.t), coalesce(e.k, l.k)) > (:after_t, :after_k)

@@ -18,6 +18,7 @@ from sqlalchemy.dialects.postgresql import insert
 from . import audit
 from .inventory import inventory_storage
 from .models import InventoryAttempt, InventoryJob, StorageInspection
+from .serialize import iso
 
 LEASE_SECONDS = 30
 
@@ -185,19 +186,19 @@ def pause_restored_jobs(conn):
     """No copied lease survives isolated recovery; retain attempt history."""
     conn.execute(
         text(
-            "update inventory_attempts set state='paused', finished_at=clock_timestamp() where state='running'"
+            "update inventory_attempts set state='paused', finished_at=clock_timestamp() where "
+            "state='running'"
         )
     )
     conn.execute(
         text(
-            "update inventory_jobs set state='paused', lease_until=null, updated_at=clock_timestamp() where state in ('queued','running')"
+            "update inventory_jobs set state='paused', lease_until=null, updated_at=clock_timestamp() "
+            "where state in ('queued','running')"
         )
     )
 
 
 def describe(db, job, *, now=None, include_attempts=True):
-    from .serialize import iso
-
     now = _now(db) if now is None else now
     attempts = (
         db.scalars(
