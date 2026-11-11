@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 
 type Candidate = { id: string; username: string; is_active: boolean; is_admin: boolean };
 type Grant = { user_id: string; username: string; reason: string; expires_at: string; active: boolean };
@@ -16,7 +16,7 @@ export function UsageReaders({ users }: { users: Candidate[] }) {
     setGrants((await api<{ grants: Grant[] }>("/admin/usage-readers")).grants);
   }
   useEffect(() => {
-    load().catch((e) => setError(e.message));
+    load().catch((e) => setError(errorMessage(e)));
   }, []);
   async function change(target: string, revoke = false) {
     setError("");
@@ -32,8 +32,8 @@ export function UsageReaders({ users }: { users: Candidate[] }) {
       });
       await load();
       setMessage(revoke ? "Operational access revoked." : "Time-limited operational read access granted.");
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     } finally {
       setPassword("");
       setBusy(false);

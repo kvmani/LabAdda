@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "../api";
+import { accessDenied, api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 import { TaskAssignment, type Assignee } from "../components/TaskAssignment";
 import { TaskSource } from "../components/TaskSource";
@@ -35,7 +35,6 @@ const blank = (): Fields => ({
   checklist: [],
   done: false,
 });
-const uncertain = (error: any) => error.status === 0 || error.status >= 500;
 
 function TaskEditor({
   listId,
@@ -74,12 +73,12 @@ function TaskEditor({
         await api(path, { body: attempt.current });
       }
       saved();
-    } catch (e: any) {
-      setError(e.message);
-      setConflict(e.status === 409);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+      setConflict(errorStatus(e) === 409);
       if (!initial) {
-        setUnconfirmed(uncertain(e));
-        if (!uncertain(e)) attempt.current = null;
+        setUnconfirmed(outcomeUnknown(e));
+        if (!outcomeUnknown(e)) attempt.current = null;
       }
     } finally {
       setBusy(false);
@@ -93,8 +92,8 @@ function TaskEditor({
       setFields(result);
       setRevision(result.revision);
       setConflict(false);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -269,9 +268,9 @@ export function Todos({ ws }: { ws?: Workspace }) {
     taskGeneration = useRef(0),
     editorGeneration = useRef(0);
   const writable = ws ? ws.can_write && !ws.archived : true;
-  function failed(e: any) {
-    setError(e.message);
-    if ([401, 403, 404].includes(e.status)) {
+  function failed(e: unknown) {
+    setError(errorMessage(e));
+    if (accessDenied(e)) {
       ++generation.current;
       ++taskGeneration.current;
       ++editorGeneration.current;
@@ -302,7 +301,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
         return true;
       }
       return false;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) failed(e);
       return false;
     } finally {
@@ -322,7 +321,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
         return true;
       }
       return false;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === taskGeneration.current) failed(e);
       return false;
     } finally {
@@ -355,7 +354,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
           );
           if (token !== taskGeneration.current || selectedRef.current !== listId) return;
           setTasks(rows);
-        } catch (e: any) {
+        } catch (e: unknown) {
           if (token === taskGeneration.current) failed(e);
           return;
         } finally {
@@ -397,10 +396,10 @@ export function Todos({ ws }: { ws?: Workspace }) {
         choose(result);
         setMessage("List saved.");
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       failed(e);
-      setUnconfirmed(uncertain(e));
-      if (!uncertain(e)) listAttempt.current = null;
+      setUnconfirmed(outcomeUnknown(e));
+      if (!outcomeUnknown(e)) listAttempt.current = null;
     } finally {
       setBusy(false);
     }
@@ -422,10 +421,10 @@ export function Todos({ ws }: { ws?: Workspace }) {
       setLists((rows) => rows.map((r) => (r.id === result.id ? result : r)));
       setRenameConflict(false);
       setMessage("List renamed.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (renameGeneration === generation.current && renameEditor === editorGeneration.current) {
         failed(e);
-        setRenameConflict(e.status === 409);
+        setRenameConflict(errorStatus(e) === 409);
       }
     } finally {
       setBusy(false);
@@ -443,7 +442,7 @@ export function Todos({ ws }: { ws?: Workspace }) {
       setRename(row.title);
       setRenameConflict(false);
       setLists((rows) => rows.map((r) => (r.id === row.id ? row : r)));
-    } catch (e: any) {
+    } catch (e: unknown) {
       failed(e);
     } finally {
       setBusy(false);

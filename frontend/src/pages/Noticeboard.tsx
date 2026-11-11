@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { api, newId } from "../api";
+import { api, newId, errorMessage } from "../api";
 import { fmtTime, localToIso } from "../format";
 import { realtime } from "../realtime";
 import { useSession } from "../session";
-import type { Attachment, Post, Workspace } from "../types";
+import type { Attachment, Post, SearchResults, Workspace } from "../types";
 import { ConversationTask } from "../components/ConversationTask";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 
@@ -48,8 +48,8 @@ function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChange
       await fn();
       onChanged();
       return true;
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
       return false;
     }
   }
@@ -245,8 +245,8 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
     setError(null);
     try {
       uploads.queue.add(Array.from(list), limits.max_attachments - files.length);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }
 
@@ -276,8 +276,8 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
       clientId.current = newId("p");
       setSaved(true);
       onPosted();
-    } catch (e: any) {
-      setError(e.message + " Your text is kept so you can try again.");
+    } catch (e: unknown) {
+      setError(errorMessage(e) + " Your text is kept so you can try again.");
     } finally {
       setBusy(false);
     }
@@ -389,19 +389,19 @@ export function Noticeboard({ ws }: { ws: Workspace }) {
   const [error, setError] = useState<string | null>(null);
   const [upcoming, setUpcoming] = useState<Upcoming[]>([]);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any | null>(null);
+  const [results, setResults] = useState<SearchResults | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [f, u] = await Promise.all([
         api<Feed>(`/workspaces/${ws.id}/posts`),
-        api(`/workspaces/${ws.id}/upcoming`),
+        api<{ items: Upcoming[] }>(`/workspaces/${ws.id}/upcoming`),
       ]);
       setFeed(f);
       setUpcoming(u.items);
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }, [ws.id]);
 
@@ -422,9 +422,9 @@ export function Noticeboard({ ws }: { ws: Workspace }) {
     e.preventDefault();
     if (query.trim().length < 2) return setResults(null);
     try {
-      setResults(await api(`/workspaces/${ws.id}/search`, { params: { q: query.trim() } }));
-    } catch (e: any) {
-      setError(e.message);
+      setResults(await api<SearchResults>(`/workspaces/${ws.id}/search`, { params: { q: query.trim() } }));
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }
 
@@ -501,10 +501,10 @@ export function Noticeboard({ ws }: { ws: Workspace }) {
                 {results.counts.posts} posts · {results.counts.chat} chat messages
               </p>
               <ul className="plain">
-                {results.posts.map((p: any) => (
+                {results.posts.map((p) => (
                   <li key={p.id}>📝 {p.body}</li>
                 ))}
-                {results.chat.map((c: any) => (
+                {results.chat.map((c) => (
                   <li key={c.id}>
                     💬 {c.author?.display_name}: {c.body}
                   </li>

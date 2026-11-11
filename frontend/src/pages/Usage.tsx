@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { LogicalCharges } from "../components/LogicalCharges";
 import type { UserUsage } from "../governance-types";
 import { fmtBytes as bytes } from "../format";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 
 export function Usage() {
   const [data, setData] = useState<UserUsage | null>(null);
@@ -11,8 +11,8 @@ export function Usage() {
     setError(null);
     try {
       setData(await api<UserUsage>("/usage"));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }
   useEffect(() => {

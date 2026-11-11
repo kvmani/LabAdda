@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 import { fmtBytes } from "../format";
 import type { WorkspaceUsage as Observation } from "../governance-types";
 import { LogicalCharges } from "../components/LogicalCharges";
@@ -17,8 +17,8 @@ export function WorkspaceUsage({ workspaceId }: { workspaceId: string }) {
     try {
       const result = await api<Observation>(`/workspaces/${workspaceId}/usage`);
       if (request === generation.current) setData(result);
-    } catch (e: any) {
-      if (request === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (request === generation.current) setError(errorMessage(e));
     } finally {
       if (request === generation.current) setLoading(false);
     }

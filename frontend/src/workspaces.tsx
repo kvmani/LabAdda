@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { api } from "./api";
+import { api, errorMessage } from "./api";
 import type { Workspace } from "./types";
 
 type Ctx = {
@@ -22,8 +22,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setWorkspaces(r.workspaces);
       setHomeId(r.home_workspace_id);
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }

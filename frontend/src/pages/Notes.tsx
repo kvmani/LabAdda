@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 import { fmtTime, isoToLocal, localToIso } from "../format";
 
 type Note = {
@@ -31,8 +31,8 @@ function NoteForm({ note, onSaved, onCancel }: { note?: Note; onSaved: () => voi
         setRemind("");
       }
       onSaved();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     }
   }
 
@@ -76,7 +76,7 @@ export function Notes() {
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = () =>
-    api("/notes")
+    api<{ notes: Note[] }>("/notes")
       .then((r) => setNotes(r.notes))
       .catch((e) => setError(e.message));
   useEffect(() => {

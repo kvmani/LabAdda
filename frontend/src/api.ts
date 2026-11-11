@@ -5,11 +5,14 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
-    public fields?: { field: string; message: string }[],
+    public fields?: FieldError[],
   ) {
     super(message);
   }
 }
+
+export type FieldError = { field: string; message: string };
+type ErrorBody = { error?: { code?: string; message?: string; fields?: FieldError[] } };
 
 let csrfToken: string | null = null;
 let onUnauthenticated: (() => void) | null = null;
@@ -30,7 +33,7 @@ type Options = {
   params?: Record<string, string | number | undefined | null>;
 };
 
-export async function api<T = any>(path: string, opts: Options = {}): Promise<T> {
+export async function api<T = unknown>(path: string, opts: Options = {}): Promise<T> {
   const method = opts.method ?? (opts.body || opts.form ? "POST" : "GET");
   const headers: Record<string, string> = { Accept: "application/json" };
   if (opts.uploadKey) headers["Idempotency-Key"] = opts.uploadKey;
@@ -57,7 +60,7 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
   } catch {
     throw new ApiError(0, "offline", "Cannot reach LabAdda. Check your connection and try again.");
   }
-  let data: any = null;
+  let data: unknown = null;
   try {
     if (res.headers.get("content-type")?.includes("json")) data = await res.json();
     else if (res.ok && res.status !== 204) throw new Error("Unexpected response type");
@@ -69,7 +72,7 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
     );
   }
   if (!res.ok) {
-    const err = data?.error ?? {};
+    const err = (data as ErrorBody | null)?.error ?? {};
     if (
       res.status === 401 &&
       !["/auth/login", "/auth/session", "/panel/session", "/panel/claim"].includes(path)
@@ -83,6 +86,36 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
     );
   }
   return data as T;
+}
+
+/** The message to show for anything caught from `api` or other browser code. */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Something went wrong. Try again.";
+}
+
+/** The caught value as an ApiError, or null when it is some other failure. */
+export function asApiError(error: unknown): ApiError | null {
+  return error instanceof ApiError ? error : null;
+}
+
+export function errorStatus(error: unknown): number | undefined {
+  return asApiError(error)?.status;
+}
+
+export function errorCode(error: unknown): string | undefined {
+  return asApiError(error)?.code;
+}
+
+/** No reply or a server failure: the request may or may not have been applied. */
+export function outcomeUnknown(error: unknown): boolean {
+  const status = errorStatus(error);
+  return status !== undefined && (status === 0 || status >= 500);
+}
+
+/** Signed out, or no longer allowed to see the resource: protected state must be cleared. */
+export function accessDenied(error: unknown): boolean {
+  const status = errorStatus(error);
+  return status === 401 || status === 403 || status === 404;
 }
 
 export function newId(prefix = "c"): string {

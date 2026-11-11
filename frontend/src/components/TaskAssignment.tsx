@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "../api";
+import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 
 export type Assignee = { id: string; display_name: string; is_active: boolean };
 type Colleague = { id: string; display_name: string; username: string };
@@ -58,8 +58,8 @@ export function TaskAssignment({
     try {
       const result = await api<Page>(`/todos/lists/${listId}/assignees`, { params: { q: query, after } });
       if (token === generation.current) setPage(result);
-    } catch (e: any) {
-      if (token === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (token === generation.current) setError(errorMessage(e));
     } finally {
       if (token === generation.current) setLoading(false);
     }
@@ -80,10 +80,10 @@ export function TaskAssignment({
         setPage(null);
         saved();
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        setReloadNeeded(e.status === 0 || e.status >= 500 || e.status === 409);
+        setError(errorMessage(e));
+        setReloadNeeded(outcomeUnknown(e) || errorStatus(e) === 409);
       }
     } finally {
       if (token === generation.current) setBusy(false);
@@ -101,8 +101,8 @@ export function TaskAssignment({
       setOpen(false);
       setPage(null);
       saved();
-    } catch (e: any) {
-      if (token === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (token === generation.current) setError(errorMessage(e));
     } finally {
       if (token === generation.current) setBusy(false);
     }

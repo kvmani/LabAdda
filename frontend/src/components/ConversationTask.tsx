@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import { accessDenied, api, errorCode, errorMessage, outcomeUnknown } from "../api";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import type { Workspace } from "../types";
@@ -82,10 +82,10 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
         params: { workspace_id: destination === "personal" ? undefined : destination, after },
       });
       if (token === generation.current) setLists(page);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        if ([401, 403, 404].includes(e.status)) deny();
+        setError(errorMessage(e));
+        if (accessDenied(e)) deny();
       }
     } finally {
       if (token === generation.current) setLoading(false);
@@ -130,14 +130,14 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
       setSaved(true);
       setUnknown(false);
       attempt.current = null;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        if (e.code === "board_context_changed") setNeedsContext(true);
-        const uncertain = e.status === 0 || e.status >= 500;
+        setError(errorMessage(e));
+        if (errorCode(e) === "board_context_changed") setNeedsContext(true);
+        const uncertain = outcomeUnknown(e);
         setUnknown(uncertain);
         if (!uncertain) attempt.current = null;
-        if ([401, 403, 404].includes(e.status)) deny();
+        if (accessDenied(e)) deny();
       }
     } finally {
       if (token === generation.current) setBusy(false);
@@ -155,10 +155,10 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
       setNeedsContext(false);
       setConfirmed(false);
       attempt.current = null;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        if ([401, 403, 404].includes(e.status)) deny();
+        setError(errorMessage(e));
+        if (accessDenied(e)) deny();
       }
     } finally {
       if (token === generation.current) setBusy(false);

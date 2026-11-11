@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 import { useWorkspaces } from "../workspaces";
 
@@ -53,8 +53,8 @@ export function MyTasks() {
         setPage(result);
         if (after === undefined) updates.acknowledge(seen);
       }
-    } catch (e: any) {
-      if (token === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (token === generation.current) setError(errorMessage(e));
     } finally {
       if (token === generation.current) setLoading(false);
     }

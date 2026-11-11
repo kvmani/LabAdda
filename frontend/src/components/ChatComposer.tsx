@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api, newId } from "../api";
+import { accessDenied, api, errorMessage, newId, outcomeUnknown } from "../api";
 import { useSession } from "../session";
 import { UploadRecovery, useUploadQueue } from "./UploadRecovery";
 import type { UploadedAsset } from "../uploads";
@@ -55,13 +55,13 @@ export function ChatComposer({
       setText("");
       setFiles([]);
       sent(message);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        const uncertain = e.status === 0 || e.status >= 500;
+        setError(errorMessage(e));
+        const uncertain = outcomeUnknown(e);
         setUnknown(uncertain);
         if (!uncertain) attempt.current = null;
-        if ([401, 403, 404].includes(e.status)) denied();
+        if (accessDenied(e)) denied();
       }
     } finally {
       if (token === generation.current) setBusy(false);
@@ -92,8 +92,8 @@ export function ChatComposer({
             onChange={(event) => {
               try {
                 uploads.queue.add(Array.from(event.target.files ?? []), maxFiles - files.length);
-              } catch (e: any) {
-                setError(e.message);
+              } catch (e: unknown) {
+                setError(errorMessage(e));
               }
               event.target.value = "";
             }}

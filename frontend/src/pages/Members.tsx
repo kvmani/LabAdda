@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 import { useSession } from "../session";
 import { useWorkspaces } from "../workspaces";
 import type { User, Workspace } from "../types";
@@ -23,9 +23,9 @@ export function Members({ ws }: { ws: Workspace }) {
 
   const load = useCallback(
     () =>
-      api(`/workspaces/${ws.id}/members`)
+      api<{ members: Member[] }>(`/workspaces/${ws.id}/members`)
         .then((r) => setMembers(r.members))
-        .catch((e) => setError(e.message)),
+        .catch((e) => setError(errorMessage(e))),
     [ws.id],
   );
   useEffect(() => {
@@ -39,8 +39,8 @@ export function Members({ ws }: { ws: Workspace }) {
       await load();
       await reload();
       after?.();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }
 

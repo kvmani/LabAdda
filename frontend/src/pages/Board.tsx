@@ -1,21 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, newId } from "../api";
+import { api, errorCode, errorMessage, newId, outcomeUnknown } from "../api";
 import { API, BASE } from "../config";
 import { useWorkspaces } from "../workspaces";
-import { realtime } from "../realtime";
-import type { BoardOp, Workspace } from "../types";
+import { realtime, type StrokePreview } from "../realtime";
+import type { BoardObjectContent, BoardOp, BoardOpPayload, Workspace } from "../types";
 import { ConversationTask } from "../components/ConversationTask";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 import type { UploadedAsset } from "../uploads";
 
-type Obj = {
-  kind: "stroke" | "text" | "sticky" | "image";
-  data: any;
+type Obj = BoardObjectContent & {
   author: string;
   alive: boolean;
   rev: number;
   dx: number;
   dy: number;
+};
+/** GET /workspaces/{id}/board: replay after a revision, or a reset from the compacted snapshot. */
+type BoardState = {
+  epoch: number;
+  revision: number;
+  base_revision: number;
+  reset: boolean;
+  snapshot: { revision: number; objects: Record<string, Obj> } | null;
+  ops: BoardOp[];
+  can_write: boolean;
+  can_moderate: boolean;
 };
 type Tool = "pen" | "eraser" | "text" | "sticky" | "image" | "snapshot" | "pan";
 type Region = { x: number; y: number; w: number; h: number };
@@ -25,7 +34,7 @@ type PendingOp = {
   epoch: number;
   type: string;
   object_id?: string;
-  payload?: any;
+  payload?: BoardOpPayload;
   base_revision?: number;
 };
 
@@ -39,9 +48,12 @@ export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<str
     byRev.set(op.revision, op);
     const obj = objects.get(op.object_id);
     if (op.type === "add") {
+      const { kind, data } = op.payload;
+      if (!kind || !data) continue; // the server never commits an add without both
+      // The server validated `data` against `kind` before committing the operation.
+      const content = { kind, data } as BoardObjectContent;
       objects.set(op.object_id, {
-        kind: op.payload.kind,
-        data: op.payload.data,
+        ...content,
         author: op.payload.author ?? op.actor_id,
         alive: true,
         rev: op.revision,
@@ -51,10 +63,15 @@ export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<str
     } else if (!obj) continue;
     else if (op.type === "erase") Object.assign(obj, { alive: false, rev: op.revision });
     else if (op.type === "move")
-      Object.assign(obj, { dx: obj.dx + op.payload.dx, dy: obj.dy + op.payload.dy, rev: op.revision });
+      Object.assign(obj, {
+        dx: obj.dx + (op.payload.dx ?? 0),
+        dy: obj.dy + (op.payload.dy ?? 0),
+        rev: op.revision,
+      });
     else if (op.type === "undo") {
       // Undo payloads carry their effect, so they still apply after the target was compacted.
-      const t = byRev.get(op.payload.target_revision);
+      const target = op.payload.target_revision;
+      const t = target === undefined ? undefined : byRev.get(target);
       const type = op.payload.target_type ?? t?.type;
       const dx = op.payload.dx ?? t?.payload.dx ?? 0;
       const dy = op.payload.dy ?? t?.payload.dy ?? 0;
@@ -133,14 +150,14 @@ export function Board({
   const flushing = useRef(false);
   const drawing = useRef<{ id: string; points: number[][]; last: number } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
-  const previews = useRef(new Map<string, { points: number[][]; color: string }>());
+  const previews = useRef(new Map<string, StrokePreview>());
   const state = useRef({ revision: 0, epoch: 1 });
   const [, force] = useState(0);
   const objects = fold(ops, base);
 
   const load = useCallback(
     async (full = false) => {
-      const r = await api(`/workspaces/${ws.id}/board`, {
+      const r = await api<BoardState>(`/workspaces/${ws.id}/board`, {
         params: full ? {} : { epoch: state.current.epoch, after: state.current.revision },
       });
       // A reset response starts from the compacted snapshot (if any) plus later operations.
@@ -186,18 +203,20 @@ export function Board({
         setSave("Saving…");
         const op = pending.current[0];
         try {
-          const r = await api(`/workspaces/${ws.id}/board/ops`, { body: op });
+          const r = await api<{ committed: BoardOp; duplicate: boolean }>(`/workspaces/${ws.id}/board/ops`, {
+            body: op,
+          });
           apply(r.committed);
           pending.current.shift();
-        } catch (e: any) {
-          if (e.status === 0 || e.status >= 500) {
+        } catch (e: unknown) {
+          if (outcomeUnknown(e)) {
             setSave("Reconnecting…");
             return; // keep pending ops; resend with the same IDs later
           }
           pending.current.shift();
-          if (e.code === "stale_epoch") pending.current = [];
+          if (errorCode(e) === "stale_epoch") pending.current = [];
           setSave("Conflict — reloaded");
-          setMessage(e.message);
+          setMessage(errorMessage(e));
           await load(true);
           return;
         }
@@ -214,7 +233,7 @@ export function Board({
   };
 
   useEffect(() => {
-    load(true).catch((e) => setMessage(e.message));
+    load(true).catch((e) => setMessage(errorMessage(e)));
     const retry = window.setInterval(() => pending.current.length && flush(), 3000);
     const unsub = realtime.subscribe(ws.id, (ev) => {
       if (ev.type === "board.op") apply(ev.op);
@@ -224,7 +243,7 @@ export function Board({
         load(true);
       } else if (ev.type === "board.preview") {
         if (ev.done) previews.current.delete(ev.preview_id);
-        else previews.current.set(ev.preview_id, ev.stroke);
+        else if (ev.stroke) previews.current.set(ev.preview_id, ev.stroke);
         force((n) => n + 1);
       } else if (ev.type === "presence") setPresence(ev.users);
       else if (ev.type === "subscribed") {
@@ -451,16 +470,16 @@ export function Board({
           },
         },
       });
-    } catch (e: any) {
-      setMessage(e.message);
+    } catch (e: unknown) {
+      setMessage(errorMessage(e));
     }
   }
 
   async function openOnPanel() {
     try {
       setPairing(await api("/panel/pairings", { body: { workspace_id: ws.id } }));
-    } catch (e: any) {
-      setMessage(e.message);
+    } catch (e: unknown) {
+      setMessage(errorMessage(e));
     }
   }
 
@@ -472,14 +491,15 @@ export function Board({
         body: { revision: Number(answer), reason: "Restored from board view" },
       });
       await load(true);
-    } catch (e: any) {
-      setMessage(e.message);
+    } catch (e: unknown) {
+      setMessage(errorMessage(e));
     }
   }
 
   const mine = ops.some((o) => o.actor_id === userId && o.type !== "undo");
   const typed = [...objects.entries()].filter(
-    ([, o]) => o.alive && o.kind !== "stroke" && o.kind !== "image",
+    (entry): entry is [string, Obj & { kind: "text" | "sticky" }] =>
+      entry[1].alive && (entry[1].kind === "text" || entry[1].kind === "sticky"),
   );
   const imageCount = [...objects.values()].filter((o) => o.alive && o.kind === "image").length;
 
@@ -549,8 +569,8 @@ export function Board({
                 onChange={(e) => {
                   try {
                     uploads.queue.add(Array.from(e.target.files ?? []), 1);
-                  } catch (error: any) {
-                    setMessage(error.message);
+                  } catch (error: unknown) {
+                    setMessage(errorMessage(error));
                   }
                   e.target.value = "";
                 }}
@@ -746,9 +766,9 @@ function PublishSnapshot({
   const broader = dest !== ws.id;
 
   useEffect(() => {
-    api(`/workspaces/${ws.id}/board/snapshot-destinations`)
+    api<{ destinations: Destination[] }>(`/workspaces/${ws.id}/board/snapshot-destinations`)
       .then((x) => setDests(x.destinations))
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(errorMessage(e)));
   }, [ws.id]);
 
   async function publish() {
@@ -767,8 +787,8 @@ function PublishSnapshot({
       });
       reload();
       onClose(true);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

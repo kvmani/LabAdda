@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { InventoryJobs } from "./InventoryJobs";
 import { DatabaseStorage } from "./DatabaseStorage";
 import { LogicalCharges } from "./LogicalCharges";
-import { api } from "../api";
+import { api, asApiError, errorMessage } from "../api";
 import { fmtBytes as bytes } from "../format";
 import type {
   CapacityForecast as Forecast,
@@ -87,9 +87,9 @@ export function Governance() {
         body: { profile: proposedProfile() },
       });
       if (generation === forecastGeneration.current) setForecast(result);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (generation === forecastGeneration.current)
-        setError(e.fields?.map((f: { message: string }) => f.message).join("; ") || e.message);
+        setError((asApiError(e)?.fields ?? []).map((field) => field.message).join("; ") || errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -100,7 +100,7 @@ export function Governance() {
       api<PolicyDrafts>("/admin/policy-drafts"),
       api<SiteUsage>("/admin/usage"),
       api<{ observations: Observation[] }>("/admin/usage-observations"),
-      api("/admin/storage-inspections"),
+      api<{ inspections: StorageReceipt[] }>("/admin/storage-inspections"),
     ]);
     setPolicy(p);
     setUsage(u);
@@ -108,9 +108,9 @@ export function Governance() {
     setInspections(inspections.inspections);
   }
   useEffect(() => {
-    load().catch((e) => setError(e.message));
+    load().catch((e) => setError(errorMessage(e)));
   }, []);
-  async function run(action: () => Promise<any>, success: string) {
+  async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true);
     setError(null);
     setMessage("");
@@ -118,11 +118,12 @@ export function Governance() {
       await action();
       await load();
       setMessage(success);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const fields = asApiError(e)?.fields ?? [];
       setError(
-        e.fields?.length
-          ? e.fields.map((f: { field: string; message: string }) => `${f.field}: ${f.message}`).join("; ")
-          : e.message,
+        fields.length
+          ? fields.map((field) => `${field.field}: ${field.message}`).join("; ")
+          : errorMessage(e),
       );
     } finally {
       setBusy(false);

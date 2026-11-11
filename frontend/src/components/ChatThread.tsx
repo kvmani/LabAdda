@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { accessDenied, api, errorMessage } from "../api";
 import { realtime } from "../realtime";
 import { ChatFiles } from "./ChatFiles";
 import { ChatComposer } from "./ChatComposer";
@@ -32,10 +32,10 @@ export function ChatThread({ ws, rootId, close }: { ws: Workspace; rootId: strin
         setPage(result);
         if (before === undefined && seen === hints.current) setChanged(false);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        if ([401, 403, 404].includes(e.status)) deny();
+        setError(errorMessage(e));
+        if (accessDenied(e)) deny();
       }
     } finally {
       if (token === generation.current) setLoading(false);

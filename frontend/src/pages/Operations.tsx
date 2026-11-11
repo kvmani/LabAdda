@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { InventoryJobs } from "../components/InventoryJobs";
 import { DatabaseStorage } from "../components/DatabaseStorage";
 import { LogicalCharges } from "../components/LogicalCharges";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 import type { SiteUsage } from "../governance-types";
 import { fmtBytes } from "../format";
 
@@ -14,8 +14,8 @@ export function Operations() {
     setError("");
     try {
       setData(await api<SiteUsage>("/admin/usage"));
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }
   useEffect(() => {

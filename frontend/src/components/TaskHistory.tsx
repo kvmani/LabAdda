@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 
 type Change = {
   revision: number;
@@ -69,8 +69,8 @@ export function TaskHistory({
         params: { before },
       });
       if (token === generation.current) setPage(result);
-    } catch (e: any) {
-      if (token === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (token === generation.current) setError(errorMessage(e));
     }
   }
   if (!open)

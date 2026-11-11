@@ -62,6 +62,27 @@ export type ChatMessage = {
   created_at: string;
   author: User | null;
 };
+export type StrokeData = { points: number[][]; color: string; width: number };
+/** Typed notes and stickies share one shape. */
+export type NoteData = { x: number; y: number; text: string; color: string };
+export type BoardImageData = { x: number; y: number; w: number; h: number; asset_id: string };
+/** A board object's kind with the data the server validated for that kind (api/board.py). */
+export type BoardObjectContent =
+  | { kind: "stroke"; data: StrokeData }
+  | { kind: "text" | "sticky"; data: NoteData }
+  | { kind: "image"; data: BoardImageData };
+export type BoardObjectKind = BoardObjectContent["kind"];
+export type BoardObjectData = BoardObjectContent["data"];
+/** Fields an operation may carry; which ones depends on the operation type. */
+export type BoardOpPayload = {
+  kind?: BoardObjectKind;
+  data?: BoardObjectData;
+  author?: string;
+  dx?: number;
+  dy?: number;
+  target_revision?: number;
+  target_type?: string;
+};
 export type BoardOp = {
   revision: number;
   epoch: number;
@@ -69,5 +90,25 @@ export type BoardOp = {
   actor_id: string;
   type: string;
   object_id: string;
-  payload: any;
+  payload: BoardOpPayload;
 };
+
+/** Where opening a notification leads (api/notifications.py). */
+export type NotificationLink =
+  | { view: "notes"; id: string }
+  | { view: "noticeboard"; workspace_id: string; post_id: string }
+  | { view: "chat"; workspace_id: string; seq: number };
+export type OpenedNotification = { id: string; kind: string; link: NotificationLink };
+
+type SearchHit = { id: string; body: string; created_at: string; author: User | null };
+/** Workspace-local search (GET /workspaces/{id}/search). */
+export type SearchResults = {
+  counts: { posts: number; chat: number };
+  posts: (SearchHit & { parent_id: string | null })[];
+  chat: (SearchHit & { seq: number })[];
+};
+
+/** A page of workspace chat (GET /workspaces/{id}/chat). */
+export type ChatPage = { messages: ChatMessage[]; has_more: boolean };
+/** A person with their direct role in one workspace. */
+export type WorkspaceMember = User & { role: "member" | "steward" };

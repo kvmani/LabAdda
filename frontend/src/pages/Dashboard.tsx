@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import type { OpenedNotification } from "../types";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import { fmtTime } from "../format";
@@ -62,9 +63,9 @@ export function Dashboard() {
         setData(result);
         if (seen === signals.current) setChanged(false);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current)
-        setError(e.message + " The overview is unavailable; refresh to try again.");
+        setError(errorMessage(e) + " The overview is unavailable; refresh to try again.");
     } finally {
       if (token === generation.current) setLoading(false);
     }
@@ -103,12 +104,12 @@ export function Dashboard() {
       choice = ++openGeneration.current;
     setError("");
     try {
-      const result = await api(`/notifications/${id}/open`, { method: "POST" });
+      const result = await api<OpenedNotification>(`/notifications/${id}/open`, { method: "POST" });
       if (token !== generation.current || choice !== openGeneration.current) return;
       const link = result.link;
       navigate(link.view === "notes" ? "/notes" : `/w/${link.workspace_id}/${link.view}`);
-    } catch (e: any) {
-      if (token === generation.current && choice === openGeneration.current) setError(e.message);
+    } catch (e: unknown) {
+      if (token === generation.current && choice === openGeneration.current) setError(errorMessage(e));
     }
   }
   return (

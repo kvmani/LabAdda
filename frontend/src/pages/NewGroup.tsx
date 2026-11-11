@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api } from "../api";
+import { api, errorMessage, outcomeUnknown } from "../api";
 import { useWorkspaces } from "../workspaces";
-import type { User } from "../types";
+import type { User, Workspace } from "../types";
 
 export function ColleaguePicker({
   selected,
@@ -17,7 +17,7 @@ export function ColleaguePicker({
   const [found, setFound] = useState<User[]>([]);
   useEffect(() => {
     const t = window.setTimeout(() => {
-      api("/directory", { params: { q } })
+      api<{ users: User[] }>("/directory", { params: { q } })
         .then((r) => setFound(r.users))
         .catch(() => setFound([]));
     }, 200);
@@ -88,7 +88,7 @@ export function NewGroup() {
     setBusy(true);
     setError(null);
     try {
-      const ws = await api("/groups", {
+      const ws = await api<Workspace>("/groups", {
         body: {
           name: name || `Conversation with ${members.map((m) => m.display_name).join(", ")}`.slice(0, 120),
           description,
@@ -97,10 +97,10 @@ export function NewGroup() {
       });
       await reload();
       if (token === generation.current) navigate(`/w/${ws.id}/${conversation ? "chat" : "noticeboard"}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (token === generation.current) {
-        setError(err.message);
-        if (err.status === 0 || err.status >= 500) {
+        setError(errorMessage(err));
+        if (outcomeUnknown(err)) {
           setUnknown(true);
           reload();
         }

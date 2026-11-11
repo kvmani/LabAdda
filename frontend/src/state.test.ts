@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { fold } from "./pages/Board";
 import { treeOrder } from "./workspaces";
-import type { BoardOp, Workspace } from "./types";
+import type { BoardOp, BoardOpPayload, Workspace } from "./types";
 
 const op = (
   revision: number,
   type: string,
   object_id: string,
-  payload: any = {},
+  payload: BoardOpPayload = {},
   actor_id = "u1",
 ): BoardOp => ({ revision, epoch: 1, op_id: `op${revision}`, actor_id, type, object_id, payload });
 
 describe("board fold", () => {
   it("applies add, erase, undo and move like the server", () => {
-    const add = { kind: "sticky", data: { x: 0, y: 0, text: "hi", color: "#fff59d" } };
+    const add: BoardOpPayload = { kind: "sticky", data: { x: 0, y: 0, text: "hi", color: "#fff59d" } };
     const objs = fold([
       op(1, "add", "a", add),
       op(2, "move", "a", { dx: 5, dy: 5 }),
@@ -70,7 +70,7 @@ describe("board fold from a compacted snapshot", () => {
         dx: 0,
         dy: 0,
       },
-    } as any;
+    } satisfies Parameters<typeof fold>[1];
     const objs = fold(
       [
         op(21, "undo", "a", { target_revision: 3, target_type: "add" }),

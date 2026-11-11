@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { api, setCsrf, setUnauthenticatedHandler } from "../api";
+import { api, setCsrf, setUnauthenticatedHandler, errorMessage } from "../api";
 import { realtime } from "../realtime";
 import type { Workspace } from "../types";
 import { Board } from "./Board";
@@ -63,8 +63,8 @@ function PairScreen({ notice, onPaired }: { notice: string | null; onPaired: (s:
     setError(null);
     try {
       onPaired(await api<PanelSession>("/panel/claim", { body: { code } }));
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }

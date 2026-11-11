@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 
 type Attempt = {
   number: number;
@@ -59,8 +59,8 @@ export function InventoryJobs() {
     try {
       const result = await api<Page>("/admin/inventory-jobs?" + query);
       if (current === generation.current) setPage(result);
-    } catch (e: any) {
-      if (current === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (current === generation.current) setError(errorMessage(e));
     } finally {
       if (current === generation.current) setLoading(false);
     }
@@ -73,8 +73,8 @@ export function InventoryJobs() {
     try {
       const result = await api<Job>("/admin/inventory-jobs/" + id);
       if (current === detailGeneration.current) setDetail(result);
-    } catch (e: any) {
-      if (current === detailGeneration.current) setDetailError(e.message);
+    } catch (e: unknown) {
+      if (current === detailGeneration.current) setDetailError(errorMessage(e));
     }
   }
   useEffect(() => {

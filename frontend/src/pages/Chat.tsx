@@ -3,11 +3,11 @@ import { ChatFiles } from "../components/ChatFiles";
 import { ChatComposer } from "../components/ChatComposer";
 import { ChatThread } from "../components/ChatThread";
 import { ConversationTask } from "../components/ConversationTask";
-import { api, newId } from "../api";
+import { accessDenied, api, errorMessage, newId } from "../api";
 import { fmtTime } from "../format";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
-import type { ChatMessage, Workspace } from "../types";
+import type { ChatMessage, ChatPage, Workspace } from "../types";
 
 export function Chat({ ws }: { ws: Workspace }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]),
@@ -64,7 +64,7 @@ export function Chat({ ws }: { ws: Workspace }) {
     try {
       for (let i = 0; i < 4; i++) {
         const cursor = safeCursor.current;
-        const result = await api(`/workspaces/${ws.id}/chat`, {
+        const result = await api<ChatPage>(`/workspaces/${ws.id}/chat`, {
           params: cursor ? { after: cursor, limit: 200 } : { limit: 50 },
         });
         if (token !== generation.current) return;
@@ -85,10 +85,10 @@ export function Chat({ ws }: { ws: Workspace }) {
         setError("");
         reload();
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        if ([401, 403, 404].includes(e.status)) deny();
+        setError(errorMessage(e));
+        if (accessDenied(e)) deny();
       }
     } finally {
       catching.current = false;
@@ -134,15 +134,15 @@ export function Chat({ ws }: { ws: Workspace }) {
     historyMode.current = true;
     setEarlier(true);
     try {
-      const result = await api(`/workspaces/${ws.id}/chat`, { params: { before: first.seq } });
+      const result = await api<ChatPage>(`/workspaces/${ws.id}/chat`, { params: { before: first.seq } });
       if (token === generation.current && view === viewGeneration.current && historyMode.current) {
         setHasMore(result.has_more);
         setMessages(result.messages);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        if ([401, 403, 404].includes(e.status)) deny();
+        setError(errorMessage(e));
+        if (accessDenied(e)) deny();
       }
     }
   }
@@ -260,8 +260,8 @@ function PublishSummary({ source, text, onClose }: { source: Workspace; text: st
     try {
       await api(`/workspaces/${dest}/posts`, { body: { body, client_id: clientId.current } });
       onClose();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     }
   }
 

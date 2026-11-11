@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "../api";
+import { api, errorMessage, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 
 type Comment = {
@@ -59,8 +59,8 @@ export function TaskComments({
         setPage(result);
         if (before === undefined) updates.acknowledge(seen);
       }
-    } catch (e: any) {
-      if (token === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (token === generation.current) setError(errorMessage(e));
     } finally {
       if (token === generation.current) setLoading(false);
     }
@@ -81,10 +81,10 @@ export function TaskComments({
       setUnconfirmed(false);
       setBusy(false);
       await load();
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        const unknown = e.status === 0 || e.status >= 500;
+        setError(errorMessage(e));
+        const unknown = outcomeUnknown(e);
         setUnconfirmed(unknown);
         if (!unknown) attempt.current = null;
       }

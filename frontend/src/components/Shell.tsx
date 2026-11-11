@@ -72,7 +72,7 @@ export function Shell({ children }: { children: ReactNode }) {
   useEffect(() => realtime.onState(setConn) as () => void, []);
   useEffect(() => {
     const load = () =>
-      api("/notifications", { params: { limit: 1 } })
+      api<{ unread: number }>("/notifications", { params: { limit: 1 } })
         .then((r) => setUnread(r.unread))
         .catch(() => undefined);
     load();

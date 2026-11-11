@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api, errorCode, errorMessage } from "../api";
+import type { NotificationLink, OpenedNotification } from "../types";
 import { fmtTime } from "../format";
 
 type Item = {
@@ -10,7 +11,7 @@ type Item = {
   read: boolean;
   title: string;
   workspace: { id: string; name: string } | null;
-  link: any;
+  link: NotificationLink;
 };
 const kindText: Record<string, string> = {
   mention: "Mentioned you",
@@ -29,20 +30,20 @@ export function Notifications({ onClose, onChange }: { onClose: () => void; onCh
         setItems(r.items);
         onChange(r.unread);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(errorMessage(e)));
   useEffect(() => {
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function open(item: Item) {
     try {
-      const r = await api(`/notifications/${item.id}/open`, { method: "POST" });
-      const l = r.link;
+      const opened = await api<OpenedNotification>(`/notifications/${item.id}/open`, { method: "POST" });
+      const link = opened.link;
       onClose();
-      if (l.view === "notes") navigate("/notes");
-      else navigate(`/w/${l.workspace_id}/${l.view}`);
-    } catch (e: any) {
-      setError(e.code === "not_found" ? "That item is no longer available to you." : e.message);
+      if (link.view === "notes") navigate("/notes");
+      else navigate(`/w/${link.workspace_id}/${link.view}`);
+    } catch (e: unknown) {
+      setError(errorCode(e) === "not_found" ? "That item is no longer available to you." : errorMessage(e));
       load();
     }
   }

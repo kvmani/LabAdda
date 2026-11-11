@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
+import type { WorkspaceMember } from "../types";
 import { UsageReaders } from "../components/UsageReaders";
 import { Governance } from "../components/Governance";
-import { api } from "../api";
+import { api, errorMessage } from "../api";
 import { kindLabel } from "../format";
 
 type AdminUser = {
@@ -27,42 +28,54 @@ export function Admin() {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [selected, setSelected] = useState<string>("");
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [form, setForm] = useState({ username: "", display_name: "", is_admin: false });
   const [unit, setUnit] = useState({ name: "", kind: "org", parent_id: "" });
   const [grant, setGrant] = useState({ user_id: "", role: "member" });
 
   const load = async () => {
     try {
-      const [u, w] = await Promise.all([api("/admin/users"), api("/admin/workspaces")]);
+      const [u, w] = await Promise.all([
+        api<{ users: AdminUser[] }>("/admin/users"),
+        api<{ workspaces: AdminWs[] }>("/admin/workspaces"),
+      ]);
       setUsers(u.users);
       setSpaces(w.workspaces);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   };
   useEffect(() => {
     load();
   }, []);
   useEffect(() => {
-    if (selected) api(`/admin/workspaces/${selected}/memberships`).then((r) => setMembers(r.memberships));
+    if (selected)
+      api<{ memberships: WorkspaceMember[] }>(`/admin/workspaces/${selected}/memberships`).then((r) =>
+        setMembers(r.memberships),
+      );
   }, [selected]);
 
-  async function run(fn: () => Promise<any>) {
+  async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
     setError(null);
     try {
       const r = await fn();
       await load();
-      if (selected) setMembers((await api(`/admin/workspaces/${selected}/memberships`)).memberships);
+      if (selected)
+        setMembers(
+          (await api<{ memberships: WorkspaceMember[] }>(`/admin/workspaces/${selected}/memberships`))
+            .memberships,
+        );
       return r;
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }
 
   async function createUser(e: FormEvent) {
     e.preventDefault();
-    const r = await run(() => api("/admin/users", { body: form }));
+    const r = await run(() =>
+      api<{ user: AdminUser; activation_token: string; expires_at: string }>("/admin/users", { body: form }),
+    );
     if (r) {
       setToken(
         `Activation code for ${r.user.username}: ${r.activation_token} (expires ${new Date(r.expires_at).toLocaleString()}). Share it through an approved channel.`,
@@ -161,7 +174,11 @@ export function Admin() {
                       <button
                         className="ghost small"
                         onClick={async () => {
-                          const r = await run(() => api(`/admin/users/${u.id}/reset`, { method: "POST" }));
+                          const r = await run(() =>
+                            api<{ reset_token: string; expires_at: string }>(`/admin/users/${u.id}/reset`, {
+                              method: "POST",
+                            }),
+                          );
                           if (r) setToken(`Reset code for ${u.username}: ${r.reset_token}`);
                         }}
                       >

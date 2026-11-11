@@ -1,3 +1,4 @@
+import { errorMessage } from "../api";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSession } from "../session";
@@ -18,8 +19,8 @@ export function Login({ next }: { next: string }) {
     try {
       await signIn(username, password);
       navigate(next && next !== "/login" ? next : "/", { replace: true });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -86,8 +87,8 @@ export function Activate() {
     try {
       await activate(token.trim(), password);
       navigate("/", { replace: true });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     }
   }
 

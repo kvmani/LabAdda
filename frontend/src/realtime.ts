@@ -1,7 +1,39 @@
 import { socketUrl } from "./config";
+import type { BoardOp, ChatMessage } from "./types";
+
+/** An uncommitted stroke another person is drawing; relayed by the server without storing it. */
+export type StrokePreview = { points: number[][]; color: string };
+
+/** Messages the server pushes on the socket (see docs/API.md, socket messages). */
+export type RealtimeEvent =
+  | { type: "hello" | "pong" | "access_changed" }
+  | { type: "session_ended"; reason?: string }
+  | { type: "error"; code: string }
+  | {
+      type: "subscribed" | "subscribe_failed" | "revoked" | "noticeboard.changed" | "tasks.changed";
+      workspace_id: string;
+    }
+  | { type: "chat.message"; message: ChatMessage }
+  | { type: "board.op"; workspace_id: string; op: BoardOp }
+  | { type: "board.epoch"; workspace_id: string; epoch: number }
+  | {
+      type: "board.preview";
+      workspace_id: string;
+      actor_id: string;
+      stroke: StrokePreview | null;
+      preview_id: string;
+      done: boolean;
+    }
+  | { type: "presence"; workspace_id: string; users: { id: string; display_name: string }[] };
+
+function workspaceOf(event: RealtimeEvent): string | undefined {
+  if ("workspace_id" in event) return event.workspace_id;
+  if (event.type === "chat.message") return event.message.workspace_id;
+  return undefined;
+}
 
 export type ConnState = "connecting" | "online" | "reconnecting" | "offline";
-type Handler = (event: any) => void;
+type Handler = (event: RealtimeEvent) => void;
 
 /** One socket per tab. Subscriptions survive reconnects; callers refetch missed state on "subscribed". */
 class Realtime {
@@ -49,15 +81,15 @@ class Realtime {
       for (const id of this.handlers.keys()) this.send({ type: "subscribe", workspace_id: id });
     };
     ws.onmessage = (ev) => {
-      let msg: any;
+      let msg: RealtimeEvent;
       try {
-        msg = JSON.parse(ev.data);
+        msg = JSON.parse(String(ev.data)) as RealtimeEvent;
       } catch {
         return;
       }
-      const id = msg.workspace_id ?? msg.message?.workspace_id;
-      if (msg.type === "subscribed") this.confirmed.add(id);
-      if (msg.type === "revoked" || msg.type === "subscribe_failed") this.confirmed.delete(id);
+      const id = workspaceOf(msg);
+      if (msg.type === "subscribed") this.confirmed.add(msg.workspace_id);
+      if (msg.type === "revoked" || msg.type === "subscribe_failed") this.confirmed.delete(msg.workspace_id);
       if (id && this.handlers.has(id)) this.handlers.get(id)!.forEach((h) => h(msg));
       if (!id || msg.type === "access_changed" || msg.type === "session_ended") {
         this.handlers.forEach((set) => set.forEach((h) => h(msg)));

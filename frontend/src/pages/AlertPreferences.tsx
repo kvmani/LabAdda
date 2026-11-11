@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "../api";
+import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { Link } from "react-router-dom";
 type Choices = { mentions: boolean; official_notices: boolean; reminders: boolean; revision: number };
 export function AlertPreferences() {
@@ -20,8 +20,8 @@ export function AlertPreferences() {
         setReloadNeeded(false);
         setMessage("Current alert choices loaded.");
       }
-    } catch (e: any) {
-      if (token === generation.current) setError(e.message);
+    } catch (e: unknown) {
+      if (token === generation.current) setError(errorMessage(e));
     } finally {
       if (token === generation.current) setBusy(false);
     }
@@ -45,10 +45,10 @@ export function AlertPreferences() {
         setChoices(result);
         setMessage("Alert preferences saved.");
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current) {
-        setError(e.message);
-        if (e.status === 0 || e.status >= 500 || e.status === 409) setReloadNeeded(true);
+        setError(errorMessage(e));
+        if (outcomeUnknown(e) || errorStatus(e) === 409) setReloadNeeded(true);
       }
     } finally {
       if (token === generation.current) setBusy(false);

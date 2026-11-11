@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import { api, errorMessage, errorStatus } from "../api";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 
@@ -49,9 +49,13 @@ export function TaskSource({ listId, taskId }: { listId: string; taskId: string 
     try {
       const result = await api<Source>(`/todos/lists/${listId}/tasks/${taskId}/source`);
       if (token === generation.current) setSource(result);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token === generation.current)
-        setError([403, 404].includes(e.status) ? "Source unavailable or no longer accessible." : e.message);
+        setError(
+          [403, 404].includes(errorStatus(e) ?? 0)
+            ? "Source unavailable or no longer accessible."
+            : errorMessage(e),
+        );
     } finally {
       if (token === generation.current) setLoading(false);
     }
