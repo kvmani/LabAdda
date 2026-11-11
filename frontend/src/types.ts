@@ -20,7 +20,14 @@ export type Workspace = {
   can_moderate: boolean;
   unread_chat: number;
 };
-export type Attachment = { id: string; display_name: string; media_type: string; size: number; url: string; preview_url: string | null };
+export type Attachment = {
+  id: string;
+  display_name: string;
+  media_type: string;
+  size: number;
+  url: string;
+  preview_url: string | null;
+};
 export type Post = {
   id: string;
   seq: number;
@@ -38,7 +45,29 @@ export type Post = {
   replies: Post[];
   can_edit: boolean;
   can_remove: boolean;
-  snapshot?: { source_revision: number; source_name: string | null; source_workspace_id: string | null } | null;
+  snapshot?: {
+    source_revision: number;
+    source_name: string | null;
+    source_workspace_id: string | null;
+  } | null;
 };
-export type ChatMessage = { attachments:Attachment[]; parent_id:string|null; id: string; seq: number; workspace_id: string; body: string; client_id: string; created_at: string; author: User | null };
-export type BoardOp = { revision: number; epoch: number; op_id: string; actor_id: string; type: string; object_id: string; payload: any };
+export type ChatMessage = {
+  attachments: Attachment[];
+  parent_id: string | null;
+  id: string;
+  seq: number;
+  workspace_id: string;
+  body: string;
+  client_id: string;
+  created_at: string;
+  author: User | null;
+};
+export type BoardOp = {
+  revision: number;
+  epoch: number;
+  op_id: string;
+  actor_id: string;
+  type: string;
+  object_id: string;
+  payload: any;
+};

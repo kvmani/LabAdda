@@ -1,7 +1,12 @@
 import { API, PANEL } from "./config";
 
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string, public fields?: { field: string; message: string }[]) {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+    public fields?: { field: string; message: string }[],
+  ) {
     super(message);
   }
 }
@@ -17,7 +22,13 @@ export function setUnauthenticatedHandler(fn: () => void) {
   onUnauthenticated = fn;
 }
 
-type Options = { method?: string; body?: unknown; form?: FormData; uploadKey?: string; params?: Record<string, string | number | undefined | null> };
+type Options = {
+  method?: string;
+  body?: unknown;
+  form?: FormData;
+  uploadKey?: string;
+  params?: Record<string, string | number | undefined | null>;
+};
 
 export async function api<T = any>(path: string, opts: Options = {}): Promise<T> {
   const method = opts.method ?? (opts.body || opts.form ? "POST" : "GET");
@@ -35,7 +46,8 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
   let url = API + path;
   if (opts.params) {
     const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(opts.params)) if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
+    for (const [k, v] of Object.entries(opts.params))
+      if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
     const s = qs.toString();
     if (s) url += "?" + s;
   }
@@ -50,12 +62,25 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
     if (res.headers.get("content-type")?.includes("json")) data = await res.json();
     else if (res.ok && res.status !== 204) throw new Error("Unexpected response type");
   } catch {
-    throw new ApiError(0, "response_unconfirmed", "The server response could not be read. Check the result before trying again.");
+    throw new ApiError(
+      0,
+      "response_unconfirmed",
+      "The server response could not be read. Check the result before trying again.",
+    );
   }
   if (!res.ok) {
     const err = data?.error ?? {};
-    if (res.status === 401 && !["/auth/login", "/auth/session", "/panel/session", "/panel/claim"].includes(path)) onUnauthenticated?.();
-    throw new ApiError(res.status, err.code ?? "error", err.message ?? `Request failed (${res.status})`, err.fields);
+    if (
+      res.status === 401 &&
+      !["/auth/login", "/auth/session", "/panel/session", "/panel/claim"].includes(path)
+    )
+      onUnauthenticated?.();
+    throw new ApiError(
+      res.status,
+      err.code ?? "error",
+      err.message ?? `Request failed (${res.status})`,
+      err.fields,
+    );
   }
   return data as T;
 }

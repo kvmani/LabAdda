@@ -43,8 +43,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     session,
     loading,
     expired,
-    signIn: async (username, password) => accept(await api<SessionInfo>("/auth/login", { body: { username, password } })),
-    activate: async (token, password) => accept(await api<SessionInfo>("/auth/activate", { body: { token, password } })),
+    signIn: async (username, password) =>
+      accept(await api<SessionInfo>("/auth/login", { body: { username, password } })),
+    activate: async (token, password) =>
+      accept(await api<SessionInfo>("/auth/activate", { body: { token, password } })),
     signOut: async () => {
       try {
         await api("/auth/logout", { method: "POST" });

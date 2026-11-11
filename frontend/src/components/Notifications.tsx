@@ -3,8 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { fmtTime } from "../format";
 
-type Item = { id: string; kind: string; created_at: string; read: boolean; title: string; workspace: { id: string; name: string } | null; link: any };
-const kindText: Record<string, string> = { mention: "Mentioned you", reminder: "Reminder", official: "Official notice" };
+type Item = {
+  id: string;
+  kind: string;
+  created_at: string;
+  read: boolean;
+  title: string;
+  workspace: { id: string; name: string } | null;
+  link: any;
+};
+const kindText: Record<string, string> = {
+  mention: "Mentioned you",
+  reminder: "Reminder",
+  official: "Official notice",
+};
 
 export function Notifications({ onClose, onChange }: { onClose: () => void; onChange: (n: number) => void }) {
   const [items, setItems] = useState<Item[] | null>(null);
@@ -40,17 +52,31 @@ export function Notifications({ onClose, onChange }: { onClose: () => void; onCh
       <div className="row between">
         <h2>Notifications</h2>
         <div className="row">
-          <button className="ghost" onClick={() => api("/notifications/read-all", { method: "POST" }).then(load)}>Mark all read</button>
-          <button className="ghost" onClick={onClose} aria-label="Close notifications">Close</button>
+          <button
+            className="ghost"
+            onClick={() => api("/notifications/read-all", { method: "POST" }).then(load)}
+          >
+            Mark all read
+          </button>
+          <button className="ghost" onClick={onClose} aria-label="Close notifications">
+            Close
+          </button>
         </div>
       </div>
       {error && <p className="error">{error}</p>}
-      {items === null ? <p className="muted">Loading…</p> : items.length === 0 ? <p className="muted">No notifications.</p> : (
+      {items === null ? (
+        <p className="muted">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="muted">No notifications.</p>
+      ) : (
         <ul className="plain">
           {items.map((n) => (
             <li key={n.id}>
               <button className={"notification" + (n.read ? "" : " unread")} onClick={() => open(n)}>
-                <strong>{n.read ? "" : "Unread · "}{kindText[n.kind] ?? n.kind}</strong>
+                <strong>
+                  {n.read ? "" : "Unread · "}
+                  {kindText[n.kind] ?? n.kind}
+                </strong>
                 {n.workspace && <span className="muted"> in {n.workspace.name}</span>}
                 <span className="snippet">{n.title}</span>
                 <span className="muted small">{fmtTime(n.created_at)}</span>

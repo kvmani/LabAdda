@@ -23,9 +23,15 @@ function Home() {
   return (
     <section className="state empty" aria-live="polite">
       <h1>No workspaces yet</h1>
-      <p>You are not a member of any workspace. Ask an administrator to add you, or start a collaborative group with colleagues.</p>
       <p>
-        <Link className="button" to="/groups/new">Create a group</Link> or open <Link to="/notes">My Notes</Link>.
+        You are not a member of any workspace. Ask an administrator to add you, or start a collaborative group
+        with colleagues.
+      </p>
+      <p>
+        <Link className="button" to="/groups/new">
+          Create a group
+        </Link>{" "}
+        or open <Link to="/notes">My Notes</Link>.
       </p>
     </section>
   );
@@ -48,7 +54,10 @@ export function App() {
       <Shell>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Navigate to={new URLSearchParams(location.search).get("next") || "/"} replace />} />
+          <Route
+            path="/login"
+            element={<Navigate to={new URLSearchParams(location.search).get("next") || "/"} replace />}
+          />
           <Route path="/activate" element={<Navigate to="/" replace />} />
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
@@ -61,7 +70,15 @@ export function App() {
           <Route path="/operations" element={<Operations />} />
           <Route path="/groups/new" element={<NewGroup />} />
           <Route path="/admin" element={session.user.is_admin ? <Admin /> : <Navigate to="/" replace />} />
-          <Route path="*" element={<section className="state"><h1>Page not found</h1><Link to="/">Go to your home workspace</Link></section>} />
+          <Route
+            path="*"
+            element={
+              <section className="state">
+                <h1>Page not found</h1>
+                <Link to="/">Go to your home workspace</Link>
+              </section>
+            }
+          />
         </Routes>
       </Shell>
     </WorkspaceProvider>

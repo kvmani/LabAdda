@@ -50,7 +50,14 @@ export function WorkspaceView() {
     return () => {
       live = false;
     };
-  }, [workspaceId, listed?.role, listed?.archived, listed?.posting_policy, listed?.name, listed?.description]);
+  }, [
+    workspaceId,
+    listed?.role,
+    listed?.archived,
+    listed?.posting_policy,
+    listed?.name,
+    listed?.description,
+  ]);
 
   if (missing)
     return (
@@ -69,17 +76,27 @@ export function WorkspaceView() {
         {detail.ancestors.length > 0 && (
           <nav aria-label="Parent units" className="crumbs">
             {[...detail.ancestors].reverse().map((a) => (
-              <Link key={a.id} to={`/w/${a.id}/${tab}`}>{a.name}</Link>
+              <Link key={a.id} to={`/w/${a.id}/${tab}`}>
+                {a.name}
+              </Link>
             ))}
           </nav>
         )}
         <h1>
           {ws.name} <span className="tag">{kindLabel(ws.kind)}</span>
         </h1>
-        <p className="muted">{accessLabel(ws)}{ws.description ? ` — ${ws.description}` : ""}</p>
+        <p className="muted">
+          {accessLabel(ws)}
+          {ws.description ? ` — ${ws.description}` : ""}
+        </p>
         <nav className="tabs" aria-label="Workspace features">
           {TABS.map(([key, label]) => (
-            <NavLink key={key} to={`/w/${ws.id}/${key}`} className={() => "tab" + (tab === key ? " active" : "")} aria-current={tab === key ? "page" : undefined}>
+            <NavLink
+              key={key}
+              to={`/w/${ws.id}/${key}`}
+              className={() => "tab" + (tab === key ? " active" : "")}
+              aria-current={tab === key ? "page" : undefined}
+            >
               {label}
               {key === "chat" && ws.unread_chat > 0 ? ` (${ws.unread_chat} new)` : ""}
             </NavLink>
@@ -89,7 +106,14 @@ export function WorkspaceView() {
       {tab === "noticeboard" && <Noticeboard ws={ws} key={ws.id} />}
       {tab === "todos" && <Todos ws={ws} key={ws.id} />}
       {tab === "chat" && <Chat ws={ws} key={ws.id} />}
-      {tab === "board" && <Board ws={ws} key={ws.id} userId={session?.user.id} maxUploadBytes={session?.limits.max_attachment_bytes} />}
+      {tab === "board" && (
+        <Board
+          ws={ws}
+          key={ws.id}
+          userId={session?.user.id}
+          maxUploadBytes={session?.limits.max_attachment_bytes}
+        />
+      )}
       {tab === "members" && <Members ws={ws} key={ws.id} />}
       {tab === "usage" && <WorkspaceUsage workspaceId={ws.id} key={ws.id} />}
     </div>

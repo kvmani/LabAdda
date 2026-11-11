@@ -19,7 +19,11 @@ function RailItem({ ws, depth, current }: { ws: Workspace; depth: number; curren
       >
         <span className="rail-name">{ws.name}</span>
         {ws.archived && <span className="tag">Archived</span>}
-        {ws.unread_chat > 0 && <span className="badge" aria-label={`${ws.unread_chat} unread chat messages`}>{ws.unread_chat} new</span>}
+        {ws.unread_chat > 0 && (
+          <span className="badge" aria-label={`${ws.unread_chat} unread chat messages`}>
+            {ws.unread_chat} new
+          </span>
+        )}
       </NavLink>
     </li>
   );
@@ -42,18 +46,35 @@ export function Shell({ children }: { children: ReactNode }) {
   const [operations, setOperations] = useState(false);
   const [unread, setUnread] = useState(0);
   const currentId = location.pathname.match(/^\/w\/([^/]+)/)?.[1];
-  const pageSelections:Record<string,string>={"/today":"today","/preferences":"preferences","/notes":"notes","/usage":"usage","/operations":"operations","/groups/new":location.search.includes("conversation=1")?"private_conversation":"new_group"};
-
+  const pageSelections: Record<string, string> = {
+    "/today": "today",
+    "/preferences": "preferences",
+    "/notes": "notes",
+    "/usage": "usage",
+    "/operations": "operations",
+    "/groups/new": location.search.includes("conversation=1") ? "private_conversation" : "new_group",
+  };
 
   useEffect(() => {
     let live = true;
-    api<{"usage.read": boolean}>("/capabilities").then(c => {if (live) setOperations(c["usage.read"]);}).catch(()=>{if(live) setOperations(false);});
-    return ()=>{live=false;};
+    api<{ "usage.read": boolean }>("/capabilities")
+      .then((c) => {
+        if (live) setOperations(c["usage.read"]);
+      })
+      .catch(() => {
+        if (live) setOperations(false);
+      });
+    return () => {
+      live = false;
+    };
   }, [location.pathname]);
 
   useEffect(() => realtime.onState(setConn) as () => void, []);
   useEffect(() => {
-    const load = () => api("/notifications", { params: { limit: 1 } }).then((r) => setUnread(r.unread)).catch(() => undefined);
+    const load = () =>
+      api("/notifications", { params: { limit: 1 } })
+        .then((r) => setUnread(r.unread))
+        .catch(() => undefined);
     load();
     const t = window.setInterval(load, 30000);
     return () => window.clearInterval(t);
@@ -62,10 +83,17 @@ export function Shell({ children }: { children: ReactNode }) {
   currentRef.current = currentId;
   useEffect(() => {
     // Membership changes arrive as access signals; refresh the rail.
-    const unsubs = workspaces.map((w) => realtime.subscribe(w.id, (ev) => {
-      if (ev.type === "revoked" || ev.type === "access_changed") reload();
-      if (ev.type === "chat.message" && ev.message.author?.id !== session?.user.id && currentRef.current !== w.id) reload();
-    }));
+    const unsubs = workspaces.map((w) =>
+      realtime.subscribe(w.id, (ev) => {
+        if (ev.type === "revoked" || ev.type === "access_changed") reload();
+        if (
+          ev.type === "chat.message" &&
+          ev.message.author?.id !== session?.user.id &&
+          currentRef.current !== w.id
+        )
+          reload();
+      }),
+    );
     return () => unsubs.forEach((u) => u());
   }, [workspaces.map((w) => w.id).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -76,17 +104,57 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       {/* Moves focus programmatically: a "#main" href would resolve against <base href> under a prefix. */}
-      <a href="#main" className="skip-link" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>Skip to main content</a>
+      <a
+        href="#main"
+        className="skip-link"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById("main")?.focus();
+        }}
+      >
+        Skip to main content
+      </a>
       <header className="topbar">
-        <Link to="/" className="brand">LabAdda</Link>
+        <Link to="/" className="brand">
+          LabAdda
+        </Link>
         {INSTANCE !== "pilot" && <span className="tag instance">{INSTANCE}</span>}
         <label className="switcher">
           <span className="sr-only">Switch workspace</span>
-          <select aria-label="Switch workspace" value={currentId??pageSelections[location.pathname]??""} onChange={e=>{const value=e.target.value;if(!value)return;const destinations:Record<string,string>={notes:"/notes",usage:"/usage",operations:"/operations",today:"/today",preferences:"/preferences",new_group:"/groups/new",private_conversation:"/groups/new?conversation=1"};navigate(destinations[value]??`/w/${value}/noticeboard`);}}>
+          <select
+            aria-label="Switch workspace"
+            value={currentId ?? pageSelections[location.pathname] ?? ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (!value) return;
+              const destinations: Record<string, string> = {
+                notes: "/notes",
+                usage: "/usage",
+                operations: "/operations",
+                today: "/today",
+                preferences: "/preferences",
+                new_group: "/groups/new",
+                private_conversation: "/groups/new?conversation=1",
+              };
+              navigate(destinations[value] ?? `/w/${value}/noticeboard`);
+            }}
+          >
             <option value="">Choose workspace…</option>
-            {tree.map(({ ws, depth }) => <option key={ws.id} value={ws.id}>{"· ".repeat(depth) + ws.name}</option>)}
-            {projects.map((w) => <option key={w.id} value={w.id}>Project: {w.name}</option>)}
-            {groups.map((w) => <option key={w.id} value={w.id}>Group: {w.name}</option>)}
+            {tree.map(({ ws, depth }) => (
+              <option key={ws.id} value={ws.id}>
+                {"· ".repeat(depth) + ws.name}
+              </option>
+            ))}
+            {projects.map((w) => (
+              <option key={w.id} value={w.id}>
+                Project: {w.name}
+              </option>
+            ))}
+            {groups.map((w) => (
+              <option key={w.id} value={w.id}>
+                Group: {w.name}
+              </option>
+            ))}
             <option value="today">My day</option>
             <option value="preferences">Alert preferences</option>
             <option value="private_conversation">Private conversation</option>
@@ -96,34 +164,86 @@ export function Shell({ children }: { children: ReactNode }) {
             {operations && <option value="operations">Operational observations</option>}
           </select>
         </label>
-        <span className={`conn conn-${conn}`} role="status">● {connLabel[conn]}</span>
-        <button className="ghost" onClick={() => setShowNotifications((v) => !v)} aria-expanded={showNotifications} aria-controls="notifications">
+        <span className={`conn conn-${conn}`} role="status">
+          ● {connLabel[conn]}
+        </span>
+        <button
+          className="ghost"
+          onClick={() => setShowNotifications((v) => !v)}
+          aria-expanded={showNotifications}
+          aria-controls="notifications"
+        >
           Notifications{unread > 0 ? ` (${unread} unread)` : ""}
         </button>
-        {session?.user.is_admin && <NavLink to="/admin" className="ghost-link">Administration</NavLink>}
+        {session?.user.is_admin && (
+          <NavLink to="/admin" className="ghost-link">
+            Administration
+          </NavLink>
+        )}
         <span className="who">{session?.user.display_name}</span>
-        <button className="ghost" onClick={() => signOut()}>Sign out</button>
+        <button className="ghost" onClick={() => signOut()}>
+          Sign out
+        </button>
       </header>
-      {showNotifications && <Notifications onClose={() => setShowNotifications(false)} onChange={setUnread} />}
+      {showNotifications && (
+        <Notifications onClose={() => setShowNotifications(false)} onChange={setUnread} />
+      )}
       <nav className="rail" aria-label="Workspaces">
-        {operations && <NavLink to="/operations" className="rail-link">Operational observations</NavLink>}
-        <NavLink to="/usage" className={({ isActive }) => "rail-link" + (isActive ? " active" : "")}>My storage usage</NavLink>
-        <NavLink to="/today" className="rail-link">My day</NavLink>
-        <NavLink to="/preferences" className="rail-link">Alert preferences</NavLink>
-        <NavLink to="/my-tasks" className="rail-link">My Tasks</NavLink>
-        <NavLink to="/todos" className="rail-link">My To-do Lists <span className="muted small">private</span></NavLink>
-        <NavLink to="/notes" className={({ isActive }) => "rail-link notes-link" + (isActive ? " active" : "")}>My Notes <span className="muted small">private</span></NavLink>
+        {operations && (
+          <NavLink to="/operations" className="rail-link">
+            Operational observations
+          </NavLink>
+        )}
+        <NavLink to="/usage" className={({ isActive }) => "rail-link" + (isActive ? " active" : "")}>
+          My storage usage
+        </NavLink>
+        <NavLink to="/today" className="rail-link">
+          My day
+        </NavLink>
+        <NavLink to="/preferences" className="rail-link">
+          Alert preferences
+        </NavLink>
+        <NavLink to="/my-tasks" className="rail-link">
+          My Tasks
+        </NavLink>
+        <NavLink to="/todos" className="rail-link">
+          My To-do Lists <span className="muted small">private</span>
+        </NavLink>
+        <NavLink
+          to="/notes"
+          className={({ isActive }) => "rail-link notes-link" + (isActive ? " active" : "")}
+        >
+          My Notes <span className="muted small">private</span>
+        </NavLink>
         {error && <p className="error small">{error}</p>}
         {tree.length > 0 && <h2 className="rail-heading">Organization</h2>}
-        <ul>{tree.map(({ ws, depth }) => <RailItem key={ws.id} ws={ws} depth={depth} current={ws.id === currentId} />)}</ul>
+        <ul>
+          {tree.map(({ ws, depth }) => (
+            <RailItem key={ws.id} ws={ws} depth={depth} current={ws.id === currentId} />
+          ))}
+        </ul>
         {projects.length > 0 && <h2 className="rail-heading">Projects</h2>}
-        <ul>{projects.map((w) => <RailItem key={w.id} ws={w} depth={0} current={w.id === currentId} />)}</ul>
+        <ul>
+          {projects.map((w) => (
+            <RailItem key={w.id} ws={w} depth={0} current={w.id === currentId} />
+          ))}
+        </ul>
         <h2 className="rail-heading">My groups</h2>
-        <ul>{groups.map((w) => <RailItem key={w.id} ws={w} depth={0} current={w.id === currentId} />)}</ul>
-        <Link to="/groups/new" className="rail-action">+ New group</Link>
-        <Link to="/groups/new?conversation=1" className="rail-action">+ Private conversation</Link>
+        <ul>
+          {groups.map((w) => (
+            <RailItem key={w.id} ws={w} depth={0} current={w.id === currentId} />
+          ))}
+        </ul>
+        <Link to="/groups/new" className="rail-action">
+          + New group
+        </Link>
+        <Link to="/groups/new?conversation=1" className="rail-action">
+          + Private conversation
+        </Link>
       </nav>
-      <main className="content" id="main" tabIndex={-1}>{children}</main>
+      <main className="content" id="main" tabIndex={-1}>
+        {children}
+      </main>
     </div>
   );
 }

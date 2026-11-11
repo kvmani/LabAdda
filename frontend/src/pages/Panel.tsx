@@ -39,7 +39,16 @@ export function PanelApp() {
   }, [accept]);
 
   if (checking) return <p className="state panel-state">Starting panel…</p>;
-  if (!session) return <PairScreen notice={notice} onPaired={(s) => { setNotice(null); accept(s); }} />;
+  if (!session)
+    return (
+      <PairScreen
+        notice={notice}
+        onPaired={(s) => {
+          setNotice(null);
+          accept(s);
+        }}
+      />
+    );
   return <PanelBoard session={session} onEnd={(why) => accept(null, why)} />;
 }
 
@@ -65,15 +74,40 @@ function PairScreen({ notice, onPaired }: { notice: string | null; onPaired: (s:
     <main className="panel-pair">
       <form className="card" onSubmit={submit}>
         <h1>LabAdda touch panel</h1>
-        {notice && <p className="notice" role="status">{notice}</p>}
-        <p>On your computer, open a workspace whiteboard and choose <strong>📺 Open on touch panel</strong>. Then enter the code here.</p>
+        {notice && (
+          <p className="notice" role="status">
+            {notice}
+          </p>
+        )}
+        <p>
+          On your computer, open a workspace whiteboard and choose <strong>📺 Open on touch panel</strong>.
+          Then enter the code here.
+        </p>
         <label>
           Panel code
-          <input className="code-input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="XXXX-XXXX" required />
+          <input
+            className="code-input"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            placeholder="XXXX-XXXX"
+            required
+          />
         </label>
-        {error && <p className="error" role="alert">{error}</p>}
-        <button className="big" type="submit" disabled={busy}>{busy ? "Opening…" : "Open board"}</button>
-        <p className="muted small">The panel shows only the chosen board. It locks after a few idle minutes and keeps nothing after it ends.</p>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button className="big" type="submit" disabled={busy}>
+          {busy ? "Opening…" : "Open board"}
+        </button>
+        <p className="muted small">
+          The panel shows only the chosen board. It locks after a few idle minutes and keeps nothing after it
+          ends.
+        </p>
       </form>
     </main>
   );
@@ -85,16 +119,23 @@ function PanelBoard({ session, onEnd }: { session: PanelSession; onEnd: (why: st
   const [remaining, setRemaining] = useState(session.idle_seconds);
   const ending = useRef(false);
 
-  const end = useCallback(async (reason: "ended" | "idle_lock") => {
-    if (ending.current) return;
-    ending.current = true;
-    try {
-      await api("/panel/end", { body: { reason } });
-    } catch {
-      /* already ended server-side */
-    }
-    onEnd(reason === "idle_lock" ? "Panel locked after inactivity. Enter a new code to continue." : "Session ended. The board was cleared from this panel.");
-  }, [onEnd]);
+  const end = useCallback(
+    async (reason: "ended" | "idle_lock") => {
+      if (ending.current) return;
+      ending.current = true;
+      try {
+        await api("/panel/end", { body: { reason } });
+      } catch {
+        /* already ended server-side */
+      }
+      onEnd(
+        reason === "idle_lock"
+          ? "Panel locked after inactivity. Enter a new code to continue."
+          : "Session ended. The board was cleared from this panel.",
+      );
+    },
+    [onEnd],
+  );
 
   const touched = useCallback(() => {
     last.current = Date.now();
@@ -116,9 +157,18 @@ function PanelBoard({ session, onEnd }: { session: PanelSession; onEnd: (why: st
   }, [session, end]);
 
   const ws: Workspace = {
-    id: session.workspace.id, name: session.workspace.name, kind: "org", description: "", parent_id: null,
-    archived: session.workspace.archived, posting_policy: "open", role: "member", inherited: false,
-    can_write: session.workspace.can_write, can_moderate: false, unread_chat: 0,
+    id: session.workspace.id,
+    name: session.workspace.name,
+    kind: "org",
+    description: "",
+    parent_id: null,
+    archived: session.workspace.archived,
+    posting_policy: "open",
+    role: "member",
+    inherited: false,
+    can_write: session.workspace.can_write,
+    can_moderate: false,
+    unread_chat: 0,
   };
 
   return (
@@ -127,9 +177,13 @@ function PanelBoard({ session, onEnd }: { session: PanelSession; onEnd: (why: st
         <strong className="panel-title">{session.workspace.name}</strong>
         <span className="muted">Drawing as {session.user.display_name}</span>
         {remaining <= WARN_SECONDS && (
-          <span className="lock-warning" role="alert">Locking in {Math.max(0, remaining)} s. Touch the screen to stay.</span>
+          <span className="lock-warning" role="alert">
+            Locking in {Math.max(0, remaining)} s. Touch the screen to stay.
+          </span>
         )}
-        <button className="end-session" onClick={() => end("ended")}>End session</button>
+        <button className="end-session" onClick={() => end("ended")}>
+          End session
+        </button>
       </header>
       <Board ws={ws} panel userId={session.user.id} onActivity={touched} />
     </div>

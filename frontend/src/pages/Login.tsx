@@ -29,19 +29,43 @@ export function Login({ next }: { next: string }) {
     <main className="auth">
       <form className="card" onSubmit={submit} aria-labelledby="signin-title">
         <h1 id="signin-title">LabAdda</h1>
-        <p className="muted">Sign in to your research workspace{INSTANCE !== "pilot" ? ` · ${INSTANCE}` : ""}</p>
+        <p className="muted">
+          Sign in to your research workspace{INSTANCE !== "pilot" ? ` · ${INSTANCE}` : ""}
+        </p>
         {expired && <p className="notice">Your session ended. Sign in again to continue.</p>}
         <label>
           Username
-          <input name="username" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+          <input
+            name="username"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            autoFocus
+          />
         </label>
         <label>
           Password
-          <input name="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
         </label>
-        {error && <p className="error" role="alert">{error}</p>}
-        <button type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-        <p className="muted small">First time here? Use the <Link to="/activate">activation link</Link> from your administrator.</p>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" disabled={busy}>
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+        <p className="muted small">
+          First time here? Use the <Link to="/activate">activation link</Link> from your administrator.
+        </p>
       </form>
     </main>
   );
@@ -73,19 +97,43 @@ export function Activate() {
         <h1>Set your password</h1>
         <label>
           Activation code
-          <input value={token} onChange={(e) => setToken(e.target.value)} required autoComplete="one-time-code" />
+          <input
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            required
+            autoComplete="one-time-code"
+          />
         </label>
         <label>
           New password (at least 10 characters)
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={10} autoComplete="new-password" />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={10}
+            autoComplete="new-password"
+          />
         </label>
         <label>
           Confirm password
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required autoComplete="new-password" />
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+            autoComplete="new-password"
+          />
         </label>
-        {error && <p className="error" role="alert">{error}</p>}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
         <button type="submit">Activate account</button>
-        <p className="muted small"><Link to="/">Back to sign in</Link></p>
+        <p className="muted small">
+          <Link to="/">Back to sign in</Link>
+        </p>
       </form>
     </main>
   );

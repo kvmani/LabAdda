@@ -2,7 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { api } from "./api";
 import type { Workspace } from "./types";
 
-type Ctx = { workspaces: Workspace[]; homeId: string | null; loading: boolean; error: string | null; reload: () => Promise<void> };
+type Ctx = {
+  workspaces: Workspace[];
+  homeId: string | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+};
 const WorkspaceContext = createContext<Ctx | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
@@ -25,7 +31,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     reload();
   }, [reload]);
-  return <WorkspaceContext.Provider value={{ workspaces, homeId, loading, error, reload }}>{children}</WorkspaceContext.Provider>;
+  return (
+    <WorkspaceContext.Provider value={{ workspaces, homeId, loading, error, reload }}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
 }
 
 export function useWorkspaces(): Ctx {

@@ -18,11 +18,16 @@ function Attachments({ items }: { items: Attachment[] }) {
       {items.map((a) => (
         <li key={a.id}>
           {a.preview_url ? (
-            <a href={a.url} target="_blank" rel="noopener"><img src={a.preview_url} alt={a.display_name} loading="lazy" /></a>
+            <a href={a.url} target="_blank" rel="noopener">
+              <img src={a.preview_url} alt={a.display_name} loading="lazy" />
+            </a>
           ) : (
             <a href={a.url}>📄 {a.display_name}</a>
           )}
-          <span className="muted small"> {a.size < 1024 ? `${a.size} B` : `${Math.round(a.size / 1024)} KiB`}</span>
+          <span className="muted small">
+            {" "}
+            {a.size < 1024 ? `${a.size} B` : `${Math.round(a.size / 1024)} KiB`}
+          </span>
         </li>
       ))}
     </ul>
@@ -31,7 +36,7 @@ function Attachments({ items }: { items: Attachment[] }) {
 
 function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
-  const [taskOpen,setTaskOpen]=useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
   const [text, setText] = useState(post.body);
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +56,9 @@ function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChange
 
   async function sendReply(e: FormEvent) {
     e.preventDefault();
-    if (await run(() => api(`/posts/${post.id}/replies`, { body: { body: reply, client_id: replyId.current } }))) {
+    if (
+      await run(() => api(`/posts/${post.id}/replies`, { body: { body: reply, client_id: replyId.current } }))
+    ) {
       setReply("");
       replyId.current = newId("r");
     }
@@ -66,50 +73,117 @@ function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChange
   }
 
   return (
-    <article className={"post card" + (post.kind === "official" ? " official" : "")} aria-label={`Post by ${post.author?.display_name}`}>
+    <article
+      className={"post card" + (post.kind === "official" ? " official" : "")}
+      aria-label={`Post by ${post.author?.display_name}`}
+    >
       <header className="row between">
         <div>
           {post.pinned && <span className="tag pin">Pinned</span>}
           {post.kind === "official" && <span className="tag official-tag">Official notice</span>}
           <strong>{post.author?.display_name ?? "Unknown"}</strong>
           {post.author && !post.author.is_active && <span className="muted small"> (former member)</span>}
-          <span className="muted small"> · {fmtTime(post.created_at)}{post.edited_at ? " · edited" : ""}</span>
+          <span className="muted small">
+            {" "}
+            · {fmtTime(post.created_at)}
+            {post.edited_at ? " · edited" : ""}
+          </span>
         </div>
         <div className="row">
           {ws.can_moderate && !ws.archived && (
-            <button className="ghost small" onClick={() => run(() => api(`/posts/${post.id}/pin`, { body: { pinned: !post.pinned } }))}>
+            <button
+              className="ghost small"
+              onClick={() => run(() => api(`/posts/${post.id}/pin`, { body: { pinned: !post.pinned } }))}
+            >
               {post.pinned ? "Unpin" : "Pin"}
             </button>
           )}
-          {post.can_edit && ws.can_write && <button className="ghost small" onClick={() => setEditing(true)}>Edit</button>}
-          {post.can_remove && <button className="ghost small" onClick={() => remove(post)}>{post.can_edit ? "Delete" : "Remove"}</button>}
+          {post.can_edit && ws.can_write && (
+            <button className="ghost small" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+          )}
+          {post.can_remove && (
+            <button className="ghost small" onClick={() => remove(post)}>
+              {post.can_edit ? "Delete" : "Remove"}
+            </button>
+          )}
         </div>
       </header>
       {editing ? (
-        <form onSubmit={async (e) => { e.preventDefault(); if (await run(() => api(`/posts/${post.id}`, { method: "PATCH", body: { body: text } }))) setEditing(false); }}>
-          <label className="sr-only" htmlFor={`edit-${post.id}`}>Edit post</label>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (await run(() => api(`/posts/${post.id}`, { method: "PATCH", body: { body: text } })))
+              setEditing(false);
+          }}
+        >
+          <label className="sr-only" htmlFor={`edit-${post.id}`}>
+            Edit post
+          </label>
           <textarea id={`edit-${post.id}`} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
-          <div className="row"><button type="submit">Save</button><button type="button" className="ghost" onClick={() => { setEditing(false); setText(post.body); }}>Cancel</button></div>
+          <div className="row">
+            <button type="submit">Save</button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setEditing(false);
+                setText(post.body);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       ) : (
         <p className="body">{post.body}</p>
       )}
-      <button type="button" className="ghost small" onClick={()=>setTaskOpen(true)}>Create task</button>
-      {taskOpen && <ConversationTask source={ws} kind="post" sourceId={post.id} text={post.body} close={()=>setTaskOpen(false)} />}
+      <button type="button" className="ghost small" onClick={() => setTaskOpen(true)}>
+        Create task
+      </button>
+      {taskOpen && (
+        <ConversationTask
+          source={ws}
+          kind="post"
+          sourceId={post.id}
+          text={post.body}
+          close={() => setTaskOpen(false)}
+        />
+      )}
       {post.snapshot && (
         <p className="muted small">
           📷 Board snapshot at revision {post.snapshot.source_revision}
-          {post.snapshot.source_name ? <> from <Link to={`/w/${post.snapshot.source_workspace_id}/board`}>{post.snapshot.source_name}</Link></> : ""}. Fixed copy: later board changes do not affect it.
+          {post.snapshot.source_name ? (
+            <>
+              {" "}
+              from{" "}
+              <Link to={`/w/${post.snapshot.source_workspace_id}/board`}>{post.snapshot.source_name}</Link>
+            </>
+          ) : (
+            ""
+          )}
+          . Fixed copy: later board changes do not affect it.
         </p>
       )}
-      {post.due_at && <p className="due">Due {fmtTime(post.due_at)}{post.remind_at ? ` · reminder ${fmtTime(post.remind_at)}` : ""}</p>}
+      {post.due_at && (
+        <p className="due">
+          Due {fmtTime(post.due_at)}
+          {post.remind_at ? ` · reminder ${fmtTime(post.remind_at)}` : ""}
+        </p>
+      )}
       <Attachments items={post.attachments} />
       {post.replies.length > 0 && (
         <ul className="replies">
           {post.replies.map((r) => (
             <li key={r.id}>
-              <strong>{r.author?.display_name}</strong> <span className="muted small">{fmtTime(r.created_at)}</span>
-              {r.can_remove && <button className="ghost small" onClick={() => remove(r)}>{r.can_edit ? "Delete" : "Remove"}</button>}
+              <strong>{r.author?.display_name}</strong>{" "}
+              <span className="muted small">{fmtTime(r.created_at)}</span>
+              {r.can_remove && (
+                <button className="ghost small" onClick={() => remove(r)}>
+                  {r.can_edit ? "Delete" : "Remove"}
+                </button>
+              )}
               <p className="body">{r.body}</p>
             </li>
           ))}
@@ -117,12 +191,27 @@ function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; onChange
       )}
       {ws.can_write && (
         <form className="reply-form" onSubmit={sendReply}>
-          <label className="sr-only" htmlFor={`reply-${post.id}`}>Reply</label>
-          <input id={`reply-${post.id}`} placeholder="Write a reply…" value={reply} onChange={(e) => setReply(e.target.value)} required maxLength={10000} />
-          <button type="submit" className="small">Reply</button>
+          <label className="sr-only" htmlFor={`reply-${post.id}`}>
+            Reply
+          </label>
+          <input
+            id={`reply-${post.id}`}
+            placeholder="Write a reply…"
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            required
+            maxLength={10000}
+          />
+          <button type="submit" className="small">
+            Reply
+          </button>
         </form>
       )}
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
     </article>
   );
 }
@@ -141,8 +230,8 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
   const [saved, setSaved] = useState(false);
   const clientId = useRef(newId("p"));
   const limits = session!.limits;
-  const uploads = useUploadQueue(limits.max_attachment_bytes, asset => {
-    setFiles(prev => prev.some(f => f.id === asset.id) ? prev : [...prev, asset]);
+  const uploads = useUploadQueue(limits.max_attachment_bytes, (asset) => {
+    setFiles((prev) => (prev.some((f) => f.id === asset.id) ? prev : [...prev, asset]));
   });
 
   const setBody = (v: string) => {
@@ -154,8 +243,11 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
   function addFiles(list: FileList | null) {
     if (!list) return;
     setError(null);
-    try { uploads.queue.add(Array.from(list), limits.max_attachments - files.length); }
-    catch (e: any) { setError(e.message); }
+    try {
+      uploads.queue.add(Array.from(list), limits.max_attachments - files.length);
+    } catch (e: any) {
+      setError(e.message);
+    }
   }
 
   async function submit(e: FormEvent) {
@@ -165,7 +257,14 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
     setError(null);
     try {
       await api(`/workspaces/${ws.id}/posts`, {
-        body: { body, kind: official ? "official" : "discussion", due_at: localToIso(due), remind_at: localToIso(remind), attachment_ids: files.map((f) => f.id), client_id: clientId.current },
+        body: {
+          body,
+          kind: official ? "official" : "discussion",
+          due_at: localToIso(due),
+          remind_at: localToIso(remind),
+          attachment_ids: files.map((f) => f.id),
+          client_id: clientId.current,
+        },
       });
       // Clear only after the server confirms the commit.
       setBody("");
@@ -185,36 +284,101 @@ function Composer({ ws, onPosted }: { ws: Workspace; onPosted: () => void }) {
   }
 
   if (!ws.can_write) {
-    return <p className="notice">{ws.archived ? "This workspace is archived. Content stays readable but no one can post." : "Posting is limited to stewards in this workspace."}</p>;
+    return (
+      <p className="notice">
+        {ws.archived
+          ? "This workspace is archived. Content stays readable but no one can post."
+          : "Posting is limited to stewards in this workspace."}
+      </p>
+    );
   }
   return (
     <form className="composer card" onSubmit={submit} aria-label={`Post to ${ws.name}`}>
       <div className="row between">
         <strong>Post to {ws.name}</strong>
-        <span className="muted small">Audience: {ws.kind === "group" ? "group members only" : ws.kind === "project" ? "project members only" : `members of ${ws.name} and its sub-units`}</span>
+        <span className="muted small">
+          Audience:{" "}
+          {ws.kind === "group"
+            ? "group members only"
+            : ws.kind === "project"
+              ? "project members only"
+              : `members of ${ws.name} and its sub-units`}
+        </span>
       </div>
-      <label className="sr-only" htmlFor="composer-body">Message</label>
-      <textarea id="composer-body" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Share an update, @mention a colleague…" rows={3} required maxLength={10000} />
+      <label className="sr-only" htmlFor="composer-body">
+        Message
+      </label>
+      <textarea
+        id="composer-body"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Share an update, @mention a colleague…"
+        rows={3}
+        required
+        maxLength={10000}
+      />
       <div className="row wrap">
-        <label className="inline">Due <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} /></label>
-        <label className="inline">Remind <input type="datetime-local" value={remind} onChange={(e) => setRemind(e.target.value)} /></label>
-        <label className="inline">Attach <input type="file" accept="application/pdf,image/png,image/jpeg" multiple disabled={busy} onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} /></label>
-        {ws.can_moderate && <label className="inline"><input type="checkbox" checked={official} onChange={(e) => setOfficial(e.target.checked)} /> Official notice</label>}
+        <label className="inline">
+          Due <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
+        </label>
+        <label className="inline">
+          Remind <input type="datetime-local" value={remind} onChange={(e) => setRemind(e.target.value)} />
+        </label>
+        <label className="inline">
+          Attach{" "}
+          <input
+            type="file"
+            accept="application/pdf,image/png,image/jpeg"
+            multiple
+            disabled={busy}
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {ws.can_moderate && (
+          <label className="inline">
+            <input type="checkbox" checked={official} onChange={(e) => setOfficial(e.target.checked)} />{" "}
+            Official notice
+          </label>
+        )}
       </div>
       {files.length > 0 && (
         <ul className="plain chips">
           {files.map((f) => (
-            <li key={f.id} className="chip">{f.display_name}
-              <button type="button" className="ghost small" aria-label={`Remove ${f.display_name}`} onClick={() => { api(`/uploads/${f.id}`, { method: "DELETE" }).catch(() => undefined); setFiles(files.filter((x) => x.id !== f.id)); }}>×</button>
+            <li key={f.id} className="chip">
+              {f.display_name}
+              <button
+                type="button"
+                className="ghost small"
+                aria-label={`Remove ${f.display_name}`}
+                onClick={() => {
+                  api(`/uploads/${f.id}`, { method: "DELETE" }).catch(() => undefined);
+                  setFiles(files.filter((x) => x.id !== f.id));
+                }}
+              >
+                ×
+              </button>
             </li>
           ))}
         </ul>
       )}
       <UploadRecovery queue={uploads.queue} />
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="row">
-        <button type="submit" disabled={busy || uploads.attempts.length > 0}>{busy ? "Posting…" : "Post"}</button>
-        {saved && <span className="ok" role="status">Posted</span>}
+        <button type="submit" disabled={busy || uploads.attempts.length > 0}>
+          {busy ? "Posting…" : "Post"}
+        </button>
+        {saved && (
+          <span className="ok" role="status">
+            Posted
+          </span>
+        )}
       </div>
     </form>
   );
@@ -229,7 +393,10 @@ export function Noticeboard({ ws }: { ws: Workspace }) {
 
   const load = useCallback(async () => {
     try {
-      const [f, u] = await Promise.all([api<Feed>(`/workspaces/${ws.id}/posts`), api(`/workspaces/${ws.id}/upcoming`)]);
+      const [f, u] = await Promise.all([
+        api<Feed>(`/workspaces/${ws.id}/posts`),
+        api(`/workspaces/${ws.id}/upcoming`),
+      ]);
       setFeed(f);
       setUpcoming(u.items);
       setError(null);
@@ -265,37 +432,83 @@ export function Noticeboard({ ws }: { ws: Workspace }) {
     <div className="board-layout">
       <section className="feed" aria-label="Noticeboard feed">
         <Composer ws={ws} onPosted={load} />
-        {error && <p className="error" role="alert">{error} <button className="ghost small" onClick={load}>Retry</button></p>}
-        {!feed ? <p className="muted">Loading posts…</p> : feed.pinned.length + feed.posts.length === 0 ? (
-          <p className="state empty">No posts yet in {ws.name}.{ws.can_write ? " Start the conversation above." : ""}</p>
+        {error && (
+          <p className="error" role="alert">
+            {error}{" "}
+            <button className="ghost small" onClick={load}>
+              Retry
+            </button>
+          </p>
+        )}
+        {!feed ? (
+          <p className="muted">Loading posts…</p>
+        ) : feed.pinned.length + feed.posts.length === 0 ? (
+          <p className="state empty">
+            No posts yet in {ws.name}.{ws.can_write ? " Start the conversation above." : ""}
+          </p>
         ) : (
           <>
-            {feed.pinned.map((p) => <PostCard key={p.id} post={p} ws={ws} onChanged={load} />)}
-            {feed.posts.map((p) => <PostCard key={p.id} post={p} ws={ws} onChanged={load} />)}
-            {feed.next_before && <button className="ghost" onClick={more}>Load older posts</button>}
+            {feed.pinned.map((p) => (
+              <PostCard key={p.id} post={p} ws={ws} onChanged={load} />
+            ))}
+            {feed.posts.map((p) => (
+              <PostCard key={p.id} post={p} ws={ws} onChanged={load} />
+            ))}
+            {feed.next_before && (
+              <button className="ghost" onClick={more}>
+                Load older posts
+              </button>
+            )}
           </>
         )}
       </section>
       <aside className="secondary" aria-label="Upcoming and search">
         <section className="card">
           <h2>Upcoming</h2>
-          {upcoming.length === 0 ? <p className="muted small">Nothing scheduled.</p> : (
-            <ul className="plain">{upcoming.map((u) => <li key={u.id}><strong>{fmtTime(u.due_at)}</strong><br />{u.title}</li>)}</ul>
+          {upcoming.length === 0 ? (
+            <p className="muted small">Nothing scheduled.</p>
+          ) : (
+            <ul className="plain">
+              {upcoming.map((u) => (
+                <li key={u.id}>
+                  <strong>{fmtTime(u.due_at)}</strong>
+                  <br />
+                  {u.title}
+                </li>
+              ))}
+            </ul>
           )}
         </section>
         <section className="card">
           <h2>Search {ws.name}</h2>
           <form onSubmit={search} className="row">
-            <label className="sr-only" htmlFor="ws-search">Search this workspace</label>
-            <input id="ws-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Posts and chat" />
-            <button type="submit" className="small">Search</button>
+            <label className="sr-only" htmlFor="ws-search">
+              Search this workspace
+            </label>
+            <input
+              id="ws-search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Posts and chat"
+            />
+            <button type="submit" className="small">
+              Search
+            </button>
           </form>
           {results && (
             <div className="small">
-              <p className="muted">{results.counts.posts} posts · {results.counts.chat} chat messages</p>
+              <p className="muted">
+                {results.counts.posts} posts · {results.counts.chat} chat messages
+              </p>
               <ul className="plain">
-                {results.posts.map((p: any) => <li key={p.id}>📝 {p.body}</li>)}
-                {results.chat.map((c: any) => <li key={c.id}>💬 {c.author?.display_name}: {c.body}</li>)}
+                {results.posts.map((p: any) => (
+                  <li key={p.id}>📝 {p.body}</li>
+                ))}
+                {results.chat.map((c: any) => (
+                  <li key={c.id}>
+                    💬 {c.author?.display_name}: {c.body}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
