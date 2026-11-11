@@ -53,6 +53,9 @@ WorkspaceSwitcher). Decisions taken while building it, for the owner to review:
   theme choice by U4; until U4 the app is forced to the light theme (see the U4 card).
 - 900–1199 px uses a narrower rail with full names instead of an icon rail (UX-03 updated).
 
+Owner accepted the U2 decisions on 2026-11-11: link-list rail, full names at
+900–1199 px, light theme until U4, with My profile deferred to P8.
+
 Size M. Depends on U1.
 
 **Goal.** The top bar and rail are rebuilt on `ui/` per UX-03, with a user menu and help entry.

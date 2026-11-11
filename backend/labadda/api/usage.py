@@ -10,15 +10,16 @@ from sqlalchemy.orm import Session
 
 from .. import audit, charges, policy
 from ..config import Settings
-from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, require_admin
+from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, require_console
 from ..errors import ApiError, Unauthenticated
 from ..models import Asset, StorageInspection, UploadReservation, UsageObservation
 from ..security import utcnow
 from ..serialize import iso
 from ..workspace_usage import workspace_observation
-from .capabilities import require_usage_reader
 
 router = APIRouter(tags=["usage"])
+console_storage = require_console("storage")
+console_storage_admin = require_console("storage", admin_only=True)
 UNMEASURED = [
     "other_or_historical_derivative_bytes",
     "non_upload_reservations",
@@ -238,7 +239,7 @@ def site_payload(db, settings):
 
 @router.get("/admin/usage")
 def site_usage(
-    actor: Actor = Depends(require_usage_reader),
+    actor: Actor = Depends(console_storage),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
@@ -247,7 +248,7 @@ def site_usage(
 
 @router.post("/admin/usage-observations", status_code=201)
 def record_observation(
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_storage_admin),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
@@ -274,7 +275,7 @@ def record_observation(
 
 
 @router.get("/admin/usage-observations")
-def observations(actor: Actor = Depends(require_usage_reader), db: Session = Depends(get_db)):
+def observations(actor: Actor = Depends(console_storage), db: Session = Depends(get_db)):
     rows = db.scalars(
         select(UsageObservation)
         .order_by(UsageObservation.created_at.desc(), UsageObservation.id.desc())
@@ -289,7 +290,7 @@ def observations(actor: Actor = Depends(require_usage_reader), db: Session = Dep
 
 
 @router.get("/admin/storage-inspections")
-def inspections(actor: Actor = Depends(require_usage_reader), db: Session = Depends(get_db)):
+def inspections(actor: Actor = Depends(console_storage), db: Session = Depends(get_db)):
     rows = db.scalars(
         select(StorageInspection)
         .order_by(StorageInspection.created_at.desc(), StorageInspection.id.desc())

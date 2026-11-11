@@ -409,3 +409,19 @@ Panels/unsafe requests without CSRF are refused. New queued mention/official/
 reminder occurrences follow the recipient's choices. Previously queued alerts
 remain visible; re-enabling never replays consumed muted reminder occurrences.
 This does not add task assignment/due reminders or change source permissions.
+
+## A1 · Console access and navigation (AD-01–02)
+
+`GET /admin/console` returns `{sections: string[], read_only: boolean}` for the
+current normal session. Sections are `overview`, `people`, `org`, `activity`,
+`health`, `storage`, `backups`, `audit`, `events`, `settings`, `help`, in that order.
+Administrators receive all sections; an active, unexpired `usage.read` observer
+receives only overview/activity/health/storage/backups/events, read-only. No unit
+administrator role is introduced in A1. Ordinary members receive403
+`usage_read_required`; signed-out, deactivated and board-only/explicit panel
+requests receive401. No content is returned. Each request re-evaluates authority.
+
+Existing admin/usage endpoint rights and errors are preserved through the shared
+`deps.require_console(section, admin_only=...)` dependency. Delegation never permits
+identity, policy, audit, settings or write access. Legacy `/operations` web links
+redirect to `/admin/storage`; backend URLs and payloads remain compatible.

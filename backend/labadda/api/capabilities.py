@@ -8,9 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.orm import Session
 
-from .. import audit
+from .. import audit, policy
 from ..config import Settings
-from ..deps import Actor, current_actor, get_db, get_settings, require_admin
+from ..deps import Actor, current_actor, get_db, get_settings, require_console
 from ..errors import Forbidden, Invalid, NotFound, TooMany
 from ..models import UsageReaderGrant, User
 from ..security import login_limiter, utcnow, verify_password
@@ -18,18 +18,13 @@ from ..serialize import iso
 from .governance import lock_authority
 
 router = APIRouter(tags=["capabilities"])
+console_overview = require_console("overview")
+console_settings = require_console("settings")
 
 
-def can_read_usage(db, actor):
-    return (
-        actor.user.is_admin
-        or db.scalar(
-            select(UsageReaderGrant.user_id).where(
-                UsageReaderGrant.user_id == actor.id, UsageReaderGrant.expires_at > utcnow()
-            )
-        )
-        is not None
-    )
+def can_read_usage(db: Session, actor: Actor) -> bool:
+    """Keep legacy callers on the shared operational-access policy."""
+    return policy.can_read_usage(db, actor.user)
 
 
 def require_usage_reader(actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
@@ -45,6 +40,12 @@ def own_capabilities(actor: Actor = Depends(current_actor), db: Session = Depend
         "policy.draft": actor.user.is_admin,
         "identity.admin": actor.user.is_admin,
     }
+
+
+@router.get("/admin/console")
+def console_access(actor: Actor = Depends(console_overview), db: Session = Depends(get_db)) -> dict:
+    """Describe current navigation authority without reading collaboration content."""
+    return {"sections": policy.console_sections(db, actor.user), "read_only": not actor.user.is_admin}
 
 
 class GrantRequest(BaseModel):
@@ -82,7 +83,7 @@ def authenticate_action(db, actor, settings, password):
 
 
 @router.get("/admin/usage-readers")
-def readers(actor: Actor = Depends(require_admin), db: Session = Depends(get_db)):
+def readers(actor: Actor = Depends(console_settings), db: Session = Depends(get_db)):
     now = utcnow()
     rows = db.execute(
         select(UsageReaderGrant, User)
@@ -111,7 +112,7 @@ def readers(actor: Actor = Depends(require_admin), db: Session = Depends(get_db)
 @router.post("/admin/usage-readers", status_code=201)
 def grant_reader(
     body: GrantRequest,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_settings),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
@@ -147,7 +148,7 @@ def grant_reader(
 @router.post("/admin/usage-readers/revoke")
 def revoke_reader(
     body: RevokeRequest,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_settings),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):

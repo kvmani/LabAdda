@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.orm import Session
 
-from ..deps import PANEL_HEADER, Actor, current_actor, get_db
+from ..deps import PANEL_HEADER, Actor, current_actor, get_db, require_console
 from ..errors import NotFound, Unauthenticated
 from ..inventory_jobs import describe
 from ..models import InventoryJob
@@ -15,6 +15,7 @@ from ..serialize import iso
 from .capabilities import require_usage_reader
 
 router = APIRouter(tags=["inventory-jobs"])
+console_storage = require_console("storage")
 JobState = Literal["queued", "running", "completed", "partial", "failed", "paused", "cancelled"]
 
 
@@ -34,7 +35,7 @@ def jobs(
     state: JobState | None = None,
     before: uuid.UUID | None = None,
     limit: int = Query(default=20, ge=1, le=25),
-    actor: Actor = Depends(require_usage_reader),
+    actor: Actor = Depends(console_storage),
     db: Session = Depends(get_db),
 ):
     _normal(request)
@@ -73,7 +74,7 @@ def jobs(
 def job(
     request: Request,
     job_id: uuid.UUID,
-    actor: Actor = Depends(require_usage_reader),
+    actor: Actor = Depends(console_storage),
     db: Session = Depends(get_db),
 ):
     _normal(request)

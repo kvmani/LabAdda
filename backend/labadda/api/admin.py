@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from .. import audit, memberships, policy
 from ..config import Settings
-from ..deps import Actor, get_db, get_settings, require_admin
+from ..deps import Actor, get_db, get_settings, require_console
 from ..errors import Conflict, Invalid, NotFound
 from ..models import AuditEvent, Membership, User, Workspace
 from ..security import revoke_user_sessions, utcnow
@@ -21,6 +21,9 @@ from ..serialize import iso, user_brief, workspace_json
 from .auth import issue_credential
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+console_people = require_console("people")
+console_org = require_console("org")
+console_audit = require_console("audit")
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}$")
 
 
@@ -52,14 +55,14 @@ def _admin_user_json(u: User) -> dict:
 
 
 @router.get("/users")
-def list_users(_: Actor = Depends(require_admin), db: Session = Depends(get_db)):
+def list_users(_: Actor = Depends(console_people), db: Session = Depends(get_db)):
     return {"users": [_admin_user_json(u) for u in db.scalars(select(User).order_by(User.username))]}
 
 
 @router.post("/users", status_code=201)
 def create_user(
     body: NewUser,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_people),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
@@ -93,7 +96,7 @@ def create_user(
 def reset_user(
     user_id: uuid.UUID,
     request: Request,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_people),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
@@ -115,7 +118,7 @@ def update_user(
     user_id: uuid.UUID,
     body: UserPatch,
     request: Request,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_people),
     db: Session = Depends(get_db),
 ):
     memberships.lock_admin_roles(db)
@@ -184,7 +187,7 @@ def _member_counts(db: Session) -> dict:
 
 
 @router.get("/workspaces")
-def admin_workspaces(_: Actor = Depends(require_admin), db: Session = Depends(get_db)):
+def admin_workspaces(_: Actor = Depends(console_org), db: Session = Depends(get_db)):
     counts = _member_counts(db)
     rows = db.scalars(select(Workspace).order_by(Workspace.kind, Workspace.name)).all()
     return {"workspaces": [{**workspace_json(w), "member_count": counts.get(w.id, 0)} for w in rows]}
@@ -215,9 +218,7 @@ def _validate_parent(db: Session, kind: str, parent_id: uuid.UUID | None, self_i
 
 
 @router.post("/workspaces", status_code=201)
-def create_workspace(
-    body: NewWorkspace, actor: Actor = Depends(require_admin), db: Session = Depends(get_db)
-):
+def create_workspace(body: NewWorkspace, actor: Actor = Depends(console_org), db: Session = Depends(get_db)):
     if body.kind not in ("org", "project"):
         raise Invalid(
             "invalid_kind", "Administrators create organization units or projects. Users create groups."
@@ -254,7 +255,7 @@ def update_workspace(
     workspace_id: uuid.UUID,
     body: WorkspacePatch,
     request: Request,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_org),
     db: Session = Depends(get_db),
 ):
     ws = db.get(Workspace, workspace_id, with_for_update=True)
@@ -306,7 +307,7 @@ class MembershipBody(BaseModel):
 
 @router.get("/workspaces/{workspace_id}/memberships")
 def admin_memberships(
-    workspace_id: uuid.UUID, _: Actor = Depends(require_admin), db: Session = Depends(get_db)
+    workspace_id: uuid.UUID, _: Actor = Depends(console_org), db: Session = Depends(get_db)
 ):
     if db.get(Workspace, workspace_id) is None:
         raise NotFound()
@@ -324,7 +325,7 @@ def admin_set_membership(
     workspace_id: uuid.UUID,
     body: MembershipBody,
     request: Request,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_org),
     db: Session = Depends(get_db),
 ):
     if body.role not in ("member", "steward"):
@@ -350,7 +351,7 @@ def admin_remove_membership(
     user_id: uuid.UUID,
     request: Request,
     reason: str | None = Query(default=None, max_length=500),
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_org),
     db: Session = Depends(get_db),
 ):
     if not memberships.remove_membership(
@@ -364,7 +365,9 @@ def admin_remove_membership(
 
 @router.get("/audit")
 def audit_log(
-    limit: int = Query(default=100, le=500), _: Actor = Depends(require_admin), db: Session = Depends(get_db)
+    limit: int = Query(default=100, le=500),
+    _: Actor = Depends(console_audit),
+    db: Session = Depends(get_db),
 ):
     rows = db.scalars(select(AuditEvent).order_by(AuditEvent.id.desc()).limit(limit)).all()
     return {

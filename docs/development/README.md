@@ -20,6 +20,7 @@ area lands: `people.md`, `admin-console.md`, `metrics.md`, `help-centre.md`.
 | Chat threads / colleague communication | [Chat guide](chat.md) → api/chat.py | CT-12, T49, test_chat_threads.py |
 | Daily owner dashboard | [Dashboard guide](dashboard.md) → api/dashboard.py, pages/Dashboard.tsx | CT-14, T51, test_dashboard.py |
 | Owner alert preferences | [Preferences guide](alert-preferences.md) → api/alert_preferences.py, notify.py | CT-15, T52, test_alert_preferences.py |
+| Admin console routing / operational access | [Console guide](admin-console.md) → policy.py, deps.py, api/capabilities.py | AD-01–02, test_console.py, test_capabilities.py |
 | Shared authorization | backend/labadda/policy.py, deps.py, identity_locks.py, memberships.py | SPECIFICATIONS S2; tests/test_policy.py; feature negative tests |
 | Shared UI components, tokens, theme | [UI kit guide](ui-kit.md) → frontend/src/ui/ | UX-01–UX-14, T69, src/ui/*.test.tsx, e2e/ui-kit.mjs |
 | Workspace/browser navigation, shell | frontend/src/App.tsx, features/shell/ (Shell, TopBar, RailNav, WorkspaceSwitcher), pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |

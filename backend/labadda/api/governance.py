@@ -11,13 +11,14 @@ from sqlalchemy.orm import Session
 from .. import audit
 from ..capacity import forecast_capacity
 from ..config import Settings
-from ..deps import PANEL_HEADER, Actor, get_db, get_settings, require_admin
+from ..deps import PANEL_HEADER, Actor, get_db, get_settings, require_console
 from ..errors import Conflict, Forbidden, Unauthenticated
 from ..identity_locks import lock_identity
 from ..models import PolicyDraft
 from ..serialize import iso
 
 router = APIRouter(tags=["governance"])
+console_storage_admin = require_console("storage", admin_only=True)
 GiB = 1024**3
 
 
@@ -87,7 +88,7 @@ def draft_json(row):
 def list_drafts(
     limit: int = Query(default=20, ge=1, le=100),
     before: int | None = Query(default=None, ge=1),
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_storage_admin),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
@@ -123,7 +124,7 @@ def lock_authority(db, actor, settings):
 @router.post("/admin/policy-drafts", status_code=201)
 def create_draft(
     body: DraftRequest,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_storage_admin),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
@@ -164,7 +165,7 @@ class CapacityForecastRequest(BaseModel):
 def capacity_forecast(
     body: CapacityForecastRequest,
     request: Request,
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(console_storage_admin),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):

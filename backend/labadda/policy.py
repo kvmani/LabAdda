@@ -24,7 +24,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .errors import Forbidden, NotFound
-from .models import Membership, User, Workspace
+from .models import Membership, UsageReaderGrant, User, Workspace
+from .security import utcnow
 
 
 @dataclass(frozen=True)
@@ -144,3 +145,43 @@ def direct_grants_for_workspace(db: Session, workspace_id: uuid.UUID) -> dict[uu
         select(Membership.user_id, Membership.role).where(Membership.workspace_id == workspace_id)
     )
     return dict(rows.all())
+
+
+CONSOLE_SECTIONS = (
+    "overview",
+    "people",
+    "org",
+    "activity",
+    "health",
+    "storage",
+    "backups",
+    "audit",
+    "events",
+    "settings",
+    "help",
+)
+READER_SECTIONS = ("overview", "activity", "health", "storage", "backups", "events")
+
+
+def can_read_usage(db: Session, user: User) -> bool:
+    """Resolve current operational delegation without granting content access."""
+    if not user.is_active:
+        return False
+    return (
+        user.is_admin
+        or db.scalar(
+            select(UsageReaderGrant.user_id).where(
+                UsageReaderGrant.user_id == user.id, UsageReaderGrant.expires_at > utcnow()
+            )
+        )
+        is not None
+    )
+
+
+def console_sections(db: Session, user: User) -> tuple[str, ...]:
+    """Return only the console sections available under current authority."""
+    if not user.is_active:
+        return ()
+    if user.is_admin:
+        return CONSOLE_SECTIONS
+    return READER_SECTIONS if can_read_usage(db, user) else ()

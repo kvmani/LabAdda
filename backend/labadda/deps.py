@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 from urllib.parse import urlsplit
@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from . import policy
 from .config import Settings
 from .errors import Forbidden, NotFound, Unauthenticated
 from .models import AuthSession, User
@@ -118,3 +119,31 @@ def require_admin(actor: Actor = Depends(current_actor)) -> Actor:
     if not actor.user.is_admin:
         raise Forbidden("admin_required", "Administrator access is required.")
     return actor
+
+
+def _console_actor(request: Request, db: Session = Depends(get_db)) -> Actor:
+    """Reject panel intent before normal-session CSRF or idle-time processing."""
+    if request.headers.get(PANEL_HEADER):
+        raise Unauthenticated()
+    return current_actor(request, db)
+
+
+def require_console(section: str, *, admin_only: bool = False) -> Callable[..., Actor]:
+    """Gate console requests without widening existing administrative rights."""
+    if section not in policy.CONSOLE_SECTIONS:
+        raise ValueError("Unknown console section")
+
+    def authorized(
+        request: Request, actor: Actor = Depends(_console_actor), db: Session = Depends(get_db)
+    ) -> Actor:
+        if request.headers.get(PANEL_HEADER) or actor.is_panel:
+            raise Unauthenticated()
+        if actor.user.is_admin:
+            return actor
+        if admin_only or section not in policy.READER_SECTIONS or request.method not in {"GET", "HEAD"}:
+            raise Forbidden("admin_required", "Administrator access is required.")
+        if section not in policy.console_sections(db, actor.user):
+            raise Forbidden("usage_read_required", "Operational read access is required.")
+        return actor
+
+    return authorized
