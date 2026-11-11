@@ -68,8 +68,8 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 15 | A6 | Overview dashboard | A4, A5, P3 | queued | [admin](admin.md#a6--overview-dashboard) |
 | 16 | P4 | Organisation chart and unit changes | P2 | queued | [people](people.md#p4--organisation-chart-and-unit-changes) |
 | 17 | P5 | Scheduled changes and attention list | P3, P4 | queued | [people](people.md#p5--scheduled-changes-and-attention-list) |
-| 18 | H1 | Help centre framework and sync check | U2 | in progress | [help](help.md#h1--help-centre-framework-and-sync-check) |
-| 19 | H2 | Help for members and stewards | H1 | queued | [help](help.md#h2--help-for-members-and-stewards) |
+| 18 | H1 | Help centre framework and sync check | U2 | done | [help](help.md#h1--help-centre-framework-and-sync-check) |
+| 19 | H2 | Help for members and stewards | H1 | in progress | [help](help.md#h2--help-for-members-and-stewards) |
 | 20 | H3 | Administrator handbook and setup checklist | H1, P5, A6 | queued | [help](help.md#h3--administrator-handbook-and-setup-checklist) |
 | 21 | P6 | Staff list import and bulk changes | P3 | queued | [people](people.md#p6--staff-list-import-and-bulk-changes) |
 | 22 | D3 | Scheduled backups with status file | — | in progress | [deployment](deployment.md#d3--scheduled-backups-with-status-file) |
