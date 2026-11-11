@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { IconButton } from "./IconButton";
 import { Icon } from "./Icon";
+import "./base.css";
 import "./field.css";
 
 type SearchInputProps = {
