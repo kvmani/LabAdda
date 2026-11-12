@@ -143,4 +143,4 @@ Keep the old admin routes until P4. Retain races with legacy writes in qualifica
 - `api/changes.py`: `/import/template`, `/import/preview` (raw `text/csv` body streamed with a
   size cap), `/bulk/preview`, `/bulk/apply`. Tests: `test_import_parser.py`,
   `test_changes_import.py`.
-
+  Browser check: `e2e/people-import.mjs` (upload, report, selection, slips, bulk suspend, member 403).
