@@ -1,0 +1,39 @@
+/* My Notes: a single column of private notes. */
+.notes {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 800px;
+  min-width: 0;
+}
+.notes__form {
+  display: grid;
+  gap: var(--space-3);
+}
+.notes__form p,
+.notes p {
+  margin: 0;
+}
+.notes__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.notes__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.notes__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.notes__due {
+  color: var(--warn);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.notes__error {
+  color: var(--danger);
+}
