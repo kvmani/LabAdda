@@ -67,7 +67,11 @@ def readable_workspace_ids(db: Session, user: User) -> dict[uuid.UUID, str | Non
     """Map each readable workspace ID to the user's direct role there (or None if inherited)."""
     if not user.is_active:
         return {}
-    grants = direct_grants(db, user.id)
+    return readable_from_grants(db, direct_grants(db, user.id))
+
+
+def readable_from_grants(db: Session, grants: dict[uuid.UUID, str]) -> dict[uuid.UUID, str | None]:
+    """Apply the upward-only rule to a set of direct grants, current or proposed."""
     if not grants:
         return {}
     parents = _org_parents(db)

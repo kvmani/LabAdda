@@ -542,8 +542,28 @@ identity lock, rechecks authority, matches the complete digest/revision map and
 writes the edit, revision and parent/per-step audits in one transaction. A retry
 of an applied plan returns409. Audit steps retain structured staff before/after;
 no request bodies or credentials are logged. Live identity revalidation follows
-commit. Authority is checked again before returning the receipt. Only edits are
-served in this slice; add_person and transfer remain P2 work and are rejected422.
+commit. Authority is checked again before returning the receipt. Every receipt
+carries `kind`; the request is a discriminated union on `kind`.
+
+### P2 add a person (PO-10)
+
+`request:{kind:"add_person",username,display_name,fields?,home_unit_id,role,joined_on?}`.
+`username` is trimmed, lowercased and must match the shared rule (2–63 of
+`a-z0-9._-`, starting with a letter or digit); `display_name` 1–120; `fields`
+permits designation, employee_no, contact_email, contact_phone (same bounds as
+edits); `role` is `member|steward`; `joined_on` is an ISO date (default: today in
+the site zone). Unknown keys, including `is_admin` and `status`, are rejected422.
+New accounts are never administrators.
+
+Steps: create the invited account (step target `new:<username>`; audits record the
+real identity), make the home unit with the role, issue a one-time activation code.
+Blockers: `username_taken`, `duplicate_employee`, `unit_unavailable` (project,
+group or archived unit). Warning `similar_name` (target: the existing person) when
+another display name is very similar; it never blocks. A missing unit returns404.
+`revisions` is `{}`. The receipt adds `activation:{code,expires_at}`: the only time
+the code is returned (only its hash is stored, never in audits). If the receipt is
+lost, issue a new code with a password reset. Concurrent identical confirmations
+create one person; the other gets409.
 
 ## A2 · Audit explorer (AD-09)
 

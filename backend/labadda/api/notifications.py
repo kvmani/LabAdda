@@ -9,9 +9,10 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from .. import policy
+from ..changes.kinds import transfer
 from ..deps import Actor, current_actor, get_db
 from ..errors import NotFound
-from ..models import ChatMessage, Note, Notification, Post, Workspace
+from ..models import ChatMessage, Note, Notification, Post, User, Workspace
 from ..security import utcnow
 from ..serialize import iso
 
@@ -53,7 +54,26 @@ def _resolve(db: Session, actor: Actor, n: Notification, readable: dict) -> dict
             "workspace": {"id": str(ws.id), "name": ws.name},
             "link": {"view": "chat", "workspace_id": str(ws.id), "seq": msg.seq},
         }
+    if n.source_type == "transfer":
+        return _reassignment(db, n, readable)
     return None
+
+
+def _reassignment(db: Session, n: Notification, readable: dict) -> dict | None:
+    """Steward notice after a transfer: the person's name and a live count, never task text."""
+    person = db.get(User, n.source_id)
+    if person is None or n.workspace_id not in readable:
+        return None
+    ws = db.get(Workspace, n.workspace_id)
+    count = transfer.open_task_counts(db, person.id, {ws.id}).get(ws.id, 0)
+    return {
+        "title": (
+            f"{person.display_name} has moved to another unit. {count} open shared tasks in this "
+            "workspace are still assigned to them. Please reassign them."
+        ),
+        "workspace": {"id": str(ws.id), "name": ws.name},
+        "link": {"view": "todos", "workspace_id": str(ws.id)},
+    }
 
 
 def _visible(db: Session, actor: Actor, limit: int, unread_only: bool = False):

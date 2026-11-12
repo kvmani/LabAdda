@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from ...config import Settings
 from ...errors import NotFound
 from ...models import User
 from ..guards import unique_employee_number
@@ -11,7 +12,7 @@ from ..plan import Blocker, Plan, Snapshot, Step
 from ..requests import EditPerson
 
 
-def build(db: Session, request: EditPerson, actor_id: uuid.UUID) -> Plan:
+def build(db: Session, request: EditPerson, actor_id: uuid.UUID, settings: Settings) -> Plan:
     """Read current staff values and expose exact before/after metadata only."""
     person = db.get(User, request.person_id, populate_existing=True)
     if person is None:
@@ -42,7 +43,9 @@ def build(db: Session, request: EditPerson, actor_id: uuid.UUID) -> Plan:
     )
 
 
-def apply(db: Session, actor: User, plan: Plan) -> User:
+def apply(
+    db: Session, actor: User, plan: Plan, request: EditPerson, settings: Settings, reason: str
+) -> tuple[User, dict]:
     """Apply only rebuilt, whitelisted staff fields inside the caller's transaction."""
     person_id = uuid.UUID(plan.steps[0].target_id)
     person = db.get(User, person_id)
@@ -52,4 +55,4 @@ def apply(db: Session, actor: User, plan: Plan) -> User:
         setattr(person, name, value)
     person.revision += 1
     db.flush()
-    return person
+    return person, {}

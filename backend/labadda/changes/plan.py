@@ -68,11 +68,16 @@ class Step:
 
 @dataclass(frozen=True)
 class Warning:
-    """An explicit concern that the later apply service must handle as specified."""
+    """An explicit concern; ``count`` carries a reviewed number (never content) when relevant."""
 
     code: str
     message: str
     target_id: str | None = None
+    count: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.count is not None and (type(self.count) is not int or self.count < 0):
+            raise ValueError("A warning count must be a nonnegative integer")
 
 
 @dataclass(frozen=True)
