@@ -9,6 +9,8 @@ type Ctx = {
   signIn: (username: string, password: string) => Promise<void>;
   activate: (token: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Update the cached session after the server confirmed a change, such as a dismissed welcome. */
+  patch: (changes: Partial<SessionInfo>) => void;
   expired: boolean;
 };
 
@@ -43,6 +45,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     session,
     loading,
     expired,
+    patch: (changes) => setSession((current) => (current ? { ...current, ...changes } : current)),
     signIn: async (username, password) =>
       accept(await api<SessionInfo>("/auth/login", { body: { username, password } })),
     activate: async (token, password) =>

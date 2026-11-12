@@ -263,3 +263,27 @@
     padding: var(--space-4) var(--space-3);
   }
 }
+
+/* First-use welcome and what's-new panel (HP-08). */
+.first-use {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}
+.first-use__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+.first-use__list {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-5);
+}
+.first-use__error {
+  color: var(--danger);
+}
+.first-use__actions {
+  margin-top: var(--space-3);
+}

@@ -70,6 +70,11 @@ export function HelpHome({ entries }: { entries: HelpEntry[] }) {
         )
       ) : (
         <div className="help-shelves">
+          {entries.some((entry) => entry.slug === "whats-new") && (
+            <p className="help-whats-new">
+              <Link to="/help/whats-new">What is new in this release</Link>
+            </p>
+          )}
           {orderShelves(own).map((shelf) => (
             <ShelfCard key={shelf.id} shelf={shelf} entries={onShelf(shelf)} />
           ))}

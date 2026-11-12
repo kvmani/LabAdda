@@ -4,6 +4,9 @@ export type SessionInfo = {
   csrf_token: string;
   timezone: string;
   instance: string;
+  release: string;
+  welcome_pending: boolean;
+  whats_new_pending: boolean;
   limits: { max_attachments: number; max_attachment_bytes: number };
 };
 export type Workspace = {

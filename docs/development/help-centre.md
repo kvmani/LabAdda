@@ -15,7 +15,9 @@ The help centre is a set of Markdown pages compiled into the web app. It needs n
 | `frontend/src/features/help/generated/` | Index and page modules. Git-ignored; never edit |
 | `frontend/src/ui/helpEntry.ts` | Context that lets `PageHeader` show the shell's help control |
 | `scripts/check_help.py`, `backend/tests/test_check_help.py` | The sync check and its tests |
-| `e2e/help.mjs` | Browser check at `/` and `/labadda-staging` |
+| `scripts/help_commands.py` | Operator-page command check used by `check_help.py` (H4) |
+| `frontend/src/features/shell/FirstUse.tsx` | First-sign-in welcome and what's-new pointer (H4) |
+| `e2e/help.mjs`, `e2e/welcome.mjs` | Browser checks at `/` and `/labadda-staging` |
 
 ## Writing a page
 
@@ -102,6 +104,14 @@ Two more rules apply to the whole help set:
 - every route in `App.tsx` outside `/admin` must be the `screen` of at least one page. The routes in
   `ROUTES_WITHOUT_PAGE` (redirects, the catch-all, the help centre itself and `/activate`) are exempt.
 
+Operator pages (`operator/`, H4) are also checked for commands. Every command in a code block or code
+span that runs `scripts/<name>.py` or `labadda` (also written `python -m labadda.cli`) must name a tool
+that exists, a subcommand it defines and only options it defines; a code span that is only `--option`
+must exist in some tool. `scripts/help_commands.py` reads the tools' argparse calls from their source with
+`ast` (nothing is imported or run). Use placeholders such as `<site-name>` and `<tools>`, and say "the
+deployment guide supplied with the release" instead of naming repository files. All nine operator
+pages are in `REQUIRED_PAGES`.
+
 The event-code rule (`check_event_codes`) stays off until H3 sets `EVENT_CODE_CHECK_ENABLED`.
 
 ## Checks
@@ -112,3 +122,17 @@ cd frontend && npx vitest run scripts src/features/help
 cd backend && ../.venv/bin/python -m pytest tests/test_check_help.py -q
 node e2e/help.mjs /tmp/help-check      # needs the proxy stack; see the frontend instructions
 ```
+
+## First-use welcome and what's new (HP-08, H4)
+
+`users.welcome_dismissed_at` and `users.whats_new_seen_release` (migration 0032) hold the state per
+person, so it follows them to any browser. `GET /auth/session` returns `welcome_pending` (normal
+sessions only) and `whats_new_pending` (welcome already dismissed and the stored release differs from
+`release`, the server version). `FirstUse` renders at the top of the shell's main region: it names the
+home unit, the three tabs and the Help link, never takes focus, and hides on the button or on Escape
+inside the panel. Dismissing the welcome also marks the current release as seen, so a new person is not
+shown release notes at once. `POST /me/welcome/dismiss` and `POST /me/whats-new/seen` save the change;
+the panel stays and shows the error if saving fails. Board-only panel sessions get `401` and never show
+it. Fixture people are seeded as welcomed so other browser suites start on their own screen.
+`frontend/src/help/whats-new.md` is the release notes page; edit it for each release, and the Help home
+links to it. `e2e/welcome.mjs` creates and activates fresh people to check both.

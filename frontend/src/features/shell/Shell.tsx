@@ -7,6 +7,7 @@ import { useSession } from "../../session";
 import { Banner, HelpEntryContext } from "../../ui";
 import { useWorkspaces } from "../../workspaces";
 import { HelpLink } from "../help/HelpLink";
+import { FirstUse } from "./FirstUse";
 import { RailNav } from "./RailNav";
 import { TopBar } from "./TopBar";
 import { useSiteBanner } from "./useSiteBanner";
@@ -105,6 +106,7 @@ export function Shell({ children }: { children: ReactNode }) {
         )}
         <RailNav workspaces={workspaces} currentId={currentId} operations={operations} error={error} />
         <main className="shell-main" id="main" tabIndex={-1}>
+          <FirstUse />
           {children}
         </main>
       </div>
