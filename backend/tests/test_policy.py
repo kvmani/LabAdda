@@ -145,3 +145,21 @@ def test_admin_can_move_unit(as_user, ids):
     )
     names = readable_names(as_user, "chen")
     assert "Surface Science Division" not in names and "Materials Group" in names
+
+
+def test_workspace_list_omits_grant_revoked_mid_request(as_user, ids, monkeypatch):
+    """A revoke landing between the readable-set read and the per-workspace resolve is not a 500."""
+    from labadda.api import workspaces as ws_api
+
+    revoked = ids["workspaces"]["section_a"]
+    real = policy.resolve
+
+    def resolve_after_revoke(db, user, workspace_id):
+        return None if str(workspace_id) == revoked else real(db, user, workspace_id)
+
+    monkeypatch.setattr(ws_api.policy, "resolve", resolve_after_revoke)
+    r = as_user("ben").get("/workspaces")
+    assert r.status_code == 200
+    body = r.json()
+    assert revoked not in {w["id"] for w in body["workspaces"]}
+    assert "Surface Science Division" in {w["name"] for w in body["workspaces"]}

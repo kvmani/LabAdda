@@ -53,6 +53,8 @@ def list_workspaces(actor: Actor = Depends(current_actor), db: Session = Depends
     items = []
     for ws in sorted(rows, key=lambda w: (w.kind != "org", w.name.lower())):
         access = policy.resolve(db, actor.user, ws.id)
+        if access is None:  # grant revoked after the readable set was read
+            continue
         items.append({**workspace_json(ws, access), "unread_chat": unread.get(ws.id, 0)})
     home = actor.user.home_workspace_id
     direct = [i for i in items if i["role"] is not None]
