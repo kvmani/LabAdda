@@ -116,9 +116,9 @@ class Transfer(BaseModel):
     person_id: uuid.UUID
     to_unit_id: uuid.UUID
     role: Role
-    keep_previous: bool = False
+    keep_previous: bool = Field(default=False, strict=True)
     leave_workspace_ids: list[uuid.UUID] = Field(default_factory=list, max_length=100)
-    acknowledge_no_steward: bool = False
+    acknowledge_no_steward: bool = Field(default=False, strict=True)
 
     @field_validator("leave_workspace_ids")
     @classmethod

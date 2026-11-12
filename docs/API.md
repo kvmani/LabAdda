@@ -565,6 +565,38 @@ the code is returned (only its hash is stored, never in audits). If the receipt 
 lost, issue a new code with a password reset. Concurrent identical confirmations
 create one person; the other gets409.
 
+### P2 transfer (PO-12)
+
+`request:{kind:"transfer",person_id,to_unit_id,role,keep_previous?,leave_workspace_ids?,acknowledge_no_steward?}`.
+`role` is `member|steward`; booleans are strict (default false);
+`leave_workspace_ids` lists at most100 of the person's projects/groups to leave
+(all others are kept). Steps, in order: change the home unit (before/after
+`home_unit_id`,`home_unit` name); the membership in the new unit; then each
+membership removed (the previous home unit unless `keep_previous`, and each listed
+project/group), each with before/after `role`. `revisions` holds the person.
+
+Warnings (names and counts only): `access_gained`/`access_lost` per workspace the
+person can newly read or no longer read, computed from current and proposed grants
+with the upward-only rule; `open_tasks` per lost workspace with `count` of open
+shared tasks assigned to the person (no titles); `unit_without_steward` when
+acknowledged. Blockers: `person_inactive` (suspended, retired or left),
+`unit_unavailable` (not an open organisation unit), `same_unit`, `not_a_member`
+(a listed id is not one of their projects/groups), `group_needs_steward` (leaving
+would leave a project/group with members but no steward), `unit_without_steward`
+(not acknowledged). Missing person or unit404. A handover period is not offered.
+
+Apply locks the admin roles, the actor, the role locks of every workspace in scope
+(sorted), then the person row; it rebuilds, compares digest and revision, writes
+home unit, revision, memberships (with their `membership.set`/`membership.remove`
+audits), the parent/step audits and steward notices in one transaction. The receipt
+adds `stewards_notified` (a count). After commit the person's live subscriptions are
+revalidated: old-unit subscriptions receive `revoked`, and later reads return404.
+
+Steward notice: `GET /notifications` item `kind:"reassign"` for each active direct
+steward (other than the person) of a lost workspace with open assigned tasks:
+`title` names the person and the current open count; `link:{view:"todos",workspace_id}`.
+It is hidden once the recipient can no longer read that workspace.
+
 ## A2 · Audit explorer (AD-09)
 
 Administrators only: usage readers and members get 403, signed-out 401, board-only panel sessions 401.
