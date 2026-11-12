@@ -15,6 +15,13 @@ const LABELS: Record<string, string> = {
   contact_email: "Work email",
   contact_phone: "Phone extension",
   joined_on: "Date joined",
+  expected_return_on: "Expected return date",
+  sign_in: "Can sign in",
+  position: "Position",
+  unit: "Unit",
+  ends_on: "Ends on",
+  returns_to: "Role afterwards",
+  is_admin: "Site administrator",
 };
 const HIDDEN = new Set(["home_unit_id"]);
 
