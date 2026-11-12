@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { api, setCsrf, setUnauthenticatedHandler, errorMessage } from "../api";
 import { realtime } from "../realtime";
 import type { Workspace } from "../types";
+import { Banner, Button, Card, TextInput } from "../ui";
 import { Board } from "./Board";
+import "./panel.css";
 
 type PanelSession = {
   user: { id: string; display_name: string };
@@ -72,43 +74,42 @@ function PairScreen({ notice, onPaired }: { notice: string | null; onPaired: (s:
 
   return (
     <main className="panel-pair">
-      <form className="card" onSubmit={submit}>
-        <h1>LabAdda touch panel</h1>
-        {notice && (
-          <p className="notice" role="status">
-            {notice}
+      <Card>
+        <form className="panel-pair__form" onSubmit={submit}>
+          <h1 className="panel-pair__title">LabAdda touch panel</h1>
+          {notice && <Banner>{notice}</Banner>}
+          <p>
+            On your computer, open a workspace whiteboard and choose <strong>📺 Open on touch panel</strong>.
+            Then enter the code here.
           </p>
-        )}
-        <p>
-          On your computer, open a workspace whiteboard and choose <strong>📺 Open on touch panel</strong>.
-          Then enter the code here.
-        </p>
-        <label>
-          Panel code
-          <input
-            className="code-input"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            autoComplete="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            placeholder="XXXX-XXXX"
-            required
-          />
-        </label>
-        {error && (
-          <p className="error" role="alert">
-            {error}
+          <div className="panel-pair__code">
+            <TextInput
+              label="Panel code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              placeholder="XXXX-XXXX"
+              required
+            />
+          </div>
+          {error && (
+            <p className="panel-pair__error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="panel-pair__submit">
+            <Button variant="primary" type="submit" busy={busy} busyLabel="Opening…">
+              Open board
+            </Button>
+          </div>
+          <p className="panel-pair__hint">
+            The panel shows only the chosen board. It locks after a few idle minutes and keeps nothing after
+            it ends.
           </p>
-        )}
-        <button className="big" type="submit" disabled={busy}>
-          {busy ? "Opening…" : "Open board"}
-        </button>
-        <p className="muted small">
-          The panel shows only the chosen board. It locks after a few idle minutes and keeps nothing after it
-          ends.
-        </p>
-      </form>
+        </form>
+      </Card>
     </main>
   );
 }
@@ -175,15 +176,17 @@ function PanelBoard({ session, onEnd }: { session: PanelSession; onEnd: (why: st
     <div className="panel-shell" onPointerDownCapture={touched}>
       <header className="panel-bar">
         <strong className="panel-title">{session.workspace.name}</strong>
-        <span className="muted">Drawing as {session.user.display_name}</span>
+        <span className="panel-bar__who">Drawing as {session.user.display_name}</span>
         {remaining <= WARN_SECONDS && (
           <span className="lock-warning" role="alert">
             Locking in {Math.max(0, remaining)} s. Touch the screen to stay.
           </span>
         )}
-        <button className="end-session" onClick={() => end("ended")}>
-          End session
-        </button>
+        <div className="panel-bar__end">
+          <Button variant="danger" onClick={() => end("ended")}>
+            End session
+          </Button>
+        </div>
       </header>
       <Board ws={ws} panel userId={session.user.id} onActivity={touched} />
     </div>

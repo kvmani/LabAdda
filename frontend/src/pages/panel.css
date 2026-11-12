@@ -1,0 +1,87 @@
+/* Shared touch panel: large targets, canvas-first. Board controls are in board-chrome.css. */
+.panel-state {
+  padding: var(--space-6);
+  text-align: center;
+  font-size: 1.4rem;
+}
+.panel-pair {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--surface-page);
+  color: var(--text);
+}
+.panel-pair > .ui-card {
+  width: min(560px, 100%);
+  font-size: 1.15rem;
+}
+.panel-pair__form {
+  display: grid;
+  gap: var(--space-3);
+}
+.panel-pair__form p,
+.panel-pair__title {
+  margin: 0;
+}
+.panel-pair__title {
+  font-size: var(--text-2xl);
+}
+.panel-pair__code .ui-input {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+  padding: var(--space-3);
+  height: auto;
+}
+.panel-pair__error {
+  color: var(--danger);
+}
+.panel-pair__submit .ui-button {
+  width: 100%;
+  min-height: 64px;
+  font-size: 1.3rem;
+}
+.panel-pair__hint,
+.panel-bar__who {
+  color: var(--text-muted);
+}
+.panel-pair__hint {
+  font-size: var(--text-md);
+}
+.panel-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-page);
+  color: var(--text);
+}
+.panel-bar {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.panel-title {
+  font-size: 1.3rem;
+}
+.lock-warning {
+  background: var(--warn-soft);
+  color: var(--text);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+.panel-bar__end {
+  margin-left: auto;
+}
+.panel-bar__end .ui-button {
+  min-height: 56px;
+  padding: var(--space-2) var(--space-5);
+  font-size: 1.2rem;
+}

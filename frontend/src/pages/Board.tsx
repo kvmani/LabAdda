@@ -659,7 +659,7 @@ export function Board({
           <span className={"save-state" + (save === "Saved" ? " ok" : "")} role="status">
             {save}
           </span>
-          <span className="muted small">
+          <span className="board-meta">
             Epoch {epoch} · rev {state.current.revision} · {presence.length} here:{" "}
             {presence.map((p) => p.display_name).join(", ")}
           </span>

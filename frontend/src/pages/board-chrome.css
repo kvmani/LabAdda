@@ -27,3 +27,128 @@
   background: var(--warn-soft);
   color: var(--text);
 }
+
+/* The drawing area. The canvas stays white in every theme because stroke colours are chosen for white. */
+.whiteboard {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 420px;
+  position: relative;
+}
+.toolbar {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.tool {
+  font: inherit;
+  cursor: pointer;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--text);
+}
+.tool:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+.tool.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.tool:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.swatches {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid var(--surface-card);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.swatch.active {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+.tool:focus-visible,
+.swatch:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.save-state {
+  font-weight: 600;
+  color: var(--warn);
+}
+.save-state.ok {
+  color: var(--ok);
+}
+.board-meta {
+  color: var(--text-muted);
+  font-size: var(--text-md);
+}
+.canvas {
+  flex: 1;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 0;
+  touch-action: none;
+  cursor: crosshair;
+}
+.canvas.tool-pan {
+  cursor: grab;
+}
+.board-list {
+  position: absolute;
+  right: var(--space-2);
+  top: 4rem;
+  width: 280px;
+  max-width: calc(100% - var(--space-4));
+  max-height: 60%;
+  overflow: auto;
+}
+.snapshot-preview {
+  max-width: 100%;
+  max-height: 240px;
+  border: 1px solid var(--line);
+  background: #fff;
+  display: block;
+}
+.pair-code {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+/* On the shared touch panel the same controls get larger targets. */
+.panel-board {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding: var(--space-2);
+}
+.panel-board .tool {
+  min-height: 56px;
+  min-width: 56px;
+  font-size: 1.15rem;
+  padding: var(--space-2) var(--space-4);
+}
+.panel-board .swatch {
+  width: 44px;
+  height: 44px;
+}
