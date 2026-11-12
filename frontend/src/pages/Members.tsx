@@ -5,8 +5,27 @@ import { useSession } from "../session";
 import { useWorkspaces } from "../workspaces";
 import type { User, Workspace } from "../types";
 import { ColleaguePicker } from "./NewGroup";
+import {
+  Button,
+  Card,
+  Checkbox,
+  ConfirmDialog,
+  DataTable,
+  Tag,
+  TextArea,
+  TextInput,
+  type Column,
+} from "../ui";
+import "./groups.css";
 
 type Member = User & { role: "member" | "steward" };
+type Pending = {
+  title: string;
+  consequences: string[];
+  confirmLabel: string;
+  danger: boolean;
+  act: () => Promise<void>;
+};
 
 export function Members({ ws }: { ws: Workspace }) {
   const { session } = useSession();
@@ -16,6 +35,7 @@ export function Members({ ws }: { ws: Workspace }) {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState<User[]>([]);
   const [confirmAdd, setConfirmAdd] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [name, setName] = useState(ws.name);
   const [description, setDescription] = useState(ws.description);
   const isGroup = ws.kind === "group";
@@ -44,211 +64,245 @@ export function Members({ ws }: { ws: Workspace }) {
     }
   }
 
+  const finish = (after?: () => void) => async () => {
+    await load();
+    await reload();
+    after?.();
+  };
   const me = session!.user.id;
+  const showActions = manage || isGroup;
+  const postingPolicy = () =>
+    run(() =>
+      api(`/workspaces/${ws.id}/policy`, {
+        method: "PATCH",
+        body: { posting_policy: ws.posting_policy === "open" ? "read_only" : "open" },
+      }),
+    );
+  const policyLabel = ws.posting_policy === "open" ? "Make read-only for members" : "Reopen posting";
+  const confirm = (next: Pending) => setPending(next);
+  const columns: Column<Member>[] = [
+    {
+      key: "name",
+      header: "Name",
+      render: (m) => (
+        <>
+          {m.display_name} <span className="members__muted">@{m.username}</span>
+          {!m.is_active && <Tag>Inactive</Tag>}
+        </>
+      ),
+    },
+    { key: "role", header: "Role", render: (m) => (m.role === "steward" ? "Steward" : "Member") },
+    ...(showActions
+      ? [
+          {
+            key: "actions",
+            header: "Actions",
+            render: (m: Member) => (
+              <div className="members__actions">
+                {manage && !ws.archived && (
+                  <Button
+                    variant="quiet"
+                    size="sm"
+                    onClick={() =>
+                      run(() =>
+                        api(`/groups/${ws.id}/members/${m.id}`, {
+                          method: "PATCH",
+                          body: { role: m.role === "steward" ? "member" : "steward" },
+                        }),
+                      )
+                    }
+                  >
+                    {m.role === "steward" ? "Make member" : "Make steward"}
+                  </Button>
+                )}
+                {manage && m.id !== me && (
+                  <Button
+                    variant="quiet"
+                    size="sm"
+                    onClick={() =>
+                      confirm({
+                        title: `Remove ${m.display_name}`,
+                        consequences: [
+                          `${m.display_name} loses access to everything in ${ws.name}, including past posts and chat.`,
+                        ],
+                        confirmLabel: `Remove ${m.display_name}`,
+                        danger: true,
+                        act: () =>
+                          api(`/groups/${ws.id}/members/${m.id}`, { method: "DELETE" }).then(finish()),
+                      })
+                    }
+                  >
+                    Remove
+                  </Button>
+                )}
+                {m.id === me && (
+                  <Button
+                    variant="quiet"
+                    size="sm"
+                    onClick={() =>
+                      confirm({
+                        title: `Leave ${ws.name}`,
+                        consequences: ["You will lose access to its content."],
+                        confirmLabel: "Leave group",
+                        danger: true,
+                        act: () =>
+                          api(`/groups/${ws.id}/members/${me}`, { method: "DELETE" }).then(
+                            finish(() => navigate("/")),
+                          ),
+                      })
+                    }
+                  >
+                    Leave group
+                  </Button>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
   return (
     <section className="members">
-      <div className="card">
-        <h2>{isGroup ? "Group members" : `Direct members of ${ws.name}`}</h2>
-        {!isGroup && ws.kind === "org" && (
-          <p className="muted small">
-            Members of sub-units can also read and post here as inherited members.
-          </p>
-        )}
-        {isGroup && (
-          <p className="muted small">
-            Only the people listed here can see this group. Parent units and administrators have no access.
-          </p>
-        )}
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        {!members ? (
-          <p className="muted">Loading…</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Role</th>
-                {(manage || isGroup) && (
-                  <th>
-                    <span className="sr-only">Actions</span>
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.id}>
-                  <td>
-                    {m.display_name} <span className="muted small">@{m.username}</span>
-                    {!m.is_active && <span className="tag">Inactive</span>}
-                  </td>
-                  <td>{m.role === "steward" ? "Steward" : "Member"}</td>
-                  {(manage || isGroup) && (
-                    <td className="row">
-                      {manage && !ws.archived && (
-                        <button
-                          className="ghost small"
-                          onClick={() =>
-                            run(() =>
-                              api(`/groups/${ws.id}/members/${m.id}`, {
-                                method: "PATCH",
-                                body: { role: m.role === "steward" ? "member" : "steward" },
-                              }),
-                            )
-                          }
-                        >
-                          {m.role === "steward" ? "Make member" : "Make steward"}
-                        </button>
-                      )}
-                      {manage && m.id !== me && (
-                        <button
-                          className="ghost small"
-                          onClick={() =>
-                            window.confirm(`Remove ${m.display_name} from ${ws.name}?`) &&
-                            run(() => api(`/groups/${ws.id}/members/${m.id}`, { method: "DELETE" }))
-                          }
-                        >
-                          Remove
-                        </button>
-                      )}
-                      {m.id === me && (
-                        <button
-                          className="ghost small"
-                          onClick={() =>
-                            window.confirm(`Leave ${ws.name}? You will lose access to its content.`) &&
-                            run(
-                              () => api(`/groups/${ws.id}/members/${me}`, { method: "DELETE" }),
-                              () => navigate("/"),
-                            )
-                          }
-                        >
-                          Leave group
-                        </button>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-      {manage && !ws.archived && (
-        <div className="card">
-          <h2>Add colleagues</h2>
-          <ColleaguePicker
-            selected={adding}
-            onChange={(u) => {
-              setAdding(u);
-              setConfirmAdd(false);
-            }}
-            exclude={members?.map((m) => m.id) ?? []}
-          />
-          {adding.length > 0 && (
-            <label className="warning">
-              <input type="checkbox" checked={confirmAdd} onChange={(e) => setConfirmAdd(e.target.checked)} />{" "}
-              New members can read all existing posts, chat history and the board in{" "}
-              <strong>{ws.name}</strong>.
-            </label>
+      <Card title={isGroup ? "Group members" : `Direct members of ${ws.name}`}>
+        <div className="members__stack">
+          {!isGroup && ws.kind === "org" && (
+            <p className="members__muted">
+              Members of sub-units can also read and post here as inherited members.
+            </p>
           )}
-          <button
-            disabled={!adding.length || !confirmAdd}
-            onClick={() =>
-              run(
-                () => api(`/groups/${ws.id}/members`, { body: { user_ids: adding.map((u) => u.id) } }),
-                () => setAdding([]),
-              )
-            }
-          >
-            Add {adding.length || ""} to group
-          </button>
+          {isGroup && (
+            <p className="members__muted">
+              Only the people listed here can see this group. Parent units and administrators have no access.
+            </p>
+          )}
+          {error && (
+            <p className="members__error" role="alert">
+              {error}
+            </p>
+          )}
+          <DataTable
+            caption={isGroup ? "Group members" : `Direct members of ${ws.name}`}
+            columns={columns}
+            rows={members ?? []}
+            rowKey={(m) => m.id}
+            loading={!members && !error}
+            empty={{ title: "No members to show." }}
+          />
         </div>
+      </Card>
+      {manage && !ws.archived && (
+        <Card title="Add colleagues">
+          <div className="members__stack">
+            <ColleaguePicker
+              selected={adding}
+              onChange={(u) => {
+                setAdding(u);
+                setConfirmAdd(false);
+              }}
+              exclude={members?.map((m) => m.id) ?? []}
+            />
+            {adding.length > 0 && (
+              <Checkbox
+                label={`New members can read all existing posts, chat history and the board in ${ws.name}.`}
+                checked={confirmAdd}
+                onChange={(e) => setConfirmAdd(e.target.checked)}
+              />
+            )}
+            <div>
+              <Button
+                variant="primary"
+                disabled={!adding.length || !confirmAdd}
+                onClick={() =>
+                  run(
+                    () => api(`/groups/${ws.id}/members`, { body: { user_ids: adding.map((u) => u.id) } }),
+                    () => setAdding([]),
+                  )
+                }
+              >
+                Add {adding.length || ""} to group
+              </Button>
+            </div>
+          </div>
+        </Card>
       )}
       {manage && (
-        <div className="card">
-          <h2>Group settings</h2>
-          <label>
-            Name
-            <input
+        <Card title="Group settings">
+          <div className="members__stack">
+            <TextInput
+              label="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={ws.archived}
               maxLength={120}
             />
-          </label>
-          <label>
-            Description
-            <textarea
+            <TextArea
+              label="Description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={ws.archived}
               rows={2}
             />
-          </label>
-          <div className="row">
-            {!ws.archived && (
-              <button
+            <div className="members__actions">
+              {!ws.archived && (
+                <Button
+                  variant="primary"
+                  onClick={() =>
+                    run(() => api(`/groups/${ws.id}`, { method: "PATCH", body: { name, description } }))
+                  }
+                >
+                  Save
+                </Button>
+              )}
+              {!ws.archived && <Button onClick={postingPolicy}>{policyLabel}</Button>}
+              <Button
+                variant="danger"
                 onClick={() =>
-                  run(() => api(`/groups/${ws.id}`, { method: "PATCH", body: { name, description } }))
+                  confirm({
+                    title: ws.archived ? "Unarchive this group" : "Archive this group",
+                    consequences: [
+                      ws.archived
+                        ? "Members can post again."
+                        : "Members keep read access but nobody can post.",
+                    ],
+                    confirmLabel: ws.archived ? "Unarchive group" : "Archive group",
+                    danger: !ws.archived,
+                    act: () =>
+                      api(`/groups/${ws.id}`, { method: "PATCH", body: { archived: !ws.archived } }).then(
+                        finish(),
+                      ),
+                  })
                 }
               >
-                Save
-              </button>
-            )}
-            <button
-              className="ghost"
-              onClick={() =>
-                window.confirm(
-                  ws.archived
-                    ? "Unarchive this group?"
-                    : "Archive this group? Members keep read access but nobody can post.",
-                ) && run(() => api(`/groups/${ws.id}`, { method: "PATCH", body: { archived: !ws.archived } }))
-              }
-            >
-              {ws.archived ? "Unarchive group" : "Archive group"}
-            </button>
-            {!ws.archived && (
-              <button
-                className="ghost"
-                onClick={() =>
-                  run(() =>
-                    api(`/workspaces/${ws.id}/policy`, {
-                      method: "PATCH",
-                      body: { posting_policy: ws.posting_policy === "open" ? "read_only" : "open" },
-                    }),
-                  )
-                }
-              >
-                {ws.posting_policy === "open" ? "Make read-only for members" : "Reopen posting"}
-              </button>
-            )}
+                {ws.archived ? "Unarchive group" : "Archive group"}
+              </Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
       {!isGroup && ws.can_moderate && !ws.archived && (
-        <div className="card">
-          <h2>Posting policy</h2>
-          <p className="muted small">
-            Currently {ws.posting_policy === "open" ? "open to all members" : "read-only for members"}.
-          </p>
-          <button
-            onClick={() =>
-              run(() =>
-                api(`/workspaces/${ws.id}/policy`, {
-                  method: "PATCH",
-                  body: { posting_policy: ws.posting_policy === "open" ? "read_only" : "open" },
-                }),
-              )
-            }
-          >
-            {ws.posting_policy === "open" ? "Make read-only for members" : "Reopen posting"}
-          </button>
-        </div>
+        <Card title="Posting policy">
+          <div className="members__stack">
+            <p className="members__muted">
+              Currently {ws.posting_policy === "open" ? "open to all members" : "read-only for members"}.
+            </p>
+            <div>
+              <Button onClick={postingPolicy}>{policyLabel}</Button>
+            </div>
+          </div>
+        </Card>
       )}
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.title ?? ""}
+        consequences={pending?.consequences ?? []}
+        confirmLabel={pending?.confirmLabel ?? ""}
+        danger={pending?.danger}
+        onConfirm={async () => {
+          await pending?.act();
+          setPending(null);
+        }}
+        onCancel={() => setPending(null)}
+      />
     </section>
   );
 }
