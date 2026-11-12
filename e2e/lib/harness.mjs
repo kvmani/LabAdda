@@ -105,7 +105,8 @@ export function hasNoSideScroll(page) {
  * the server to confirm a subscription before it acts. `frames` holds parsed JSON frames.
  */
 function observeSockets(ctx, page) {
-  const state = { frames: [], listeners: new Set() };
+  const state = { frames: [], listeners: new Set(), inFlight: 0 };
+  trackApiRequests(page, state);
   ctx.addInitScript(() => {
     const NativeSocket = window.WebSocket;
     window.__sockets = [];
@@ -129,6 +130,32 @@ function observeSockets(ctx, page) {
     }),
   );
   return state;
+}
+
+function trackApiRequests(page, state) {
+  const isApi = (request) => request.url().includes("/api/v1/");
+  page.on("request", (request) => {
+    if (isApi(request)) state.inFlight += 1;
+  });
+  const finished = (request) => {
+    if (isApi(request)) state.inFlight -= 1;
+  };
+  page.on("requestfinished", finished);
+  page.on("requestfailed", finished);
+}
+
+/**
+ * Waits until the tab has no API request in flight across two painted frames, so a follow-up
+ * request chained to a response (such as an unread-count reload) cannot overlap what the suite does next.
+ */
+export async function settleRequests(user) {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    await nextPaint(user.page);
+    if (user.sockets.inFlight !== 0) continue;
+    await nextPaint(user.page);
+    if (user.sockets.inFlight === 0) return;
+  }
+  throw new Error("API requests did not settle");
 }
 
 /** Number of frames received so far; pass it as `since` to ignore earlier frames. */

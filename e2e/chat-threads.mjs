@@ -1,212 +1,165 @@
-import assert from "node:assert/strict";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url),
-  { chromium } = require("playwright");
-const browser = await chromium.launch({
-    executablePath: process.env.LABADDA_CHROMIUM ?? "/usr/bin/chromium",
-  }),
-  origin = "http://127.0.0.1:8080";
-let checks = 0;
-const check = (v, label) => {
-  assert.ok(v, label);
-  checks++;
-  console.log("PASS " + label);
-};
-async function login(base, name) {
-  const ctx = await browser.newContext({ viewport: { width: 1400, height: 1100 } }),
-    page = await ctx.newPage(),
-    errors = [];
-  await ctx.addInitScript(() => {
-    const Native = window.WebSocket;
-    window.__sockets = [];
-    window.WebSocket = class extends Native {
-      constructor(...args) {
-        super(...args);
-        window.__sockets.push(this);
-      }
-    };
-  });
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(origin + base + "/");
-  await page.getByLabel("Username").fill(name);
-  await page.getByLabel("Password").fill("fixture-pass-123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
-  const session = await (await ctx.request.get(origin + base + "/api/v1/auth/session")).json();
-  return {
-    ctx,
-    page,
-    errors,
-    session,
-    api: origin + base + "/api/v1",
-    headers: { "X-CSRF-Token": session.csrf_token },
-  };
-}
-async function call(a, path, body, method = body ? "POST" : "GET") {
-  const r = await a.ctx.request.fetch(a.api + path, { method, headers: a.headers, data: body });
-  assert.ok(r.ok(), await r.text());
-  return r.json();
-}
-async function thread(a, base, ws, body) {
-  await a.page.goto(origin + base + `/w/${ws}/chat`);
-  await a.page
+import {
+  axeViolations,
+  bases,
+  call,
+  frameMark,
+  hasNoSideScroll,
+  holdFirstResponse,
+  loseNextResponse,
+  nextPaint,
+  settleRequests,
+  origin,
+  startHarness,
+  waitForSubscribed,
+} from "./lib/harness.mjs";
+
+const harness = await startHarness();
+const { check, login } = harness;
+
+const replyBox = (region) => region.getByLabel("Thread reply", { exact: true });
+const buttonNamed = (scope, name) => scope.getByRole("button", { name, exact: true });
+const textNamed = (scope, text) => scope.getByText(text, { exact: true });
+
+async function openThread(user, base, workspaceId, rootBody) {
+  await user.page.goto(origin + base + `/w/${workspaceId}/chat`);
+  await user.page
     .getByRole("listitem")
-    .filter({ has: a.page.getByText(body, { exact: true }) })
+    .filter({ has: textNamed(user.page, rootBody) })
     .getByRole("button", { name: "Open thread", exact: true })
     .click();
-  return a.page.getByRole("region", { name: "Chat thread", exact: true });
+  return user.page.getByRole("region", { name: "Chat thread", exact: true });
 }
+
+function postChat(user, workspaceId, body) {
+  return call(user, `/workspaces/${workspaceId}/chat`, { body, client_id: crypto.randomUUID() });
+}
+
+async function checkReplyDraftAndRecovery(ben, asha, base, workspaceId, root) {
+  const region = await openThread(ben, base, workspaceId, root.body);
+  const otherRegion = await openThread(asha, base, workspaceId, root.body);
+  await replyBox(region).fill("Unsent uncertainty question");
+  await replyBox(otherRegion).fill("Add a witness coupon");
+  await buttonNamed(otherRegion, "Send reply").click();
+  await textNamed(otherRegion, "Add a witness coupon").waitFor();
+  await buttonNamed(region, "Refresh thread").click();
+  await textNamed(region, "Add a witness coupon").waitFor();
+  check(
+    (await replyBox(region).inputValue()) === "Unsent uncertainty question",
+    base + " thread refresh preserves reply draft",
+  );
+  await loseNextResponse(ben.page, "**/api/v1/workspaces/*/chat", { onlyPost: true });
+  await buttonNamed(region, "Send reply").click();
+  await buttonNamed(region, "Retry same message").waitFor();
+  check(await replyBox(region).isDisabled(), base + " unknown reply freezes original intent");
+  await buttonNamed(region, "Retry same message").click();
+  await textNamed(region, "Unsent uncertainty question").waitFor();
+  const replies = await call(ben, `/workspaces/${workspaceId}/chat/${root.id}/replies`);
+  check(replies.messages.length === 2, base + " lost reply recovers one committed message");
+}
+
+async function checkThreadAccessibility(ben, base) {
+  for (const width of [1400, 390]) {
+    await ben.page.setViewportSize({ width, height: 1100 });
+    const violations = await axeViolations(ben.page);
+    check(!violations.length, base + " threads accessibility " + width + " " + violations);
+    check(await hasNoSideScroll(ben.page), base + " threads overflow " + width);
+  }
+}
+
+async function checkDelayedOlderPage(ben, asha, base, workspaceId) {
+  for (let index = 0; index < 52; index++) {
+    await postChat(asha, workspaceId, "History sample " + index);
+  }
+  const page = ben.page;
+  await buttonNamed(page, "Refresh chat").click();
+  await textNamed(page, "History sample 51").waitFor();
+  const olderPage = await holdFirstResponse(page, "**/api/v1/workspaces/*/chat?before=*");
+  await buttonNamed(page, "Load earlier messages").click();
+  await olderPage.captured;
+  await buttonNamed(page, "Return to latest messages").click();
+  await textNamed(page, "History sample 51").waitFor();
+  // Listen only now: the held response is delivered to the page when it is released.
+  const delivered = page.waitForResponse((response) => response.url().includes("/chat?before="));
+  olderPage.release();
+  await (await delivered).finished();
+  await nextPaint(page);
+  const latestShown = await textNamed(page, "History sample 51").isVisible();
+  const returnButtons = await buttonNamed(page, "Return to latest messages").count();
+  check(latestShown && returnButtons === 0, base + " delayed older page cannot override latest view");
+}
+
+async function checkLiveUpdateKeepsEarlierView(ben, asha, base, workspaceId) {
+  const page = ben.page;
+  await buttonNamed(page, "Load earlier messages").click();
+  await buttonNamed(page, "Return to latest messages").waitFor();
+  const background = page.waitForResponse(
+    async (response) =>
+      response.url().includes("/chat?after=") &&
+      (await response.json()).messages.some((message) => message.body === "Newest history decision"),
+  );
+  await postChat(asha, workspaceId, "Newest history decision");
+  await (await background).finished();
+  const stillEarlier = await buttonNamed(page, "Return to latest messages").isVisible();
+  const noticeShown = await buttonNamed(page, "Load more new messages").isVisible();
+  check(stillEarlier && noticeShown, base + " live updates retain earlier view and new-message notice");
+  await buttonNamed(page, "Return to latest messages").click();
+  await textNamed(page, "Newest history decision").waitFor();
+  check(true, base + " explicit return restores latest messages");
+}
+
+async function checkReconnectCatchUp(ben, asha, base, workspaceId) {
+  const page = ben.page;
+  // Hold a pre-disconnect HTTP snapshot; reconnect must queue another catch-up.
+  const snapshot = await holdFirstResponse(page, "**/api/v1/workspaces/*/chat?*");
+  await buttonNamed(page, "Refresh chat").click();
+  await snapshot.captured;
+  const reconnected = page.waitForEvent("websocket");
+  const beforeClose = frameMark(ben);
+  await page.evaluate(() => window.__sockets.at(-1).close());
+  await postChat(asha, workspaceId, "Offline control decision");
+  await reconnected;
+  // The new socket's confirmation must arrive while the old snapshot is still held, so the
+  // catch-up it triggers is the one that has to queue behind that snapshot.
+  await waitForSubscribed(ben, workspaceId, beforeClose);
+  snapshot.release();
+  await textNamed(page, "Offline control decision").waitFor();
+  check(true, base + " reconnect queued behind held snapshot catches offline writes");
+}
+
+async function checkRevocation(ben, admin, base, workspaceId) {
+  // A workspace-list reload that overlaps the membership removal can fail on the server.
+  await settleRequests(ben);
+  // The workspace page replaces the chat once its own reload answers "not found"; holding that
+  // answer keeps the chat's notice on screen so the check does not depend on which lands first.
+  const heldDetail = await holdFirstResponse(ben.page, `**/api/v1/workspaces/${workspaceId}`);
+  const removal = `/admin/workspaces/${workspaceId}/memberships/${ben.session.user.id}`;
+  await call(admin, removal, undefined, "DELETE");
+  await textNamed(ben.page, "This chat is no longer available.").waitFor();
+  const composers = await replyBox(ben.page).count();
+  const rootShown = await textNamed(ben.page, "Research control plan").count();
+  check(composers === 0 && rootShown === 0, base + " revocation clears thread stream and composer");
+  heldDetail.release();
+  await settleRequests(ben);
+}
+
 try {
-  for (const base of ["", "/labadda-staging"]) {
-    const ben = await login(base, "ben"),
-      asha = await login(base, "asha"),
-      admin = await login(base, "admin");
-    const ws = (await call(ben, "/workspaces")).workspaces.find((w) => w.name === "Thin Films Section").id;
-    const root = await call(asha, `/workspaces/${ws}/chat`, {
-      body: "Research control plan",
-      client_id: crypto.randomUUID(),
-    });
-    const region = await thread(ben, base, ws, root.body),
-      other = await thread(asha, base, ws, root.body);
-    await region.getByLabel("Thread reply", { exact: true }).fill("Unsent uncertainty question");
-    await other.getByLabel("Thread reply", { exact: true }).fill("Add a witness coupon");
-    await other.getByRole("button", { name: "Send reply", exact: true }).click();
-    await other.getByText("Add a witness coupon", { exact: true }).waitFor();
-    await region.getByRole("button", { name: "Refresh thread", exact: true }).click();
-    await region.getByText("Add a witness coupon", { exact: true }).waitFor();
-    check(
-      (await region.getByLabel("Thread reply", { exact: true }).inputValue()) ===
-        "Unsent uncertainty question",
-      base + " thread refresh preserves reply draft",
-    );
-    await ben.page.route(
-      "**/api/v1/workspaces/*/chat",
-      async (route) => {
-        if (route.request().method() !== "POST") return route.continue();
-        await route.fetch();
-        await route.abort();
-      },
-      { times: 1 },
-    );
-    await region.getByRole("button", { name: "Send reply", exact: true }).click();
-    await region.getByRole("button", { name: "Retry same message", exact: true }).waitFor();
-    check(
-      await region.getByLabel("Thread reply", { exact: true }).isDisabled(),
-      base + " unknown reply freezes original intent",
-    );
-    await region.getByRole("button", { name: "Retry same message", exact: true }).click();
-    await region.getByText("Unsent uncertainty question", { exact: true }).waitFor();
-    check(
-      (await call(ben, `/workspaces/${ws}/chat/${root.id}/replies`)).messages.length === 2,
-      base + " lost reply recovers one committed message",
-    );
-    for (const width of [1400, 390]) {
-      await ben.page.setViewportSize({ width, height: 1100 });
-      await ben.page.addScriptTag({ path: require.resolve("../frontend/node_modules/axe-core/axe.min.js") });
-      const violations = await ben.page.evaluate(async () =>
-        (
-          await window.axe.run(document, {
-            runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
-          })
-        ).violations.map((v) => v.id),
-      );
-      check(!violations.length, base + " threads accessibility " + width + " " + violations);
-      check(
-        await ben.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-        base + " threads overflow " + width,
-      );
-    }
-    for (let i = 0; i < 52; i++)
-      await call(asha, `/workspaces/${ws}/chat`, {
-        body: "History sample " + i,
-        client_id: crypto.randomUUID(),
-      });
-    await ben.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await ben.page.getByText("History sample 51", { exact: true }).waitFor();
-    let oldRelease, oldCaptured;
-    const oldHold = new Promise((r) => (oldRelease = r)),
-      oldReady = new Promise((r) => (oldCaptured = r));
-    await ben.page.route(
-      "**/api/v1/workspaces/*/chat?before=*",
-      async (route) => {
-        const response = await route.fetch();
-        oldCaptured();
-        await oldHold;
-        await route.fulfill({ response });
-      },
-      { times: 1 },
-    );
-    const oldDelivered = ben.page.waitForResponse((r) => r.url().includes("/chat?before="));
-    await ben.page.getByRole("button", { name: "Load earlier messages", exact: true }).click();
-    await oldReady;
-    await ben.page.getByRole("button", { name: "Return to latest messages", exact: true }).click();
-    await ben.page.getByText("History sample 51", { exact: true }).waitFor();
-    oldRelease();
-    await (await oldDelivered).finished();
-    await ben.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    check(
-      (await ben.page.getByText("History sample 51", { exact: true }).isVisible()) &&
-        (await ben.page.getByRole("button", { name: "Return to latest messages", exact: true }).count()) ===
-          0,
-      base + " delayed older page cannot override latest view",
-    );
-    await ben.page.getByRole("button", { name: "Load earlier messages", exact: true }).click();
-    await ben.page.getByRole("button", { name: "Return to latest messages", exact: true }).waitFor();
-    const background = ben.page.waitForResponse(
-      async (r) =>
-        r.url().includes("/chat?after=") &&
-        (await r.json()).messages.some((m) => m.body === "Newest history decision"),
-    );
-    await call(asha, `/workspaces/${ws}/chat`, {
-      body: "Newest history decision",
-      client_id: crypto.randomUUID(),
-    });
-    await (await background).finished();
-    check(
-      (await ben.page.getByRole("button", { name: "Return to latest messages", exact: true }).isVisible()) &&
-        (await ben.page.getByRole("button", { name: "Load more new messages", exact: true }).isVisible()),
-      base + " live updates retain earlier view and new-message notice",
-    );
-    await ben.page.getByRole("button", { name: "Return to latest messages", exact: true }).click();
-    await ben.page.getByText("Newest history decision", { exact: true }).waitFor();
-    check(true, base + " explicit return restores latest messages");
-    // Hold a pre-disconnect HTTP snapshot; reconnect must queue another catch-up.
-    let release, captured;
-    const hold = new Promise((r) => (release = r)),
-      ready = new Promise((r) => (captured = r));
-    await ben.page.route(
-      "**/api/v1/workspaces/*/chat?*",
-      async (route) => {
-        const response = await route.fetch();
-        captured();
-        await hold;
-        await route.fulfill({ response });
-      },
-      { times: 1 },
-    );
-    await ben.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await ready;
-    const reconnected = ben.page.waitForEvent("websocket");
-    await ben.page.evaluate(() => window.__sockets.at(-1).close());
-    await call(asha, `/workspaces/${ws}/chat`, {
-      body: "Offline control decision",
-      client_id: crypto.randomUUID(),
-    });
-    await reconnected;
-    release();
-    await ben.page.getByText("Offline control decision", { exact: true }).waitFor();
-    check(true, base + " reconnect queued behind held snapshot catches offline writes");
-    await call(admin, `/admin/workspaces/${ws}/memberships/${ben.session.user.id}`, undefined, "DELETE");
-    await ben.page.getByText("This chat is no longer available.", { exact: true }).waitFor();
-    check(
-      (await ben.page.getByLabel("Thread reply", { exact: true }).count()) === 0 &&
-        (await ben.page.getByText("Research control plan", { exact: true }).count()) === 0,
-      base + " revocation clears thread stream and composer",
-    );
+  for (const base of bases) {
+    const ben = await login(base, "ben", { trackSockets: true });
+    const asha = await login(base, "asha");
+    const admin = await login(base, "admin");
+    const workspaces = (await call(ben, "/workspaces")).workspaces;
+    const workspaceId = workspaces.find((workspace) => workspace.name === "Thin Films Section").id;
+    const root = await postChat(asha, workspaceId, "Research control plan");
+    await checkReplyDraftAndRecovery(ben, asha, base, workspaceId, root);
+    await checkThreadAccessibility(ben, base);
+    await checkDelayedOlderPage(ben, asha, base, workspaceId);
+    await checkLiveUpdateKeepsEarlierView(ben, asha, base, workspaceId);
+    await checkReconnectCatchUp(ben, asha, base, workspaceId);
+    await checkRevocation(ben, admin, base, workspaceId);
     check(!ben.errors.length && !asha.errors.length, base + " no browser exceptions");
     await Promise.all([ben.ctx.close(), asha.ctx.close(), admin.ctx.close()]);
   }
-  console.log(`${checks} chat thread browser checks passed`);
+  console.log(`${harness.checks()} chat thread browser checks passed`);
 } finally {
-  await browser.close();
+  await harness.close();
 }
