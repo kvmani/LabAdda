@@ -46,14 +46,20 @@ def preview(db: Session, actor: Actor, settings: Settings, request: ChangeReques
 
 def lock_targets(db: Session, request: ChangeRequest) -> None:
     """After the admin and actor locks: workspace role locks, then the existing person row."""
-    if isinstance(request, Transfer):
-        transfer.lock_scope(db, request)
+    scope = transfer.lock_scope(db, request) if isinstance(request, Transfer) else None
     if isinstance(request, AddPerson):
         memberships.lock_workspace_roles(db, request.home_unit_id)
         return
-    target = db.scalar(select(User).where(User.id == request.person_id).with_for_update())
+    target = db.scalar(
+        select(User)
+        .where(User.id == request.person_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if target is None:
         raise NotFound()
+    if scope is not None:
+        transfer.require_locked_home(target, scope)
 
 
 def record_plan(

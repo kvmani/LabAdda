@@ -365,3 +365,29 @@ def test_demoting_the_last_steward_of_the_new_unit_needs_acknowledgement(as_user
     assert "unit_without_steward" in codes(preview(admin, acknowledged)["warnings"])
     assert admin.post("/admin/changes/apply", json=reviewed(admin, acknowledged)).status_code == 200
     assert grants(db_factory, ids["users"]["asha"])[ids["workspaces"]["section_a"]] == "member"
+
+
+def test_home_unit_moved_between_scope_read_and_row_lock_is_stale(as_user, ids, db_factory):
+    from labadda.changes.kinds import transfer
+
+    admin = as_user("admin")
+    confirmation = reviewed(admin, move(ids))
+    original = transfer.lock_scope
+
+    def move_home_after_scope_read(db, request):
+        scope = original(db, request)
+        with db_factory() as writer:
+            writer.get(User, ids["users"]["ben"]).home_workspace_id = ids["workspaces"]["division"]
+            writer.commit()
+        return scope
+
+    with (
+        patch.object(transfer, "lock_scope", side_effect=move_home_after_scope_read),
+        patch.object(transfer, "build", side_effect=AssertionError("built from an unlocked scope")),
+    ):
+        response = admin.post("/admin/changes/apply", json=confirmation)
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "plan_stale"
+    assert ids["workspaces"]["section_a"] in grants(db_factory, ids["users"]["ben"])
+    with db_factory() as db:
+        assert db.scalar(select(AuditEvent.id).where(AuditEvent.action == "people.change")) is None

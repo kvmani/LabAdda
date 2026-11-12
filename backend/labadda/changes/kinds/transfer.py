@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ... import memberships, notify, policy
 from ...config import Settings
-from ...errors import NotFound
+from ...errors import Conflict, NotFound
 from ...models import Membership, TodoList, TodoTask, User, Workspace
 from ..plan import Blocker, Plan, Snapshot, Step, Warning
 from ..requests import Transfer
@@ -28,7 +28,7 @@ class Proposal:
     names: dict[uuid.UUID, Workspace]
 
 
-def lock_scope(db: Session, request: Transfer) -> None:
+def lock_scope(db: Session, request: Transfer) -> set[uuid.UUID]:
     """Take workspace role locks before the person row, matching membership writers' order."""
     home = db.scalar(select(User.home_workspace_id).where(User.id == request.person_id))
     scope = {request.to_unit_id, *request.leave_workspace_ids}
@@ -36,6 +36,13 @@ def lock_scope(db: Session, request: Transfer) -> None:
         scope.add(home)
     for workspace_id in sorted(scope, key=str):
         memberships.lock_workspace_roles(db, workspace_id)
+    return scope
+
+
+def require_locked_home(person: User, scope: set[uuid.UUID]) -> None:
+    """The home unit was read before the row lock; a move in between makes the review stale."""
+    if person.home_workspace_id is not None and person.home_workspace_id not in scope:
+        raise Conflict("plan_stale", "This record or its consequences changed. Review a fresh plan.")
 
 
 def _propose(db: Session, request: Transfer) -> Proposal:
