@@ -87,3 +87,39 @@ renders the notice as text; `Shell.tsx` polls `/site/banner` through `useSiteBan
 full-width row under the top bar. Help: `help/admin/backups-page.md`, `site-notice.md`, `settings.md`. Browser check:
 `e2e/console-backups.mjs` at `/` and `/labadda-staging`: unknown backup, fresh and stale receipts, settings without
 paths or secrets, notice publish/appear/remove, member denial, axe at 1400 and 390 px.
+
+## A4 system health and events
+
+Backend: `backend/labadda/health/` has one module per AD-07 item (`application`, `database`, `file_storage`,
+`connections`, `jobs`, `response_time`, `sign_in`, `backups`, `server`, `certificate`). Each has a pure
+`evaluate(...)` over injected readings and a `check(ctx)` that reads, and returns `Result(status, value, unit,
+detail, checked_at)`. `types.Context` holds the injectable readers (clock, `/proc` via `proc.Proc`, disk, socket
+count, backlog, registry, heartbeat). Reading `/proc` fails as `ProcUnavailable` and becomes `unsupported`.
+`catalog.py` lists the items with their help page and 24-hour chart series. `sampler.Sampler` measures all items
+every `LABADDA_HEALTH_SAMPLE_SECONDS` (15) from `scheduler.run_periodic`, keeps the latest results in memory,
+serves a result older than 60 s as `stale`, and calls `events.apply`. Thresholds are `health_thresholds.py`
+(`LABADDA_HEALTH_*`, documented in `deploy/labadda.env.example`). `scheduler.run_forever` records a
+`heartbeat` tick after each full pass and a failure for each failed job; `Hub.backlog()` feeds Live connections.
+
+Rules chosen: unknown and unsupported never raise or resolve an event; only `healthy` resolves; a problem word
+(`degraded`, `unavailable`, `stale`) keeps one live event per `<item>.<status>` (partial unique index) and a
+change of word supersedes the older one; events are raised from the current reading, not only from changes, so
+a hand-resolved event whose item still fails cannot hide it (resolve returns 409 `still_failing`). Acknowledging
+changes only the event. An absent certificate report is `unsupported` (AD-07); an unreadable one is `unknown`.
+The certificate file is `certificate-status.json` (`format`, `checked_at`, `expires_at`) in `LABADDA_STATUS_DIR`;
+no operator tool writes it yet.
+
+Migration 0030 `ops_events` (downgrade refuses while rows exist). API in `docs/API.md` (A4). Audit actions
+`ops_event.acknowledge` and `ops_event.resolve` are in `audit_catalog.py`.
+
+Test-only forcing: `LABADDA_TEST_HEALTH_FORCE=item=status,...` or the file `.test-health-force` in the asset
+directory; both are honoured only when `environment` is `development` or `test`.
+
+Frontend: `features/health/` (page, card, 24-hour chart, model) and `features/events/` (page, drawer, model),
+sharing `features/admin/usePolledData.ts` (polling paused while the tab is hidden, last good data kept on a
+failed poll, `useNow` for "checked N s ago"). The card word turns `Stale` in the browser after four intervals.
+Help: `help/admin/{system-health,status-words,events}.md` and `help/troubleshooting/health-*.md`.
+
+Checks: `tests/test_health_items.py` (every status per item), `test_health_events.py` (dedupe, recovery,
+stale, forced, migration guard), `test_health_api.py` (access, denials, paging, acknowledge, no content),
+vitest `features/health`, browser `e2e/console-health.mjs` at `/` and `/labadda-staging`.
