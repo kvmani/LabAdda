@@ -1,10 +1,12 @@
 """PO-06 scheduled changes: schedule, list, cancel, the due-time run and its denied cases."""
 
+import uuid
 from datetime import timedelta
 
 import pytest
 from sqlalchemy import select
 
+from labadda import people
 from labadda.changes import scheduled
 from labadda.models import AuditEvent, ScheduledChange, User
 from tests.test_changes_authority import change, site_today, start_of
@@ -198,3 +200,42 @@ def test_signed_out_and_panel_sessions_are_refused(as_user, ids, make_client):
 
     assert make_client().get("/admin/changes/scheduled").status_code == 401
     assert pair(as_user, make_client, ids).get("/admin/changes/scheduled").status_code == 401
+
+
+def test_a_scheduled_suspension_ends_sessions_and_sockets_when_it_runs(as_user, ids, db_factory, settings):
+    from unittest.mock import MagicMock
+
+    admin, ben = as_user("admin"), as_user("ben")
+    day = day_after(settings)
+    assert schedule_request(admin, change(ids, "suspend", person_id="ben"), day).status_code == 200
+    assert ben.get("/auth/session").status_code == 200
+    hub = MagicMock()
+    with db_factory() as db:
+        assert scheduled.run_due(db, settings, hub, now=start_of(day, settings)) == 1
+    hub.revalidate_user.assert_any_call(uuid.UUID(ids["users"]["ben"]))
+    assert ben.get("/auth/session").status_code == 401
+
+
+def test_one_unreviewable_change_does_not_stop_the_others(as_user, ids, db_factory, settings):
+    admin = as_user("admin")
+    day = day_after(settings)
+    assert schedule_request(admin, move(ids), day).status_code == 200
+    assert schedule_request(admin, change(ids, "unit_rename", unit_id="section_a", name="Renamed"), day)
+    with db_factory() as db:
+        first = db.scalar(select(ScheduledChange).where(ScheduledChange.kind != "unit_rename"))
+        first.plan_digest = "0" * 64
+        db.commit()
+    assert run(db_factory, settings, day) == 1
+    assert {row.kind: row.state for row in rows(db_factory)}["unit_rename"] == "applied"
+    assert sorted(row.state for row in rows(db_factory)) == ["applied", "needs_review"]
+
+
+def test_the_effective_day_never_outlives_a_failed_run(as_user, ids, db_factory, settings):
+    admin = as_user("admin")
+    day = day_after(settings, 3)
+    assert schedule_request(admin, move(ids), day).status_code == 200
+    with db_factory() as db:
+        db.execute(ScheduledChange.__table__.update().values(plan_digest="0" * 64))
+        db.commit()
+    assert run(db_factory, settings, day) == 0
+    assert people.site_date(settings) == site_today(settings)
