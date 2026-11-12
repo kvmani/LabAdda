@@ -217,7 +217,7 @@ export function TransferDialog({
               />
               {(needsAcknowledgement || draft.acknowledge_no_steward) && (
                 <Checkbox
-                  label="I understand the old unit will have no steward"
+                  label="I understand a unit will be left with no steward"
                   checked={draft.acknowledge_no_steward}
                   onChange={(event) => acknowledge(event.target.checked)}
                 />

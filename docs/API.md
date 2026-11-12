@@ -583,7 +583,8 @@ acknowledged. Blockers: `person_inactive` (suspended, retired or left),
 `unit_unavailable` (not an open organisation unit), `same_unit`, `not_a_member`
 (a listed id is not one of their projects/groups), `group_needs_steward` (leaving
 would leave a project/group with members but no steward), `unit_without_steward`
-(not acknowledged). Missing person or unit404. A handover period is not offered.
+(not acknowledged; checked for the old unit, and for the new unit when the person's
+steward role there is lowered). Missing person or unit404. A handover period is not offered.
 
 Apply locks the admin roles, the actor, the role locks of every workspace in scope
 (sorted), then the person row; it rebuilds, compares digest and revision, writes

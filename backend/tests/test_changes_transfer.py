@@ -347,3 +347,21 @@ def test_notice_disappears_when_steward_loses_access(as_user, ids, db_factory):
         )
         db.commit()
     assert as_user("asha").get("/notifications").json()["items"] == []
+
+
+def test_demoting_the_last_steward_of_the_new_unit_needs_acknowledgement(as_user, ids, db_factory):
+    with db_factory() as db:
+        db.get(User, ids["users"]["asha"]).home_workspace_id = ids["workspaces"]["section_b"]
+        db.commit()
+    admin = as_user("admin")
+    request = move(ids, person="asha", unit="section_a", role="member")
+    plan = preview(admin, request)
+    assert [(item["code"], item["target_id"]) for item in plan["blockers"]] == [
+        ("unit_without_steward", ids["workspaces"]["section_a"])
+    ]
+    assert admin.post("/admin/changes/apply", json=reviewed(admin, request)).status_code == 422
+    assert grants(db_factory, ids["users"]["asha"])[ids["workspaces"]["section_a"]] == "steward"
+    acknowledged = move(ids, person="asha", unit="section_a", role="member", acknowledge_no_steward=True)
+    assert "unit_without_steward" in codes(preview(admin, acknowledged)["warnings"])
+    assert admin.post("/admin/changes/apply", json=reviewed(admin, acknowledged)).status_code == 200
+    assert grants(db_factory, ids["users"]["asha"])[ids["workspaces"]["section_a"]] == "member"

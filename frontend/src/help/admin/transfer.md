@@ -21,7 +21,7 @@ You need to be a site administrator. Only invited, active or on-leave people can
 3. Choose the **New home unit** and the **Role in the new unit**, then choose **Next**.
 4. Decide on the options. Tick **Keep access to** the old unit only if they should stay a member there as well. Under **Projects and groups to keep**, untick any they should leave. Choose **Review change**.
 5. Read **What will happen**, with each value before and after, and **Things to check**: units they will be able to read, units they will no longer read, and the number of open shared tasks assigned to them in units they will lose.
-6. If the old unit would be left without a steward, tick **I understand the old unit will have no steward**, or cancel and appoint another steward first.
+6. If the old unit, or the new unit when you lower their role there, would be left without a steward, tick **I understand a unit will be left with no steward**, or cancel and appoint another steward first.
 7. Type the **Reason for this change** and choose the **Transfer** button, which repeats the person's name.
 8. Read the summary and choose **Done**.
 

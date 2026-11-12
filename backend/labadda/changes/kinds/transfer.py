@@ -92,15 +92,19 @@ def _other_members(db: Session, proposal: Proposal, space: Workspace) -> bool:
 
 
 def _steward_issue(db: Session, request: Transfer, proposal: Proposal) -> list[Blocker | Warning]:
-    """PO-08: leaving a unit without a steward needs an explicit acknowledgement."""
-    source = proposal.source
-    if source is None or not _leaves_without_steward(db, proposal, source.id):
-        return []
-    if request.acknowledge_no_steward:
-        message = f"{source.name} will have no active steward until one is appointed."
-        return [Warning("unit_without_steward", message, str(source.id))]
-    message = f"{source.name} would have no active steward. Tick the acknowledgement to continue."
-    return [Blocker("unit_without_steward", message, str(source.id))]
+    """PO-08: leaving the old or the new unit without a steward needs an explicit acknowledgement."""
+    units = {space.id: space for space in (proposal.source, proposal.target) if space is not None}
+    issues: list[Blocker | Warning] = []
+    for space in units.values():
+        if not _leaves_without_steward(db, proposal, space.id):
+            continue
+        if request.acknowledge_no_steward:
+            message = f"{space.name} will have no active steward until one is appointed."
+            issues.append(Warning("unit_without_steward", message, str(space.id)))
+        else:
+            message = f"{space.name} would have no active steward. Tick the acknowledgement to continue."
+            issues.append(Blocker("unit_without_steward", message, str(space.id)))
+    return issues
 
 
 def open_task_counts(db: Session, person_id: uuid.UUID, workspaces: set[uuid.UUID]) -> dict[uuid.UUID, int]:
