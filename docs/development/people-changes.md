@@ -2,7 +2,8 @@
 
 Read [P2](../plan/people.md#p2--change-protocol-add-edit-transfer),
 [PO-04–12](../PEOPLE-AND-ORG.md) and [API P2](../API.md#p2-reviewed-edits-first-executable-slice).
-P2 remains in progress: reviewed edits are executable; add/transfer and dialogs follow.
+Edit, add-person and transfer kinds are executable; "Add person" and "Transfer" dialogs
+are on the people console. Edits have no dialog yet; handover periods are deferred.
 
 ## Minimal paths
 
@@ -15,6 +16,20 @@ P2 remains in progress: reviewed edits are executable; add/transfer and dialogs 
   checks as kinds are added. Edits change no authority, membership or tree state.
 - `changes/kinds/edit_person.py`: current record, exact before/after, duplicate/no-op
   blockers; executor applies only the server-built whitelist and increments revision.
+- `changes/kinds/add_person.py`: invited non-admin account, home membership through
+  `memberships.set_membership`, `credentials.issue_credential`; the code is only in the
+  receipt. Plan steps name `new:<username>`; `record_plan` audits the real identity.
+  Similar names (casefolded, word-sorted, ratio ≥0.88) warn; uniqueness blocks.
+- `changes/kinds/transfer.py`: proposed grants = current minus old home (unless kept)
+  minus listed projects/groups plus the new unit; `policy.readable_from_grants` gives
+  access gained/lost; open shared task counts per lost workspace; PO-08 steward guards;
+  steward notices (`notify.create`, kind `reassign`, source `transfer`) in the same
+  transaction. `api/notifications.py` renders them with the person's name and a live
+  count, and hides them once the steward cannot read the workspace.
+- Every kind exposes `build(db, request, actor_id, settings)` and
+  `apply(db, actor, plan, request, settings, reason) -> (person, receipt extras)`;
+  `service.KINDS` dispatches. Frontend: `features/people/useChangeReview.ts`,
+  `PlanReview.tsx`, `AddPersonDialog.tsx`, `ActivationSlip.tsx`, `TransferDialog.tsx`.
 - `changes/service.py`: preview/apply orchestration and parent/per-step audits.
 - `credentials.py`: shared one-time activation/reset issuer used by legacy tools
   and future onboarding. `people.USERNAME_RE` is the shared identity spelling rule.
@@ -27,8 +42,9 @@ never accept executable client steps. A digest is a change detector, not authori
 
 ## Locking and transaction boundaries
 
-Take the shared admin-role advisory lock, actor user/session locks, then the target
-user lock. Rebuild the plan from the validated request and current state. Require
+Take the shared admin-role advisory lock, actor user/session locks, then (transfer)
+the workspace role locks of every unit/group in scope in sorted order, then the target
+user lock. Onboarding locks the home unit's roles; uniqueness races end in409. Rebuild the plan from the validated request and current state. Require
 both its digest and complete revision map to match. A stale or previously applied
 plan returns409; a matching blocked plan returns422. Preview writes no staff/audit
 rows. Existing normal-session heartbeat maintenance remains in authentication.
@@ -50,7 +66,11 @@ and uniqueness blockers, stale/tampered confirmations, concurrent apply-once,
 rollback on final audit failure, structured audits, denied users/panels/readers,
 no content, sanitized failures and authority loss before/after commit.
 
-Next: add-person activation slips; transfers, bounded gained/lost access and open
-assignment counts, steward notices and dated handover expiry; dialogs and browser
-qualification at root/prefix; final independent review before marking P2 done.
+`test_changes_add.py` and `test_changes_transfer.py` cover onboarding and T55:
+memberships, socket revocation with delayed404, gained/lost equal to real reads,
+steward notices, guards, stale/concurrent/atomic apply and denial. Browser:
+`e2e/people-changes.mjs` (keyboard add, slip activation, Ben's transfer, axe).
+
+Next: an edit dialog; handover period (needs dated membership expiry, P5's scheduler);
+independent review before marking P2 done.
 Keep the old admin routes until P4. Retain races with legacy writes in qualification.
