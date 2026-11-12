@@ -37,5 +37,5 @@ Former members keep read access to a merged or closed unit's history; no one can
 ## Related
 
 - [The organisation chart](organisation-chart.md)
-- [Adding, renaming and moving units](change-a-unit.md)
+- [Adding, renaming and moving units](create-move-merge-close-units.md)
 - [Transferring a person](transfer.md)

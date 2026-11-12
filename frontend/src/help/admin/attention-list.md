@@ -42,6 +42,6 @@ Nothing is changed for you. When an acting appointment ends and leaves a unit wi
 
 ## Related
 
-- [Schedule a change for a later day](schedule-a-change.md)
+- [Schedule a change for a later day](scheduled-changes.md)
 - [Acting appointments](acting-appointments.md)
 - [Long leave and return](long-leave.md)

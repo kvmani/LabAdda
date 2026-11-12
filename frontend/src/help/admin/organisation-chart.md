@@ -37,6 +37,6 @@ Projects and groups are listed beside the chart with their stewards and member c
 
 ## Related
 
-- [Changing units](change-a-unit.md)
+- [Changing units](create-move-merge-close-units.md)
 - [Merging, splitting and closing units](merge-split-close.md)
 - [Transferring a person](transfer.md)

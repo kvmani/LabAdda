@@ -143,8 +143,11 @@ def test_required_pages_are_enforced_when_listed(tmp_path):
 
 def test_every_planned_page_is_required():
     required = set(check_help.REQUIRED_PAGES)
-    assert {"using/noticeboard.md", "stewards/removing-a-post.md", "operator/install.md"} <= required
-    assert not [path for path in required if not path.startswith(("using/", "stewards/", "operator/"))]
+    wanted = {"using/noticeboard.md", "stewards/removing-a-post.md", "operator/install.md"}
+    assert wanted | {"admin/audit-trail.md", "admin/what-administrators-can-and-cannot-see.md"} <= required
+    assert not [
+        path for path in required if not path.startswith(("using/", "stewards/", "admin/", "operator/"))
+    ]
     assert len(required) == len(check_help.REQUIRED_PAGES)
 
 
@@ -176,9 +179,38 @@ def test_exempt_and_admin_routes_need_no_page():
     assert check_help.check_route_pages(routes, {"/today"}) == []
 
 
-def test_event_code_rule_is_off_until_h3(tmp_path):
-    assert check_help.EVENT_CODE_CHECK_ENABLED is False
+TROUBLE_FRONT = FRONT.replace("everyone", "administrator").replace("/today", "none")
+
+
+def event_repository(root: Path, raised: str, quoted: str) -> None:
+    make_repository(root)
+    write(root, "backend/labadda/health/jobs.py", f"def check():\n    return make(ctx, {raised})\n")
+    write(root, "backend/labadda/health/types.py", 'PROBLEMS = ("degraded", "unavailable", "stale")\n')
+    page = TROUBLE_FRONT + BODY.replace("## Steps", f"Event codes: {quoted}.\n\n## Steps")
+    write(
+        root,
+        "frontend/src/help/troubleshooting/health-jobs.md",
+        page.replace("(other.md)", "(../using/other.md)"),
+    )
+
+
+def test_event_codes_match_between_code_and_help(tmp_path):
+    event_repository(tmp_path, '"degraded"', "`jobs.degraded`")
     assert check_help.check_event_codes(tmp_path) == []
+    assert run_isolated(tmp_path) == []
+
+
+def test_event_code_without_a_page_is_reported(tmp_path):
+    event_repository(tmp_path, '"degraded", "unavailable"', "`jobs.degraded`")
+    assert check_help.check_event_codes(tmp_path) == [
+        "backend/labadda/health: event code 'jobs.unavailable' has no troubleshooting page"
+    ]
+
+
+def test_documented_event_code_that_does_not_exist_is_reported(tmp_path):
+    event_repository(tmp_path, '"degraded"', "`jobs.degraded`, `jobs.stale`")
+    problems = check_help.check_event_codes(tmp_path)
+    assert len(problems) == 1 and "'jobs.stale' is not raised by any health check" in problems[0]
 
 
 OPERATOR_FRONT = FRONT.replace("everyone", "operator").replace("/today", "none")

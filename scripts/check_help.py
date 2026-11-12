@@ -8,8 +8,8 @@ changes nothing.
 
     python3 scripts/check_help.py [repository-root]
 
-The event-code rule (H3) is a separate function that H3 switches on by setting
-EVENT_CODE_CHECK_ENABLED. H3 also adds the administrator pages to REQUIRED_PAGES.
+Event codes are compared in both directions: every code a health check can raise needs a line
+"Event codes: `item.status`" on a troubleshooting page, and every code on such a page must exist.
 
 Operator pages (H4) must quote only real commands: every `scripts/<name>.py` or `labadda`
 command in a code block or code span must name an existing tool, one of its subcommands, and
@@ -36,7 +36,7 @@ AUDIENCES = {"everyone", "steward", "administrator", "operator"}
 FREE_FORM_PAGES = {"glossary.md", "whats-new.md"}
 REQUIRED_SECTIONS = ("What this is for", "Steps", "What happens next", "If something goes wrong", "Related")
 OPTIONAL_SECTIONS = ("Before you start",)
-# The page list in docs/plan/help.md; each entry is a path below help/. H3 adds the administrator pages.
+# The page list in docs/plan/help.md; each entry is a path below help/.
 # Not yet written: using/my-profile-and-password.md (the app has no screen to change a password).
 REQUIRED_PAGES: tuple[str, ...] = (
     "using/signing-in.md",
@@ -68,6 +68,32 @@ REQUIRED_PAGES: tuple[str, ...] = (
     "stewards/removing-a-post.md",
     "stewards/handing-over-stewardship.md",
     "stewards/workspace-storage.md",
+    "admin/what-administrators-can-and-cannot-see.md",
+    "admin/add-a-person.md",
+    "admin/transfer.md",
+    "admin/promotion.md",
+    "admin/change-of-head.md",
+    "admin/acting-appointments.md",
+    "admin/additional-charge.md",
+    "admin/long-leave.md",
+    "admin/retirement-and-leaving.md",
+    "admin/suspend-and-reinstate.md",
+    "admin/reset-a-password.md",
+    "admin/import-a-staff-list.md",
+    "admin/organisation-chart.md",
+    "admin/create-move-merge-close-units.md",
+    "admin/scheduled-changes.md",
+    "admin/attention-list.md",
+    "admin/unit-administrators.md",
+    "admin/overview-page.md",
+    "admin/system-health.md",
+    "admin/status-words.md",
+    "admin/activity-page.md",
+    "admin/audit-trail.md",
+    "admin/events.md",
+    "admin/backups-page.md",
+    "admin/site-notice.md",
+    "admin/settings.md",
     "operator/install.md",
     "operator/upgrade.md",
     "operator/backup.md",
@@ -81,10 +107,14 @@ REQUIRED_PAGES: tuple[str, ...] = (
 # Routes with no page of their own: redirects, the catch-all, the help centre (which never explains
 # itself) and the activation form, which the signing-in page explains from the sign-in screen.
 ROUTES_WITHOUT_PAGE = {"*", "/", "/activate", "/operations", "/help/*"}
-# Administration routes get their pages from H3.
+# Administration routes are explained by pages whose screen is "none", so they need no route match.
 ROUTE_PAGES_EXEMPT_PREFIX = "/admin"
-# H3 turns this on once the event-code catalogue exists to compare against.
-EVENT_CODE_CHECK_ENABLED = False
+HEALTH_DIRECTORY = "backend/labadda/health"
+TROUBLESHOOTING_SHELF = "troubleshooting"
+# Modules in the health package that are machinery, not one of the ten checked items.
+HEALTH_MACHINERY = {"__init__", "catalog", "events", "heartbeat", "proc", "sampler", "types", "windows"}
+PROBLEM_STATUSES = ("degraded", "unavailable", "stale")
+EVENT_CODES_LINE = re.compile(r"^Event codes:(.*)$")
 
 FRONT_MATTER = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?(.*)$", re.DOTALL)
 FRONT_LINE = re.compile(r"^([a-z]+):\s*(.*?)\s*$")
@@ -229,11 +259,44 @@ def check_route_pages(routes: set[str], screens: set[str]) -> list[str]:
     ]
 
 
+def catalogue_codes(root: Path) -> set[str]:
+    """Return every `item.status` event code a health check module can raise (AD-06)."""
+    codes = set()
+    for path in sorted((root / HEALTH_DIRECTORY).glob("*.py")):
+        if path.stem in HEALTH_MACHINERY:
+            continue
+        text = path.read_text(encoding="utf-8")
+        codes |= {f"{path.stem}.{status}" for status in PROBLEM_STATUSES if f'"{status}"' in text}
+    return codes
+
+
+def documented_codes(root: Path) -> dict[str, str]:
+    """Return each event code quoted on a troubleshooting page, with the page that quotes it."""
+    found = {}
+    for page in help_pages(root):
+        if page.relative_to(root / HELP_DIRECTORY).parts[0] != TROUBLESHOOTING_SHELF:
+            continue
+        for line in page.read_text(encoding="utf-8").splitlines():
+            match = EVENT_CODES_LINE.match(line)
+            for code in re.findall(r"`([^`]+)`", match.group(1)) if match else []:
+                found[code] = str(page.relative_to(root))
+    return found
+
+
 def check_event_codes(root: Path) -> list[str]:
-    """Return a problem for each event code without a troubleshooting page, and the reverse (H3)."""
-    if not EVENT_CODE_CHECK_ENABLED:
-        return []
-    raise NotImplementedError("H3 compares the code catalogue with help/troubleshooting here")
+    """Return a problem for each event code without a troubleshooting page, and the reverse (HP-09)."""
+    catalogue = catalogue_codes(root)
+    documented = documented_codes(root)
+    problems = [
+        f"{HEALTH_DIRECTORY}: event code '{code}' has no troubleshooting page"
+        for code in sorted(catalogue - documented.keys())
+    ]
+    problems += [
+        f"{page}: event code '{code}' is not raised by any health check"
+        for code, page in sorted(documented.items())
+        if code not in catalogue
+    ]
+    return problems
 
 
 def run(root: Path, required: tuple[str, ...] = REQUIRED_PAGES, cover_routes: bool = True) -> list[str]:

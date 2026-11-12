@@ -93,14 +93,13 @@ Markdown with its raw-HTML tokens escaped and its image tokens replaced by their
 `python3 scripts/check_help.py` (also run by `scripts/verify.sh`) fails on:
 
 - missing or invalid front matter, or a task page without the template sections in order;
-- a `screen` that is not a route in `App.tsx` (routes inside `/admin/*` are added by H3);
+- a `screen` that is not a route in `App.tsx`;
 - a bold label that appears nowhere in the non-test frontend source;
 - a link that is not a relative path to an existing help page.
 
 Two more rules apply to the whole help set:
 
-- every page in `REQUIRED_PAGES` (the `using/` and `stewards/` page list; H3 adds the administrator
-  pages) must exist;
+- every page in `REQUIRED_PAGES` (the `using/`, `stewards/`, `admin/` and `operator/` page list) must exist;
 - every route in `App.tsx` outside `/admin` must be the `screen` of at least one page. The routes in
   `ROUTES_WITHOUT_PAGE` (redirects, the catch-all, the help centre itself and `/activate`) are exempt.
 
@@ -112,7 +111,10 @@ must exist in some tool. `scripts/help_commands.py` reads the tools' argparse ca
 deployment guide supplied with the release" instead of naming repository files. All nine operator
 pages are in `REQUIRED_PAGES`.
 
-The event-code rule (`check_event_codes`) stays off until H3 sets `EVENT_CODE_CHECK_ENABLED`.
+Event codes are compared both ways (`check_event_codes`). The code side is every `item.status` (status
+`degraded`, `unavailable` or `stale`) that a module in `backend/labadda/health/` names, so a new problem state
+needs a line `Event codes: \`item.status\`` on a `troubleshooting/` page, and a code on a page that no check
+raises is reported. The page list has no `admin/edit-a-record.md`: the app has no screen that edits a record.
 
 ## Checks
 

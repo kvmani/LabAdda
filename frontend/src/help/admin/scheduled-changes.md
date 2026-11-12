@@ -37,4 +37,4 @@ At the start of the day, LabAdda checks the change again. If it is still exactly
 
 - [Transfer a person](transfer.md)
 - [Retirement and leaving](retirement-and-leaving.md)
-- [What needs attention on the People page](people-attention.md)
+- [What needs attention on the People page](attention-list.md)
