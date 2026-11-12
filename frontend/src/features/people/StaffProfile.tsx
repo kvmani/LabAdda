@@ -3,6 +3,7 @@ import { Button, Drawer, EmptyState, ErrorState, Skeleton, Tabs } from "../../ui
 import { calendarDate, positionLabel } from "./model";
 import { NewActivationCode } from "./NewActivationCode";
 import { ProfileActions } from "./ProfileActions";
+import { ScheduledChanges } from "./ScheduledChanges";
 import { usePeopleData } from "./usePeopleData";
 import type { AccessPage, StaffRecord, TimelinePage, Unit } from "./types";
 
@@ -177,7 +178,7 @@ export function StaffProfile({
               )}
               <RecordFields person={record.data} />
               <Positions person={record.data} />
-              <p>Scheduled staff changes will appear here in a future update.</p>
+              <ScheduledChanges personId={identity} onDenied={onDenied} onChanged={onChanged} />
             </>
           ) : selected === "access" ? (
             <Access key={identity} identity={identity} onDenied={onDenied} />

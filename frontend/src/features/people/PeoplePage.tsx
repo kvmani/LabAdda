@@ -8,6 +8,8 @@ import { usePeopleData } from "./usePeopleData";
 import { PeopleFilters } from "./PeopleFilters";
 import { PeopleTable } from "./PeopleTable";
 import { StaffProfile } from "./StaffProfile";
+import { AttentionList } from "./AttentionList";
+import { ScheduledChanges } from "./ScheduledChanges";
 import { ExportReport } from "./ExportReport";
 import { AddPersonDialog } from "./AddPersonDialog";
 import { BulkActions, MAX_SELECTED } from "./BulkActions";
@@ -38,6 +40,11 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [listVersion, setListVersion] = useState(0);
+  const refreshAll = () => {
+    directory.refresh();
+    setListVersion((version) => version + 1);
+  };
   function select(id: string, on: boolean) {
     const next = new Set(selected);
     if (on) next.add(id);
@@ -76,6 +83,8 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
           onDone={directory.refresh}
         />
       )}
+      <AttentionList key={`attention-${listVersion}`} onDenied={onDenied} />
+      <ScheduledChanges key={`scheduled-${listVersion}`} onDenied={onDenied} onChanged={refreshAll} />
       <PeopleFilters
         params={params}
         units={units.data?.workspaces ?? null}
@@ -117,7 +126,7 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
           onClose={() => profile("person")}
           onDenied={onDenied}
           units={unitList}
-          onChanged={directory.refresh}
+          onChanged={refreshAll}
         />
       )}
     </>

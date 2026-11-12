@@ -132,7 +132,10 @@ export type ChangePlan = {
   digest: string;
 };
 export type ChangeReceipt = {
-  applied: true;
+  /** Present instead of `applied` when the change was stored for a later day (PO-06). */
+  scheduled?: true;
+  effective_on?: string;
+  applied?: true;
   kind: ChangeRequest["kind"];
   /** Staff changes name the person; unit changes name the unit instead. */
   person_id?: string;
@@ -177,4 +180,25 @@ export type BulkReceipt = {
     display_name: string;
     activation: { code: string; expires_at: string };
   }[];
+};
+
+/** A change waiting for its day or for review (docs/API.md P5). */
+export type ScheduledItem = {
+  id: string;
+  kind: ChangeRequest["kind"];
+  effective_on: string;
+  state: "pending" | "needs_review";
+  note: string | null;
+  reason: string;
+  subject_id: string | null;
+  steps: string[];
+  created_by: string;
+  created_at: string;
+};
+export type AttentionItem = {
+  id: string;
+  severity: "critical" | "error" | "warning" | "info";
+  title: string;
+  detail: string;
+  route: string;
 };

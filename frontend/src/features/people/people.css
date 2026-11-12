@@ -151,3 +151,13 @@
   margin: 0;
   padding-left: var(--space-5);
 }
+
+.people-change__when {
+  display: grid;
+  gap: var(--space-3, 12px);
+  margin-bottom: var(--space-4, 16px);
+}
+.people-scheduled,
+.people-attention {
+  margin-block: var(--space-4, 16px);
+}

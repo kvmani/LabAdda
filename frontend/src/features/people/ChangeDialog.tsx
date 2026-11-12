@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Button, Dialog, Stepper } from "../../ui";
 import { PlanReview } from "./PlanReview";
+import { WhenControl } from "./WhenControl";
+import { calendarDate } from "./model";
 import { useChangeReview } from "./useChangeReview";
 import type { ChangePlan, ChangeReceipt, ChangeRequest } from "./changeTypes";
 
@@ -52,11 +54,18 @@ export function ChangeDialog({
   const current = saved ? steps.length - 1 : step;
   const reviewing = !saved && step === reviewIndex;
   const requestKey = JSON.stringify(request);
+  // An activation code is shown once on the screen of whoever applies the change, so those two
+  // kinds cannot wait for a later day.
+  const canSchedule = request.kind !== "add_person" && request.kind !== "reinstate";
+  const [later, setLater] = useState(false);
+  const [day, setDay] = useState("");
+  const waiting = canSchedule && later && !day;
+  const effectiveOn = canSchedule && later && day ? day : undefined;
 
   useEffect(() => {
-    if (reviewing) void review.preview(request);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-plan when the reviewed request changes
-  }, [reviewing, requestKey]);
+    if (reviewing && !waiting) void review.preview(request, effectiveOn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-plan when the reviewed request or day changes
+  }, [reviewing, requestKey, effectiveOn, waiting]);
 
   function next(event: FormEvent) {
     event.preventDefault();
@@ -64,9 +73,10 @@ export function ChangeDialog({
     if (gap) return setProblem(gap);
     setProblem("");
     if (!reviewing) return setStep(reviewIndex);
-    if (!review.plan) return void review.preview(request);
+    if (waiting) return setProblem("Choose the day this should happen.");
+    if (!review.plan) return void review.preview(request, effectiveOn);
     if (reason.trim().length < 3) return setProblem("Give a reason of at least 3 characters.");
-    void review.confirm(request, reason.trim());
+    void review.confirm(request, reason.trim(), effectiveOn);
   }
   function back() {
     review.reset();
@@ -96,10 +106,16 @@ export function ChangeDialog({
         type="submit"
         form={formId}
         busy={busy || review.phase === "checking"}
-        busyLabel={busy ? busyLabel : "Checking…"}
+        busyLabel={busy ? (effectiveOn ? "Scheduling…" : busyLabel) : "Checking…"}
         disabled={reviewing && Boolean(review.plan?.blockers.length)}
       >
-        {reviewing ? (review.plan ? confirmLabel : "Check again") : "Review change"}
+        {reviewing
+          ? review.plan
+            ? effectiveOn
+              ? "Schedule change"
+              : confirmLabel
+            : "Check again"
+          : "Review change"}
       </Button>
     </>
   );
@@ -108,19 +124,30 @@ export function ChangeDialog({
       <Stepper steps={steps} current={current} />
       {saved ? (
         <div role="status" className="people-change">
-          {done(review.receipt)}
+          {review.receipt?.scheduled ? (
+            <p>
+              Scheduled for {calendarDate(review.receipt.effective_on ?? null)}. Nothing changes until then.
+              You can cancel it from the People page or the person&apos;s record.
+            </p>
+          ) : (
+            done(review.receipt)
+          )}
         </div>
       ) : (
         <form id={formId} onSubmit={next} noValidate>
           {reviewing ? (
             <>
-              <PlanReview
-                plan={review.plan}
-                checking={review.phase === "checking"}
-                problem={review.problem}
-                reason={reason}
-                onReason={setReason}
-              />
+              {canSchedule && <WhenControl later={later} day={day} onLater={setLater} onDay={setDay} />}
+              {waiting && <p>Choose a day to see what will happen then.</p>}
+              {!waiting && (
+                <PlanReview
+                  plan={review.plan}
+                  checking={review.phase === "checking"}
+                  problem={review.problem}
+                  reason={reason}
+                  onReason={setReason}
+                />
+              )}
               {reviewControls?.(review.plan)}
             </>
           ) : (

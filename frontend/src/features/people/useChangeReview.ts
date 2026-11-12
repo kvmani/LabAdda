@@ -41,12 +41,14 @@ export function useChangeReview(onDenied: () => void) {
   );
 
   const preview = useCallback(
-    async (request: ChangeRequest) => {
+    async (request: ChangeRequest, effectiveOn?: string) => {
       const token = ++generation.current;
       setPhase("checking");
       setPlan(null);
       try {
-        const result = await api<ChangePlan>("/admin/changes/preview", { body: { request } });
+        const result = await api<ChangePlan>("/admin/changes/preview", {
+          body: { request, effective_on: effectiveOn },
+        });
         if (token !== generation.current) return;
         setPlan(result);
         setPhase("ready");
@@ -58,13 +60,19 @@ export function useChangeReview(onDenied: () => void) {
   );
 
   const confirm = useCallback(
-    async (request: ChangeRequest, reason: string) => {
+    async (request: ChangeRequest, reason: string, effectiveOn?: string) => {
       if (!plan) return;
       const token = ++generation.current;
       setPhase("saving");
       setProblem(null);
       try {
-        const body = { request, digest: plan.digest, revisions: plan.revisions, reason };
+        const body = {
+          request,
+          digest: plan.digest,
+          revisions: plan.revisions,
+          reason,
+          effective_on: effectiveOn,
+        };
         const result = await api<ChangeReceipt>("/admin/changes/apply", { body });
         if (token !== generation.current) return;
         setReceipt(result);
@@ -72,7 +80,7 @@ export function useChangeReview(onDenied: () => void) {
       } catch (error: unknown) {
         if (token !== generation.current) return;
         fail(error, "ready");
-        if (errorStatus(error) === 409) void preview(request);
+        if (errorStatus(error) === 409) void preview(request, effectiveOn);
       }
     },
     [plan, fail, preview],
