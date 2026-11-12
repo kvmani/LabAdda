@@ -123,7 +123,7 @@ def resume_traffic(site: dict, unit: str, marker: Path, log: Path):
     journal(log, "traffic_ready")
 
 
-def maintenance(
+def maintenance(  # noqa: PLR0912, PLR0915 — linear operator script; steps run in a fixed order
     site: dict,
     action: str,
     expected: str,

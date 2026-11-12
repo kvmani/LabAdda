@@ -202,7 +202,7 @@ def get_board(
 
 
 @router.post("/workspaces/{workspace_id}/board/ops")
-def submit_op(
+def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision checks before the commit
     workspace_id: uuid.UUID,
     body: OpBody,
     request: Request,
@@ -439,7 +439,7 @@ def list_destinations(
 
 
 @router.post("/workspaces/{workspace_id}/board/snapshots", status_code=201)
-def publish_snapshot(
+def publish_snapshot(  # noqa: PLR0915 — ordered authorization and revision checks before the commit
     workspace_id: uuid.UUID,
     body: SnapshotBody,
     request: Request,

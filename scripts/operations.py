@@ -41,7 +41,7 @@ CONTENT_SECURITY_POLICY = (
 )
 
 
-def load_site(path: Path) -> dict:
+def load_site(path: Path) -> dict:  # noqa: PLR0912 — linear operator script; steps run in a fixed order
     def unique(pairs):
         result = {}
         for key, value in pairs:

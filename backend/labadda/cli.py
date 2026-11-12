@@ -46,7 +46,7 @@ def run_doctor(args: argparse.Namespace) -> int:
     return 0 if doctor.passed(results) else 1
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # noqa: PLR0911, PLR0912, PLR0915 — one flat dispatch over every subcommand; splitting would hide the command table
     parser = argparse.ArgumentParser(prog="labadda")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("migrate", help="apply schema migrations to head")

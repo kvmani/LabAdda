@@ -240,7 +240,7 @@ def test_populated_receipt_history_blocks_downgrade(as_user, settings):
         downgrade_legacy(alembic_config(settings.database_url), "0011")
 
 
-def test_expired_lease_failure_release_cannot_deadlock_new_admission(as_user, settings, ids, db_factory):
+def test_expired_lease_failure_release_cannot_deadlock_new_admission(as_user, settings, ids, db_factory):  # noqa: PLR0915 — one end-to-end scenario; steps depend on the previous ones
     from types import SimpleNamespace
 
     as_user("ben")

@@ -22,7 +22,7 @@ class BudgetExceeded(Exception):
     pass
 
 
-def inspect_storage(
+def inspect_storage(  # noqa: PLR0915 — linear sequence of independent read-only inspections
     factory, root: Path, *, max_files: int = 10000, max_bytes: int = 1024**3, max_seconds: float = 30
 ) -> dict:
     if not 1 <= max_files <= 100000 or not 1 <= max_bytes <= 10 * 1024**3 or not 0 < max_seconds <= 300:
@@ -73,7 +73,7 @@ def inspect_storage(
         if time.monotonic() - began >= max_seconds or summary["checked_files"] >= max_files:
             raise BudgetExceeded()
 
-    def check_file(path, asset_id, size=None, expected_hash=None, file_class="original"):
+    def check_file(path, asset_id, size=None, expected_hash=None, file_class="original"):  # noqa: PLR0911 — linear sequence of independent read-only inspections
         check_budget()
         summary["checked_files"] += 1
         # No following a final symlink; parents must resolve beneath this private root.

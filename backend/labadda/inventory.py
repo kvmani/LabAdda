@@ -22,7 +22,7 @@ class InventoryLimit(Exception):
     pass
 
 
-def inventory_storage(
+def inventory_storage(  # noqa: PLR0915 — linear measurement pass; order matters for the lock and timeout budget
     factory,
     root: Path,
     *,
@@ -107,7 +107,7 @@ def inventory_storage(
         try:
             root_device = os.fstat(root_fd).st_dev
 
-            def scan(directory_fd, shard=None):
+            def scan(directory_fd, shard=None):  # noqa: PLR0912, PLR0915 — linear measurement pass; order matters for the lock and timeout budget
                 with os.scandir(directory_fd) as entries:
                     for entry in entries:
                         check_time()

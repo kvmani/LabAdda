@@ -19,41 +19,56 @@ from ..serialize import iso
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
+def _resolve_note(db: Session, actor: Actor, n: Notification) -> dict | None:
+    """Display data for a note reminder; only the note's owner may see it."""
+    note = db.get(Note, n.source_id)
+    if note is None or note.owner_id != actor.id:
+        return None
+    return {
+        "title": note.title or note.body[:80],
+        "workspace": None,
+        "link": {"view": "notes", "id": str(note.id)},
+    }
+
+
+def _resolve_post(db: Session, n: Notification, readable: dict) -> dict | None:
+    """Display data for a post mention, unless the post is gone or its workspace unreadable."""
+    post = db.get(Post, n.source_id)
+    if post is None or post.deleted_at is not None or post.workspace_id not in readable:
+        return None
+    ws = db.get(Workspace, post.workspace_id)
+    return {
+        "title": post.body[:120],
+        "workspace": {"id": str(ws.id), "name": ws.name},
+        "link": {
+            "view": "noticeboard",
+            "workspace_id": str(ws.id),
+            "post_id": str(post.parent_id or post.id),
+        },
+    }
+
+
+def _resolve_chat(db: Session, n: Notification, readable: dict) -> dict | None:
+    """Display data for a chat mention, unless its workspace is no longer readable."""
+    msg = db.get(ChatMessage, n.source_id)
+    if msg is None or msg.workspace_id not in readable:
+        return None
+    ws = db.get(Workspace, msg.workspace_id)
+    return {
+        "title": msg.body[:120],
+        "workspace": {"id": str(ws.id), "name": ws.name},
+        "link": {"view": "chat", "workspace_id": str(ws.id), "seq": msg.seq},
+    }
+
+
 def _resolve(db: Session, actor: Actor, n: Notification, readable: dict) -> dict | None:
     """Return display data if the recipient may still see the source, else None."""
     if n.source_type == "note":
-        note = db.get(Note, n.source_id)
-        if note is None or note.owner_id != actor.id:
-            return None
-        return {
-            "title": note.title or note.body[:80],
-            "workspace": None,
-            "link": {"view": "notes", "id": str(note.id)},
-        }
+        return _resolve_note(db, actor, n)
     if n.source_type == "post":
-        post = db.get(Post, n.source_id)
-        if post is None or post.deleted_at is not None or post.workspace_id not in readable:
-            return None
-        ws = db.get(Workspace, post.workspace_id)
-        return {
-            "title": post.body[:120],
-            "workspace": {"id": str(ws.id), "name": ws.name},
-            "link": {
-                "view": "noticeboard",
-                "workspace_id": str(ws.id),
-                "post_id": str(post.parent_id or post.id),
-            },
-        }
+        return _resolve_post(db, n, readable)
     if n.source_type == "chat":
-        msg = db.get(ChatMessage, n.source_id)
-        if msg is None or msg.workspace_id not in readable:
-            return None
-        ws = db.get(Workspace, msg.workspace_id)
-        return {
-            "title": msg.body[:120],
-            "workspace": {"id": str(ws.id), "name": ws.name},
-            "link": {"view": "chat", "workspace_id": str(ws.id), "seq": msg.seq},
-        }
+        return _resolve_chat(db, n, readable)
     if n.source_type == "transfer":
         return _reassignment(db, n, readable)
     return None

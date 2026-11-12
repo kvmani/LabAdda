@@ -41,8 +41,6 @@ ignore = [
   "PLR0913", "PLR2004", "S101",
   # Error classes are named for the HTTP outcome (NotFound, Forbidden) and are public API.
   "N818",
-  # Function size and argument-count rules are enabled by package Q3, which restructures functions.
-  "PLR0911", "PLR0912", "PLR0915", "PLR0917",
 ]
 
 [tool.ruff.lint.isort]
@@ -73,3 +71,9 @@ extend-immutable-calls = [
 # Each subcommand imports only what it runs, so `labadda --help` and small commands stay fast.
 # Each subcommand maps any failure to a safe operator message and a non-zero exit code.
 "**/labadda/cli.py" = ["PLC0415", "BLE001"]
+# Modules still being changed by the A4 and people-management work; Q3 could not edit them without
+# conflicts. Whoever next changes one of these removes its line here and fixes the finding.
+"**/labadda/api/people.py" = ["PLR0917"]
+"**/labadda/changes/**/*.py" = ["PLR0917"]
+"**/labadda/health/backups.py" = ["PLR0911"]
+"**/labadda/health/certificate.py" = ["PLR0911"]

@@ -36,7 +36,7 @@ print('empty')
         raise operations.OperationsError("Expected a separately provisioned empty database")
 
 
-def prepare(
+def prepare(  # noqa: PLR0912, PLR0915 — linear operator script; steps run in a fixed order
     site: dict,
     candidate: str,
     action: str,

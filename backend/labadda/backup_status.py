@@ -185,7 +185,7 @@ def write_status(directory: Path, status: BackupStatus) -> None:
         os.close(directory_descriptor)
 
 
-def read_status(directory: Path | None) -> StatusReading:
+def read_status(directory: Path | None) -> StatusReading:  # noqa: PLR0911 — ordered guard clauses; each failure maps to one distinct state
     """Read and validate the status file; never raises for a bad or missing file."""
     if directory is None:
         return StatusReading("unknown")

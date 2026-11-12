@@ -328,7 +328,7 @@ def _hours(age_seconds: float) -> str:
     return "less than an hour ago" if hours < 1 else f"{hours} hours ago"
 
 
-def check_backup(host: Host, settings: Settings) -> CheckResult:
+def check_backup(host: Host, settings: Settings) -> CheckResult:  # noqa: PLR0911 — ordered guard clauses; each failure maps to one distinct message
     """A recent, verified backup is recorded in the status file."""
     title = "Backups"
     if settings.environment not in SITE_ENVIRONMENTS:

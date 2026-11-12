@@ -221,7 +221,7 @@ def build(root: Path, output: Path, release_id: str) -> Path:
     return archive_path
 
 
-def verify(archive_path: Path, expected_digest: str) -> dict:
+def verify(archive_path: Path, expected_digest: str) -> dict:  # noqa: PLR0912 — linear operator script; steps run in a fixed order
     if not re.fullmatch(r"[0-9a-f]{64}", expected_digest) or digest(archive_path) != expected_digest:
         raise ReleaseError("Archive SHA-256 mismatch")
     with tarfile.open(archive_path, "r:gz") as archive:

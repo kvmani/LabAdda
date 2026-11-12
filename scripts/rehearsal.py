@@ -243,7 +243,7 @@ async def run_client(
         await socket
 
 
-async def main() -> None:
+async def main() -> None:  # noqa: PLR0915 — linear operator script; steps run in a fixed order
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument(
         "--synthetic-target",

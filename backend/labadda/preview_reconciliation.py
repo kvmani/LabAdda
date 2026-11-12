@@ -32,7 +32,7 @@ class UnsafeFile(Exception):
 MAX_FILE_BYTES = 32 * 1024**2
 
 
-def reconcile_previews(
+def reconcile_previews(  # noqa: PLR0912, PLR0915 — single ordered pass comparing every counter
     factory,
     root: Path,
     *,

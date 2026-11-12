@@ -60,7 +60,7 @@ class ReconciliationStopped(Exception):
     pass
 
 
-def _issue_code(expected: tuple | None, ledger: tuple | None) -> str | None:
+def _issue_code(expected: tuple | None, ledger: tuple | None) -> str | None:  # noqa: PLR0911 — single ordered pass comparing every counter
     """Compare (user, workspace, state, bytes, method) tuples; return a drift code or None."""
     if expected is None:
         return "orphan_charge"
@@ -121,7 +121,7 @@ def _apply(db: Session, correction: list) -> None:
     )
 
 
-def reconcile_content_charges(
+def reconcile_content_charges(  # noqa: PLR0912, PLR0915 — single ordered pass comparing every counter
     factory,
     *,
     max_items: int = 10_000,

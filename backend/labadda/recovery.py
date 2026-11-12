@@ -215,7 +215,7 @@ def backup(
         engine.dispose()
 
 
-def restore(
+def restore(  # noqa: PLR0912, PLR0915 — ordered recovery steps whose sequence is the safety contract
     bundle: Path,
     expected_manifest_hash: str,
     target_url: str,

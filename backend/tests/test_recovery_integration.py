@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_full_recovery_preserves_content_and_revokes_credentials(
+def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR0915, PLR0917 — one end-to-end scenario; steps depend on the previous ones
     settings, ids, as_user, make_client, tmp_path, db_factory
 ):
     assert shutil.which("pg_dump") and shutil.which("pg_restore"), "PostgreSQL 16 clients required"
