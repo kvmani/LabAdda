@@ -24,6 +24,7 @@ export { PageHeader } from "./PageHeader";
 export { SearchInput } from "./SearchInput";
 export { Select, type SelectOption } from "./Select";
 export { Skeleton } from "./Skeleton";
+export { StatTile } from "./StatTile";
 export { StatusPill, type HealthStatus } from "./StatusPill";
 export { Stepper } from "./Stepper";
 export { Switch } from "./Switch";

@@ -9,6 +9,7 @@ import { ActivityPage } from "../activity/ActivityPage";
 import { AuditPage } from "../audit/AuditPage";
 import { EventsPage } from "../events/EventsPage";
 import { HealthPage } from "../health/HealthPage";
+import { OverviewPage } from "../overview/OverviewPage";
 import { PeoplePage } from "../people/PeoplePage";
 import { BackupsPage } from "./BackupsPage";
 import { Settings } from "./Settings";
@@ -64,7 +65,9 @@ export function AdminConsole() {
             key={section.key}
             path={section.key === "overview" ? "" : section.key}
             element={
-              section.key === "people" ? (
+              section.key === "overview" ? (
+                <OverviewPage />
+              ) : section.key === "people" ? (
                 <PeoplePage />
               ) : section.key === "org" ? (
                 <Basic area="org" />

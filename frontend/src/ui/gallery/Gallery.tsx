@@ -24,6 +24,7 @@ import {
   SearchInput,
   Select,
   Skeleton,
+  StatTile,
   StatusPill,
   Stepper,
   Switch,
@@ -263,6 +264,18 @@ export function Gallery() {
                 resultCount={query ? matches.length : null}
               />
             </div>
+          </Section>
+
+          <Section title="Stat tiles">
+            <StatTile label="People active today" value="42 people" note="Today" to="/admin/activity" />
+            <StatTile
+              label="Last backup"
+              value="30 h ago"
+              status="degraded"
+              note="Updated 3 s ago"
+              to="/admin/backups"
+            />
+            <StatTile label="Storage used" value="Not measured" status="unknown" to="/admin/storage" />
           </Section>
 
           <Section title="Status and labels">

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Avatar, initials, toneFor } from "./Avatar";
@@ -11,6 +12,7 @@ import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
 import { PageHeader } from "./PageHeader";
 import { Skeleton } from "./Skeleton";
+import { StatTile } from "./StatTile";
 import { StatusPill, type HealthStatus } from "./StatusPill";
 import { Tag } from "./Tag";
 
@@ -127,5 +129,28 @@ describe("Banner", () => {
     const { container } = render(<Banner level="warning">{"<b>Back at 6</b>"}</Banner>);
     expect(screen.getByRole("status").textContent).toContain("Warning: <b>Back at 6</b>");
     expect(container.querySelector("b")).toBeNull();
+  });
+});
+
+describe("StatTile", () => {
+  it("links its label to the detail page and shows the figure, status and note", () => {
+    render(
+      <MemoryRouter>
+        <StatTile
+          label="Last backup"
+          value="5 h ago"
+          status="degraded"
+          note="Updated 3 s ago"
+          to="/admin/backups"
+        >
+          <span>trend</span>
+        </StatTile>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: "Last backup" }).getAttribute("href")).toBe("/admin/backups");
+    expect(screen.getByText("5 h ago")).toBeTruthy();
+    expect(screen.getByText("Degraded")).toBeTruthy();
+    expect(screen.getByText("Updated 3 s ago")).toBeTruthy();
+    expect(screen.getByText("trend")).toBeTruthy();
   });
 });

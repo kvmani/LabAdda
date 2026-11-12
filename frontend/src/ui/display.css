@@ -229,3 +229,32 @@
   overflow-wrap: anywhere;
   font-weight: 600;
 }
+.ui-stat-tile {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+.ui-stat-tile p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ui-stat-tile__label {
+  color: var(--accent);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+.ui-stat-tile__value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+.ui-stat-tile__note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}

@@ -180,3 +180,10 @@ summary (same cache key, so its floor is applied once), `backup_report` for the 
 An open event about an item that already has a health entry is not listed twice. Units without an active steward or
 Head are the only people item until P5. Tests: `test_overview.py` (clean site, severity order, no double listing,
 unknown/stale, suppression and agreement with the Activity page, access matrix, no content).
+
+Frontend `features/overview/` (`OverviewPage`, `Attention`, `Tiles`, `Charts`, `model.ts`): the `/admin` index. It uses
+the new `ui/StatTile` (label link, figure, status word, note, trend slot; gallery entry and test), `Sparkline`,
+`LineChart`, `StatusPill`, `EmptyState` and `Card` only. It polls every 15 s through `usePolledData` (paused while the
+tab is hidden), shows "Updated N s ago" and marks figures stale after four missed polls. Hidden figures read "Fewer
+than 5" and missing ones "Not measured", never 0. Help: `help/admin/overview-page.md`. Browser check:
+`e2e/console-overview.mjs`.
