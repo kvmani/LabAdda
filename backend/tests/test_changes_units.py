@@ -323,3 +323,27 @@ def test_deactivated_signed_out_and_panel_callers_are_refused(as_user, ids, make
 def test_unknown_unit_is_a_uniform_404(as_user, ids):
     request = req(ids, "unit_rename", unit_id=ids["users"]["ben"], name="Other")
     assert as_user("admin").post("/admin/changes/preview", json=request).status_code == 404
+
+
+def test_split_and_move_revoke_live_subscriptions_and_never_read_sideways(as_user, ids, settings):
+    admin, ben, dana = as_user("admin"), as_user("ben"), as_user("dana")
+    a, division = ids["workspaces"]["section_a"], ids["workspaces"]["division"]
+    with ben.client.websocket_connect(f"{settings.base_path}/ws/") as conn:
+        conn.receive_json()
+        conn.send_json({"type": "subscribe", "workspace_id": a})
+        while conn.receive_json()["type"] != "subscribed":
+            pass
+        split_sensors(admin, ids)
+        for _ in range(10):
+            message = conn.receive_json()
+            if message["type"] == "revoked":
+                assert message["workspace_id"] == a
+                break
+        else:
+            raise AssertionError("the split did not revoke the live subscription")
+    apply(admin, req(ids, "unit_move", unit_id="section_b", new_parent_id="section_a"))
+    for username in ("ben", "dana"):  # a section's member never reads its new sibling or children
+        client = as_user(username)
+        assert client.get(f"/workspaces/{ids['workspaces']['section_b']}").status_code == 404
+    assert as_user("asha").get(f"/workspaces/{division}").status_code == 200
+    assert dana.get(f"/workspaces/{a}").status_code == 404
