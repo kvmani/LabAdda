@@ -145,8 +145,8 @@ try {
     const adminCtx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
     const admin = await signIn(adminCtx, base, "admin");
     await admin.goto(origin + base + "/admin");
-    await admin.getByRole("heading", { name: "Administration" }).waitFor();
-    await audit(admin, `${tag} administration`);
+    await admin.getByRole("heading", { name: "Overview", exact: true }).waitFor();
+    await audit(admin, `${tag} administration console overview`);
     await adminCtx.close();
 
     const tablet = await browser.newContext({ viewport: { width: 1024, height: 768 } });
