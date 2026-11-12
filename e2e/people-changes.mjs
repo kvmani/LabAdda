@@ -45,6 +45,8 @@ async function audit(page, width, label) {
 }
 /** Buttons are reached and pressed from the keyboard; no pointer clicks in the change flows. */
 async function press(locator) {
+  // A trial click only waits until the control is visible, enabled and stable; it does not click.
+  await locator.click({ trial: true });
   await locator.focus();
   await locator.page().keyboard.press("Enter");
 }
