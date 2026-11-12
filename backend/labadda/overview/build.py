@@ -29,7 +29,7 @@ def build_overview(db: Session, settings: Settings, health_items: list[dict], *,
         [
             *listed,
             *attention.event_entries(events, {entry["id"].split(":", 1)[1] for entry in listed}),
-            *attention.people_entries(db),
+            *attention.people_entries(db, settings, now),
         ]
     )
     return {

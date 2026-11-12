@@ -78,6 +78,11 @@ def draft(db: Session, request: ChangeAuthority, settings: Settings) -> Draft:
             and request.outgoing_role == "member"
             and role == "steward"
         ):
+            # Demoting to member also ends every position they hold here; show each as its own step.
+            ended = {item.id for item in outgoing}
+            for other in positions.current(db, user_id=holder.id, workspace_id=unit.id):
+                if other.id not in ended:
+                    result.actions.append(end_position(holder, other, unit))
             result.actions.append(set_role(holder, unit, "steward", "member"))
         people += holder.id != successor.id
     before = policy.direct_grants(db, successor.id).get(unit.id)

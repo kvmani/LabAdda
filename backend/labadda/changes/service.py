@@ -38,7 +38,7 @@ from .kinds import (
 )
 from .kinds.common import MAX_TERM
 from .plan import Plan
-from .requests import AddPerson, ApplyRequest, ChangeAuthority, ChangeRequest, Transfer
+from .requests import AddPerson, ApplyRequest, ChangeAuthority, ChangeRequest, Leave, Retire, Transfer
 from .unit_requests import UnitChange
 
 KINDS: dict[str, ModuleType] = {
@@ -115,6 +115,15 @@ def preview(
     return payload
 
 
+def successor_ids(request: ChangeRequest) -> set[uuid.UUID]:
+    """Other people a retirement or leave appoints; they are locked before being given a role."""
+    if isinstance(request, Retire):
+        return {item.successor_id for item in request.successors}
+    if isinstance(request, Leave):
+        return {cover.successor_id for cover in request.acting}
+    return set()
+
+
 def lock_targets(db: Session, request: ChangeRequest) -> None:
     """After the admin and actor locks: workspace role locks, then the existing person row."""
     if isinstance(request, AddPerson):
@@ -125,9 +134,17 @@ def lock_targets(db: Session, request: ChangeRequest) -> None:
         return
     scope = KINDS[request.kind].lock_scope(db, request) if request.kind != "edit_person" else None
     person_id = request.successor_id if isinstance(request, ChangeAuthority) else request.person_id
-    target = db.scalar(
-        select(User).where(User.id == person_id).with_for_update().execution_options(populate_existing=True)
-    )
+    # One ordered statement for the person and everyone the plan appoints, so two changes that
+    # name the same people cannot lock them in opposite orders.
+    wanted = {person_id, *successor_ids(request)}
+    locked = db.scalars(
+        select(User)
+        .where(User.id.in_(wanted))
+        .order_by(User.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).all()
+    target = next((row for row in locked if row.id == person_id), None)
     if target is None:
         raise NotFound()
     if isinstance(request, Transfer) and scope is not None:

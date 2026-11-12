@@ -6,19 +6,22 @@ sanitised summaries the health and event tables already keep; never user content
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from datetime import datetime
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import Settings
 from ..health import BY_KEY
-from ..models import Membership, OpsEvent, User, Workspace
+from ..models import OpsEvent
 from ..serialize import iso
+from . import people_attention
 
 SEVERITIES = ("critical", "error", "warning", "info")
 KIND_ORDER = {"health": 0, "event": 1, "people": 2}
 HEALTH_SEVERITY = {"unavailable": "error", "degraded": "warning", "stale": "warning", "unknown": "info"}
 # More open events than this are folded into one entry so a storm cannot bury everything else.
 MAX_EVENT_ENTRIES = 10
-MAX_UNIT_NAMES = 3
 
 
 def health_entries(items: list[dict]) -> list[dict]:
@@ -90,48 +93,9 @@ def event_entries(events: list[OpsEvent], covered: set[str]) -> list[dict]:
     return entries
 
 
-def units_without_steward(db: Session) -> list[str]:
-    """Names of live organisation units that have no active steward (a Head is always a steward)."""
-    covered = (
-        select(Membership.id)
-        .join(User, User.id == Membership.user_id)
-        .where(
-            Membership.workspace_id == Workspace.id,
-            Membership.role == "steward",
-            User.is_active.is_(True),
-        )
-        .exists()
-    )
-    query = (
-        select(Workspace.name)
-        .where(Workspace.kind == "org", Workspace.archived.is_(False), ~covered)
-        .order_by(func.lower(Workspace.name))
-    )
-    return list(db.scalars(query))
-
-
-def people_entries(db: Session) -> list[dict]:
-    """The only people item that exists before P5: units that nobody is in charge of."""
-    names = units_without_steward(db)
-    if not names:
-        return []
-    count = len(names)
-    shown = ", ".join(names[:MAX_UNIT_NAMES]) + (" and others" if count > MAX_UNIT_NAMES else "")
-    return [
-        {
-            "id": "people:units-without-steward",
-            "kind": "people",
-            "severity": "warning",
-            "status": None,
-            "title": "1 unit has no steward or Head"
-            if count == 1
-            else f"{count} units have no steward or Head",
-            "detail": f"{shown}. Appoint someone so requests and questions have an owner.",
-            "route": "/admin/org",
-            "help": None,
-            "at": None,
-        }
-    ]
+def people_entries(db: Session, settings: Settings, now: datetime) -> list[dict]:
+    """PO-22 items, kept in ``people_attention`` so this module stays about health and events."""
+    return people_attention.people_entries(db, settings, now)
 
 
 def ordered(entries: list[dict]) -> list[dict]:
