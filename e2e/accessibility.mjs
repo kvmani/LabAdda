@@ -208,7 +208,11 @@ try {
         })
       ).json()
     ).code;
-    const kiosk = await browser.newContext({ colorScheme, viewport: { width: 1280, height: 800 }, hasTouch: true });
+    const kiosk = await browser.newContext({
+      colorScheme,
+      viewport: { width: 1280, height: 800 },
+      hasTouch: true,
+    });
     const panel = await kiosk.newPage();
     await panel.goto(origin + base + "/panel");
     await panel.getByLabel("Panel code").waitFor();
