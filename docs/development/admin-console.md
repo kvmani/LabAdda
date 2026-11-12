@@ -186,4 +186,6 @@ the new `ui/StatTile` (label link, figure, status word, note, trend slot; galler
 `LineChart`, `StatusPill`, `EmptyState` and `Card` only. It polls every 15 s through `usePolledData` (paused while the
 tab is hidden), shows "Updated N s ago" and marks figures stale after four missed polls. Hidden figures read "Fewer
 than 5" and missing ones "Not measured", never 0. Help: `help/admin/overview-page.md`. Browser check:
-`e2e/console-overview.mjs`.
+`e2e/console-overview.mjs` (with `e2e/overview-fixture.py`) at `/` and `/labadda-staging`: nothing-needs-attention, three
+entries in severity order with working links, polling picks up and clears a problem, usage reader, member refusal, axe
+at 1400/390 px. `e2e/admin-console.mjs` now expects the Overview page at the index.

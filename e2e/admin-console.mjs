@@ -63,7 +63,8 @@ async function checkAdmin(admin, base) {
   const { page } = admin;
   await page.goto(origin + base + "/admin");
   await page.getByRole("heading", { name: "Overview", exact: true }).waitFor();
-  check(await page.getByText("Not available yet", { exact: true }).isVisible(), base + " honest overview");
+  await page.getByRole("region", { name: "Overall state" }).waitFor();
+  check(true, base + " overview page is the console index");
   const navigation = page.getByRole("navigation", { name: "Administration", exact: true });
   check((await navigation.getByRole("link").count()) === 11, base + " eleven administrator sections");
   await navigation.getByRole("link", { name: "People", exact: true }).click();
