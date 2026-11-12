@@ -136,9 +136,6 @@ label.inline input:not([type="checkbox"]) {
 .row.wrap {
   flex-wrap: wrap;
 }
-.between {
-  justify-content: space-between;
-}
 .plain {
   list-style: none;
   padding: 0;
@@ -157,14 +154,6 @@ label.inline input:not([type="checkbox"]) {
   font-weight: 500;
   vertical-align: middle;
 }
-.badge {
-  font-size: 0.75rem;
-  background: var(--legacy-accent);
-  color: #fff;
-  border-radius: 999px;
-  padding: 0 0.45rem;
-  margin-left: auto;
-}
 .state {
   padding: 2rem;
   text-align: center;
@@ -173,10 +162,7 @@ label.inline input:not([type="checkbox"]) {
   color: var(--muted);
 }
 
-.narrow {
-  max-width: 640px;
-}
-
+/* Whiteboard drawing toolbar, canvas and the touch panel share these rules; U4 leaves them untouched. */
 .whiteboard {
   display: flex;
   flex-direction: column;
@@ -245,33 +231,6 @@ label.inline input:not([type="checkbox"]) {
   width: 280px;
   max-height: 60%;
   overflow: auto;
-}
-
-.notifications {
-  position: absolute;
-  right: 1rem;
-  top: 3.5rem;
-  width: min(420px, 94vw);
-  z-index: 30;
-  max-height: 70vh;
-  overflow: auto;
-  box-shadow: 0 10px 40px #0002;
-}
-.notification {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  color: var(--ink);
-  border: 1px solid var(--legacy-line);
-  margin-bottom: 0.35rem;
-}
-.notification.unread {
-  border-left: 4px solid var(--legacy-accent);
-}
-.notification .snippet {
-  display: block;
-  margin: 0.2rem 0;
 }
 
 table {
@@ -389,26 +348,10 @@ button.end-session {
   gap: 0.5rem;
 }
 
-.governance-form {
-  display: grid;
-  gap: 0.75rem;
-  max-width: 40rem;
-  margin: 1rem 0;
-}
-.governance-form label {
-  display: grid;
-  gap: 0.3rem;
-}
-
 main:focus {
   outline: none;
 }
 main:focus-visible {
   outline: 3px solid #f59e0b;
   outline-offset: -3px;
-}
-
-.inventory-job-id,
-[aria-label="Inventory jobs"] button {
-  overflow-wrap: anywhere;
 }

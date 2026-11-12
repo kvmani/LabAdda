@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { InventoryJobs } from "./InventoryJobs";
 import { DatabaseStorage } from "./DatabaseStorage";
 import { LogicalCharges } from "./LogicalCharges";
@@ -12,37 +12,12 @@ import type {
   Observation,
 } from "../governance-types";
 import { CapacityForecast } from "./CapacityForecast";
-import { StorageInventory, type InventorySummary } from "./StorageInventory";
+import { InspectionReceipts, type StorageReceipt } from "./InspectionReceipts";
+import { ProposalHistory } from "./ProposalHistory";
+import { Button, Card, ErrorState, Skeleton, TextArea, TextInput } from "../ui";
+import "./storage.css";
 
 const MiB = 1024 * 1024;
-type StorageReceipt = {
-  id: string;
-  status: string;
-  finished_at: string | null;
-  summary: InventorySummary & {
-    checked_assets?: number;
-    issue_count?: number;
-    state?: string;
-    verified_previews?: number;
-    unknown_previews?: number;
-    scope?: string;
-    mode?: string;
-    candidate_count?: number;
-    applied_count?: number;
-    stop_reason?: string;
-    checked_items?: number;
-    checked_boards?: number;
-    correction_count?: number;
-  };
-};
-const reconciliationStops: Record<string, string> = {
-  plan_changed: "Plan changed; the host operator must run a new dry run.",
-  byte_budget_exhausted: "Byte budget reached; reduce the batch size.",
-  time_budget_exhausted: "Time budget reached; reduce the batch size.",
-  reconciliation_busy: "Another reconciliation is running.",
-  asset_root_unavailable: "Asset storage is unavailable; check host storage.",
-  board_object_budget_exhausted: "Whiteboard object budget reached; reduce the batch size.",
-};
 export function Governance() {
   const [policy, setPolicy] = useState<PolicyDrafts | null>(null);
   const [usage, setUsage] = useState<SiteUsage | null>(null);
@@ -145,202 +120,143 @@ export function Governance() {
       "Proposal saved. No limits or retention rules were activated.",
     );
   }
+  const limit = (set: (value: number) => void) => (e: ChangeEvent<HTMLInputElement>) => {
+    invalidateForecast();
+    set(Number(e.target.value));
+  };
   return (
-    <div className="card">
-      <h2>Storage observations and policy proposals</h2>
+    <div className="storage-stack">
+      <h2 className="storage-heading">Storage observations and policy proposals</h2>
       <p>
         Foundation preview: saving proposals cannot activate enforcement or delete data. Current pilot limits
         remain environment-controlled.
       </p>
       {error && (
-        <p className="error" role="alert">
-          {error} Reload observations before retrying a conflicted proposal.
-        </p>
+        <ErrorState message={`${error} Reload observations before retrying a conflicted proposal.`} />
       )}
       {message && <p role="status">{message}</p>}
-      <button disabled={busy} onClick={() => run(async () => {}, "Observations refreshed.")}>
-        Reload observations
-      </button>
-      {!policy && !error && <p role="status">Loading governance information…</p>}
+      <div>
+        <Button icon="refresh" disabled={busy} onClick={() => run(async () => {}, "Observations refreshed.")}>
+          Reload observations
+        </Button>
+      </div>
+      {!policy && !error && <Skeleton lines={4} label="Loading governance information…" />}
       {usage && (
-        <>
-          <h3>Site measurements (partial)</h3>
-          <dl>
-            <dt>Tracked original file bytes</dt>
-            <dd>
-              {bytes(usage.assets.tracked_original_bytes)} · {usage.assets.tracked_files} files
-            </dd>
-            <dt>Pending original-byte reservations</dt>
-            <dd>{bytes(usage.assets.pending_upload_original_bytes)}</dd>
-            <dt>Previews with recorded measurements</dt>
-            <dd>{bytes(usage.assets.tracked_preview_bytes ?? null)}</dd>
-            <dt>Previews with unknown measurements</dt>
-            <dd>{usage.assets.unknown_preview_files ?? "Unknown"}</dd>
-            <dt>Asset filesystem free space</dt>
-            <dd>
-              {bytes(usage.filesystem.free_bytes)} · {usage.filesystem.state}
-            </dd>
-            <dt>Configured site budget</dt>
-            <dd>Not configured</dd>
-            <dt>Observed</dt>
-            <dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
-          </dl>
-          <LogicalCharges charges={usage.logical_charges} scope="site" />
-          <DatabaseStorage storage={usage.database} />
-          <p className="notice">
-            Filesystem capacity may be shared with other services. Historical previews without expected
-            measurements, other derivatives, non-upload reservations, trash and archive storage are not fully
-            measured. Preview metadata is not a current disk inspection. These totals cannot approve
-            enforcement or deletion.
-          </p>
-          <button
-            disabled={busy}
-            onClick={() =>
-              run(() => api("/admin/usage-observations", { body: {} }), "Partial observation recorded.")
-            }
-          >
-            Record partial observation
-          </button>
-          <p>
-            {Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples retained.
-          </p>
-          {history.length > 0 && (
-            <ul>
-              {history.slice(0, 5).map((h) => (
-                <li key={h.id}>
-                  {new Date(h.observed_at).toLocaleString()} ·{" "}
-                  {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+        <Card title="Site measurements (partial)" level={3}>
+          <div className="storage-section">
+            <dl className="storage-list">
+              <dt>Tracked original file bytes</dt>
+              <dd>
+                {bytes(usage.assets.tracked_original_bytes)} · {usage.assets.tracked_files} files
+              </dd>
+              <dt>Pending original-byte reservations</dt>
+              <dd>{bytes(usage.assets.pending_upload_original_bytes)}</dd>
+              <dt>Previews with recorded measurements</dt>
+              <dd>{bytes(usage.assets.tracked_preview_bytes ?? null)}</dd>
+              <dt>Previews with unknown measurements</dt>
+              <dd>{usage.assets.unknown_preview_files ?? "Unknown"}</dd>
+              <dt>Asset filesystem free space</dt>
+              <dd>
+                {bytes(usage.filesystem.free_bytes)} · {usage.filesystem.state}
+              </dd>
+              <dt>Configured site budget</dt>
+              <dd>Not configured</dd>
+              <dt>Observed</dt>
+              <dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
+            </dl>
+            <LogicalCharges charges={usage.logical_charges} scope="site" />
+            <DatabaseStorage storage={usage.database} />
+            <p className="storage-note">
+              Filesystem capacity may be shared with other services. Historical previews without expected
+              measurements, other derivatives, non-upload reservations, trash and archive storage are not
+              fully measured. Preview metadata is not a current disk inspection. These totals cannot approve
+              enforcement or deletion.
+            </p>
+            <div>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  run(() => api("/admin/usage-observations", { body: {} }), "Partial observation recorded.")
+                }
+              >
+                Record partial observation
+              </Button>
+            </div>
+            <p>
+              {Math.min(history.length, 5)} recent samples displayed; at most 100 operational samples
+              retained.
+            </p>
+            {history.length > 0 && (
+              <ul className="storage-steps">
+                {history.slice(0, 5).map((h) => (
+                  <li key={h.id}>
+                    {new Date(h.observed_at).toLocaleString()} ·{" "}
+                    {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
       )}
       <InventoryJobs />
-      <h3>Storage inventories, inspections and reconciliations</h3>
-      <p>
-        Asset-directory inventory receipts come from <code>labadda inventory-storage</code>. They report
-        bounded metadata observations, including temporary and unreferenced candidates, without reading file
-        contents.
-      </p>
-      <p>
-        Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original hashes
-        and preview hashes where expected measurements exist. Historical preview integrity remains unknown
-        without those measurements. The scan time budget is cooperative, not a hard filesystem timeout.
-        Inspections never repair files or authorize enforcement. A running record may be stale after an
-        operator process stops.
-      </p>
-      {inspections.length === 0 ? (
-        <p>No inspection receipts available.</p>
-      ) : (
-        <ul>
-          {inspections.map((r) => (
-            <li key={r.id}>
-              {r.status}
-              {["content_charge_reconciliation", "asset_directory_inventory"].includes(r.summary.scope ?? "")
-                ? ""
-                : ` · ${r.summary.checked_assets ?? "Not reported"} asset rows checked`}{" "}
-              · {r.summary.issue_count ?? "Not reported"} issues ·{" "}
-              {r.finished_at ? new Date(r.finished_at).toLocaleString() : "No completion receipt"}
-              {r.summary.scope === "asset_directory_inventory" ? (
-                <StorageInventory summary={r.summary} />
-              ) : r.summary.scope === "content_charge_reconciliation" ? (
-                <span className="muted small">
-                  {" "}
-                  · Text/whiteboard charge reconciliation{" "}
-                  {r.summary.mode === "dry_run"
-                    ? "Dry run"
-                    : r.summary.mode === "apply"
-                      ? "Apply"
-                      : "Unknown mode"}
-                  : {r.summary.checked_items ?? "Not reported"} text items ·{" "}
-                  {r.summary.checked_boards ?? "Not reported"} boards ·{" "}
-                  {r.summary.correction_count ?? "Not reported"} ledger corrections planned ·{" "}
-                  {r.summary.applied_count ?? "Unconfirmed"} applied
-                  {r.summary.stop_reason &&
-                    ` · ${reconciliationStops[r.summary.stop_reason] ?? "Host operator inspection required."}`}
-                </span>
-              ) : r.summary.scope === "preview_metadata_reconciliation" ? (
-                <span className="muted small">
-                  {" "}
-                  · Preview reconciliation{" "}
-                  {r.summary.mode === "dry_run"
-                    ? "Dry run"
-                    : r.summary.mode === "apply"
-                      ? "Apply"
-                      : "Unknown mode"}
-                  : {r.summary.candidate_count ?? "Not reported"} candidates ·{" "}
-                  {r.summary.applied_count ?? "Unconfirmed"} metadata updates
-                  {r.summary.stop_reason &&
-                    ` · ${reconciliationStops[r.summary.stop_reason] ?? "Host operator inspection required."}`}
-                </span>
-              ) : (
-                <span className="muted small">
-                  {" "}
-                  · Preview checks: {r.summary.verified_previews ?? "Not reported"} verified ·{" "}
-                  {r.summary.unknown_previews ?? "Not reported"} unknown expected measurements
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      {policy && (
-        <>
-          <h3>Site proposal revision {policy.latest_revision}</h3>
+      <Card title="Storage inventories, inspections and reconciliations" level={3}>
+        <div className="storage-section">
           <p>
-            Current pilot file limit: {bytes(policy.runtime_limits.max_attachment_bytes)}. Current pilot user
-            limit: {bytes(policy.runtime_limits.user_quota_bytes)}.
+            Asset-directory inventory receipts come from <code>labadda inventory-storage</code>. They report
+            bounded metadata observations, including temporary and unreferenced candidates, without reading
+            file contents.
           </p>
-          <form onSubmit={propose} className="governance-form">
-            <label>
-              Proposed file limit (MiB)
-              <input
+          <p>
+            Run by the host operator with <code>labadda inspect-storage</code>. Inspections verify original
+            hashes and preview hashes where expected measurements exist. Historical preview integrity remains
+            unknown without those measurements. The scan time budget is cooperative, not a hard filesystem
+            timeout. Inspections never repair files or authorize enforcement. A running record may be stale
+            after an operator process stops.
+          </p>
+          <InspectionReceipts inspections={inspections} />
+        </div>
+      </Card>
+      {policy && (
+        <Card title={`Site proposal revision ${policy.latest_revision}`} level={3}>
+          <div className="storage-section">
+            <p>
+              Current pilot file limit: {bytes(policy.runtime_limits.max_attachment_bytes)}. Current pilot
+              user limit: {bytes(policy.runtime_limits.user_quota_bytes)}.
+            </p>
+            <form onSubmit={propose} className="storage-form">
+              <TextInput
+                label="Proposed file limit (MiB)"
                 type="number"
                 min="1"
                 max="100"
                 step="1"
                 required
                 value={fileLimit}
-                onChange={(e) => {
-                  invalidateForecast();
-                  setFileLimit(Number(e.target.value));
-                }}
+                onChange={limit(setFileLimit)}
               />
-            </label>
-            <label>
-              Proposed user limit (MiB)
-              <input
+              <TextInput
+                label="Proposed user limit (MiB)"
                 type="number"
                 min="1"
                 max="102400"
                 step="1"
                 required
                 value={userLimit}
-                onChange={(e) => {
-                  invalidateForecast();
-                  setUserLimit(Number(e.target.value));
-                }}
+                onChange={limit(setUserLimit)}
               />
-            </label>
-            <label>
-              Proposed workspace limit (MiB)
-              <input
+              <TextInput
+                label="Proposed workspace limit (MiB)"
                 type="number"
                 min="1"
                 max="1024000"
                 step="1"
                 required
                 value={workspaceLimit}
-                onChange={(e) => {
-                  invalidateForecast();
-                  setWorkspaceLimit(Number(e.target.value));
-                }}
+                onChange={limit(setWorkspaceLimit)}
               />
-            </label>
-            <label>
-              Proposed site asset budget (MiB; blank means not configured)
-              <input
+              <TextInput
+                label="Proposed site asset budget (MiB; blank means not configured)"
                 type="number"
                 min="1"
                 max="10485760"
@@ -351,99 +267,54 @@ export function Governance() {
                   setSiteLimit(e.target.value);
                 }}
               />
-            </label>
-            <label>
-              Proposed filesystem reserve floor (MiB)
-              <input
+              <TextInput
+                label="Proposed filesystem reserve floor (MiB)"
                 type="number"
                 min="1"
                 max="102400"
                 step="1"
                 required
                 value={reserve}
-                onChange={(e) => {
-                  invalidateForecast();
-                  setReserve(Number(e.target.value));
-                }}
+                onChange={limit(setReserve)}
               />
-            </label>
-            <label>
-              Proposed filesystem reserve (%)
-              <input
+              <TextInput
+                label="Proposed filesystem reserve (%)"
                 type="number"
                 min="1"
                 max="50"
                 step="1"
                 required
                 value={reservePercent}
-                onChange={(e) => {
-                  invalidateForecast();
-                  setReservePercent(Number(e.target.value));
-                }}
+                onChange={limit(setReservePercent)}
               />
-            </label>
-            <p>
-              The proposed reserve is the greater of its floor and percentage of observed filesystem capacity.
-              Preview estimates use originals, recorded previews and pending originals; other storage remains
-              unmeasured.
-            </p>
-            <button type="button" disabled={busy} onClick={preview}>
-              Preview proposed capacity
-            </button>
-            {forecast && <CapacityForecast forecast={forecast} />}
-            <label>
-              Proposal reason
-              <textarea
+              <p>
+                The proposed reserve is the greater of its floor and percentage of observed filesystem
+                capacity. Preview estimates use originals, recorded previews and pending originals; other
+                storage remains unmeasured.
+              </p>
+              <div>
+                <Button disabled={busy} onClick={preview}>
+                  Preview proposed capacity
+                </Button>
+              </div>
+              {forecast && <CapacityForecast forecast={forecast} />}
+              <TextArea
+                label="Proposal reason"
                 required
                 minLength={3}
                 maxLength={500}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
-            </label>
-            <button disabled={busy}>Save non-enforcing proposal</button>
-          </form>
-          <div className="table-scroll" role="region" aria-label="Policy proposal history" tabIndex={0}>
-            <table>
-              <caption>Recent immutable proposals</caption>
-              <thead>
-                <tr>
-                  <th>Revision</th>
-                  <th>Proposed file / user / workspace limits</th>
-                  <th>Proposed site assets / reserve</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {policy.drafts.map((d) => (
-                  <tr key={d.id}>
-                    <td>{d.revision}</td>
-                    <td>
-                      {bytes(d.profile.max_attachment_bytes)} / {bytes(d.profile.user_quota_bytes)} /{" "}
-                      {bytes(d.profile.workspace_quota_bytes)}
-                    </td>
-                    <td>
-                      {d.profile.schema_version === 2 ? (
-                        <>
-                          {d.profile.site_asset_budget_bytes === null
-                            ? "Not configured"
-                            : bytes(d.profile.site_asset_budget_bytes ?? null)}{" "}
-                          / {bytes(d.profile.filesystem_reserve_bytes ?? null)} or{" "}
-                          {d.profile.filesystem_reserve_percent}% (greater)
-                        </>
-                      ) : (
-                        "Not recorded in version 1"
-                      )}
-                    </td>
-                    <td>{d.reason}</td>
-                    <td>Draft only</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              <div>
+                <Button variant="primary" type="submit" disabled={busy}>
+                  Save non-enforcing proposal
+                </Button>
+              </div>
+            </form>
+            <ProposalHistory drafts={policy.drafts} />
           </div>
-        </>
+        </Card>
       )}
     </div>
   );

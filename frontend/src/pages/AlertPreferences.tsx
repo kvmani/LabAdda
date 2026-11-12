@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { invalidate } from "../generation";
 import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { Link } from "react-router-dom";
+import { Button, Card, Checkbox, ErrorState, PageHeader, Skeleton } from "../ui";
+import "./preferences.css";
 type Choices = { mentions: boolean; official_notices: boolean; reminders: boolean; revision: number };
 export function AlertPreferences() {
   const [choices, setChoices] = useState<Choices | null>(null),
@@ -56,62 +58,54 @@ export function AlertPreferences() {
     }
   }
   return (
-    <section className="card narrow">
-      <h1>Alert preferences</h1>
-      <p>
-        Choose your in-app alerts. These choices apply to new alerts; existing alerts and shared content
-        remain available. Enabling a category does not replay skipped reminders.
-      </p>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+    <section className="preferences">
+      <PageHeader
+        title="Alert preferences"
+        scope="Choose your in-app alerts. These choices apply to new alerts; existing alerts and shared content remain available. Enabling a category does not replay skipped reminders."
+      />
+      {error && <ErrorState message={error} title="Alert preferences could not be updated" />}
       {message && <p role="status">{message}</p>}
-      {busy && !choices && <p role="status">Loading alert preferences…</p>}
+      {busy && !choices && <Skeleton lines={3} label="Loading alert preferences…" />}
       {choices && (
-        <form onSubmit={save} aria-label="Alert preferences">
-          <fieldset disabled={busy || reloadNeeded}>
-            <legend>My alert categories</legend>
-            <label>
-              <input
-                type="checkbox"
+        <Card title="My alert categories" level={2}>
+          <form onSubmit={save} aria-label="Alert preferences" className="preferences__form">
+            <fieldset disabled={busy || reloadNeeded} className="preferences__fields">
+              <legend className="ui-visually-hidden">My alert categories</legend>
+              <Checkbox
+                label="Mentions in posts and chat"
                 checked={choices.mentions}
                 onChange={(event) => setChoices({ ...choices, mentions: event.target.checked })}
               />
-              Mentions in posts and chat
-            </label>
-            <label>
-              <input
-                type="checkbox"
+              <Checkbox
+                label="Official notice alerts"
                 checked={choices.official_notices}
                 onChange={(event) => setChoices({ ...choices, official_notices: event.target.checked })}
               />
-              Official notice alerts
-            </label>
-            <label>
-              <input
-                type="checkbox"
+              <Checkbox
+                label="Scheduled note and post reminders"
                 checked={choices.reminders}
                 onChange={(event) => setChoices({ ...choices, reminders: event.target.checked })}
               />
-              Scheduled note and post reminders
-            </label>
-          </fieldset>
-          {reloadNeeded && (
-            <p>
-              Your draft is kept. The result is unconfirmed or settings changed. Reload current preferences
-              before saving; this replaces the draft.
-            </p>
-          )}
-          <button type="submit" disabled={busy || reloadNeeded}>
-            Save alert preferences
-          </button>
-        </form>
+            </fieldset>
+            {reloadNeeded && (
+              <p>
+                Your draft is kept. The result is unconfirmed or settings changed. Reload current preferences
+                before saving; this replaces the draft.
+              </p>
+            )}
+            <div>
+              <Button variant="primary" type="submit" disabled={busy || reloadNeeded}>
+                Save alert preferences
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
-      <button type="button" disabled={busy} onClick={load}>
-        {reloadNeeded ? "Reload current preferences (replaces draft)" : "Refresh alert preferences"}
-      </button>
+      <div>
+        <Button icon="refresh" disabled={busy} onClick={load}>
+          {reloadNeeded ? "Reload current preferences (replaces draft)" : "Refresh alert preferences"}
+        </Button>
+      </div>
       <p>
         These controls do not change who can read your content. Task due dates are shown in My day; they do
         not send automatic reminders in this stage.

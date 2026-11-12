@@ -1,5 +1,6 @@
 import type { ChargeBucket, LogicalCharges as Charges } from "../governance-types";
 import { fmtBytes } from "../format";
+import "./storage.css";
 
 const ROWS: [keyof Charges["by_type"], string][] = [
   ["post", "Posts and replies"],
@@ -21,44 +22,48 @@ export function LogicalCharges({
   scope: "user" | "site" | "workspace";
 }) {
   if (!charges)
-    return <p className="muted">Text and whiteboard charges are not reported by this server version.</p>;
+    return (
+      <p className="storage-muted">Text and whiteboard charges are not reported by this server version.</p>
+    );
   const incomplete = charges.board_charges !== "complete";
   return (
-    <>
-      <h3>Text and whiteboard content (logical charges)</h3>
-      <table>
-        <caption className="sr-only">Logical charges by content type</caption>
-        <thead>
-          <tr>
-            <th scope="col">Content</th>
-            <th scope="col">Live</th>
-            <th scope="col">Removed but stored</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ROWS.filter(
-            ([key]) => charges.by_type[key] !== undefined && (scope !== "workspace" || key !== "note"),
-          ).map(([key, label]) => (
-            <tr key={key}>
-              <th scope="row">
-                {label}
-                {scope === "site" && key === "note" ? " (site total only)" : ""}
-              </th>
-              <td>{cell(charges.by_type[key]!, "live")}</td>
-              <td>{key === "post" ? cell(charges.by_type[key], "removed") : "—"}</td>
+    <section className="storage-section">
+      <h3 className="storage-subheading">Text and whiteboard content (logical charges)</h3>
+      <div className="storage-table-scroll" role="region" aria-label="Logical charges" tabIndex={0}>
+        <table className="storage-table">
+          <caption className="ui-visually-hidden">Logical charges by content type</caption>
+          <thead>
+            <tr>
+              <th scope="col">Content</th>
+              <th scope="col">Live</th>
+              <th scope="col">Removed but stored</th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th scope="row">Total</th>
-            <td>{fmtBytes(charges.live_logical_bytes)}</td>
-            <td>{fmtBytes(charges.removed_logical_bytes)}</td>
-          </tr>
-        </tfoot>
-      </table>
+          </thead>
+          <tbody>
+            {ROWS.filter(
+              ([key]) => charges.by_type[key] !== undefined && (scope !== "workspace" || key !== "note"),
+            ).map(([key, label]) => (
+              <tr key={key}>
+                <th scope="row">
+                  {label}
+                  {scope === "site" && key === "note" ? " (site total only)" : ""}
+                </th>
+                <td>{cell(charges.by_type[key]!, "live")}</td>
+                <td>{key === "post" ? cell(charges.by_type[key], "removed") : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Total</th>
+              <td>{fmtBytes(charges.live_logical_bytes)}</td>
+              <td>{fmtBytes(charges.removed_logical_bytes)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
       {incomplete && (
-        <p className="notice" role="status">
+        <p className="storage-note" role="status">
           Whiteboard totals are a lower bound:{" "}
           {scope !== "user" && charges.unreconciled_boards !== null ? (
             <>
@@ -71,12 +76,12 @@ export function LogicalCharges({
           )}
         </p>
       )}
-      <p className="muted small">
+      <p className="storage-muted">
         Measured as UTF-8 bytes of {scope === "user" ? "the text you wrote" : "user-written text"} (
         {charges.methods.text}) and of each live whiteboard object ({charges.methods.board}). These are
         logical charges, not disk usage. Attachments are counted separately; whiteboard history and database
         overhead are site storage, shown to operators and not charged to anyone. They do not change any limit.
       </p>
-    </>
+    </section>
   );
 }

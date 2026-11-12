@@ -1,0 +1,21 @@
+/* Alert preferences. */
+.preferences {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 640px;
+  min-width: 0;
+}
+.preferences p {
+  margin: 0;
+}
+.preferences__form {
+  display: grid;
+  gap: var(--space-4);
+}
+.preferences__fields {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

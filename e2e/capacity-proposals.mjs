@@ -139,11 +139,13 @@ try {
       ).violations.map((v) => v.id),
     );
     check(violations.length === 0, base + ": mobile admin has no axe findings " + JSON.stringify(violations));
-    const historyRegion = admin.page.getByRole("region", { name: "Policy proposal history", exact: true });
+    const historyRegion = admin.page.getByRole("region", { name: "Recent immutable proposals", exact: true });
     await historyRegion.focus();
     await historyRegion.press("ArrowRight");
-    await admin.page.waitForFunction(
-      () => document.querySelector('[aria-label="Policy proposal history"]').scrollLeft > 0,
+    await historyRegion.evaluate((e) => e.scrollLeft > 0 || new Promise((r) => setTimeout(r, 300)));
+    check(
+      await historyRegion.evaluate((e) => e.scrollLeft > 0),
+      base + ": proposal history scrolls sideways",
     );
     check(
       await historyRegion.evaluate((e) => e === document.activeElement),

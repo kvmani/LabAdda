@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidate } from "../generation";
 import { api, errorMessage } from "../api";
+import { Button, Card, ErrorState, Select, Skeleton } from "../ui";
+import "./storage.css";
 
 type Attempt = {
   number: number;
@@ -87,105 +89,100 @@ export function InventoryJobs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the state filter changes
   }, [filter]);
   return (
-    <section className="card" aria-label="Inventory jobs">
-      <h2>Inventory jobs</h2>
-      <p>
-        Read-only operator job history. Retries start the scan again; they do not resume a complete inventory
-        generation.
-      </p>
-      <label>
-        Inventory job state{" "}
-        <select
-          value={filter}
-          onChange={(e) => {
-            ++generation.current;
-            ++detailGeneration.current;
-            setPage(null);
-            setDetail(null);
-            setSelected(null);
-            setFilter(e.target.value);
-          }}
-        >
-          <option value="">All states</option>
-          {states.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button onClick={() => load()} disabled={loading}>
-        Refresh inventory jobs
-      </button>
-      {loading && <p role="status">Loading inventory jobs…</p>}
-      {error && (
-        <p className="error" role="alert">
-          {error}
+    <Card title="Inventory jobs" level={3}>
+      <div className="storage-section">
+        <p>
+          Read-only operator job history. Retries start the scan again; they do not resume a complete
+          inventory generation.
         </p>
-      )}
-      {page && (
-        <>
-          <p className="muted small">
-            Observed {time(page.observed_at)} · {page.jobs.length} jobs on this page; not a total count.
-          </p>
-          {page.jobs.length === 0 ? (
-            <p>No inventory jobs match this state.</p>
-          ) : (
-            <ul>
-              {page.jobs.map((job) => (
-                <li key={job.id}>
-                  <p>
-                    <strong>{status(job)}</strong> · Attempt {job.attempt} · Updated {time(job.updated_at)}
-                  </p>
-                  <p className="inventory-job-id">Job {job.id}</p>
-                  <button onClick={() => inspect(job.id)}>View attempts for {job.id}</button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {page.next_cursor && <button onClick={() => load(page.next_cursor!)}>Older inventory jobs</button>}
-        </>
-      )}
-      {selected && !detail && !detailError && <p role="status">Loading job attempts…</p>}
-      {detailError && (
-        <p className="error" role="alert">
-          {detailError}
-        </p>
-      )}
-      {detail && (
-        <div aria-label="Selected inventory job">
-          <h3>Selected inventory job</h3>
-          <p className="inventory-job-id">{detail.id}</p>
-          <p>
-            <strong>{status(detail)}</strong>
-          </p>
-          <p>
-            {detail.lease_expired
-              ? "The lease has expired. A running label does not prove an active worker or success. Ask the host operator to investigate before an explicit retry."
-              : (guidance[detail.state] ?? "Unknown state. Ask the host operator to inspect the job.")}
-          </p>
-          <p>Lease ends: {time(detail.lease_until)}</p>
-          {detail.attempts.length === 0 ? (
-            <p>No execution attempts recorded.</p>
-          ) : (
-            <ol>
-              {detail.attempts.map((attempt) => (
-                <li key={attempt.number}>
-                  <p>
-                    Attempt {attempt.number}: {attempt.state} · Heartbeat {time(attempt.heartbeat_at)} ·
-                    Finished {time(attempt.finished_at)}
-                  </p>
-                  <p className="inventory-job-id">
-                    {attempt.receipt_id
-                      ? `Accepted receipt: ${attempt.receipt_id}`
-                      : "No accepted result receipt."}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          )}
+        <div className="storage-actions">
+          <Select
+            label="Inventory job state"
+            value={filter}
+            onChange={(e) => {
+              ++generation.current;
+              ++detailGeneration.current;
+              setPage(null);
+              setDetail(null);
+              setSelected(null);
+              setFilter(e.target.value);
+            }}
+            options={[{ value: "", label: "All states" }, ...states.map((s) => ({ value: s, label: s }))]}
+          />
+          <Button icon="refresh" onClick={() => load()} disabled={loading}>
+            Refresh inventory jobs
+          </Button>
         </div>
-      )}
-    </section>
+        {loading && <Skeleton lines={3} label="Loading inventory jobs…" />}
+        {error && <ErrorState message={error} title="Inventory jobs could not be loaded" />}
+        {page && (
+          <>
+            <p className="storage-muted">
+              Observed {time(page.observed_at)} · {page.jobs.length} jobs on this page; not a total count.
+            </p>
+            {page.jobs.length === 0 ? (
+              <p>No inventory jobs match this state.</p>
+            ) : (
+              <ul className="storage-items">
+                {page.jobs.map((job) => (
+                  <li key={job.id}>
+                    <p>
+                      <strong>{status(job)}</strong> · Attempt {job.attempt} · Updated {time(job.updated_at)}
+                    </p>
+                    <p className="storage-id">Job {job.id}</p>
+                    <div>
+                      <Button size="sm" onClick={() => inspect(job.id)}>
+                        View attempts for {job.id}
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {page.next_cursor && (
+              <div>
+                <Button onClick={() => load(page.next_cursor!)}>Older inventory jobs</Button>
+              </div>
+            )}
+          </>
+        )}
+        {selected && !detail && !detailError && <Skeleton lines={2} label="Loading job attempts…" />}
+        {detailError && <ErrorState message={detailError} title="Job attempts could not be loaded" />}
+        {detail && (
+          <div className="storage-section" aria-label="Selected inventory job" role="group">
+            <h4 className="storage-subheading">Selected inventory job</h4>
+            <p className="storage-id">{detail.id}</p>
+            <p>
+              <strong>{status(detail)}</strong>
+            </p>
+            <p>
+              {detail.lease_expired
+                ? "The lease has expired. A running label does not prove an active worker or success. Ask the host operator to investigate before an explicit retry."
+                : (guidance[detail.state] ?? "Unknown state. Ask the host operator to inspect the job.")}
+            </p>
+            <p>Lease ends: {time(detail.lease_until)}</p>
+            {detail.attempts.length === 0 ? (
+              <p>No execution attempts recorded.</p>
+            ) : (
+              <ol className="storage-steps">
+                {detail.attempts.map((attempt) => (
+                  <li key={attempt.number}>
+                    <p>
+                      Attempt {attempt.number}: {attempt.state} · Heartbeat {time(attempt.heartbeat_at)} ·
+                      Finished {time(attempt.finished_at)}
+                    </p>
+                    <p className="storage-id">
+                      {attempt.receipt_id
+                        ? `Accepted receipt: ${attempt.receipt_id}`
+                        : "No accepted result receipt."}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }

@@ -1,4 +1,5 @@
 import { fmtBytes } from "../format";
+import "./storage.css";
 
 export type InventorySummary = {
   checked_entries?: number;
@@ -37,7 +38,7 @@ const bytes = (value: number | undefined) => (value === undefined ? "Not reporte
 
 export function StorageInventory({ summary: s }: { summary: InventorySummary }) {
   return (
-    <div className="small">
+    <div className="storage-section">
       <p>
         <strong>Asset-directory inventory</strong> ·{" "}
         {s.selected_pass_complete ? "Directory pass finished" : "Incomplete observation"} ·{" "}
@@ -48,7 +49,7 @@ export function StorageInventory({ summary: s }: { summary: InventorySummary }) 
         {bytes(s.allocated_bytes)} · Hard-link aliases: {s.hardlink_aliases ?? "Not reported"}
       </p>
       {s.classes && (
-        <ul>
+        <ul className="storage-steps">
           {Object.entries(s.classes).map(([key, value]) => (
             <li key={key}>
               {classes[key] ?? "Other files"}: {value.entries} entries · {bytes(value.apparent_bytes)}
@@ -60,7 +61,7 @@ export function StorageInventory({ summary: s }: { summary: InventorySummary }) 
         <p>{guidance[s.stop_reason] ?? "Ask the host operator to inspect this incomplete observation."}</p>
       )}
       {s.issues_by_code && (
-        <ul>
+        <ul className="storage-steps">
           {Object.entries(s.issues_by_code).map(([code, count]) => (
             <li key={code}>
               {count}: {guidance[code] ?? "Host operator investigation required."}
@@ -68,7 +69,7 @@ export function StorageInventory({ summary: s }: { summary: InventorySummary }) 
           ))}
         </ul>
       )}
-      <p className="notice">
+      <p className="storage-note">
         Observation only. Unreferenced candidates may belong to in-flight uploads and are not safe to delete.
         Live changes are possible. Allocation excludes directory metadata and may double-count shared extents.
         Class totals include hard-link aliases; overall file totals count each observed inode once. No

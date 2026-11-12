@@ -1,0 +1,127 @@
+/* Storage and operations panels in the administration console. */
+.storage-stack {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.storage-stack p,
+.storage-stack ul,
+.storage-stack ol,
+.storage-stack dl {
+  margin: 0;
+}
+.storage-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.storage-heading {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+.storage-subheading {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+.storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.storage-note {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--text);
+}
+.storage-muted {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.storage-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+}
+.storage-list dt {
+  color: var(--text-muted);
+}
+.storage-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.storage-items {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.storage-items > li {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+}
+.storage-steps {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+}
+.storage-id {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.storage-form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 40rem;
+}
+.storage-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.storage-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.storage-table caption {
+  padding: var(--space-2) 0;
+  text-align: left;
+  font-weight: 650;
+}
+.storage-table th,
+.storage-table td {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+.storage-table thead th {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+.storage-table tfoot th,
+.storage-table tfoot td {
+  font-weight: 650;
+}
+.storage-table tbody th {
+  font-weight: 500;
+}
+@media (max-width: 600px) {
+  .storage-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .storage-list dd {
+    margin-bottom: var(--space-2);
+  }
+}

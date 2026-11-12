@@ -1,0 +1,77 @@
+/* The notifications panel that opens from the top bar. */
+.notifications {
+  position: absolute;
+  right: var(--space-4);
+  top: 3.5rem;
+  z-index: 30;
+  display: grid;
+  gap: var(--space-3);
+  width: min(420px, 94vw);
+  max-height: 70vh;
+  overflow: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+}
+.notifications__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.notifications__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+.notifications__actions {
+  display: flex;
+  gap: var(--space-1);
+}
+.notifications__empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+.notifications__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notification {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.notification:hover {
+  background: var(--surface-sunken);
+}
+.notification:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.notification--unread {
+  border-left: 4px solid var(--accent);
+}
+.notification__where,
+.notification__time {
+  color: var(--text-muted);
+}
+.notification__time {
+  font-size: var(--text-sm);
+}

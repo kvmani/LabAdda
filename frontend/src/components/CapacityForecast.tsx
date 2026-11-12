@@ -1,5 +1,6 @@
 import type { CapacityForecast as Forecast } from "../governance-types";
 import { fmtBytes } from "../format";
+import "./storage.css";
 
 const warnings: Record<string, string> = {
   unmeasured_storage_classes:
@@ -17,9 +18,9 @@ const warnings: Record<string, string> = {
 
 export function CapacityForecast({ forecast }: { forecast: Forecast }) {
   return (
-    <section className="notice" aria-label="Capacity preview">
-      <h4>Capacity preview (incomplete)</h4>
-      <dl>
+    <section className="storage-note storage-section" aria-label="Capacity preview">
+      <h4 className="storage-subheading">Capacity preview (incomplete)</h4>
+      <dl className="storage-list">
         <dt>Known assets and pending originals (lower bound)</dt>
         <dd>{fmtBytes(forecast.known_asset_lower_bound_bytes)}</dd>
         <dt>Maximum possible headroom under proposed asset budget</dt>
@@ -41,7 +42,7 @@ export function CapacityForecast({ forecast }: { forecast: Forecast }) {
           {new Date(forecast.filesystem.observed_at).toLocaleString()} · {forecast.filesystem.state}
         </dd>
       </dl>
-      <ul>
+      <ul className="storage-steps">
         {forecast.warnings.map((code) => (
           <li key={code}>
             {warnings[code] ?? "Capacity observation is incomplete; ask the host operator to inspect."}

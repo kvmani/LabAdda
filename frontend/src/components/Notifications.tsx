@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api, errorCode, errorMessage } from "../api";
 import type { NotificationLink, OpenedNotification } from "../types";
 import { fmtTime } from "../format";
+import { Button, ErrorState, Skeleton } from "../ui";
+import "./notifications.css";
 
 type Item = {
   id: string;
@@ -50,38 +52,43 @@ export function Notifications({ onClose, onChange }: { onClose: () => void; onCh
   }
 
   return (
-    <aside id="notifications" className="notifications card" aria-label="Notifications">
-      <div className="row between">
-        <h2>Notifications</h2>
-        <div className="row">
-          <button
-            className="ghost"
+    <aside id="notifications" className="notifications" aria-label="Notifications">
+      <div className="notifications__head">
+        <h2 className="notifications__title">Notifications</h2>
+        <div className="notifications__actions">
+          <Button
+            variant="quiet"
+            size="sm"
             onClick={() => api("/notifications/read-all", { method: "POST" }).then(load)}
           >
             Mark all read
-          </button>
-          <button className="ghost" onClick={onClose} aria-label="Close notifications">
+          </Button>
+          <Button variant="quiet" size="sm" onClick={onClose} aria-label="Close notifications">
             Close
-          </button>
+          </Button>
         </div>
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && <ErrorState message={error} title="Notifications could not be updated" />}
       {items === null ? (
-        <p className="muted">Loading…</p>
+        <Skeleton lines={3} label="Loading…" />
       ) : items.length === 0 ? (
-        <p className="muted">No notifications.</p>
+        <p className="notifications__empty">No notifications.</p>
       ) : (
-        <ul className="plain">
+        <ul className="notifications__list">
           {items.map((n) => (
             <li key={n.id}>
-              <button className={"notification" + (n.read ? "" : " unread")} onClick={() => open(n)}>
+              <button
+                type="button"
+                className={"notification" + (n.read ? "" : " notification--unread")}
+                onClick={() => open(n)}
+              >
                 <strong>
                   {n.read ? "" : "Unread · "}
                   {kindText[n.kind] ?? n.kind}
                 </strong>
-                {n.workspace && <span className="muted"> in {n.workspace.name}</span>}
-                <span className="snippet">{n.title}</span>
-                <span className="muted small">{fmtTime(n.created_at)}</span>
+                {n.workspace && <span className="notification__where"> in {n.workspace.name}</span>}
+                <span className="notification__snippet">{n.title}</span>
+                <span className="notification__time">{fmtTime(n.created_at)}</span>
               </button>
             </li>
           ))}

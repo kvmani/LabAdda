@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, errorMessage } from "../api";
+import { Button, Card, DataTable, ErrorState, Select, TextArea, TextInput, type Column } from "../ui";
+import "./storage.css";
 
 type Candidate = { id: string; username: string; is_active: boolean; is_admin: boolean };
 type Grant = { user_id: string; username: string; reason: string; expires_at: string; active: boolean };
@@ -43,37 +45,43 @@ export function UsageReaders({ users }: { users: Candidate[] }) {
     e.preventDefault();
     void change(user);
   }
+  const columns: Column<Grant>[] = [
+    { key: "account", header: "Account", render: (g) => g.username },
+    { key: "expiry", header: "Expiry", render: (g) => new Date(g.expires_at).toLocaleString() },
+    { key: "state", header: "State", render: (g) => (g.active ? "Active" : "Expired or disabled") },
+    {
+      key: "action",
+      header: "Action",
+      render: (g) => (
+        <Button size="sm" disabled={busy} onClick={() => change(g.user_id, true)}>
+          Revoke {g.username}
+        </Button>
+      ),
+    },
+  ];
   return (
-    <div className="card">
-      <h2>Operational readers</h2>
-      <p>
-        Grant site storage metadata access only. This does not grant private content, policy editing or
-        identity administration. Maximum duration: 30 days. Password confirmation is required for every
-        change.
-      </p>
-      {error && (
-        <p role="alert" className="error">
-          {error}
+    <Card title="Operational readers">
+      <div className="storage-stack">
+        <p>
+          Grant site storage metadata access only. This does not grant private content, policy editing or
+          identity administration. Maximum duration: 30 days. Password confirmation is required for every
+          change.
         </p>
-      )}
-      {message && <p role="status">{message}</p>}
-      <form className="governance-form" onSubmit={submit}>
-        <label>
-          Operational reader account
-          <select required value={user} onChange={(e) => setUser(e.target.value)}>
-            <option value="">Choose an active non-administrator</option>
-            {users
+        {error && <ErrorState message={error} title="That change was not made" />}
+        {message && <p role="status">{message}</p>}
+        <form className="storage-form" onSubmit={submit}>
+          <Select
+            label="Operational reader account"
+            required
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            placeholder="Choose an active non-administrator"
+            options={users
               .filter((u) => u.is_active && !u.is_admin)
-              .map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.username}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label>
-          Access duration (hours)
-          <input
+              .map((u) => ({ value: u.id, label: u.username }))}
+          />
+          <TextInput
+            label="Access duration (hours)"
             type="number"
             required
             min={1}
@@ -82,20 +90,16 @@ export function UsageReaders({ users }: { users: Candidate[] }) {
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
           />
-        </label>
-        <label>
-          Access change reason
-          <textarea
+          <TextArea
+            label="Access change reason"
             required
             minLength={3}
             maxLength={500}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
-        </label>
-        <label>
-          Confirm administrator password
-          <input
+          <TextInput
+            label="Confirm administrator password"
             type="password"
             autoComplete="current-password"
             required
@@ -103,40 +107,23 @@ export function UsageReaders({ users }: { users: Candidate[] }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-        </label>
-        <button disabled={busy}>Grant operational read access</button>
-        <button type="button" disabled={busy || !user} onClick={() => change(user, true)}>
-          Revoke selected account
-        </button>
-      </form>
-      <table>
-        <caption>
-          Time-limited operational grants (active first, up to 200; use account selector for others)
-        </caption>
-        <thead>
-          <tr>
-            <th>Account</th>
-            <th>Expiry</th>
-            <th>State</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {grants.map((g) => (
-            <tr key={g.user_id}>
-              <td>{g.username}</td>
-              <td>{new Date(g.expires_at).toLocaleString()}</td>
-              <td>{g.active ? "Active" : "Expired or disabled"}</td>
-              <td>
-                <button disabled={busy} onClick={() => change(g.user_id, true)}>
-                  Revoke {g.username}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p>Enter a reason and confirm your password above before revoking a listed account.</p>
-    </div>
+          <div className="storage-actions">
+            <Button variant="primary" type="submit" disabled={busy}>
+              Grant operational read access
+            </Button>
+            <Button disabled={busy || !user} onClick={() => change(user, true)}>
+              Revoke selected account
+            </Button>
+          </div>
+        </form>
+        <DataTable
+          caption="Time-limited operational grants (active first, up to 200; use account selector for others)"
+          columns={columns}
+          rows={grants}
+          rowKey={(g) => g.user_id}
+        />
+        <p>Enter a reason and confirm your password above before revoking a listed account.</p>
+      </div>
+    </Card>
   );
 }
