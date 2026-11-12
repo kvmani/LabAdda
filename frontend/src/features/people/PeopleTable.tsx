@@ -1,5 +1,5 @@
 import { Button, DataTable, StatusPill, type Column } from "../../ui";
-import { calendarDate, STATUS_OPTIONS } from "./model";
+import { calendarDate, positionLabel, STATUS_OPTIONS } from "./model";
 import type { Directory, Person } from "./types";
 
 type Props = {
@@ -33,6 +33,15 @@ function peopleColumns(onOpen: Props["onOpen"]): Column<Person>[] {
     { key: "employee", header: "Employee number", render: (person) => person.employee_no ?? "Not recorded" },
     { key: "designation", header: "Designation", render: (person) => person.designation ?? "Not recorded" },
     { key: "unit", header: "Home unit", render: (person) => person.home_unit?.name ?? "Not recorded" },
+    {
+      key: "positions",
+      header: "Positions",
+      render: (person) =>
+        person.positions
+          .filter((item) => item.position !== "charge")
+          .map(positionLabel)
+          .join("; ") || "None",
+    },
     {
       key: "status",
       header: "Status",

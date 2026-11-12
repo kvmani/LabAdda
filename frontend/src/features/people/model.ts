@@ -1,5 +1,5 @@
 import type { SelectOption } from "../../ui";
-import type { Unit } from "./types";
+import type { HeldPosition, Unit } from "./types";
 
 export const FILTER_KEYS = ["q", "status", "unit_id", "include_children", "role", "sort", "descending"];
 export const STATUS_OPTIONS = [
@@ -60,4 +60,14 @@ export function unitOptions(units: Unit[]): SelectOption[] {
 export function openUnitOptions(units: Unit[], exclude?: string | null): SelectOption[] {
   const closed = new Set(units.filter((unit) => unit.archived).map((unit) => unit.id));
   return unitOptions(units).filter((option) => !closed.has(option.value) && option.value !== exclude);
+}
+
+const POSITION_WORDS = { head: "Head", deputy: "Deputy", charge: "Additional charge" } as const;
+
+/** "Acting Head of Thin Films Section until 11 Jan 2027" — names and dates only. */
+export function positionLabel(item: HeldPosition): string {
+  const word = POSITION_WORDS[item.position];
+  const title = item.acting ? `Acting ${word}` : word;
+  const until = item.ends_on ? ` until ${calendarDate(item.ends_on)}` : "";
+  return `${title} ${item.position === "charge" ? "in" : "of"} ${item.workspace.name}${until}`;
 }

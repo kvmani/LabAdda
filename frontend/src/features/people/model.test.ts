@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calendarDate, peopleUrl, unitOptions } from "./model";
+import { calendarDate, peopleUrl, positionLabel, unitOptions } from "./model";
 
 describe("staff screen boundaries", () => {
   it("keeps profile state out of list queries and page cursors out of reports", () => {
@@ -29,5 +29,19 @@ describe("staff screen boundaries", () => {
       "South",
       "South / Sensors",
     ]);
+  });
+
+  it("names positions with their unit and end date only", () => {
+    const base = {
+      id: "p",
+      workspace: { id: "w", name: "Surface Science Division" },
+      starts_on: "2026-11-12",
+    };
+    expect(positionLabel({ ...base, position: "head", acting: true, ends_on: "2027-01-11" })).toBe(
+      "Acting Head of Surface Science Division until 11 Jan 2027",
+    );
+    expect(positionLabel({ ...base, position: "charge", acting: false, ends_on: null })).toBe(
+      "Additional charge in Surface Science Division",
+    );
   });
 });

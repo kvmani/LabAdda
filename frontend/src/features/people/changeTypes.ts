@@ -26,7 +26,68 @@ export type TransferRequest = {
   leave_workspace_ids: string[];
   acknowledge_no_steward: boolean;
 };
-export type ChangeRequest = AddPersonRequest | TransferRequest;
+export type PositionKind = "head" | "deputy";
+export type PromoteRequest = {
+  kind: "promote";
+  person_id: string;
+  designation?: string | null;
+  workspace_id?: string;
+  role?: Role;
+  position?: PositionKind;
+};
+export type ChangeAuthorityRequest = {
+  kind: "change_authority";
+  workspace_id: string;
+  position: PositionKind;
+  successor_id: string;
+  acting: boolean;
+  ends_on?: string;
+  outgoing_role: Role;
+};
+export type AdditionalChargeRequest = {
+  kind: "additional_charge";
+  person_id: string;
+  workspace_id: string;
+  role: Role;
+  position?: PositionKind;
+  ends_on?: string;
+};
+export type LeaveRequest = {
+  kind: "leave";
+  person_id: string;
+  expected_return_on: string;
+  block_sign_in: boolean;
+  acting: { position_id: string; successor_id: string }[];
+};
+export type SuccessorChoice = {
+  workspace_id: string;
+  successor_id: string;
+  acting?: boolean;
+  ends_on?: string;
+};
+export type RetireRequest = {
+  kind: "retire";
+  person_id: string;
+  status: "retired" | "left";
+  keep_workspace_ids: string[];
+  successors: SuccessorChoice[];
+  acknowledge_no_steward: boolean;
+};
+export type PersonOnlyRequest = { kind: "return" | "suspend" | "reinstate"; person_id: string };
+export type ChangeRequest =
+  | AddPersonRequest
+  | TransferRequest
+  | PromoteRequest
+  | ChangeAuthorityRequest
+  | AdditionalChargeRequest
+  | LeaveRequest
+  | RetireRequest
+  | PersonOnlyRequest;
+export type Candidates = {
+  workspace: { id: string; name: string; kind: string };
+  people: { id: string; display_name: string; username: string; role: Role | null }[];
+  truncated: boolean;
+};
 
 export type PlanStep = {
   target_type: "identity" | "workspace";

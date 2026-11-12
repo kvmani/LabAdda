@@ -1,5 +1,13 @@
 /** Metadata contracts in docs/API.md P1; no collaboration-content fields. */
 export type StaffStatus = "invited" | "active" | "on_leave" | "suspended" | "retired" | "left";
+export type HeldPosition = {
+  id: string;
+  workspace: { id: string; name: string };
+  position: "head" | "deputy" | "charge";
+  acting: boolean;
+  starts_on: string;
+  ends_on: string | null;
+};
 export type Person = {
   id: string;
   username: string;
@@ -12,6 +20,7 @@ export type Person = {
   sign_in_enabled: boolean;
   home_unit: { id: string; name: string } | null;
   last_seen_on: string | null;
+  positions: HeldPosition[];
 };
 export type StaffRecord = Person & {
   contact_email: string | null;

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button, Drawer, EmptyState, ErrorState, Skeleton, Tabs } from "../../ui";
-import { calendarDate } from "./model";
-import { TransferDialog } from "./TransferDialog";
+import { calendarDate, positionLabel } from "./model";
 import { NewActivationCode } from "./NewActivationCode";
+import { ProfileActions } from "./ProfileActions";
 import { usePeopleData } from "./usePeopleData";
 import type { AccessPage, StaffRecord, TimelinePage, Unit } from "./types";
 
@@ -31,6 +31,26 @@ function RecordFields({ person }: { person: StaffRecord }) {
         </div>
       ))}
     </dl>
+  );
+}
+function Positions({ person }: { person: StaffRecord }) {
+  return (
+    <section aria-label="Positions">
+      <h3 className="people-change__heading">Positions</h3>
+      {person.positions.length ? (
+        <ul className="people-history">
+          {person.positions.map((item) => (
+            <li key={item.id}>
+              <strong>{positionLabel(item)}</strong>
+              <br />
+              <span>Since {calendarDate(item.starts_on)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No current position or additional charge.</p>
+      )}
+    </section>
   );
 }
 function Access({ identity, onDenied }: { identity: string; onDenied: () => void }) {
@@ -121,8 +141,6 @@ export function StaffProfile({
   onChanged: () => void;
 }) {
   const record = usePeopleData<StaffRecord>(`/admin/people/${encodeURIComponent(identity)}`, onDenied);
-  const [transferring, setTransferring] = useState(false);
-  const person = record.data;
   const selected = ["record", "access", "timeline"].includes(view) ? view : "record";
   return (
     <Drawer open title={record.data?.display_name || "Staff profile"} onClose={onClose}>
@@ -143,16 +161,23 @@ export function StaffProfile({
         >
           {selected === "record" ? (
             <>
-              <div className="people-actions">
-                <Button icon="unit" onClick={() => setTransferring(true)} disabled={!units}>
-                  Transfer to another unit
-                </Button>
-                {record.data.status === "invited" && (
+              <ProfileActions
+                person={record.data}
+                units={units}
+                onDenied={onDenied}
+                onDone={() => {
+                  record.refresh();
+                  onChanged();
+                }}
+              />
+              {record.data.status === "invited" && (
+                <div className="people-actions">
                   <NewActivationCode person={record.data} onDenied={onDenied} onIssued={onChanged} />
-                )}
-              </div>
+                </div>
+              )}
               <RecordFields person={record.data} />
-              <p>Appointments and scheduled staff changes will appear here in a future update.</p>
+              <Positions person={record.data} />
+              <p>Scheduled staff changes will appear here in a future update.</p>
             </>
           ) : selected === "access" ? (
             <Access key={identity} identity={identity} onDenied={onDenied} />
@@ -160,18 +185,6 @@ export function StaffProfile({
             <Timeline key={identity} identity={identity} onDenied={onDenied} />
           )}
         </Tabs>
-      )}
-      {transferring && person && units && (
-        <TransferDialog
-          person={person}
-          units={units}
-          onClose={() => setTransferring(false)}
-          onDenied={onDenied}
-          onDone={() => {
-            record.refresh();
-            onChanged();
-          }}
-        />
       )}
     </Drawer>
   );
