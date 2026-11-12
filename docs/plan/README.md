@@ -24,19 +24,19 @@ outside groups, e-mail delivery, multi-site federation (P6).
 
 ## Status at a glance
 
-Last updated: 2026-11-11 (after Q1, Q2, U1, U2, A1 and P1). Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-12 (after A2–A5, A7, P2, P3 delivery, H1, H2, H4, D2, D3; Q3 and U4 partial). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |
 | --- | --- | --- | --- |
 | Collaboration features (P1–P3, C1–C5) | 30 % | 90 % | Optional task alerts; site and device acceptance |
-| Deployment, upgrade, backup, recovery tooling | 15 % | 75 % | Rehearsal on a real Ubuntu host, scheduled backups with status, operator quickstart, release 1.0 |
-| Admin console, health and analytics | 20 % | 20 % | Metrics, health, activity, overview, audit, events, backups and general settings |
-| People and organisation management | 12 % | 30 % | Change protocol, transfers to retirement, positions, org chart, import, unit administrators |
-| Interface quality and design system | 10 % | 60 % | Charts (U3), moving existing screens onto the kit and enabling the dark theme (U4) |
-| In-app help and onboarding | 6 % | 0 % | Framework, all content, setup checklist, sync check |
-| Code uniformity and quality gates | 7 % | 70 % | Readable rewrite of compressed modules and the deferred rules (Q3), module splits (Q4) |
-| **Overall toward v1.0** | 100 % | **≈ 57 %** | |
+| Deployment, upgrade, backup, recovery tooling | 15 % | 80 % | Rehearsal on a real Ubuntu host (D1), site acceptance (D4), release 1.0 (D5) |
+| Admin console, health and analytics | 20 % | 85 % | Overview dashboard (A6) |
+| People and organisation management | 12 % | 50 % | P3 review; org chart (P4), scheduled changes (P5), import (P6), unit administrators (P7) |
+| Interface quality and design system | 10 % | 75 % | Finish moving screens onto the kit and enable the dark theme (U4) |
+| In-app help and onboarding | 6 % | 70 % | Administrator handbook and setup checklist (H3) |
+| Code uniformity and quality gates | 7 % | 80 % | Rest of the readable rewrite (Q3), module splits (Q4) |
+| **Overall toward v1.0** | 100 % | **≈ 78 %** | |
 
 The delivered foundation includes 26 migrations, about 100 API endpoints and 724 backend
 tests. The collaboration profile passed 465 root/prefix browser checks in U2; A1 adds 50
