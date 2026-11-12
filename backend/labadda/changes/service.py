@@ -14,11 +14,35 @@ from ..deps import Actor
 from ..errors import Conflict, Forbidden, Invalid, NotFound
 from ..models import User
 from ..realtime import Hub
-from .kinds import add_person, edit_person, transfer
+from .kinds import (
+    add_person,
+    additional_charge,
+    change_authority,
+    edit_person,
+    leave,
+    promote,
+    reinstate,
+    retire,
+    return_from_leave,
+    suspend,
+    transfer,
+)
 from .plan import Plan
-from .requests import AddPerson, ApplyRequest, ChangeRequest, Transfer
+from .requests import AddPerson, ApplyRequest, ChangeAuthority, ChangeRequest, Transfer
 
-KINDS: dict[str, ModuleType] = {"add_person": add_person, "edit_person": edit_person, "transfer": transfer}
+KINDS: dict[str, ModuleType] = {
+    "add_person": add_person,
+    "edit_person": edit_person,
+    "transfer": transfer,
+    "promote": promote,
+    "change_authority": change_authority,
+    "additional_charge": additional_charge,
+    "leave": leave,
+    "return": return_from_leave,
+    "retire": retire,
+    "suspend": suspend,
+    "reinstate": reinstate,
+}
 
 
 def authorize(db: Session, actor: Actor, settings: Settings) -> User:
@@ -51,19 +75,17 @@ def preview(db: Session, actor: Actor, settings: Settings, request: ChangeReques
 
 def lock_targets(db: Session, request: ChangeRequest) -> None:
     """After the admin and actor locks: workspace role locks, then the existing person row."""
-    scope = transfer.lock_scope(db, request) if isinstance(request, Transfer) else None
     if isinstance(request, AddPerson):
         memberships.lock_workspace_roles(db, request.home_unit_id)
         return
+    scope = KINDS[request.kind].lock_scope(db, request) if request.kind != "edit_person" else None
+    person_id = request.successor_id if isinstance(request, ChangeAuthority) else request.person_id
     target = db.scalar(
-        select(User)
-        .where(User.id == request.person_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
+        select(User).where(User.id == person_id).with_for_update().execution_options(populate_existing=True)
     )
     if target is None:
         raise NotFound()
-    if scope is not None:
+    if isinstance(request, Transfer) and scope is not None:
         transfer.require_locked_home(target, scope)
 
 
@@ -98,7 +120,7 @@ def record_plan(
         )
 
 
-def _commit(db: Session, user: User, body: ApplyRequest, settings: Settings) -> tuple[User, dict]:
+def _commit(db: Session, user: User, body: ApplyRequest, settings: Settings) -> tuple[User, dict, Plan]:
     lock_targets(db, body.request)
     plan = build(db, body.request, user.id, settings)
     revisions = {str(identity): revision for identity, revision in body.revisions.items()}
@@ -117,14 +139,24 @@ def _commit(db: Session, user: User, body: ApplyRequest, settings: Settings) -> 
         "digest": plan.digest,
         **extra,
     }
-    return person, receipt
+    return person, receipt, plan
+
+
+def revalidate(hub: Hub, person: User, plan: Plan) -> None:
+    """Refresh live delivery for the person and every identity and workspace the plan touched."""
+    hub.revalidate_user(person.id)
+    for step in plan.steps:
+        if step.target_type == "workspace":
+            hub.revalidate_workspace(uuid.UUID(step.target_id))
+        elif not step.target_id.startswith("new:"):
+            hub.revalidate_user(uuid.UUID(step.target_id))
 
 
 def apply(db: Session, actor: Actor, settings: Settings, body: ApplyRequest, hub: Hub) -> dict:
     """Rebuild under locks, reject stale review, commit once, then revalidate delivery."""
     try:
         user = authorize(db, actor, settings)
-        person, receipt = _commit(db, user, body, settings)
+        person, receipt, plan = _commit(db, user, body, settings)
     except IntegrityError:
         db.rollback()
         raise Conflict("plan_stale", "Staff information changed. Review a fresh plan.") from None
@@ -133,5 +165,5 @@ def apply(db: Session, actor: Actor, settings: Settings, body: ApplyRequest, hub
         raise
     # The change is durable: the receipt (with any one-time code) must reach the person who
     # applied it even if their session ends now, because a retry can only return plan_stale.
-    hub.revalidate_user(person.id)
+    revalidate(hub, person, plan)
     return receipt

@@ -18,7 +18,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import text
 
-from . import boardstate, health, metrics, scheduler
+from . import boardstate, health, metrics, positions, scheduler
 from .api import (
     admin,
     admin_site,
@@ -111,7 +111,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             tasks = [
                 asyncio.create_task(
                     scheduler.run_forever(
-                        factory, settings.reminder_interval_seconds, (cleanup, collector.tick)
+                        factory,
+                        settings.reminder_interval_seconds,
+                        (cleanup, collector.tick, positions.expiry_job(factory, settings)),
                     )
                 ),
                 asyncio.create_task(scheduler.run_periodic(sampler.run_once, settings.health.sample_seconds)),

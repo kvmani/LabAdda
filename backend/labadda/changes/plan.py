@@ -7,7 +7,19 @@ from typing import Literal
 
 type JsonValue = bool | int | str | list[JsonValue] | dict[str, JsonValue] | None
 type JsonObject = dict[str, JsonValue]
-type ChangeKind = Literal["add_person", "edit_person", "transfer"]
+type ChangeKind = Literal[
+    "add_person",
+    "edit_person",
+    "transfer",
+    "promote",
+    "change_authority",
+    "additional_charge",
+    "leave",
+    "return",
+    "retire",
+    "suspend",
+    "reinstate",
+]
 
 
 def canonical_json(value: JsonObject) -> str:

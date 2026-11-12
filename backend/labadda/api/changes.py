@@ -1,13 +1,16 @@
 """Administrator-only reviewed staff changes; clients never supply executable plans."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from ..changes import activation, service
+from ..changes import activation, candidates, service
 from ..changes.requests import ApplyRequest, PreviewRequest, ReissueRequest
 from ..deps import Actor, get_db, get_settings, require_console
 from ..errors import ApiError
+from .people import read_metadata
 
 router = APIRouter(prefix="/admin/changes", tags=["people changes"])
 console_people = require_console("people")
@@ -66,3 +69,14 @@ def reissue_activation(
             "The new code could not be confirmed. Reload the record before retrying.",
             status=503,
         ) from None
+
+
+@router.get("/candidates")
+def change_candidates(
+    workspace_id: uuid.UUID,
+    request: Request,
+    actor: Actor = Depends(console_people),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Who may succeed in one workspace: names, usernames and roles, never content."""
+    return read_metadata(request, db, lambda: candidates.candidates(db, workspace_id))

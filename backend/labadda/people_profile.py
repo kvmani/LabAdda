@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import policy
+from . import policy, positions
 from .config import Settings
 from .errors import NotFound
 from .models import AuditEvent, User, Workspace
@@ -24,6 +24,9 @@ SUMMARIES = {
     "auth.reset_redeemed": "Password reset completed",
     "membership.set": "Workspace membership set",
     "membership.remove": "Workspace membership removed",
+    "position.appoint": "Position given",
+    "position.end": "Position ended",
+    "position.expire": "Dated position ended on its end date",
     "usage.reader.grant": "Operational read access granted",
     "usage.reader.revoke": "Operational read access revoked",
 }
@@ -49,6 +52,7 @@ def profile(db: Session, identity: uuid.UUID) -> dict:
     person, unit = row
     payload = person_json(person, unit)
     payload.update(contact_email=person.contact_email, contact_phone=person.contact_phone)
+    payload["positions"] = positions.positions_by_person(db, [person.id]).get(person.id, [])
     for name in ("status_effective_on", "expected_return_on", "joined_on"):
         value = getattr(person, name)
         payload[name] = value.isoformat() if value else None

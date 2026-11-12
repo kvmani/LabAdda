@@ -40,6 +40,26 @@ Snapshots contain only explicitly selected staff metadata. Serialization does no
 decide access. Never include credentials or private collaboration content, and
 never accept executable client steps. A digest is a change detector, not authorization.
 
+## Positions and P3 kinds
+
+- `positions.py`: the `unit_positions` domain (current rows, `appoint`, `end`, `revert`,
+  `expire_due`, `expiry_job` in the scheduler tuple, `positions_by_person` for the directory
+  and profile). `memberships.set_membership`/`remove_membership` end a holder's Head/Deputy
+  row when they stop being a steward, so legacy writes cannot break the invariant.
+- `changes/actions.py`: `Draft` (person, ordered `Action`s = step + write, warnings,
+  blockers) and the shared actions `set_role`, `end_position`, `appoint`, `set_status`
+  (deactivation revokes sessions). P3 kinds build a draft; `build` returns its plan and
+  `apply` rebuilds the same draft under lock and runs it. Each kind also exposes `lock_scope`.
+- `changes/kinds/common.py`: loading, `lock_person_scope` (every granted or held workspace,
+  sorted), `future_date`, open-task counts and `notify_stewards` (shared with transfer).
+- `changes/guards.py`: `last_administrator`, `not_self`, `position_holder`,
+  `group_successor`, `active_stewards`, `steward_gap`.
+- Kinds: `promote`, `change_authority`, `additional_charge`, `leave`, `return_from_leave`
+  (kind `return`), `retire` (and `left`), `suspend`, `reinstate`. One current Head per unit
+  plus one acting Head while the Head is away (`covers_id`); `return` ends those covers.
+- Attention items are not built here: expiry writes `position.expire` and keeps the ended
+  acting row; P5's attention list reads them.
+
 ## Locking and transaction boundaries
 
 Take the shared admin-role advisory lock, actor user/session locks, then (transfer)
@@ -78,6 +98,10 @@ memberships, socket revocation with delayed404, gained/lost equal to real reads,
 steward notices, guards, stale/concurrent/atomic apply and denial. Browser:
 `e2e/people-changes.mjs` (keyboard add, slip activation, Ben's transfer, axe).
 
-Next: an edit dialog; handover period (needs dated membership expiry, P5's scheduler);
-independent review before marking P2 done.
+`test_changes_authority.py`, `test_changes_departure.py` and
+`test_positions_migration.py` cover T56 and scenario steps 1 and 3 (injected-clock expiry,
+stale/concurrent/atomic apply, audits, T61, denial). Browser: `e2e/people-authority.mjs`.
+
+Next: an edit dialog; handover period (P5's scheduler can now reuse dated rows);
+future-dated retirement (P5).
 Keep the old admin routes until P4. Retain races with legacy writes in qualification.

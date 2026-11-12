@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from . import audit, policy
+from . import audit, policy, positions
 from .errors import Conflict
 from .models import Membership, User
 
@@ -42,6 +42,12 @@ def active_steward_count(db: Session, workspace_id: uuid.UUID) -> int:
     )
 
 
+def direct_role(db: Session, user_id: uuid.UUID, workspace_id: uuid.UUID) -> str | None:
+    return db.scalar(
+        select(Membership.role).where(Membership.workspace_id == workspace_id, Membership.user_id == user_id)
+    )
+
+
 def set_membership(
     db: Session,
     *,
@@ -69,6 +75,11 @@ def set_membership(
         ):
             raise Conflict("last_steward", "Make another member a steward first.")
         m.role = role
+        if before == "steward" and role != "steward":
+            # PO-13: a Head or Deputy is always a steward, so demotion ends the position.
+            positions.end_held(
+                db, user_id, workspace_id, actor=actor, reason=reason, kinds=("head", "deputy")
+            )
     db.flush()
     audit.record(
         db,
@@ -101,6 +112,7 @@ def remove_membership(
         return False
     if protect_last_steward and m.role == "steward" and active_steward_count(db, workspace_id) <= 1:
         raise Conflict("last_steward", "Make another member a steward first, or archive the group.")
+    positions.end_held(db, user_id, workspace_id, actor=actor, reason=reason)
     db.delete(m)
     user = db.get(User, user_id)
     if user is not None and user.home_workspace_id == workspace_id:

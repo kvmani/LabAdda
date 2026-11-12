@@ -604,6 +604,78 @@ steward (other than the person) of a lost workspace with open assigned tasks:
 `title` names the person and the current open count; `link:{view:"todos",workspace_id}`.
 It is hidden once the recipient can no longer read that workspace.
 
+## P3 · Positions, authority, leave, retirement, suspension (schema 0033)
+
+Same endpoints, authority and protocol as P2 (`POST /admin/changes/preview` and `/apply`,
+digest + revisions + reason, 409 `plan_stale`, 422 `plan_blocked`, 404 for a missing person,
+unit or position). Members, stewards and usage readers 403; signed-out and panel sessions 401.
+Every plan carries names, roles, dates and counts only. Dates are site-calendar ISO dates; an
+end or return date must be after today and within five years (blocker `invalid_date`).
+
+Table `unit_positions(id, workspace_id, user_id, position head|deputy|charge, acting,
+starts_on, ends_on, revert_role member|steward|none, covers_id, ended_at, end_reason
+expired|ended, created_by, created_at)`. A partial unique index allows one current Head per
+unit, plus at most one *acting* Head while that Head is away. A Head or Deputy is always a
+steward: any membership write (reviewed or legacy) that removes or demotes the holder ends the
+position (`position.end`). `charge` records an additional charge. Rows are never deleted; the
+0033 downgrade refuses while any exist. Audits: `position.appoint`, `position.end`,
+`position.expire` (actor null).
+
+`GET /admin/people` rows and `GET /admin/people/{id}` add `positions:[{id,workspace:{id,name},
+position,acting,starts_on,ends_on}]` (current only).
+
+Kinds (`request` bodies; all forbid unknown keys):
+
+- `promote {person_id, designation?, workspace_id?, role?, position?}`: designation and/or the
+  role in a workspace they already belong to, optionally a vacant `head|deputy` (role must be
+  `steward`). Warnings `moderation_gained|moderation_lost`. Blockers `not_a_member`,
+  `holds_position` (demoting a holder), `unit_without_steward`/`group_needs_steward`,
+  `unit_has_head`, `already_holds`, `person_inactive`, `no_changes`.
+- `change_authority {workspace_id, position, successor_id, acting?, ends_on?,
+  replace_person_id?, outgoing_role?}`: `ends_on` is required exactly when `acting`. For Head the
+  current Head is replaced automatically (an acting Head covers instead while the Head is away);
+  a current acting Head ends and returns to its recorded role. Deputies are replaced only when
+  `replace_person_id` names one. The outgoing holder keeps `outgoing_role` (default steward);
+  the successor becomes steward; an acting row records `revert_role`. Blockers
+  `holder_inactive`, `holder_outside_unit` (home not in the unit's branch and no membership),
+  `unit_unavailable`, `already_holds`, `not_a_deputy`, `invalid_date`. `revisions` holds the
+  successor; the receipt's `person_id` is the successor.
+- `additional_charge {person_id, workspace_id, role, position?, ends_on?}`: a membership in a
+  second open unit and a `charge` (or position) row; on `ends_on` it is removed automatically.
+  Warnings `access_gained`, `ends_automatically`. Blockers `same_unit`, `already_member`,
+  `unit_unavailable`, `unit_has_head`, `person_inactive`.
+- `leave {person_id, expected_return_on, block_sign_in?, acting?:[{position_id,
+  successor_id}]}` (≤ 20): status `on_leave`; blocking sign-in ends sessions at once. Each cover
+  is an acting appointment ending on the return date. Warning `position_uncovered`. Blockers
+  `person_unavailable`, `not_their_position`, `unit_has_acting_head`, `last_admin`, `self_change`.
+- `return {person_id}`: status `active`; acting appointments covering the person end and revert.
+  Blocker `not_on_leave`.
+- `retire {person_id, status retired|left, keep_workspace_ids?, successors?:[{workspace_id,
+  successor_id, acting?, ends_on?}], acknowledge_no_steward?}`: ends every position, appoints
+  successors, removes memberships not kept, sets the status and ends sign-in and sessions.
+  Warnings `last_steward` (each workspace where they are the last active steward),
+  `open_tasks` (`count` per readable workspace), `position_vacant`, `unit_without_steward`.
+  Blockers `position_needs_successor` (Head/Deputy without successor or acknowledgement),
+  `group_needs_steward` and `successor_not_member` (a project/group successor must be one of its
+  active members), `unit_without_steward`, `successor_not_needed`, `not_a_member`,
+  `already_departed`, `last_admin`, `self_change`. The receipt adds `stewards_notified`; the
+  notice is `kind:"reassign"` with title "<name> has retired or left. N open shared tasks…".
+- `suspend {person_id}`: immediate; positions end, memberships are kept but give no access,
+  sessions end and live sockets receive `session_ended`. Warning `no_active_steward`. Blockers
+  `person_unavailable`, `last_admin`, `self_change`.
+- `reinstate {person_id}`: from suspended/retired/left to `invited`: removes every retained
+  membership and position, never restores the administrator role, clears the password, voids
+  older unused codes and issues a new activation code (receipt `activation:{code,expires_at}`,
+  only here). Warning `last_placement` lists the earlier workspaces and roles (from retained
+  grants and the last departure's audit steps). Blocker `not_departed`.
+
+Transfer (P2) now also ends positions in a unit the person leaves or stops stewarding (identity
+steps after the home-unit step) and warns `unit_without_head`.
+
+Scheduler step `positions.expire_due(now)` (each reminder tick, idempotent, at most 100 per
+pass): at the start of `ends_on` in the site zone it ends the row (`end_reason:"expired"`),
+applies `revert_role` and writes `position.expire`. The P5 attention list reads those rows.
+
 ## A2 · Audit explorer (AD-09)
 
 Administrators only: usage readers and members get 403, signed-out 401, board-only panel sessions 401.

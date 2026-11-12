@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from .. import policy
-from ..changes.kinds import transfer
+from ..changes.kinds.common import open_task_counts
 from ..deps import Actor, current_actor, get_db
 from ..errors import NotFound
 from ..models import ChatMessage, Note, Notification, Post, User, Workspace
@@ -69,21 +69,28 @@ def _resolve(db: Session, actor: Actor, n: Notification, readable: dict) -> dict
         return _resolve_post(db, n, readable)
     if n.source_type == "chat":
         return _resolve_chat(db, n, readable)
-    if n.source_type == "transfer":
+    if n.source_type in REASSIGN_TITLES:
         return _reassignment(db, n, readable)
     return None
 
 
+REASSIGN_TITLES = {
+    "transfer": "{name} has moved to another unit.",
+    "departure": "{name} has retired or left.",
+}
+
+
 def _reassignment(db: Session, n: Notification, readable: dict) -> dict | None:
-    """Steward notice after a transfer: the person's name and a live count, never task text."""
+    """Steward notice after a transfer or departure: the person's name and a live count, never task text."""
     person = db.get(User, n.source_id)
     if person is None or n.workspace_id not in readable:
         return None
     ws = db.get(Workspace, n.workspace_id)
-    count = transfer.open_task_counts(db, person.id, {ws.id}).get(ws.id, 0)
+    count = open_task_counts(db, person.id, {ws.id}).get(ws.id, 0)
+    opening = REASSIGN_TITLES[n.source_type].format(name=person.display_name)
     return {
         "title": (
-            f"{person.display_name} has moved to another unit. {count} open shared tasks in this "
+            f"{opening} {count} open shared tasks in this "
             "workspace are still assigned to them. Please reassign them."
         ),
         "workspace": {"id": str(ws.id), "name": ws.name},

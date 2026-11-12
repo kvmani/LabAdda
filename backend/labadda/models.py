@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
     text,
 )
@@ -200,6 +201,53 @@ class Membership(Base):
         UniqueConstraint("user_id", "workspace_id", name="uq_membership_user_workspace"),
         CheckConstraint("role in ('member','steward')", name="ck_membership_role"),
         Index("ix_memberships_workspace", "workspace_id"),
+    )
+
+
+class UnitPosition(Base):
+    """A Head, Deputy or additional charge in an organisation unit; ended rows are kept as history."""
+
+    __tablename__ = "unit_positions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    position: Mapped[str] = mapped_column(String(8), nullable=False)
+    acting: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    starts_on: Mapped[date] = mapped_column(Date, nullable=False)
+    ends_on: Mapped[date | None] = mapped_column(Date)
+    revert_role: Mapped[str | None] = mapped_column(String(8))
+    covers_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("unit_positions.id"))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    end_reason: Mapped[str | None] = mapped_column(String(8))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _created()
+
+    __table_args__ = (
+        CheckConstraint("position in ('head','deputy','charge')", name="ck_unit_position_kind"),
+        CheckConstraint("revert_role in ('member','steward','none')", name="ck_unit_position_revert"),
+        CheckConstraint("end_reason in ('expired','ended')", name="ck_unit_position_end_reason"),
+        CheckConstraint("ends_on is null or ends_on > starts_on", name="ck_unit_position_dates"),
+        CheckConstraint("not acting or ends_on is not null", name="ck_unit_position_acting_end"),
+        CheckConstraint("not acting or position <> 'charge'", name="ck_unit_position_acting_kind"),
+        CheckConstraint("(ended_at is null) = (end_reason is null)", name="ck_unit_position_ended"),
+        # One current Head per unit, plus at most one acting Head while that Head is away.
+        Index(
+            "uq_unit_positions_current_head",
+            "workspace_id",
+            "acting",
+            unique=True,
+            postgresql_where=text("position = 'head' AND ended_at IS NULL"),
+        ),
+        Index(
+            "ix_unit_positions_due",
+            "ends_on",
+            postgresql_where=text("ended_at IS NULL AND ends_on IS NOT NULL"),
+        ),
+        Index("ix_unit_positions_holder", "user_id", postgresql_where=text("ended_at IS NULL")),
+        Index("ix_unit_positions_workspace", "workspace_id"),
     )
 
 

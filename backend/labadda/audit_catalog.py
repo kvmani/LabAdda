@@ -32,6 +32,11 @@ CATALOG: dict[str, Entry] = {
     "people.change_step": Entry("people", "{actor} updated the staff record of {target}."),
     "membership.set": Entry("access", "{actor} set the role of {target} in {unit} to {after}."),
     "membership.remove": Entry("access", "{actor} removed {target} from {unit}."),
+    "position.appoint": Entry("authority", "{actor} gave {target} a position in {unit}."),
+    "position.end": Entry("authority", "{actor} ended a position held by {target} in {unit}."),
+    "position.expire": Entry(
+        "authority", "A dated position held by {target} in {unit} ended on its end date."
+    ),
     "tree.create": Entry("organisation", "{actor} created {unit}."),
     "tree.move": Entry("organisation", "{actor} moved {unit} to a different place in the organisation."),
     "workspace.archive": Entry("organisation", "{actor} archived {unit}."),

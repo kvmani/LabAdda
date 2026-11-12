@@ -3,15 +3,17 @@
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ... import memberships, notify, policy
+from ... import memberships, policy, positions
 from ...config import Settings
 from ...errors import Conflict, NotFound
-from ...models import Membership, TodoList, TodoTask, User, Workspace
+from ...models import User, Workspace
+from ..actions import end_position
 from ..plan import Blocker, Plan, Snapshot, Step, Warning
 from ..requests import Transfer
+from .common import notify_stewards, open_task_counts
 
 MOVABLE_STATUSES = {"invited", "active", "on_leave"}
 
@@ -114,23 +116,6 @@ def _steward_issue(db: Session, request: Transfer, proposal: Proposal) -> list[B
     return issues
 
 
-def open_task_counts(db: Session, person_id: uuid.UUID, workspaces: set[uuid.UUID]) -> dict[uuid.UUID, int]:
-    """Count open shared tasks assigned to the person; titles and descriptions are never read."""
-    if not workspaces:
-        return {}
-    rows = db.execute(
-        select(TodoList.workspace_id, func.count())
-        .join(TodoTask, TodoTask.list_id == TodoList.id)
-        .where(
-            TodoList.workspace_id.in_(workspaces),
-            TodoTask.assignee_id == person_id,
-            TodoTask.done.is_(False),
-        )
-        .group_by(TodoList.workspace_id)
-    ).all()
-    return {workspace_id: count for workspace_id, count in rows if count}
-
-
 def _access_warnings(db: Session, proposal: Proposal) -> list[Warning]:
     before = set(policy.readable_from_grants(db, proposal.before))
     after = set(policy.readable_from_grants(db, proposal.after))
@@ -171,7 +156,22 @@ def _membership_step(proposal: Proposal, workspace_id: uuid.UUID) -> Step:
     )
 
 
-def _steps(proposal: Proposal) -> tuple[Step, ...]:
+def _positions(db: Session, proposal: Proposal) -> tuple[list[Step], list[Warning]]:
+    """PO-12: positions in a unit the person leaves, or is no longer a steward of, end."""
+    steps, warnings = [], []
+    for row in positions.current(db, user_id=proposal.person.id):
+        role = proposal.after.get(row.workspace_id)
+        if role == "steward" or (role == "member" and row.position == "charge"):
+            continue
+        space = proposal.names.get(row.workspace_id) or db.get(Workspace, row.workspace_id)
+        steps.append(end_position(proposal.person, row, space).step)
+        if row.position == "head":
+            message = f"{space.name} will have no {positions.title(row)} until one is appointed."
+            warnings.append(Warning("unit_without_head", message, str(space.id)))
+    return steps, warnings
+
+
+def _steps(proposal: Proposal, ended: list[Step]) -> tuple[Step, ...]:
     person, source, target = proposal.person, proposal.source, proposal.target
     home = Step(
         "identity",
@@ -186,7 +186,7 @@ def _steps(proposal: Proposal) -> tuple[Step, ...]:
         if proposal.before.get(workspace_id) != proposal.after.get(workspace_id)
     ]
     ordered = sorted(changed, key=lambda workspace_id: workspace_id != target.id)
-    return (home, *(_membership_step(proposal, workspace_id) for workspace_id in ordered))
+    return (home, *ended, *(_membership_step(proposal, workspace_id) for workspace_id in ordered))
 
 
 def build(db: Session, request: Transfer, actor_id: uuid.UUID, settings: Settings) -> Plan:
@@ -195,8 +195,9 @@ def build(db: Session, request: Transfer, actor_id: uuid.UUID, settings: Setting
     issues = _steward_issue(db, request, proposal)
     warnings = [issue for issue in issues if isinstance(issue, Warning)]
     blockers = _blockers(db, request, proposal) + [issue for issue in issues if isinstance(issue, Blocker)]
-    warnings += _access_warnings(db, proposal)
-    steps = _steps(proposal)
+    ended, vacancies = _positions(db, proposal)
+    warnings += vacancies + _access_warnings(db, proposal)
+    steps = _steps(proposal, ended)
     access_changes = any(warning.code.startswith("access_") for warning in warnings)
     return Plan(
         kind=request.kind,
@@ -210,35 +211,6 @@ def build(db: Session, request: Transfer, actor_id: uuid.UUID, settings: Setting
     )
 
 
-def _notify_stewards(db: Session, person: User, plan: Plan) -> int:
-    """Tell each affected workspace's stewards to reassign; the notice names only person and count."""
-    notified = 0
-    for warning in plan.warnings:
-        if warning.code != "open_tasks" or warning.target_id is None:
-            continue
-        workspace_id = uuid.UUID(warning.target_id)
-        stewards = db.scalars(
-            select(Membership.user_id)
-            .join(User, User.id == Membership.user_id)
-            .where(
-                Membership.workspace_id == workspace_id,
-                Membership.role == "steward",
-                User.is_active.is_(True),
-                User.id != person.id,
-            )
-        ).all()
-        notified += notify.create(
-            db,
-            recipients=stewards,
-            kind="reassign",
-            workspace_id=workspace_id,
-            source_type="transfer",
-            source_id=person.id,
-            occurrence=plan.digest[:32],
-        )
-    return notified
-
-
 def apply(
     db: Session, actor: User, plan: Plan, request: Transfer, settings: Settings, reason: str
 ) -> tuple[User, dict]:
@@ -249,6 +221,8 @@ def apply(
     person.home_workspace_id = request.to_unit_id
     person.revision += 1
     for step in plan.steps[1:]:
+        if step.target_type != "workspace":
+            continue  # a position step: removing or demoting the membership below ends it
         workspace_id = uuid.UUID(step.target_id)
         role = step.after.to_dict()["role"]
         if role is None:
@@ -260,4 +234,4 @@ def apply(
                 db, actor=actor, workspace_id=workspace_id, user_id=person.id, role=str(role), reason=reason
             )
     db.flush()
-    return person, {"stewards_notified": _notify_stewards(db, person, plan)}
+    return person, {"stewards_notified": notify_stewards(db, person, plan, "transfer")}

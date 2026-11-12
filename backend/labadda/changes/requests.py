@@ -12,6 +12,7 @@ from ..people import USERNAME_RE
 type Revision = Annotated[int, Field(strict=True, ge=1, le=2_147_483_647)]
 type Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
 type Role = Literal["member", "steward"]
+type Position = Literal["head", "deputy"]
 
 
 def _ordinary_reason(value: str) -> str:
@@ -133,7 +134,175 @@ class Transfer(BaseModel):
         return sorted(set(value), key=str)
 
 
-ChangeRequest = Annotated[EditPerson | AddPerson | Transfer, Field(discriminator="kind")]
+class PersonChange(BaseModel):
+    """A change to one existing person."""
+
+    model_config = ConfigDict(extra="forbid")
+    person_id: uuid.UUID
+
+
+def _distinct(value: list[uuid.UUID]) -> list[uuid.UUID]:
+    """A stable order keeps equal selections on the same digest."""
+    return sorted(set(value), key=str)
+
+
+class Promote(PersonChange):
+    """PO-13: a new designation and/or a role (optionally a vacant position) in one of their units."""
+
+    kind: Literal["promote"]
+    designation: str | None = Field(default=None, max_length=120, strict=True)
+    workspace_id: uuid.UUID | None = None
+    role: Role | None = None
+    position: Position | None = None
+
+    @field_validator("designation", mode="before")
+    @classmethod
+    def normalize_text(cls, value: object) -> object:
+        return _single_line(value)
+
+    @model_validator(mode="after")
+    def coherent(self) -> "Promote":
+        if "designation" not in self.model_fields_set and self.role is None:
+            raise ValueError("Choose a new designation, a new role, or both.")
+        if (self.workspace_id is None) != (self.role is None):
+            raise ValueError("A role needs the unit or workspace it applies to.")
+        if self.position is not None and self.role != "steward":
+            raise ValueError("A Head or Deputy is always a steward.")
+        return self
+
+
+class ChangeAuthority(BaseModel):
+    """PO-14: replace a unit's Head or a Deputy; an acting appointment has an end date."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["change_authority"]
+    workspace_id: uuid.UUID
+    position: Position
+    successor_id: uuid.UUID
+    acting: bool = Field(default=False, strict=True)
+    ends_on: date | None = None
+    replace_person_id: uuid.UUID | None = None
+    outgoing_role: Role = "steward"
+
+    @model_validator(mode="after")
+    def dated(self) -> "ChangeAuthority":
+        if self.acting and self.ends_on is None:
+            raise ValueError("An acting appointment needs an end date.")
+        if not self.acting and self.ends_on is not None:
+            raise ValueError("Only acting appointments end on a date.")
+        return self
+
+
+class AdditionalCharge(PersonChange):
+    """PO-15: access in a second unit, optionally with a position, optionally until a date."""
+
+    kind: Literal["additional_charge"]
+    workspace_id: uuid.UUID
+    role: Role
+    position: Position | None = None
+    ends_on: date | None = None
+
+    @model_validator(mode="after")
+    def steward_for_position(self) -> "AdditionalCharge":
+        if self.position is not None and self.role != "steward":
+            raise ValueError("A Head or Deputy is always a steward.")
+        return self
+
+
+class ActingCover(BaseModel):
+    """An acting replacement for one position the absent person holds."""
+
+    model_config = ConfigDict(extra="forbid")
+    position_id: uuid.UUID
+    successor_id: uuid.UUID
+
+
+class Leave(PersonChange):
+    """PO-16: long leave with an expected return date; sign-in may be blocked."""
+
+    kind: Literal["leave"]
+    expected_return_on: date
+    block_sign_in: bool = Field(default=False, strict=True)
+    acting: list[ActingCover] = Field(default_factory=list, max_length=20)
+
+    @field_validator("acting")
+    @classmethod
+    def one_cover_each(cls, value: list[ActingCover]) -> list[ActingCover]:
+        if len({cover.position_id for cover in value}) != len(value):
+            raise ValueError("Choose one acting replacement per position.")
+        return sorted(value, key=lambda cover: str(cover.position_id))
+
+
+class Return(PersonChange):
+    """PO-16: back from leave; acting appointments made for the absence end."""
+
+    kind: Literal["return"]
+
+
+class Successor(BaseModel):
+    """Who takes over a position or the last steward role in one workspace."""
+
+    model_config = ConfigDict(extra="forbid")
+    workspace_id: uuid.UUID
+    successor_id: uuid.UUID
+    acting: bool = Field(default=False, strict=True)
+    ends_on: date | None = None
+
+    @model_validator(mode="after")
+    def dated(self) -> "Successor":
+        if self.acting != (self.ends_on is not None):
+            raise ValueError("An acting successor needs an end date; a permanent one has none.")
+        return self
+
+
+class Retire(PersonChange):
+    """PO-17: retire or leave now; positions end and memberships are removed unless kept."""
+
+    kind: Literal["retire"]
+    status: Literal["retired", "left"]
+    keep_workspace_ids: list[uuid.UUID] = Field(default_factory=list, max_length=100)
+    successors: list[Successor] = Field(default_factory=list, max_length=50)
+    acknowledge_no_steward: bool = Field(default=False, strict=True)
+
+    @field_validator("keep_workspace_ids")
+    @classmethod
+    def distinct_workspaces(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        return _distinct(value)
+
+    @field_validator("successors")
+    @classmethod
+    def one_successor_each(cls, value: list[Successor]) -> list[Successor]:
+        if len({item.workspace_id for item in value}) != len(value):
+            raise ValueError("Choose one successor per workspace.")
+        return sorted(value, key=lambda item: str(item.workspace_id))
+
+
+class Suspend(PersonChange):
+    """PO-18: stop access immediately."""
+
+    kind: Literal["suspend"]
+
+
+class Reinstate(PersonChange):
+    """PO-18: back to invited with a new activation code and no access."""
+
+    kind: Literal["reinstate"]
+
+
+ChangeRequest = Annotated[
+    EditPerson
+    | AddPerson
+    | Transfer
+    | Promote
+    | ChangeAuthority
+    | AdditionalCharge
+    | Leave
+    | Return
+    | Retire
+    | Suspend
+    | Reinstate,
+    Field(discriminator="kind"),
+]
 
 
 class PreviewRequest(BaseModel):

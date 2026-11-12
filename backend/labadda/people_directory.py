@@ -11,6 +11,7 @@ from typing import Literal
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
+from . import positions
 from .errors import Invalid, NotFound
 from .models import Membership, User, Workspace
 from .people import StaffStatus
@@ -149,4 +150,6 @@ def directory_page(db: Session, filters: DirectoryFilters, limit: int, cursor: s
             "id": str(person.id),
         }
         next_cursor = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    return {"people": [person_json(person, unit) for person, unit in page], "next_cursor": next_cursor}
+    held = positions.positions_by_person(db, [person.id for person, _ in page])
+    people = [{**person_json(person, unit), "positions": held.get(person.id, [])} for person, unit in page]
+    return {"people": people, "next_cursor": next_cursor}
