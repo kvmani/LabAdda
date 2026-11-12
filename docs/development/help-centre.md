@@ -116,6 +116,28 @@ Event codes are compared both ways (`check_event_codes`). The code side is every
 needs a line `Event codes: \`item.status\`` on a `troubleshooting/` page, and a code on a page that no check
 raises is reported. The page list has no `admin/edit-a-record.md`: the app has no screen that edits a record.
 
+## Setup checklist (HP-07, H3)
+
+`/admin/help/setup` (the **Help for administrators** menu item opens it) is `features/admin/SetupChecklist.tsx`,
+fed by `GET /admin/setup-checklist` (`labadda/setup_checklist.py`, `labadda/api/setup_checklist.py`; console
+section `help`, so administrators only). The server derives every item on each request, and the page polls every
+30 seconds. There is no stored "done" flag and no tick box. A state is `done`, `not_done` or `unknown`:
+
+| Item | Done when | Reuses |
+| --- | --- | --- |
+| `second_admin` | two or more active administrators | users table |
+| `units` | an open organisation unit exists below the top | workspaces |
+| `people` | an active person who is not an administrator exists | the staff statuses of the attention list |
+| `stewards` | `count_units_without_steward` is zero | the Needs attention rule for units |
+| `backups` | the Backups report is `healthy`; `unknown` when none exists | `backup_report` |
+| `time_zone` | the operator set `LABADDA_TIMEZONE` (`Settings.timezone_configured`) | settings |
+| `test_restore` | the Backups report carries a restore rehearsal; otherwise `unknown` | `backup_report` |
+
+Known gaps: the application has no site-name setting, so only the time zone is checked, and the backup
+report cannot yet carry a restore rehearsal, so that line stays `unknown`. When either is added, change the
+item in `setup_checklist.py` and its test together. `e2e/setup-checklist.mjs` runs at `/` and
+`/labadda-staging`; tests are `backend/tests/test_setup_checklist.py` and `SetupChecklist.test.tsx`.
+
 ## Checks
 
 ```bash

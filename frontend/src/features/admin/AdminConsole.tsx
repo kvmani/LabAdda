@@ -1,6 +1,6 @@
-import { Route, Routes, useOutletContext } from "react-router-dom";
+import { Navigate, Route, Routes, useOutletContext } from "react-router-dom";
 import { BASE } from "../../config";
-import { EmptyState, PageHeader } from "../../ui";
+import { PageHeader } from "../../ui";
 import { Governance } from "../../components/Governance";
 import { Operations } from "../../pages/Operations";
 import { AdminLayout } from "./AdminLayout";
@@ -14,23 +14,9 @@ import { OverviewPage } from "../overview/OverviewPage";
 import { PeoplePage } from "../people/PeoplePage";
 import { BackupsPage } from "./BackupsPage";
 import { Settings } from "./Settings";
+import { SetupChecklist } from "./SetupChecklist";
 import { SECTIONS, type ConsoleAccess } from "./console";
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <>
-      <PageHeader
-        title={title}
-        scope="Site administration without opening anyone’s private work."
-        helpHref={BASE + "/admin/help"}
-      />
-      <EmptyState title="Not available yet">
-        This section will be added in a future update. Choose an available tool from the administration
-        navigation.
-      </EmptyState>
-    </>
-  );
-}
 function Basic({ area }: { area: "people" | "org" }) {
   return (
     <>
@@ -87,11 +73,12 @@ export function AdminConsole() {
               ) : section.key === "settings" ? (
                 <Settings />
               ) : (
-                <Placeholder title={section.label} />
+                <Navigate to="setup" replace />
               )
             }
           />
         ))}
+        <Route path="help/setup" element={<SetupChecklist />} />
         <Route path="people/basic" element={<Basic area="people" />} />
         <Route path="org/basic" element={<Basic area="org" />} />
         <Route path="*" element={null} />

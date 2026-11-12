@@ -68,6 +68,7 @@ REQUIRED_PAGES: tuple[str, ...] = (
     "stewards/removing-a-post.md",
     "stewards/handing-over-stewardship.md",
     "stewards/workspace-storage.md",
+    "admin/setup-checklist.md",
     "admin/what-administrators-can-and-cannot-see.md",
     "admin/add-a-person.md",
     "admin/transfer.md",

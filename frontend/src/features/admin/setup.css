@@ -1,0 +1,40 @@
+/* Setup checklist: one row per item, state word first. */
+.setup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.setup-item {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.setup-item__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.setup-item__title {
+  margin: 0;
+  font-weight: 600;
+}
+.setup-item__detail,
+.setup-note {
+  margin: 0;
+  color: var(--text-muted);
+}
+.setup-item__links {
+  margin: 0;
+  display: flex;
+  gap: var(--space-4);
+}
+.setup-warning {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+}
