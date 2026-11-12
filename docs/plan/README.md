@@ -77,9 +77,9 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 24 | P7 | Unit administrators | P4 | queued | [people](people.md#p7--unit-administrators) |
 | 25 | P8 | My profile and sessions | U2 | done | [people](people.md#p8--my-profile-and-sessions) |
 | 26 | U4 | Move existing screens onto the design system | U2 | in progress | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
-| 27 | Q3 | Readable rewrite of compressed modules | Q1, Q2 | queued | [quality](quality.md#q3--readable-rewrite-of-compressed-modules) |
+| 27 | Q3 | Readable rewrite of compressed modules | Q1, Q2 | in progress | [quality](quality.md#q3--readable-rewrite-of-compressed-modules) |
 | 28 | Q4 | Split oversized modules | Q3 | queued | [quality](quality.md#q4--split-oversized-modules) |
-| 29 | H4 | Operator handbook, first-use welcome, what's new | H1, D2 | in progress | [help](help.md#h4--operator-handbook-first-use-welcome-whats-new) |
+| 29 | H4 | Operator handbook, first-use welcome, what's new | H1, D2 | done | [help](help.md#h4--operator-handbook-first-use-welcome-whats-new) |
 | 30 | D2 | Operator quickstart and `labadda doctor` | — | done | [deployment](deployment.md#d2--operator-quickstart-and-labadda-doctor) |
 | 31 | D1 | Rehearsal on a disposable Ubuntu 24.04 host | — | owner | [deployment](deployment.md#d1--rehearsal-on-a-disposable-ubuntu-2404-host) |
 | 32 | D4 | Site acceptance | D1, all above | owner | [deployment](deployment.md#d4--site-acceptance) |
