@@ -77,6 +77,8 @@ class User(Base):
     joined_on: Mapped[date | None] = mapped_column(Date)
     last_seen_on: Mapped[date | None] = mapped_column(Date)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    welcome_dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    whats_new_seen_release: Mapped[str | None] = mapped_column(String(32))
 
     __table_args__ = (
         CheckConstraint("username = lower(username)", name="ck_users_username_lower"),

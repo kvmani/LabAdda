@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import audit, metrics, people
+from .. import __version__, audit, metrics, people
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, origin_allowed
 from ..errors import Forbidden, Invalid, TooMany, Unauthenticated
@@ -76,6 +76,12 @@ def session_payload(user: User, sess: AuthSession, settings: Settings) -> dict:
         "session_kind": sess.kind,
         "expires_at": sess.expires_at.isoformat(),
         "instance": settings.instance,
+        "release": __version__,
+        # Never shown on a board-only panel, which has no help or account pages.
+        "welcome_pending": sess.kind == "normal" and user.welcome_dismissed_at is None,
+        "whats_new_pending": sess.kind == "normal"
+        and user.welcome_dismissed_at is not None
+        and user.whats_new_seen_release != __version__,
         "timezone": settings.timezone,
         "limits": {
             "max_attachments": settings.max_attachments,

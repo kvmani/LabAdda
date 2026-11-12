@@ -15,11 +15,13 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 
 | Area | Method and path | Notes |
 | --- | --- | --- |
-| Auth | `POST /auth/login`, `POST /auth/logout`, `GET /auth/session` | Login is rate limited per user and per client address. |
+| Auth | `POST /auth/login`, `POST /auth/logout`, `GET /auth/session` | Login is rate limited per user and per client address. The session payload also carries `release`, `welcome_pending` (normal sessions only, until the caller dismisses the welcome) and `whats_new_pending` (welcome already dismissed and the caller has not seen this release's notes). |
 | | `POST /auth/activate` `{token, password}` | Redeems one-time activation or reset code (min. 10 characters). |
 | | `POST /auth/password` `{current_password, new_password}` | Revokes other sessions. |
 | My account | `GET /me/profile` | `{record, access}`: the caller's own staff record (same fields as the administrator profile, including contacts) and retained grants with upward-only inheritance. Read-only. |
 | | `POST /me/password` `{current_password, new_password}` | Normal session and CSRF. Rate limited per person (shares the sign-in window; `429 rate_limited`). `invalid_credentials` (audited with outcome `denied`), `weak_password` (min. 10 characters), `password_unchanged` (all `400`). Revokes every other session and closes their sockets (`session_ended`); keeps the caller's. Returns `{ok, sessions_ended}`; audited as `auth.password_changed` with the count. |
+| | `POST /me/welcome/dismiss` | H4, schema 0032. Normal session and CSRF; signed out and panel sessions get `401`. Stores `welcome_dismissed_at` for the caller, marks the running release's notes as seen, returns `{ok: true}`. Idempotent. |
+| | `POST /me/whats-new/seen` | H4. Same rules. Stores the server's current release as the caller's `whats_new_seen_release`; the client sends nothing, so it cannot claim another release. Returns `{ok: true}`. |
 | | `GET /me/sessions` | `{items:[{id, browser, started_at, last_seen_at, current}]}`, current first, then newest. `id` is a public identifier, never the cookie token or its stored digest. `browser` is a short label such as `Firefox on Linux`, derived at sign-in; the raw User-Agent is not stored. |
 | | `DELETE /me/sessions/{id}` | Ends another of the caller's sessions and closes its socket; audited as `auth.session_ended`. Another person's, unknown or already-ended id returns the uniform `404`. The current session returns `409 current_session` (use sign out). |
 | Workspaces | `GET /workspaces` | Readable spaces with `role`, `inherited`, `can_write`, `can_moderate`, `unread_chat`, `home_workspace_id`. |

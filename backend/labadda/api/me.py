@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import account, audit
+from .. import __version__, account, audit
 from ..config import Settings
 from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings
 from ..errors import Conflict, Invalid, NotFound, TooMany, Unauthenticated
@@ -124,4 +124,24 @@ def end_session(
     )
     db.commit()
     request.app.state.hub.revalidate_user(actor.user.id)
+    return {"ok": True}
+
+
+@router.post("/welcome/dismiss")
+def dismiss_welcome(actor: Actor = Depends(own_actor), db: Session = Depends(get_db)) -> dict:
+    """Never show the first-sign-in welcome again; a new person has nothing to catch up on."""
+    user = db.get(User, actor.user.id, with_for_update=True)
+    if user.welcome_dismissed_at is None:
+        user.welcome_dismissed_at = utcnow()
+    user.whats_new_seen_release = __version__
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/whats-new/seen")
+def mark_whats_new_seen(actor: Actor = Depends(own_actor), db: Session = Depends(get_db)) -> dict:
+    """Record that this person has read the notes for the release the server is running."""
+    user = db.get(User, actor.user.id, with_for_update=True)
+    user.whats_new_seen_release = __version__
+    db.commit()
     return {"ok": True}

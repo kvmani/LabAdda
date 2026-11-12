@@ -7,9 +7,9 @@ import os
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from . import people
+from . import __version__, people
 from .models import Membership, User, Workspace
-from .security import hash_password
+from .security import hash_password, utcnow
 
 TREE = [
     # key, name, parent key
@@ -109,6 +109,9 @@ def seed(db: Session) -> dict[str, object]:
             is_admin=is_admin,
             password_hash=password_hash,
             must_set_password=False,
+            # Fixture people skip the first-use welcome so browser suites start on their own screen.
+            welcome_dismissed_at=utcnow(),
+            whats_new_seen_release=__version__,
         )
         people.set_status(u, "active" if active else "left")
         db.add(u)
