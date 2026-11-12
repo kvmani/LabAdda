@@ -58,13 +58,11 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-button.ghost,
-.ghost-link {
+button.ghost {
   background: transparent;
   color: var(--legacy-accent);
   border-color: transparent;
   padding: 0.35rem 0.55rem;
-  text-decoration: none;
 }
 button.small,
 .small {
@@ -116,9 +114,6 @@ label.inline input:not([type="checkbox"]) {
 }
 .error {
   color: var(--err);
-}
-.ok {
-  color: var(--legacy-ok);
 }
 .notice,
 .warning {
@@ -182,51 +177,6 @@ label.inline input:not([type="checkbox"]) {
   max-width: 640px;
 }
 
-.note .body,
-.messages .body {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  margin: 0.4rem 0;
-}
-.due {
-  font-size: 0.9rem;
-  color: var(--official);
-}
-.chips {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-.chip {
-  background: #eef2ff;
-  border-radius: 999px;
-  padding: 0.1rem 0.25rem 0.1rem 0.7rem;
-}
-.picker .options li button {
-  width: 100%;
-  text-align: left;
-}
-
-.chat {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 230px);
-  min-height: 360px;
-}
-.messages {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.75rem;
-  overflow-y: auto;
-  flex: 1;
-}
-.messages li {
-  padding: 0.4rem 0;
-  border-bottom: 1px solid #eef0f3;
-}
-.messages li.pending {
-  opacity: 0.7;
-}
 .dialog {
   position: fixed;
   inset: 10% 50% auto auto;
@@ -351,24 +301,7 @@ td {
 tr.selected {
   background: #eef2ff;
 }
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-.grid2 > .card {
-  min-width: 0;
-}
-td.row {
-  flex-wrap: wrap;
-}
 
-@media (max-width: 900px) {
-  .board-layout,
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
-}
 .snapshot-preview {
   max-width: 100%;
   max-height: 240px;
@@ -489,113 +422,5 @@ main:focus-visible {
 
 .inventory-job-id,
 [aria-label="Inventory jobs"] button {
-  overflow-wrap: anywhere;
-}
-
-.todos {
-  min-width: 0;
-}
-.todos input:not([type="checkbox"]),
-.todos textarea,
-.todos select {
-  width: 100%;
-  max-width: 100%;
-}
-.todos button,
-.todo-task-list {
-  overflow-wrap: anywhere;
-}
-.todo-task-list {
-  padding-left: 0;
-  list-style: none;
-}
-.todo-check {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.todo-check input:not([type="checkbox"]) {
-  flex: 1;
-  min-width: 6rem;
-}
-.todo-editor fieldset {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-}
-
-.preserve {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.conversation-task {
-  min-width: 0;
-}
-.conversation-task fieldset {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-  margin: 0;
-}
-.conversation-task input:not([type="checkbox"]),
-.conversation-task textarea,
-.conversation-task select {
-  max-width: 100%;
-}
-.conversation-task button {
-  overflow-wrap: anywhere;
-}
-.feed {
-  min-width: 0;
-}
-.composer .inline {
-  max-width: 100%;
-}
-.composer .inline input,
-.reply-form input {
-  min-width: 0;
-}
-
-.chat-thread {
-  min-width: 0;
-}
-.chat-thread input,
-.chat input {
-  min-width: 0;
-}
-
-.chat-file-controls {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-}
-.chat-file-controls input {
-  max-width: 100%;
-}
-.chat-file-controls li {
-  overflow-wrap: anywhere;
-}
-.chat .attachments,
-.chat-thread .attachments {
-  display: block;
-}
-.chat .attachments img,
-.chat-thread .attachments img {
-  max-width: min(220px, 100%);
-}
-#new-group-title + fieldset,
-.narrow fieldset {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-}
-
-.daily-dashboard {
-  min-width: 0;
-}
-.daily-dashboard li,
-.daily-dashboard button {
   overflow-wrap: anywhere;
 }

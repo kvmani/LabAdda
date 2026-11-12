@@ -1,0 +1,52 @@
+/* My storage usage and workspace usage pages. */
+.usage {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 960px;
+  min-width: 0;
+}
+.usage p {
+  margin: 0;
+}
+.usage__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.usage__title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xl);
+}
+.usage__body {
+  display: grid;
+  gap: var(--space-4);
+}
+.usage__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+.usage__list dt {
+  color: var(--text-muted);
+}
+.usage__list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.usage__note {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+}
+@media (max-width: 600px) {
+  .usage__list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .usage__list dd {
+    margin-bottom: var(--space-2);
+  }
+}

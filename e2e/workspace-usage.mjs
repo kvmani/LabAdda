@@ -65,7 +65,7 @@ try {
     });
     assert.equal(note.status(), 201);
     await ben.page.goto(origin + base + "/w/" + section.id + "/noticeboard");
-    await ben.page.getByRole("link", { name: "Storage", exact: true }).click();
+    await ben.page.getByRole("tab", { name: "Storage", exact: true }).click();
     await ben.page.getByRole("heading", { name: "Workspace storage usage" }).waitFor();
     await ben.page.getByText("Original files retained", { exact: true }).waitFor();
     const measured = await (await ben.ctx.request.get(api + "/workspaces/" + section.id + "/usage")).json();
