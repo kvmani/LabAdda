@@ -29,6 +29,7 @@ export function useDrag(onDrop: (payload: DragPayload, unitId: string) => void) 
     const stop = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", stop);
       window.removeEventListener("keydown", key);
       cleanup.current = null;
       setActive(null);
@@ -50,6 +51,7 @@ export function useDrag(onDrop: (payload: DragPayload, unitId: string) => void) 
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", stop);
     window.addEventListener("keydown", key);
     cleanup.current = stop;
   }, []);

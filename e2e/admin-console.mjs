@@ -78,6 +78,7 @@ async function checkAdmin(admin, base) {
   await page.getByRole("heading", { name: "People (basic)", exact: true }).waitFor();
   check(true, base + " deep link survives refresh");
   await navigation.getByRole("link", { name: "Organisation", exact: true }).click();
+  await page.getByRole("link", { name: "Basic project tools", exact: true }).click();
   await page.getByRole("heading", { name: "Workspaces", exact: true }).waitFor();
   check(
     await page.getByLabel("Workspace name", { exact: true }).isVisible(),

@@ -116,6 +116,9 @@
   stroke: var(--line-strong);
   stroke-width: 1.5;
 }
+.org-chart__svg {
+  user-select: none; /* a drag must not start selecting the names under the pointer */
+}
 .org-node {
   cursor: pointer;
   outline: none;

@@ -123,3 +123,8 @@ Keep the old admin routes until P4. Retain races with legacy writes in qualifica
   archived; it never gives stewardship in the target.
 - Chart data: `org_tree.py` and `api/org.py` (`GET /admin/org/tree`). Tests: `test_changes_units.py`,
   `test_org_tree.py`, `test_unit_codes_migration.py`.
+- Chart UI: `frontend/src/features/org/` (`layout.ts` is the pure, unit-tested tree layout;
+  `OrgChart.tsx` draws SVG; `useDrag.ts` turns a drop of a person or unit onto a unit into the
+  Transfer or Move review, never a write; `UnitDialogs.tsx` reuses `ChangeDialog`). The basic
+  project tools stay at `/admin/org/basic` until projects get their own screen. Browser check:
+  `e2e/org-chart.mjs` (keyboard path, split and merge, gestures, real reads, axe, root and prefix).
