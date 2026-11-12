@@ -427,3 +427,14 @@ def test_expired_rows_stay_as_history(as_user, ids, db_factory, settings):
     with db_factory() as db:
         row = db.get(UnitPosition, head)
         assert row is not None and row.end_reason == "ended" and row.ended_at is not None
+
+
+def test_a_retiring_person_cannot_be_their_own_successor(as_user, ids, db_factory):
+    make_head(db_factory, ids)
+    admin = as_user("admin")
+    successors = [
+        {"workspace_id": ids["workspaces"]["division"], "successor_id": ids["users"]["dana"]},
+        {"workspace_id": ids["workspaces"]["project"], "successor_id": ids["users"]["dana"]},
+    ]
+    plan = preview(admin, change(ids, "retire", person_id="dana", status="retired", successors=successors))
+    assert codes(plan["blockers"]).count("invalid_successor") == 2

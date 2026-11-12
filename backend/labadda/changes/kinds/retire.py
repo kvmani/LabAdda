@@ -135,6 +135,10 @@ def draft(db: Session, request: Retire, settings: Settings, actor_id: uuid.UUID)
     if person.status in DEPARTED:
         result.blockers.append(Blocker("already_departed", "This person has already retired or left."))
     result.blockers += guards.last_administrator(db, person) + guards.not_self(person, actor_id)
+    for item in request.successors:
+        if item.successor_id == person.id:
+            message = "A person who is leaving cannot be their own successor."
+            result.blockers.append(Blocker("invalid_successor", message, str(item.workspace_id)))
     grants = policy.direct_grants(db, person.id)
     held = {row.workspace_id for row in positions.current(db, user_id=person.id)}
     successor_ids = {item.workspace_id for item in request.successors}
