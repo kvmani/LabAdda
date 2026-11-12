@@ -32,17 +32,111 @@ const blank = (): Fields => ({
   done: false,
 });
 
-export function TaskEditor({
-  listId,
-  initial,
-  saved,
-  cancel,
+type ChecklistItem = Fields["checklist"][number];
+
+const MAX_CHECKLIST_ITEMS = 50;
+
+function ChecklistEditor({
+  items,
+  onChange,
 }: {
-  listId: string;
-  initial: Task | null;
-  saved: () => void;
-  cancel: () => void;
+  items: ChecklistItem[];
+  onChange: (items: ChecklistItem[]) => void;
 }) {
+  const changeItem = (index: number, change: Partial<ChecklistItem>) =>
+    onChange(items.map((item, position) => (position === index ? { ...item, ...change } : item)));
+  return (
+    <>
+      <h4 className="task-editor__heading">Checklist</h4>
+      {items.map((item, index) => (
+        <div className="task-editor__item" key={index}>
+          <Checkbox
+            label={`Checklist item ${index + 1} done`}
+            checked={item.done}
+            onChange={(e) => changeItem(index, { done: e.target.checked })}
+          />
+          <TextInput
+            label={`Checklist item ${index + 1} title`}
+            maxLength={200}
+            value={item.title}
+            onChange={(e) => changeItem(index, { title: e.target.value })}
+          />
+          <Button
+            variant="quiet"
+            size="sm"
+            onClick={() => onChange(items.filter((_, position) => position !== index))}
+          >
+            Remove item {index + 1}
+          </Button>
+        </div>
+      ))}
+      <div>
+        <Button
+          icon="plus"
+          disabled={items.length >= MAX_CHECKLIST_ITEMS}
+          onClick={() => onChange([...items, { title: "", done: false }])}
+        >
+          Add checklist item
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function TaskFieldInputs({ fields, setFields }: { fields: Fields; setFields: (fields: Fields) => void }) {
+  return (
+    <>
+      <TextInput
+        label="Task title"
+        maxLength={200}
+        value={fields.title}
+        onChange={(e) => setFields({ ...fields, title: e.target.value })}
+      />
+      <TextArea
+        label="Description"
+        maxLength={10000}
+        value={fields.description}
+        onChange={(e) => setFields({ ...fields, description: e.target.value })}
+      />
+      <div className="task-editor__row">
+        <DateInput
+          label="Due date"
+          value={fields.due_date ?? ""}
+          onChange={(e) => setFields({ ...fields, due_date: e.target.value || null })}
+        />
+        <Select
+          label="Priority"
+          value={fields.priority}
+          onChange={(e) => setFields({ ...fields, priority: e.target.value })}
+          options={["low", "normal", "high"].map((priority) => ({ value: priority, label: priority }))}
+        />
+        <Select
+          label="Workflow state"
+          value={fields.status}
+          onChange={(e) => {
+            const status = e.target.value as Workflow;
+            setFields({ ...fields, status, done: status === "done" });
+          }}
+          options={Object.entries(workflowLabels).map(([value, label]) => ({ value, label }))}
+        />
+      </div>
+      <Checkbox
+        label="Task completed"
+        checked={fields.done}
+        onChange={(e) =>
+          setFields({ ...fields, done: e.target.checked, status: e.target.checked ? "done" : "todo" })
+        }
+      />
+      <ChecklistEditor
+        items={fields.checklist}
+        onChange={(checklist) => setFields({ ...fields, checklist })}
+      />
+    </>
+  );
+}
+
+/** Saves a new task (idempotent retry through one client id) or updates an existing one by revision. */
+function useTaskSave(listId: string, initial: Task | null, saved: () => void) {
   const [fields, setFields] = useState<Fields>(initial ?? blank());
   const [revision, setRevision] = useState(initial?.revision ?? 1);
   const [error, setError] = useState("");
@@ -51,6 +145,20 @@ export function TaskEditor({
   const [conflict, setConflict] = useState(false);
   const attempt = useRef<({ client_id: string } & Fields) | null>(null);
   const path = `/todos/lists/${listId}/tasks`;
+
+  async function writeTask() {
+    if (initial) {
+      const { title, description, due_date, priority, checklist, done, status } = fields;
+      await api(`${path}/${initial.id}`, {
+        method: "PUT",
+        body: { title, description, due_date, priority, checklist, done, status, revision },
+      });
+    } else {
+      attempt.current ??= { ...fields, client_id: crypto.randomUUID() };
+      await api(path, { body: attempt.current });
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -58,16 +166,7 @@ export function TaskEditor({
     setError("");
     setConflict(false);
     try {
-      if (initial) {
-        const { title, description, due_date, priority, checklist, done, status } = fields;
-        await api(`${path}/${initial.id}`, {
-          method: "PUT",
-          body: { title, description, due_date, priority, checklist, done, status, revision },
-        });
-      } else {
-        attempt.current ??= { ...fields, client_id: crypto.randomUUID() };
-        await api(path, { body: attempt.current });
-      }
+      await writeTask();
       saved();
     } catch (e: unknown) {
       setError(errorMessage(e));
@@ -80,7 +179,8 @@ export function TaskEditor({
       setBusy(false);
     }
   }
-  async function latest() {
+
+  async function loadLatest() {
     setBusy(true);
     setError("");
     try {
@@ -94,97 +194,33 @@ export function TaskEditor({
       setBusy(false);
     }
   }
-  const blankChecklist = fields.checklist.some((item) => !item.title.trim());
-  const setItem = (index: number, change: Partial<Fields["checklist"][number]>) =>
-    setFields({
-      ...fields,
-      checklist: fields.checklist.map((v, i) => (i === index ? { ...v, ...change } : v)),
-    });
+
+  return { fields, setFields, error, busy, unconfirmed, conflict, submit, loadLatest };
+}
+
+export function TaskEditor({
+  listId,
+  initial,
+  saved,
+  cancel,
+}: {
+  listId: string;
+  initial: Task | null;
+  saved: () => void;
+  cancel: () => void;
+}) {
+  const save = useTaskSave(listId, initial, saved);
+  const { fields, busy, unconfirmed, conflict } = save;
+  const hasBlankChecklistItem = fields.checklist.some((item) => !item.title.trim());
   return (
     <Card title={initial ? "Edit task" : "New task"} level={3}>
-      <form onSubmit={submit} className="task-editor">
+      <form onSubmit={save.submit} className="task-editor">
         <fieldset disabled={busy || unconfirmed} className="task-editor__fields">
-          <TextInput
-            label="Task title"
-            maxLength={200}
-            value={fields.title}
-            onChange={(e) => setFields({ ...fields, title: e.target.value })}
-          />
-          <TextArea
-            label="Description"
-            maxLength={10000}
-            value={fields.description}
-            onChange={(e) => setFields({ ...fields, description: e.target.value })}
-          />
-          <div className="task-editor__row">
-            <DateInput
-              label="Due date"
-              value={fields.due_date ?? ""}
-              onChange={(e) => setFields({ ...fields, due_date: e.target.value || null })}
-            />
-            <Select
-              label="Priority"
-              value={fields.priority}
-              onChange={(e) => setFields({ ...fields, priority: e.target.value })}
-              options={["low", "normal", "high"].map((p) => ({ value: p, label: p }))}
-            />
-            <Select
-              label="Workflow state"
-              value={fields.status}
-              onChange={(e) => {
-                const status = e.target.value as Workflow;
-                setFields({ ...fields, status, done: status === "done" });
-              }}
-              options={Object.entries(workflowLabels).map(([value, label]) => ({ value, label }))}
-            />
-          </div>
-          <Checkbox
-            label="Task completed"
-            checked={fields.done}
-            onChange={(e) =>
-              setFields({ ...fields, done: e.target.checked, status: e.target.checked ? "done" : "todo" })
-            }
-          />
-          <h4 className="task-editor__heading">Checklist</h4>
-          {fields.checklist.map((item, index) => (
-            <div className="task-editor__item" key={index}>
-              <Checkbox
-                label={`Checklist item ${index + 1} done`}
-                checked={item.done}
-                onChange={(e) => setItem(index, { done: e.target.checked })}
-              />
-              <TextInput
-                label={`Checklist item ${index + 1} title`}
-                maxLength={200}
-                value={item.title}
-                onChange={(e) => setItem(index, { title: e.target.value })}
-              />
-              <Button
-                variant="quiet"
-                size="sm"
-                onClick={() =>
-                  setFields({ ...fields, checklist: fields.checklist.filter((_, i) => i !== index) })
-                }
-              >
-                Remove item {index + 1}
-              </Button>
-            </div>
-          ))}
-          <div>
-            <Button
-              icon="plus"
-              disabled={fields.checklist.length >= 50}
-              onClick={() =>
-                setFields({ ...fields, checklist: [...fields.checklist, { title: "", done: false }] })
-              }
-            >
-              Add checklist item
-            </Button>
-          </div>
+          <TaskFieldInputs fields={fields} setFields={save.setFields} />
         </fieldset>
-        {error && (
+        {save.error && (
           <p role="alert" className="task__error">
-            {error}
+            {save.error}
           </p>
         )}
         {unconfirmed && (
@@ -196,7 +232,7 @@ export function TaskEditor({
         {conflict && <p>Your draft is kept. Copy any changes you need before loading the latest task.</p>}
         {conflict && initial && (
           <div>
-            <Button disabled={busy} onClick={latest}>
+            <Button disabled={busy} onClick={save.loadLatest}>
               Load latest task (replaces draft)
             </Button>
           </div>
@@ -210,7 +246,7 @@ export function TaskEditor({
             type="submit"
             busy={busy}
             busyLabel="Saving…"
-            disabled={!fields.title.trim() || blankChecklist}
+            disabled={!fields.title.trim() || hasBlankChecklistItem}
           >
             {unconfirmed ? "Retry same task creation" : "Save task"}
           </Button>
