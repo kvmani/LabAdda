@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorCode, errorMessage, newId, outcomeUnknown } from "../api";
 import { API, BASE } from "../config";
-import { useWorkspaces } from "../workspaces";
 import { realtime, type StrokePreview } from "../realtime";
 import type { BoardObjectContent, BoardOp, BoardOpPayload, Point, Workspace } from "../types";
+import { PublishSnapshot } from "../components/PublishSnapshot";
 import { ConversationTask } from "../components/ConversationTask";
+import { Button, Card, Dialog } from "../ui";
+import "./board-chrome.css";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 import type { UploadedAsset } from "../uploads";
 
@@ -27,7 +29,7 @@ type BoardState = {
   can_moderate: boolean;
 };
 type Tool = "pen" | "eraser" | "text" | "sticky" | "image" | "snapshot" | "pan";
-type Region = { x: number; y: number; w: number; h: number };
+export type Region = { x: number; y: number; w: number; h: number };
 type SaveState = "Saved" | "Saving…" | "Reconnecting…" | "Conflict — reloaded" | "Read-only";
 type PendingOp = {
   op_id: string;
@@ -511,27 +513,37 @@ export function Board({
         aria-label={`Whiteboard for ${ws.name}`}
         onPointerDownCapture={() => onActivity?.()}
       >
-        {pairing && (
-          <div className="dialog card" role="dialog" aria-label="Touch panel code">
-            <h2>Open this board on a touch panel</h2>
-            <p>
-              On the panel, open{" "}
-              <strong>
-                {window.location.origin}
-                {BASE}/panel
-              </strong>{" "}
-              and enter:
-            </p>
-            <p className="pair-code" aria-label="Pairing code">
-              {pairing.code}
-            </p>
-            <p className="muted small">
-              Single use. Expires at {new Date(pairing.expires_at).toLocaleTimeString()}. The panel can use
-              only this board, as you, and locks when idle.
-            </p>
-            <button onClick={() => setPairing(null)}>Done</button>
-          </div>
-        )}
+        <Dialog
+          open={pairing !== null}
+          title="Open this board on a touch panel"
+          onClose={() => setPairing(null)}
+          size="sm"
+          footer={
+            <Button variant="primary" onClick={() => setPairing(null)}>
+              Done
+            </Button>
+          }
+        >
+          {pairing && (
+            <div className="board-dialog">
+              <p>
+                On the panel, open{" "}
+                <strong>
+                  {window.location.origin}
+                  {BASE}/panel
+                </strong>{" "}
+                and enter:
+              </p>
+              <p className="pair-code" aria-label="Pairing code">
+                {pairing.code}
+              </p>
+              <p className="board-dialog__muted">
+                Single use. Expires at {new Date(pairing.expires_at).toLocaleTimeString()}. The panel can use
+                only this board, as you, and locks when idle.
+              </p>
+            </div>
+          )}
+        </Dialog>
         <div className="toolbar" role="toolbar" aria-label="Drawing tools">
           {(["pen", "eraser", "text", "sticky", "pan"] as Tool[]).map((t) => (
             <button
@@ -653,7 +665,7 @@ export function Board({
           </span>
         </div>
         {tool === "snapshot" && !selection && (
-          <p className="notice">Drag on the board to select the region to publish.</p>
+          <p className="board-notice">Drag on the board to select the region to publish.</p>
         )}
         {selection && tool === "snapshot" && (
           <PublishSnapshot
@@ -667,11 +679,11 @@ export function Board({
           />
         )}
         {message && (
-          <p className="notice" role="alert">
+          <p className="board-notice" role="alert">
             {message}{" "}
-            <button className="ghost small" onClick={() => setMessage(null)}>
+            <Button variant="quiet" size="sm" onClick={() => setMessage(null)}>
               Dismiss
-            </button>
+            </Button>
           </p>
         )}
         {!panel && <UploadRecovery queue={uploads.queue} />}
@@ -692,31 +704,35 @@ export function Board({
           role="img"
         />
         {showList && (
-          <div className="card board-list">
-            <h2>Board items</h2>
-            <p className="muted small">
-              {[...objects.values()].filter((o) => o.alive && o.kind === "stroke").length} drawn strokes ·{" "}
-              {imageCount} images
-            </p>
-            {typed.length === 0 ? (
-              <p className="muted">No text or sticky notes.</p>
-            ) : (
-              <ul className="plain">
-                {typed.map(([id, o]) => (
-                  <li key={id}>
-                    {o.kind === "sticky" ? "Sticky" : "Text"}: {o.data.text}
-                    {ws.can_write && (
-                      <button
-                        className="ghost small"
-                        onClick={() => submit({ type: "erase", object_id: id })}
-                      >
-                        Erase
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div className="board-list">
+            <Card title="Board items">
+              <div className="board-dialog">
+                <p className="board-dialog__muted">
+                  {[...objects.values()].filter((o) => o.alive && o.kind === "stroke").length} drawn strokes ·{" "}
+                  {imageCount} images
+                </p>
+                {typed.length === 0 ? (
+                  <p className="board-dialog__muted">No text or sticky notes.</p>
+                ) : (
+                  <ul className="board-dialog__items">
+                    {typed.map(([id, o]) => (
+                      <li key={id}>
+                        {o.kind === "sticky" ? "Sticky" : "Text"}: {o.data.text}
+                        {ws.can_write && (
+                          <Button
+                            variant="quiet"
+                            size="sm"
+                            onClick={() => submit({ type: "erase", object_id: id })}
+                          >
+                            Erase
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </Card>
           </div>
         )}
       </section>
@@ -732,118 +748,5 @@ export function Board({
         </div>
       )}
     </>
-  );
-}
-
-type Destination = { id: string; name: string; same_workspace: boolean };
-
-function PublishSnapshot({
-  ws,
-  region,
-  revision,
-  onClose,
-}: {
-  ws: Workspace;
-  region: Region;
-  revision: number;
-  onClose: (done: boolean) => void;
-}) {
-  const { reload } = useWorkspaces();
-  const [dests, setDests] = useState<Destination[]>([]);
-  const [dest, setDest] = useState(ws.id);
-  const [summary, setSummary] = useState("Whiteboard snapshot");
-  const [confirmed, setConfirmed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const clientId = useRef(newId("snap"));
-  const r = {
-    x: Math.round(region.x),
-    y: Math.round(region.y),
-    w: Math.max(1, Math.round(region.w)),
-    h: Math.max(1, Math.round(region.h)),
-  };
-  const preview = `${API}/workspaces/${ws.id}/board/render?revision=${revision}&x=${r.x}&y=${r.y}&w=${r.w}&h=${r.h}`;
-  const target = dests.find((d) => d.id === dest);
-  const broader = dest !== ws.id;
-
-  useEffect(() => {
-    api<{ destinations: Destination[] }>(`/workspaces/${ws.id}/board/snapshot-destinations`)
-      .then((x) => setDests(x.destinations))
-      .catch((e) => setError(errorMessage(e)));
-  }, [ws.id]);
-
-  async function publish() {
-    setBusy(true);
-    setError(null);
-    try {
-      await api(`/workspaces/${ws.id}/board/snapshots`, {
-        body: {
-          revision,
-          region: r,
-          destination_id: dest,
-          summary,
-          client_id: clientId.current,
-          confirm_audience: broader ? dest : null,
-        },
-      });
-      void reload();
-      onClose(true);
-    } catch (e: unknown) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="dialog card" role="dialog" aria-label="Publish board snapshot">
-      <h2>Publish snapshot</h2>
-      <p className="muted small">
-        A fixed image of the selected region at revision {revision}. Later board edits, erasing, or restoring
-        will not change the published copy.
-      </p>
-      <img className="snapshot-preview" src={preview} alt="Preview of the selected board region" />
-      <label>
-        Post to
-        <select
-          value={dest}
-          onChange={(e) => {
-            setDest(e.target.value);
-            setConfirmed(false);
-          }}
-        >
-          {dests.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-              {d.same_workspace ? " (this workspace)" : " (parent unit)"}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Summary
-        <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={2} maxLength={2000} />
-      </label>
-      {broader && (
-        <label className="warning">
-          <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />{" "}
-          Everyone who can read <strong>{target?.name}</strong> will see this image. That is a broader
-          audience than {ws.name}.
-        </label>
-      )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="row">
-        <button onClick={publish} disabled={busy || !summary.trim() || (broader && !confirmed)}>
-          {busy ? "Publishing…" : `Publish to ${target?.name ?? ws.name}`}
-        </button>
-        <button className="ghost" onClick={() => onClose(false)}>
-          Cancel
-        </button>
-      </div>
-    </div>
   );
 }

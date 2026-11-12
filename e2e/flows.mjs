@@ -225,7 +225,7 @@ async function run(base) {
     await ben.page.mouse.down();
     await ben.page.mouse.move(cbox.x + cbox.width * 0.7, cbox.y + cbox.height * 0.7, { steps: 5 });
     await ben.page.mouse.up();
-    const dialog = ben.page.getByRole("dialog", { name: "Publish board snapshot" });
+    const dialog = ben.page.getByRole("dialog", { name: "Publish snapshot" });
     await dialog.waitFor();
     check(
       await dialog

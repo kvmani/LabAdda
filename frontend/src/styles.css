@@ -177,15 +177,6 @@ label.inline input:not([type="checkbox"]) {
   max-width: 640px;
 }
 
-.dialog {
-  position: fixed;
-  inset: 10% 50% auto auto;
-  transform: translateX(50%);
-  width: min(520px, 92vw);
-  z-index: 20;
-  box-shadow: 0 10px 40px #0003;
-}
-
 .whiteboard {
   display: flex;
   flex-direction: column;
@@ -309,9 +300,6 @@ tr.selected {
   background: #fff;
   display: block;
   margin: 0.5rem 0;
-}
-.whiteboard .dialog {
-  z-index: 40;
 }
 
 /* Shared touch panel: large targets, canvas-first. */
