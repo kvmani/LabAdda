@@ -21,9 +21,7 @@ function ConsoleFrame() {
   if (!result.access) return <ErrorState message={result.error} onRetry={() => setRetry(retry + 1)} />;
   const access = result.access;
   const entries = SECTIONS.filter((entry) => access.sections.includes(entry.key));
-  const selected = SECTIONS.find(
-    (entry) => entry.path === pathname || (entry.key === "people" && pathname === "/admin/people/basic"),
-  );
+  const selected = SECTIONS.find((entry) => entry.path === pathname || pathname === entry.path + "/basic");
   const allowed = selected && access.sections.includes(selected.key);
   return (
     <div className="admin-console">
