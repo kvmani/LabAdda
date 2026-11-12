@@ -1,0 +1,35 @@
+/* Basic account and workspace tools, built from ui/ components. */
+.basic-admin {
+  display: grid;
+  gap: var(--space-4);
+}
+.basic-admin__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.basic-admin__notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.basic-admin__notice .ui-banner {
+  flex: 1;
+}
+.basic-admin__handle {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.basic-admin__actions {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.basic-admin__members {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}

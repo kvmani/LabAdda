@@ -58,16 +58,6 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-button.ghost {
-  background: transparent;
-  color: var(--legacy-accent);
-  border-color: transparent;
-  padding: 0.35rem 0.55rem;
-}
-button.small,
-.small {
-  font-size: 0.85rem;
-}
 :focus-visible {
   outline: 3px solid #f59e0b;
   outline-offset: 2px;
@@ -91,77 +81,10 @@ label {
   margin: 0.5rem 0;
   font-weight: 500;
 }
-label.inline {
-  display: inline-flex;
-  gap: 0.4rem;
-  align-items: center;
-  margin: 0.25rem 0.75rem 0.25rem 0;
-  font-weight: 400;
-}
-label.inline input:not([type="checkbox"]) {
-  width: auto;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-.muted {
-  color: var(--muted);
-}
-.error {
-  color: var(--err);
-}
-.notice,
-.warning {
-  background: var(--warn-bg);
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-}
-.card {
-  background: var(--panel);
-  border: 1px solid var(--legacy-line);
-  border-radius: var(--radius);
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-.row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-.row.wrap {
-  flex-wrap: wrap;
-}
-.plain {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.plain li {
-  padding: 0.3rem 0;
-}
-.tag {
-  font-size: 0.75rem;
-  border: 1px solid var(--legacy-line);
-  border-radius: 999px;
-  padding: 0.05rem 0.5rem;
-  margin-left: 0.35rem;
-  color: var(--muted);
-  font-weight: 500;
-  vertical-align: middle;
-}
 
 table {
   width: 100%;
   border-collapse: collapse;
-}
-.table-scroll {
-  overflow-x: auto;
-  max-width: 100%;
 }
 th,
 td {
@@ -169,9 +92,6 @@ td {
   padding: 0.35rem;
   border-bottom: 1px solid #eef0f3;
   vertical-align: middle;
-}
-tr.selected {
-  background: #eef2ff;
 }
 
 main:focus {
