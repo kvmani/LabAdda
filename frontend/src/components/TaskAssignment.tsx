@@ -7,33 +7,30 @@ import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 export type Assignee = { id: string; display_name: string; is_active: boolean };
 type Colleague = { id: string; display_name: string; username: string };
 type Page = { items: Colleague[]; next_cursor: string | null };
-export function TaskAssignment({
-  listId,
-  taskId,
-  revision,
-  assignee,
-  writable,
-  saved,
-}: {
+type AssignmentProps = {
   listId: string;
   taskId: string;
   revision: number;
   assignee: Assignee | null;
   writable: boolean;
   saved: () => void;
-}) {
-  const [open, setOpen] = useState(false),
-    [page, setPage] = useState<Page | null>(null);
-  const [query, setQuery] = useState(""),
-    [selected, setSelected] = useState(assignee?.id ?? "");
-  const [busy, setBusy] = useState(false),
-    [loading, setLoading] = useState(false),
-    [error, setError] = useState("");
+};
+
+/** State and requests for the assignee picker; every response is checked against a generation counter. */
+function useAssignmentPicker({ listId, taskId, revision, assignee, saved }: AssignmentProps) {
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState<Page | null>(null);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(assignee?.id ?? "");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [reloadNeeded, setReloadNeeded] = useState(false);
   const generation = useRef(0);
   const [draftRevision, setDraftRevision] = useState(revision);
+
   useEffect(() => {
-    ++generation.current;
+    generation.current += 1;
     setOpen(false);
     setPage(null);
     setSelected(assignee?.id ?? "");
@@ -44,18 +41,27 @@ export function TaskAssignment({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when another task is shown; reads the assignee at that moment
   }, [listId, taskId]);
+
   useEffect(() => {
     if (open) setReloadNeeded(true);
     else setSelected(assignee?.id ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- react only to a new task revision; reads the open state at that moment
   }, [revision]);
+
+  function close() {
+    generation.current += 1;
+    setOpen(false);
+    setPage(null);
+  }
+
   async function load(after?: string) {
     if (!open) {
       setDraftRevision(revision);
       setSelected(assignee?.id ?? "");
       setReloadNeeded(false);
     }
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setOpen(true);
     setLoading(true);
     setPage(null);
@@ -69,10 +75,12 @@ export function TaskAssignment({
       if (token === generation.current) setLoading(false);
     }
   }
+
   async function assign(event: FormEvent) {
     event.preventDefault();
     if (busy || reloadNeeded) return;
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setBusy(true);
     setError("");
     try {
@@ -94,8 +102,10 @@ export function TaskAssignment({
       if (token === generation.current) setBusy(false);
     }
   }
+
   async function reload() {
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setBusy(true);
     setError("");
     try {
@@ -112,6 +122,109 @@ export function TaskAssignment({
       if (token === generation.current) setBusy(false);
     }
   }
+
+  return {
+    open,
+    page,
+    query,
+    setQuery,
+    selected,
+    setSelected,
+    busy,
+    loading,
+    error,
+    reloadNeeded,
+    load,
+    assign,
+    reload,
+    close,
+  };
+}
+
+type Picker = ReturnType<typeof useAssignmentPicker>;
+
+function assigneeOptions(assignee: Assignee | null, candidates: Colleague[]) {
+  const currentIsListed = assignee && candidates.some((person) => person.id === assignee.id);
+  const current =
+    assignee && !currentIsListed
+      ? [{ value: assignee.id, label: `${assignee.display_name} (current; eligibility must be checked)` }]
+      : [];
+  return [
+    { value: "", label: "Unassigned" },
+    ...current,
+    ...candidates.map((person) => ({
+      value: person.id,
+      label: `${person.display_name} (${person.username})`,
+    })),
+  ];
+}
+
+function ColleagueSearch({ picker }: { picker: Picker }) {
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void picker.load();
+      }}
+    >
+      <TextInput
+        label="Find eligible colleague"
+        maxLength={100}
+        disabled={picker.busy}
+        value={picker.query}
+        onChange={(e) => picker.setQuery(e.target.value)}
+      />
+      <Button size="sm" disabled={picker.busy || picker.loading} type="submit">
+        Search colleagues
+      </Button>
+    </form>
+  );
+}
+
+function AssignmentForm({
+  picker,
+  assignee,
+  page,
+}: {
+  picker: Picker;
+  assignee: Assignee | null;
+  page: Page;
+}) {
+  const locked = picker.busy || picker.reloadNeeded;
+  return (
+    <form onSubmit={picker.assign}>
+      <Select
+        label="Assignee"
+        value={picker.selected}
+        disabled={locked}
+        onChange={(e) => picker.setSelected(e.target.value)}
+        options={assigneeOptions(assignee, page.items)}
+      />
+      <Button size="sm" variant="primary" type="submit" disabled={locked}>
+        Save assignment
+      </Button>
+    </form>
+  );
+}
+
+function ReloadNotice({ picker }: { picker: Picker }) {
+  return (
+    <>
+      <p>
+        The task changed or the result is unconfirmed. Reload the current task before trying again; this
+        discards your assignment choice.
+      </p>
+      <Button size="sm" disabled={picker.busy} onClick={picker.reload}>
+        Reload task assignment
+      </Button>
+    </>
+  );
+}
+
+export function TaskAssignment(props: AssignmentProps) {
+  const { assignee, writable } = props;
+  const picker = useAssignmentPicker(props);
+  const { open, page } = picker;
   return (
     <section className="task-panel" aria-label="Task assignment">
       <p>
@@ -119,89 +232,28 @@ export function TaskAssignment({
         {assignee ? assignee.display_name + (assignee.is_active ? "" : " (inactive)") : "Unassigned"}
       </p>
       {writable && !open && (
-        <Button size="sm" onClick={() => load()}>
+        <Button size="sm" onClick={() => picker.load()}>
           Change assignee
         </Button>
       )}
       {writable && open && (
         <>
           <p>Assignment does not grant access. Choose an eligible colleague or leave the task unassigned.</p>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void load();
-            }}
-          >
-            <TextInput
-              label="Find eligible colleague"
-              maxLength={100}
-              disabled={busy}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <Button size="sm" disabled={busy || loading} type="submit">
-              Search colleagues
-            </Button>
-          </form>
-          {loading && <p role="status">Loading eligible colleagues…</p>}
-          {error && (
+          <ColleagueSearch picker={picker} />
+          {picker.loading && <p role="status">Loading eligible colleagues…</p>}
+          {picker.error && (
             <p className="task__error" role="alert">
-              {error}
+              {picker.error}
             </p>
           )}
-          {page && (
-            <form onSubmit={assign}>
-              <Select
-                label="Assignee"
-                value={selected}
-                disabled={busy || reloadNeeded}
-                onChange={(e) => setSelected(e.target.value)}
-                options={[
-                  { value: "", label: "Unassigned" },
-                  ...(assignee && !page.items.some((r) => r.id === assignee.id)
-                    ? [
-                        {
-                          value: assignee.id,
-                          label: `${assignee.display_name} (current; eligibility must be checked)`,
-                        },
-                      ]
-                    : []),
-                  ...page.items.map((person) => ({
-                    value: person.id,
-                    label: `${person.display_name} (${person.username})`,
-                  })),
-                ]}
-              />
-              <Button size="sm" variant="primary" type="submit" disabled={busy || reloadNeeded}>
-                Save assignment
-              </Button>
-            </form>
-          )}
+          {page && <AssignmentForm picker={picker} assignee={assignee} page={page} />}
           {page?.next_cursor && (
-            <Button size="sm" disabled={busy} onClick={() => load(page.next_cursor!)}>
+            <Button size="sm" disabled={picker.busy} onClick={() => picker.load(page.next_cursor!)}>
               More colleagues
             </Button>
           )}
-          {reloadNeeded && (
-            <p>
-              The task changed or the result is unconfirmed. Reload the current task before trying again; this
-              discards your assignment choice.
-            </p>
-          )}
-          {reloadNeeded && (
-            <Button size="sm" disabled={busy} onClick={reload}>
-              Reload task assignment
-            </Button>
-          )}
-          <Button
-            size="sm"
-            disabled={busy}
-            onClick={() => {
-              ++generation.current;
-              setOpen(false);
-              setPage(null);
-            }}
-          >
+          {picker.reloadNeeded && <ReloadNotice picker={picker} />}
+          <Button size="sm" disabled={picker.busy} onClick={picker.close}>
             Close assignment
           </Button>
         </>
