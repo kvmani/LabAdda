@@ -10,6 +10,8 @@ import { PeopleTable } from "./PeopleTable";
 import { StaffProfile } from "./StaffProfile";
 import { ExportReport } from "./ExportReport";
 import { AddPersonDialog } from "./AddPersonDialog";
+import { BulkActions, MAX_SELECTED } from "./BulkActions";
+import { ImportDialog } from "./ImportDialog";
 import type { Directory, Unit } from "./types";
 import "./people.css";
 
@@ -34,6 +36,14 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
   const units = usePeopleData<{ workspaces: Unit[] }>("/admin/workspaces", onDenied);
   const identity = params.get("person");
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  function select(id: string, on: boolean) {
+    const next = new Set(selected);
+    if (on) next.add(id);
+    else next.delete(id);
+    setSelected(next);
+  }
   const unitList = units.data?.workspaces ?? null;
   return (
     <>
@@ -41,7 +51,11 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
         reportUrl={peopleUrl(params, true)}
         onDenied={onDenied}
         onAdd={unitList ? () => setAdding(true) : undefined}
+        onImport={() => setImporting(true)}
       />
+      {importing && (
+        <ImportDialog onClose={() => setImporting(false)} onDenied={onDenied} onDone={directory.refresh} />
+      )}
       {adding && unitList && (
         <AddPersonDialog
           units={unitList}
@@ -51,6 +65,15 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
             directory.refresh();
             profile("person", id);
           }}
+        />
+      )}
+      {unitList && (
+        <BulkActions
+          selected={[...selected]}
+          units={unitList}
+          onClear={() => setSelected(new Set())}
+          onDenied={onDenied}
+          onDone={directory.refresh}
         />
       )}
       <PeopleFilters
@@ -79,6 +102,9 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
           onNext={(cursor) => change("cursor", cursor)}
           onFirst={() => change("cursor", "")}
           hasCursor={params.has("cursor")}
+          selected={selected}
+          onSelect={select}
+          selectionFull={selected.size >= MAX_SELECTED}
           onReset={reset}
         />
       )}
@@ -102,10 +128,12 @@ function PeopleHeader({
   reportUrl,
   onDenied,
   onAdd,
+  onImport,
 }: {
   reportUrl: string;
   onDenied: () => void;
   onAdd?: () => void;
+  onImport: () => void;
 }) {
   return (
     <PageHeader
@@ -116,6 +144,9 @@ function PeopleHeader({
         <div className="people-actions">
           <Button variant="primary" icon="plus" onClick={onAdd} disabled={!onAdd}>
             Add person
+          </Button>
+          <Button icon="plus" onClick={onImport}>
+            Import staff list
           </Button>
           <Link to="/admin/people/basic">Basic account tools</Link>
           <ExportReport key={reportUrl} url={reportUrl} onDenied={onDenied} />

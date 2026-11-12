@@ -117,3 +117,37 @@
     inset: 0 auto auto 0;
   }
 }
+
+.people-slips {
+  display: grid;
+  gap: var(--space-4);
+}
+@media print {
+  .people-slips,
+  .people-slips * {
+    visibility: visible;
+  }
+  .people-slips {
+    position: absolute;
+    inset: 0 auto auto 0;
+    display: block;
+  }
+  .people-slips .people-slip {
+    position: static;
+    break-inside: avoid;
+    margin-bottom: var(--space-5);
+  }
+}
+.people-import__group {
+  margin-block: var(--space-4);
+}
+.people-import__row {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+.people-import__row ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}

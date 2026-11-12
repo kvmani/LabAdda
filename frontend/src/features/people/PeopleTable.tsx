@@ -1,4 +1,4 @@
-import { Button, DataTable, StatusPill, type Column } from "../../ui";
+import { Button, Checkbox, DataTable, StatusPill, type Column } from "../../ui";
 import { calendarDate, positionLabel, STATUS_OPTIONS } from "./model";
 import type { Directory, Person } from "./types";
 
@@ -10,11 +10,31 @@ type Props = {
   onFirst: () => void;
   onReset: () => void;
   hasCursor: boolean;
+  selected: Set<string>;
+  onSelect: (id: string, on: boolean) => void;
+  selectionFull: boolean;
 };
 
 /** Server sorting applies to all matching people, not just the visible page. */
-function peopleColumns(onOpen: Props["onOpen"]): Column<Person>[] {
+function peopleColumns(
+  onOpen: Props["onOpen"],
+  selected: Set<string>,
+  onSelect: Props["onSelect"],
+  full: boolean,
+): Column<Person>[] {
   return [
+    {
+      key: "select",
+      header: "Select",
+      render: (person) => (
+        <Checkbox
+          label={`Select ${person.display_name || person.username}`}
+          checked={selected.has(person.id)}
+          disabled={full && !selected.has(person.id)}
+          onChange={(event) => onSelect(person.id, event.target.checked)}
+        />
+      ),
+    },
     {
       key: "name",
       header: "Name",
@@ -58,7 +78,18 @@ function peopleColumns(onOpen: Props["onOpen"]): Column<Person>[] {
 }
 
 /** Keep paging server-owned and the current page usable by keyboard. */
-export function PeopleTable({ data, loading, onOpen, onNext, onFirst, onReset, hasCursor }: Props) {
+export function PeopleTable({
+  data,
+  loading,
+  onOpen,
+  onNext,
+  onFirst,
+  onReset,
+  hasCursor,
+  selected,
+  onSelect,
+  selectionFull,
+}: Props) {
   return (
     <>
       {data && (
@@ -69,7 +100,7 @@ export function PeopleTable({ data, loading, onOpen, onNext, onFirst, onReset, h
       )}
       <DataTable
         caption="Staff directory"
-        columns={peopleColumns(onOpen)}
+        columns={peopleColumns(onOpen, selected, onSelect, selectionFull)}
         rows={data?.people ?? []}
         rowKey={(person) => person.id}
         loading={loading}

@@ -123,7 +123,7 @@ export type PlanStep = {
 };
 export type PlanIssue = { code: string; message: string; target_id: string | null; count?: number | null };
 export type ChangePlan = {
-  kind: ChangeRequest["kind"];
+  kind: ChangeRequest["kind"] | "bulk";
   revisions: Record<string, number>;
   steps: PlanStep[];
   warnings: PlanIssue[];
@@ -141,4 +141,40 @@ export type ChangeReceipt = {
   digest: string;
   activation?: { code: string; expires_at: string };
   stewards_notified?: number;
+};
+
+/** Staff list import and bulk changes (docs/API.md P6). */
+export type BulkItem =
+  | AddPersonRequest
+  | { kind: "transfer"; person_id: string; to_unit_id: string; role: Role }
+  | { kind: "suspend"; person_id: string }
+  | { kind: "edit_person"; person_id: string; fields: Record<string, string | null> };
+export type ImportRow = {
+  line: number;
+  group: "add" | "change" | "transfer" | "errors";
+  username: string;
+  display_name: string | null;
+  summary: string[];
+  errors: string[];
+  warnings: string[];
+  requests: BulkItem[];
+};
+export type ImportReport = {
+  rows: ImportRow[];
+  counts: { add: number; change: number; transfer: number; errors: number; unchanged: number };
+  absent: { username: string; display_name: string }[];
+  absent_total: number;
+  digest: string;
+};
+export type BulkReceipt = {
+  applied: true;
+  kind: "bulk";
+  digest: string;
+  count: number;
+  added: {
+    person_id: string;
+    username: string;
+    display_name: string;
+    activation: { code: string; expires_at: string };
+  }[];
 };
