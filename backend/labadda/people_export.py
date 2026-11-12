@@ -7,7 +7,7 @@ import unicodedata
 from sqlalchemy.orm import Session
 
 from .errors import Invalid
-from .people_directory import DirectoryFilters, directory_query, person_json
+from .people_directory import DirectoryFilters, Scope, directory_query, person_json
 
 EXPORT_LIMIT = 10_000
 COLUMNS = ("display_name", "username", "employee_no", "designation", "home_unit", "status", "last_seen_on")
@@ -26,10 +26,10 @@ def safe_cell(value: str | None) -> str:
     return value
 
 
-def prepare_csv(db: Session, filters: DirectoryFilters) -> dict:
+def prepare_csv(db: Session, filters: DirectoryFilters, scope: Scope = None) -> dict:
     """Materialize at most the report cap before any response bytes are delivered."""
     rows = db.execute(
-        directory_query(db, filters).limit(EXPORT_LIMIT + 1).execution_options(populate_existing=True)
+        directory_query(db, filters, scope).limit(EXPORT_LIMIT + 1).execution_options(populate_existing=True)
     ).all()
     if len(rows) > EXPORT_LIMIT:
         raise Invalid("export_limit", "Too many people for one report. Narrow the filters and export again.")

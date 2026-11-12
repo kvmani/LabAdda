@@ -15,6 +15,7 @@ from . import positions
 from .errors import Invalid, NotFound
 from .models import Membership, User, Workspace
 from .people import StaffStatus
+from .policy import Scope
 
 DirectorySort = Literal["name", "username", "employee_no", "status", "last_seen_on"]
 DirectoryRole = Literal["admin", "member", "steward"]
@@ -38,11 +39,11 @@ class DirectoryFilters:
     descending: bool = False
 
 
-def _unit_ids(db: Session, filters: DirectoryFilters) -> set[uuid.UUID] | None:
+def _unit_ids(db: Session, filters: DirectoryFilters, scope: Scope) -> set[uuid.UUID] | None:
     if filters.unit_id is None:
         return None
     parents = dict(db.execute(select(Workspace.id, Workspace.parent_id).where(Workspace.kind == "org")).all())
-    if filters.unit_id not in parents:
+    if filters.unit_id not in parents or (scope is not None and filters.unit_id not in scope):
         raise NotFound()
     selected = {filters.unit_id}
     if filters.include_children:
@@ -53,8 +54,12 @@ def _unit_ids(db: Session, filters: DirectoryFilters) -> set[uuid.UUID] | None:
     return selected
 
 
-def directory_query(db: Session, filters: DirectoryFilters):
-    """Build staff/home-unit predicates without joining content or multiplying rows."""
+def directory_query(db: Session, filters: DirectoryFilters, scope: Scope = None):
+    """Build staff/home-unit predicates without joining content or multiplying rows.
+
+    A unit administrator's ``scope`` limits the rows to people whose home is in it; site
+    administrators are never part of that set.
+    """
     query = select(User, Workspace).outerjoin(
         Workspace, and_(Workspace.id == User.home_workspace_id, Workspace.kind == "org")
     )
@@ -70,7 +75,9 @@ def directory_query(db: Session, filters: DirectoryFilters):
         )
     if filters.status is not None:
         query = query.where(User.status == filters.status)
-    units = _unit_ids(db, filters)
+    if scope is not None:
+        query = query.where(User.home_workspace_id.in_(scope), User.is_admin.is_(False))
+    units = _unit_ids(db, filters, scope)
     if units is not None:
         query = query.where(User.home_workspace_id.in_(units))
     if filters.role == "admin":
@@ -127,9 +134,11 @@ def _decode(cursor: str, filters: DirectoryFilters) -> tuple[str | date | None, 
         raise Invalid("invalid_cursor", "Reload the directory after changing its filters.") from None
 
 
-def directory_page(db: Session, filters: DirectoryFilters, limit: int, cursor: str | None) -> dict:
+def directory_page(
+    db: Session, filters: DirectoryFilters, limit: int, cursor: str | None, scope: Scope = None
+) -> dict:
     """Read one stable page, keeping null sort values last in either direction."""
-    query = directory_query(db, filters)
+    query = directory_query(db, filters, scope)
     column = SORTS[filters.sort]
     if cursor:
         value, identity = _decode(cursor, filters)
@@ -150,6 +159,6 @@ def directory_page(db: Session, filters: DirectoryFilters, limit: int, cursor: s
             "id": str(person.id),
         }
         next_cursor = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    held = positions.positions_by_person(db, [person.id for person, _ in page])
+    held = positions.positions_by_person(db, [person.id for person, _ in page], scope)
     people = [{**person_json(person, unit), "positions": held.get(person.id, [])} for person, unit in page]
     return {"people": people, "next_cursor": next_cursor}

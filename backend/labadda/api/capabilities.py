@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .. import audit, policy
 from ..config import Settings
-from ..deps import Actor, current_actor, get_db, get_settings, require_console
+from ..deps import Actor, console_member, current_actor, get_db, get_settings, require_console
 from ..errors import Forbidden, Invalid, NotFound, TooMany
 from ..models import UsageReaderGrant, User
 from ..security import login_limiter, utcnow, verify_password
@@ -18,7 +18,6 @@ from ..serialize import iso
 from .governance import lock_authority
 
 router = APIRouter(tags=["capabilities"])
-console_overview = require_console("overview")
 console_settings = require_console("settings")
 
 
@@ -39,13 +38,22 @@ def own_capabilities(actor: Actor = Depends(current_actor), db: Session = Depend
         "usage.read": can_read_usage(db, actor),
         "policy.draft": actor.user.is_admin,
         "identity.admin": actor.user.is_admin,
+        "unit.admin": policy.is_unit_admin(db, actor.user),
     }
 
 
 @router.get("/admin/console")
-def console_access(actor: Actor = Depends(console_overview), db: Session = Depends(get_db)) -> dict:
+def console_access(actor: Actor = Depends(console_member), db: Session = Depends(get_db)) -> dict:
     """Describe current navigation authority without reading collaboration content."""
-    return {"sections": policy.console_sections(db, actor.user), "read_only": not actor.user.is_admin}
+    sections = policy.console_sections(db, actor.user)
+    # A unit administrator's sections (people, organisation) are ones they may change within their
+    # branch; operational readers only ever read.
+    writes = actor.user.is_admin or set(sections) <= set(policy.UNIT_ADMIN_SECTIONS)
+    return {
+        "sections": sections,
+        "read_only": not writes,
+        "unit_admin": policy.is_unit_admin(db, actor.user),
+    }
 
 
 class GrantRequest(BaseModel):

@@ -13,7 +13,7 @@ from ..errors import ApiError
 from .people import read_metadata
 
 router = APIRouter(prefix="/admin/changes/scheduled", tags=["people changes"])
-console_people = require_console("people")
+console_people = require_console("people", unit_admin=True)
 
 
 @router.get("")
@@ -24,7 +24,12 @@ def list_scheduled(
     db: Session = Depends(get_db),
 ) -> dict:
     """Changes waiting for their day or for review: names, dates and the sentences reviewed."""
-    return read_metadata(request, db, lambda: scheduled.listing(db, person_id))
+    return read_metadata(
+        request,
+        db,
+        actor,
+        lambda scope: scheduled.listing(db, person_id, None if scope is None else actor.user),
+    )
 
 
 @router.delete("/{change_id}")

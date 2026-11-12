@@ -132,8 +132,29 @@ def _console_actor(request: Request, db: Session = Depends(get_db)) -> Actor:
     return current_actor(request, db)
 
 
-def require_console(section: str, *, admin_only: bool = False) -> Callable[..., Actor]:
-    """Gate console requests without widening existing administrative rights."""
+def console_member(
+    request: Request, actor: Actor = Depends(_console_actor), db: Session = Depends(get_db)
+) -> Actor:
+    """Anyone who may open at least one console section; each page then checks its own section."""
+    if request.headers.get(PANEL_HEADER) or actor.is_panel:
+        raise Unauthenticated()
+    if not policy.console_sections(db, actor.user):
+        raise Forbidden("admin_required", "Administrator access is required.")
+    return actor
+
+
+def _unit_admin_section(db: Session, user: User, section: str) -> bool:
+    return section in policy.UNIT_ADMIN_SECTIONS and policy.is_unit_admin(db, user)
+
+
+def require_console(
+    section: str, *, admin_only: bool = False, unit_admin: bool = False
+) -> Callable[..., Actor]:
+    """Gate console requests without widening existing administrative rights.
+
+    ``unit_admin`` lets a current unit administrator in, for the people and organisation endpoints
+    that apply their branch scope themselves. Everything else stays for site administrators.
+    """
     if section not in policy.CONSOLE_SECTIONS:
         raise ValueError("Unknown console section")
 
@@ -143,6 +164,8 @@ def require_console(section: str, *, admin_only: bool = False) -> Callable[..., 
         if request.headers.get(PANEL_HEADER) or actor.is_panel:
             raise Unauthenticated()
         if actor.user.is_admin:
+            return actor
+        if unit_admin and not admin_only and _unit_admin_section(db, actor.user, section):
             return actor
         if admin_only or section not in policy.READER_SECTIONS or request.method not in {"GET", "HEAD"}:
             raise Forbidden("admin_required", "Administrator access is required.")

@@ -17,6 +17,7 @@ from ..deps import Actor
 from ..errors import ApiError, Conflict, Forbidden, Invalid, NotFound
 from ..models import ScheduledChange, User, Workspace
 from ..realtime import Hub
+from . import unit_scope
 from .kinds import (
     add_person,
     additional_charge,
@@ -104,8 +105,20 @@ class TooLong(ApiError):
 
 
 def build(db: Session, request: ChangeRequest, actor_id: uuid.UUID, settings: Settings) -> Plan:
-    """Dispatch to the kind's builder; every kind reads current state only."""
-    return KINDS[request.kind].build(db, request, actor_id, settings)
+    """Dispatch to the kind's builder; every kind reads current state only.
+
+    Preview, apply, bulk apply and the scheduled run all build here, under the authority locks, so
+    a unit administrator's reach is judged from current grants each time and never trusted from a
+    reviewed plan.
+    """
+    actor = db.get(User, actor_id, populate_existing=True)
+    if actor is None:
+        raise Forbidden("admin_required", "Administrator access is required.")
+    reach = unit_scope.reach_for(db, actor)
+    if reach is not None:
+        reach.check(db, request)
+    plan = KINDS[request.kind].build(db, request, actor_id, settings)
+    return plan if reach is None else reach.restrict(db, request, plan)
 
 
 # Their one-time activation code must reach the administrator who applies them.

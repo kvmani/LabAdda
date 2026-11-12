@@ -6,9 +6,10 @@ import uuid
 from collections import defaultdict
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
-from .models import Membership, UnitPosition, User, Workspace
+from .models import Membership, UnitAdminGrant, UnitPosition, User, Workspace
+from .serialize import iso
 
 
 def _person(user: User) -> dict:
@@ -51,20 +52,32 @@ def _counts(db: Session) -> tuple[dict[uuid.UUID, int], dict[uuid.UUID, int]]:
     return homes, members
 
 
-def tree(db: Session) -> dict:
-    """Every unit with its Head, stewards and counts, plus projects and groups listed beside it."""
+def _parent(row: Workspace, scope: frozenset[uuid.UUID] | None) -> str | None:
+    if row.parent_id is None or (scope is not None and row.parent_id not in scope):
+        return None
+    return str(row.parent_id)
+
+
+def tree(db: Session, scope: frozenset[uuid.UUID] | None = None) -> dict:
+    """Every unit with its Head, stewards and counts, plus projects and groups listed beside it.
+
+    A unit administrator's ``scope`` keeps only their branch, as a tree of its own: the unit they
+    administer has no visible parent, and projects and groups are not listed.
+    """
     stewards, heads = _stewards(db), _heads(db)
     homes, members = _counts(db)
     rows = db.scalars(select(Workspace).order_by(Workspace.name, Workspace.id)).all()
     units, spaces = [], []
     for row in rows:
+        if scope is not None and row.id not in scope:
+            continue
         common = {"id": str(row.id), "name": row.name, "archived": row.archived}
         if row.kind == "org":
             units.append(
                 {
                     **common,
                     "code": row.code,
-                    "parent_id": str(row.parent_id) if row.parent_id else None,
+                    "parent_id": _parent(row, scope),
                     "head": heads.get((row.id, False)),
                     "acting_head": heads.get((row.id, True)),
                     "stewards": stewards.get(row.id, []),
@@ -82,3 +95,28 @@ def tree(db: Session) -> dict:
                 }
             )
     return {"units": units, "spaces": spaces}
+
+
+def unit_administrators(db: Session) -> dict:
+    """Current appointments (PO-24): who administers which unit, by whom and since when."""
+    granter = aliased(User)
+    rows = db.execute(
+        select(UnitAdminGrant, User, Workspace, granter.display_name)
+        .join(User, User.id == UnitAdminGrant.user_id)
+        .join(Workspace, Workspace.id == UnitAdminGrant.workspace_id)
+        .join(granter, granter.id == UnitAdminGrant.granted_by)
+        .where(UnitAdminGrant.revoked_at.is_(None))
+        .order_by(Workspace.name, User.display_name, UnitAdminGrant.id)
+    ).all()
+    return {
+        "items": [
+            {
+                "id": str(grant.id),
+                "person": _person(person),
+                "unit": {"id": str(unit.id), "name": unit.name, "archived": unit.archived},
+                "granted_by": by,
+                "granted_at": iso(grant.granted_at),
+            }
+            for grant, person, unit, by in rows
+        ]
+    }

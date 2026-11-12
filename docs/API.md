@@ -1034,3 +1034,52 @@ as for every `/admin/changes` route. Plans, notes and lists hold names, dates an
   commit, like a live apply.
 - `change_authority` with `outgoing_role: "member"` lists, as its own step, every other position the
   outgoing holder has in that unit that the demotion ends.
+
+## P7 unit administrators (schema 0036)
+
+PO-24. A site administrator appoints a person to administer one open organisation unit; the
+appointment covers that unit and every unit below it (the person's *branch*), never a parent, a
+sibling, a project or a group. The branch is read from the grants that exist now, on the server,
+on every request; nothing the client sends widens it. A unit administrator is not a site
+administrator and gains no content access: every posts, chat, notes, files and board route
+behaves for them exactly as for any member.
+
+- `GET /admin/console` returns `{sections, read_only, unit_admin}`. A unit administrator gets
+  `sections: ["people","org"]`, `read_only: false`, `unit_admin: true`.
+- New change kinds `unit_admin_grant` and `unit_admin_revoke`, body `{kind, person_id, unit_id}`,
+  through the usual preview and apply. Site administrators only (403 `admin_required` for anyone
+  else, at preview and at apply). Blockers: `already_admin`, `person_inactive`,
+  `unit_unavailable`, `no_change` (already appointed, or nothing to withdraw). One appointment per
+  person and unit at a time. Audit: the usual `people.change` parent and step plus
+  `unit_admin.grant` / `unit_admin.revoke` (scope = the unit, target = the person), all in the
+  same transaction.
+- `GET /admin/org/unit-admins` (site administrators only) returns `{items[{id, person{id,name},
+  unit{id,name,archived}, granted_by, granted_at}]}`.
+- Where a unit administrator may call the existing People and Organisation routes
+  (`/admin/people*`, `/admin/org/tree`, `/admin/changes/preview|apply|candidates|activation-code|
+  bulk/*`, `/admin/changes/scheduled*`) the answer is held to the branch:
+  - People lists, exports, profiles, access and timeline show only people whose home unit is in
+    the branch and who are not site administrators. Anyone else, and any `unit_id` outside the
+    branch, answers the uniform 404. A person's access list names only branch units; positions
+    outside the branch are not listed.
+  - `GET /admin/org/tree` returns the branch as its own tree (the appointed unit has
+    `parent_id: null`) and no projects or groups.
+  - Changes: every person or unit the request names must be in the branch (404 otherwise); a
+    person who is a site administrator is 404, and one who administers more than the actor is 403
+    `outside_your_units`. Unit changes other than `unit_create` need the unit to lie strictly
+    below an appointed unit (404 otherwise), so a unit administrator cannot rename, move, merge or
+    close the unit they were appointed to. Add, edit, transfer, promote, change of authority,
+    additional charge, leave, return, retire, suspend, reinstate and the unit kinds are the only
+    kinds available. A transfer between two branches works only if the actor administers both.
+  - A built plan that would also touch a workspace or person outside the branch, or end positions
+    held outside it, carries the blocker `outside_your_units` (apply then returns 422
+    `plan_blocked`); text about those parts is replaced by a generic sentence.
+  - Scope is judged again inside the locks at apply and at a scheduled change's run. A reviewed
+    plan applied after the appointment was withdrawn answers 403 `admin_required`; after the
+    branch shrank, 404; a scheduled change whose actor lost the scope becomes `needs_review`.
+  - Scheduled changes: the list and cancellation include only changes whose request stays inside the
+    branch (others answer 404 on cancel).
+- Not available to unit administrators (403 `admin_required`): `/admin/org/attention`,
+  `/admin/changes/import/*`, `/admin/org/unit-admins`, and every other `/admin/*` route
+  including the legacy `/admin/users` and `/admin/workspaces` tools, audit, usage, storage,
+  settings and health. Board-only sessions are 401 everywhere.

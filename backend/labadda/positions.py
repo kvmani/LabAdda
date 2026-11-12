@@ -219,16 +219,24 @@ def expiry_job(factory: sessionmaker, settings: Settings, hub: Hub | None = None
     return expire_positions
 
 
-def positions_by_person(db: Session, user_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[dict]]:
-    """Current positions of a bounded set of people as unit names and dates only (one query)."""
+def positions_by_person(
+    db: Session, user_ids: list[uuid.UUID], scope: frozenset[uuid.UUID] | None = None
+) -> dict[uuid.UUID, list[dict]]:
+    """Current positions of a bounded set of people as unit names and dates only (one query).
+
+    ``scope`` keeps a unit administrator to positions in their own units.
+    """
     if not user_ids:
         return {}
-    rows = db.execute(
+    query = (
         select(UnitPosition, Workspace)
         .join(Workspace, Workspace.id == UnitPosition.workspace_id)
         .where(UnitPosition.user_id.in_(user_ids), UnitPosition.ended_at.is_(None))
         .order_by(Workspace.name, UnitPosition.position, UnitPosition.acting)
-    ).all()
+    )
+    if scope is not None:
+        query = query.where(UnitPosition.workspace_id.in_(scope))
+    rows = db.execute(query).all()
     result: dict[uuid.UUID, list[dict]] = {}
     for row, space in rows:
         result.setdefault(row.user_id, []).append(

@@ -27,6 +27,8 @@ from .errors import Forbidden, NotFound
 from .models import Membership, UnitAdminGrant, UsageReaderGrant, User, Workspace
 from .security import utcnow
 
+type Scope = frozenset[uuid.UUID] | None  # a unit administrator's units; None means no limit
+
 
 @dataclass(frozen=True)
 class Access:
@@ -221,7 +223,7 @@ def people_scope(db: Session, user: User) -> frozenset[uuid.UUID]:
     )
 
 
-def restricted_scope(db: Session, user: User) -> frozenset[uuid.UUID] | None:
+def restricted_scope(db: Session, user: User) -> Scope:
     """The scope a unit administrator is held to, or ``None`` for a site administrator (no limit)."""
     return None if user.is_admin and user.is_active else people_scope(db, user)
 

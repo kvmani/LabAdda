@@ -12,10 +12,13 @@ from .guards import unit_branch
 LIMIT = 200
 
 
-def candidates(db: Session, workspace_id: uuid.UUID) -> dict:
-    """Active people of a unit's branch or members of a project/group; names and roles only."""
+def candidates(db: Session, workspace_id: uuid.UUID, scope: frozenset[uuid.UUID] | None = None) -> dict:
+    """Active people of a unit's branch or members of a project/group; names and roles only.
+
+    A unit administrator gets this only for a unit of their own branch.
+    """
     space = db.get(Workspace, workspace_id)
-    if space is None:
+    if space is None or (scope is not None and space.id not in scope):
         raise NotFound()
     members = select(Membership.user_id).where(Membership.workspace_id == space.id)
     query = select(User).where(User.status == "active", User.is_active.is_(True))

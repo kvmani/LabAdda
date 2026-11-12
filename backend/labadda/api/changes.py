@@ -15,7 +15,8 @@ from ..errors import ApiError, Invalid
 from .people import read_metadata
 
 router = APIRouter(prefix="/admin/changes", tags=["people changes"])
-console_people = require_console("people")
+console_people = require_console("people", unit_admin=True)
+console_people_admin = require_console("people")
 
 
 def _unavailable(db: Session, error: DBAPIError, message: str) -> ApiError:
@@ -89,11 +90,11 @@ def change_candidates(
     db: Session = Depends(get_db),
 ) -> dict:
     """Who may succeed in one workspace: names, usernames and roles, never content."""
-    return read_metadata(request, db, lambda: candidates.candidates(db, workspace_id))
+    return read_metadata(request, db, actor, lambda scope: candidates.candidates(db, workspace_id, scope))
 
 
 @router.get("/import/template")
-def import_template(actor: Actor = Depends(console_people)) -> Response:
+def import_template(actor: Actor = Depends(console_people_admin)) -> Response:
     """The column layout with one fictional example row."""
     return Response(
         importer.TEMPLATE,
@@ -131,7 +132,7 @@ def _import_report(db: Session, actor: Actor, settings, data: bytes) -> dict:
 @router.post("/import/preview")
 async def preview_import(
     request: Request,
-    actor: Actor = Depends(console_people),
+    actor: Actor = Depends(console_people_admin),
     db: Session = Depends(get_db),
 ) -> dict:
     """Dry-run a staff-list CSV: what would be added, changed or moved, and what is wrong."""

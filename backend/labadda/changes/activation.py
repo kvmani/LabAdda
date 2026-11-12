@@ -13,6 +13,7 @@ from ..errors import Conflict, NotFound
 from ..models import CredentialToken, User
 from ..security import utcnow
 from ..serialize import iso
+from . import unit_scope
 from .service import authorize
 
 
@@ -20,6 +21,9 @@ def reissue(db: Session, actor: Actor, settings: Settings, person_id: uuid.UUID,
     """Withdraw unused codes, issue a new one and audit it in one transaction (PO-09)."""
     try:
         user = authorize(db, actor, settings)
+        reach = unit_scope.reach_for(db, user)
+        if reach is not None:
+            reach.person(db, person_id)
         # Account row first, then its tokens: the same order as redemption in /auth/activate.
         person = db.scalar(
             select(User)

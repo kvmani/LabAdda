@@ -65,6 +65,7 @@ def test_admin_and_reader_console_responses_exclude_content(as_user, ids, db_fac
     assert admin.get("/admin/console").json() == {
         "sections": list(policy.CONSOLE_SECTIONS),
         "read_only": False,
+        "unit_admin": False,
     }
     assert admin.get(f"/workspaces/{workspace}/posts").status_code == 404
 
@@ -81,6 +82,7 @@ def test_usage_reader_navigation_never_grants_administration(as_user, ids):
     assert reader.get("/admin/console").json() == {
         "sections": list(policy.READER_SECTIONS),
         "read_only": True,
+        "unit_admin": False,
     }
     for path in (
         "/admin/users",

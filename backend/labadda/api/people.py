@@ -8,15 +8,15 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from .. import audit, people_export, people_profile
+from .. import audit, people_export, people_profile, policy
 from .. import people_directory as directory
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, require_console
-from ..errors import ApiError
+from ..errors import ApiError, NotFound
 from ..people import StaffStatus
 
 router = APIRouter(prefix="/admin/people", tags=["people"])
-console_people = require_console("people")
+console_people = require_console("people", unit_admin=True)
 
 
 def directory_filters(
@@ -48,15 +48,24 @@ def list_people(
     db: Session = Depends(get_db),
 ) -> dict:
     """Return bounded staff metadata and refuse stale authority, not an empty success."""
-    return read_metadata(request, db, lambda: directory.directory_page(db, filters, limit, cursor))
+    return read_metadata(
+        request, db, actor, lambda scope: directory.directory_page(db, filters, limit, cursor, scope)
+    )
 
 
-def read_metadata(request: Request, db: Session, load: Callable[[], dict]) -> dict:
-    """Bound metadata work and refresh authority after serialization."""
+def read_metadata(request: Request, db: Session, actor: Actor, load: Callable[[policy.Scope], dict]) -> dict:
+    """Bound metadata work, hold a unit administrator to their branch, and refresh authority after.
+
+    The branch is read from current grants for this request; if it changed while the data was
+    loaded, the data is discarded rather than delivered under a wider or different reach.
+    """
     try:
         db.execute(text("SET LOCAL statement_timeout = '2s'"))
-        payload = load()
-        refresh_authority(request, db)
+        scope = policy.restricted_scope(db, actor.user)
+        payload = load(scope)
+        fresh = refresh_authority(request, db)
+        if policy.restricted_scope(db, fresh.user) != scope:
+            raise NotFound()
         return payload
     except DBAPIError:
         db.rollback()
@@ -74,11 +83,15 @@ def export_people(
 ) -> Response:
     """Audit bounded report preparation, then recheck authority before delivery."""
     try:
-        result = read_metadata(request, db, lambda: people_export.prepare_csv(db, filters))
+        result = read_metadata(
+            request, db, actor, lambda scope: people_export.prepare_csv(db, filters, scope)
+        )
         actor = refresh_authority(request, db)
+        scope = policy.restricted_scope(db, actor.user)
         audit.record(db, actor=actor.user, action="people.export", scope_type="identity", rows=result["rows"])
         db.commit()
-        refresh_authority(request, db)
+        if policy.restricted_scope(db, refresh_authority(request, db).user) != scope:
+            raise NotFound()
         return Response(
             result["body"],
             media_type="text/csv; charset=utf-8",
@@ -99,7 +112,7 @@ def get_person(
     db: Session = Depends(get_db),
 ) -> dict:
     """Read one current staff profile; administrators gain no private content access."""
-    return read_metadata(request, db, lambda: people_profile.profile(db, person_id))
+    return read_metadata(request, db, actor, lambda scope: people_profile.profile(db, person_id, scope))
 
 
 @router.get("/{person_id}/access")
@@ -112,7 +125,9 @@ def get_access(
     db: Session = Depends(get_db),
 ) -> dict:
     """Read bounded direct/inherited grant metadata for this person only."""
-    return read_metadata(request, db, lambda: people_profile.access_page(db, person_id, limit, cursor))
+    return read_metadata(
+        request, db, actor, lambda scope: people_profile.access_page(db, person_id, limit, cursor, scope)
+    )
 
 
 @router.get("/{person_id}/timeline")
@@ -127,5 +142,8 @@ def get_timeline(
 ) -> dict:
     """Read staff-targeted audit history with date-only sign-in observations."""
     return read_metadata(
-        request, db, lambda: people_profile.timeline_page(db, person_id, settings, limit, before)
+        request,
+        db,
+        actor,
+        lambda scope: people_profile.timeline_page(db, person_id, settings, limit, before, scope=scope),
     )

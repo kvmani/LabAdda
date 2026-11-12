@@ -23,7 +23,7 @@ from ..models import ScheduledChange, User
 from ..realtime import Hub
 from ..security import utcnow
 from ..serialize import iso
-from . import service
+from . import service, unit_scope
 from .requests import ChangeRequest
 
 log = logging.getLogger("labadda.changes")
@@ -37,15 +37,27 @@ class NeedsReview(Exception):
     """The reviewed plan no longer holds; the message is shown to staff as written."""
 
 
-def listing(db: Session, person_id: uuid.UUID | None = None) -> dict:
-    """Pending and needs-review changes, soonest first; names and dates only."""
+def _visible_to(db: Session, viewer: User, row: ScheduledChange) -> bool:
+    """A unit administrator sees only changes that stay inside their branch, judged from now."""
+    reach = unit_scope.reach_for(db, viewer)
+    if reach is None:
+        return True
+    return reach.plainly_inside(db, TypeAdapter(ChangeRequest).validate_python(row.request))
+
+
+def listing(db: Session, person_id: uuid.UUID | None = None, viewer: User | None = None) -> dict:
+    """Pending and needs-review changes, soonest first; names and dates only.
+
+    Pass ``viewer`` when the reader is a unit administrator, to list only changes within their reach.
+    """
     query = select(ScheduledChange, User.display_name).join(User, User.id == ScheduledChange.created_by)
     query = query.where(ScheduledChange.state.in_(("pending", "needs_review")))
     if person_id is not None:
         query = query.where(ScheduledChange.subject_id == person_id)
-    rows = db.execute(
-        query.order_by(ScheduledChange.effective_on, ScheduledChange.created_at).limit(MAX_LISTED)
-    ).all()
+    query = query.order_by(ScheduledChange.effective_on, ScheduledChange.created_at)
+    rows = db.execute(query.limit(MAX_LISTED if viewer is None else 1000)).all()
+    if viewer is not None:
+        rows = [(row, name) for row, name in rows if _visible_to(db, viewer, row)][:MAX_LISTED]
     return {
         "items": [
             {
@@ -68,7 +80,7 @@ def listing(db: Session, person_id: uuid.UUID | None = None) -> dict:
 def cancel(db: Session, actor: User, change_id: uuid.UUID, reason: str) -> dict:
     """Withdraw a pending or needs-review change; an applied or cancelled one is final."""
     row = db.scalar(select(ScheduledChange).where(ScheduledChange.id == change_id).with_for_update())
-    if row is None:
+    if row is None or not _visible_to(db, actor, row):
         raise NotFound()
     if row.state not in ("pending", "needs_review"):
         raise Conflict("not_pending", "This change has already been applied or cancelled.")
