@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { invalidate } from "../generation";
+import { Button, TextArea } from "../ui";
+import "./task.css";
 import { api, errorMessage, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 
@@ -95,22 +97,22 @@ export function TaskComments({
   }
   if (!open)
     return (
-      <button type="button" onClick={() => load()}>
+      <Button size="sm" onClick={() => load()}>
         View comments
-      </button>
+      </Button>
     );
   return (
-    <section aria-label="Task comments">
+    <section className="task-panel" aria-label="Task comments">
       <h5>Comments</h5>
       <p>Refresh comments to see new discussion.</p>
       {workspaceId && updates.pending && (
         <p role="status">Shared discussion may have changed. Refresh comments; your draft is kept.</p>
       )}
-      <button type="button" disabled={busy} onClick={() => load()}>
+      <Button size="sm" disabled={busy} onClick={() => load()}>
         Refresh comments
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        size="sm"
         disabled={busy}
         onClick={() => {
           ++generation.current;
@@ -119,10 +121,10 @@ export function TaskComments({
         }}
       >
         Close comments
-      </button>
+      </Button>
       {loading && <p role="status">Loading comments…</p>}
       {error && (
-        <p className="error" role="alert">
+        <p className="task__error" role="alert">
           {error}
         </p>
       )}
@@ -137,38 +139,34 @@ export function TaskComments({
                   <strong>{comment.author.display_name}</strong> ·{" "}
                   {new Date(comment.created_at).toLocaleString()}
                 </p>
-                <p className="preserve">{comment.body}</p>
+                <p className="task__text">{comment.body}</p>
               </li>
             ))}
           </ol>
         ))}
       {page?.next_cursor && (
-        <button type="button" disabled={busy} onClick={() => load(page.next_cursor!)}>
+        <Button size="sm" disabled={busy} onClick={() => load(page.next_cursor!)}>
           Older comments
-        </button>
+        </Button>
       )}
       {writable && (
         <form onSubmit={submit}>
-          <label>
-            New task comment
-            <textarea
-              aria-label="New task comment"
-              required
-              maxLength={4000}
-              value={text}
-              disabled={busy || unconfirmed}
-              onChange={(e) => setText(e.target.value)}
-            />
-          </label>
+          <TextArea
+            label="New task comment"
+            maxLength={4000}
+            value={text}
+            disabled={busy || unconfirmed}
+            onChange={(e) => setText(e.target.value)}
+          />
           {unconfirmed && (
             <p role="status">
               Comment creation is unconfirmed. Retry the same request to recover it; the original text is kept
               unchanged.
             </p>
           )}
-          <button type="submit" disabled={busy}>
+          <Button size="sm" variant="primary" type="submit" disabled={busy || !text.trim()}>
             {busy ? "Posting…" : unconfirmed ? "Retry same comment" : "Post comment"}
-          </button>
+          </Button>
         </form>
       )}
       {!writable && <p>This task is read-only.</p>}

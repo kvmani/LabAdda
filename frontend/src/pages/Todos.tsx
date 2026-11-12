@@ -2,248 +2,13 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { invalidate } from "../generation";
 import { accessDenied, api, ApiError, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
-import { TaskAssignment, type Assignee } from "../components/TaskAssignment";
-import { TaskSource } from "../components/TaskSource";
-import { TaskComments } from "../components/TaskComments";
-import { TaskHistory } from "../components/TaskHistory";
+import { TaskEditor, type Page, type Task } from "../components/TaskEditor";
+import { TodoTaskCard } from "../components/TodoTaskCard";
 import type { Workspace } from "../types";
+import { Button, Card, EmptyState, ErrorState, PageHeader, Skeleton, TextInput } from "../ui";
+import "./todos.css";
 
 type List = { id: string; title: string; revision: number; workspace_id: string | null };
-type Workflow = "todo" | "in_progress" | "blocked" | "done";
-const workflowLabels: Record<Workflow, string> = {
-  todo: "To do",
-  in_progress: "In progress",
-  blocked: "Blocked",
-  done: "Done",
-};
-type Fields = {
-  status: Workflow;
-  title: string;
-  description: string;
-  due_date: string | null;
-  priority: string;
-  checklist: { title: string; done: boolean }[];
-  done: boolean;
-};
-type Task = Fields & { has_source: boolean; assignee: Assignee | null; id: string; revision: number };
-type Page<T> = { items: T[]; next_cursor: string | null };
-const blank = (): Fields => ({
-  status: "todo",
-  title: "",
-  description: "",
-  due_date: null,
-  priority: "normal",
-  checklist: [],
-  done: false,
-});
-
-function TaskEditor({
-  listId,
-  initial,
-  saved,
-  cancel,
-}: {
-  listId: string;
-  initial: Task | null;
-  saved: () => void;
-  cancel: () => void;
-}) {
-  const [fields, setFields] = useState<Fields>(initial ?? blank());
-  const [revision, setRevision] = useState(initial?.revision ?? 1);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [unconfirmed, setUnconfirmed] = useState(false);
-  const [conflict, setConflict] = useState(false);
-  const attempt = useRef<({ client_id: string } & Fields) | null>(null);
-  const path = `/todos/lists/${listId}/tasks`;
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    setConflict(false);
-    try {
-      if (initial) {
-        const { title, description, due_date, priority, checklist, done, status } = fields;
-        await api(`${path}/${initial.id}`, {
-          method: "PUT",
-          body: { title, description, due_date, priority, checklist, done, status, revision },
-        });
-      } else {
-        attempt.current ??= { ...fields, client_id: crypto.randomUUID() };
-        await api(path, { body: attempt.current });
-      }
-      saved();
-    } catch (e: unknown) {
-      setError(errorMessage(e));
-      setConflict(errorStatus(e) === 409);
-      if (!initial) {
-        setUnconfirmed(outcomeUnknown(e));
-        if (!outcomeUnknown(e)) attempt.current = null;
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function latest() {
-    setBusy(true);
-    setError("");
-    try {
-      const result = await api<Task>(`${path}/${initial!.id}`);
-      setFields(result);
-      setRevision(result.revision);
-      setConflict(false);
-    } catch (e: unknown) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <form onSubmit={submit} className="card todo-editor">
-      <h3>{initial ? "Edit task" : "New task"}</h3>
-      <fieldset disabled={busy || unconfirmed}>
-        <label>
-          Task title
-          <input
-            required
-            maxLength={200}
-            value={fields.title}
-            onChange={(e) => setFields({ ...fields, title: e.target.value })}
-          />
-        </label>
-        <label>
-          Description
-          <textarea
-            aria-label="Description"
-            maxLength={10000}
-            value={fields.description}
-            onChange={(e) => setFields({ ...fields, description: e.target.value })}
-          />
-        </label>
-        <label>
-          Due date
-          <input
-            type="date"
-            value={fields.due_date ?? ""}
-            onChange={(e) => setFields({ ...fields, due_date: e.target.value || null })}
-          />
-        </label>
-        <label>
-          Priority
-          <select
-            aria-label="Priority"
-            value={fields.priority}
-            onChange={(e) => setFields({ ...fields, priority: e.target.value })}
-          >
-            {["low", "normal", "high"].map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Workflow state
-          <select
-            aria-label="Workflow state"
-            value={fields.status}
-            onChange={(e) => {
-              const status = e.target.value as Workflow;
-              setFields({ ...fields, status, done: status === "done" });
-            }}
-          >
-            {Object.entries(workflowLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={fields.done}
-            onChange={(e) =>
-              setFields({ ...fields, done: e.target.checked, status: e.target.checked ? "done" : "todo" })
-            }
-          />
-          Task completed
-        </label>
-        <h4>Checklist</h4>
-        {fields.checklist.map((item, index) => (
-          <div className="todo-check" key={index}>
-            <input
-              aria-label={`Checklist item ${index + 1} done`}
-              type="checkbox"
-              checked={item.done}
-              onChange={(e) =>
-                setFields({
-                  ...fields,
-                  checklist: fields.checklist.map((v, i) =>
-                    i === index ? { ...v, done: e.target.checked } : v,
-                  ),
-                })
-              }
-            />
-            <input
-              aria-label={`Checklist item ${index + 1} title`}
-              required
-              maxLength={200}
-              value={item.title}
-              onChange={(e) =>
-                setFields({
-                  ...fields,
-                  checklist: fields.checklist.map((v, i) =>
-                    i === index ? { ...v, title: e.target.value } : v,
-                  ),
-                })
-              }
-            />
-            <button
-              type="button"
-              onClick={() =>
-                setFields({ ...fields, checklist: fields.checklist.filter((_, i) => i !== index) })
-              }
-            >
-              Remove item {index + 1}
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          disabled={fields.checklist.length >= 50}
-          onClick={() =>
-            setFields({ ...fields, checklist: [...fields.checklist, { title: "", done: false }] })
-          }
-        >
-          Add checklist item
-        </button>
-      </fieldset>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      {unconfirmed && (
-        <p role="status">
-          Creation is unconfirmed. Retry the same request to recover its result; these fields are kept
-          unchanged.
-        </p>
-      )}
-      {conflict && <p>Your draft is kept. Copy any changes you need before loading the latest task.</p>}
-      {conflict && initial && (
-        <button type="button" disabled={busy} onClick={latest}>
-          Load latest task (replaces draft)
-        </button>
-      )}
-      <button type="submit" disabled={busy}>
-        {busy ? "Saving…" : unconfirmed ? "Retry same task creation" : "Save task"}
-      </button>
-      <button type="button" disabled={busy} onClick={cancel}>
-        Close editor
-      </button>
-    </form>
-  );
-}
 
 export function Todos({ ws }: { ws?: Workspace }) {
   const [lists, setLists] = useState<List[]>([]),
@@ -450,175 +215,174 @@ export function Todos({ ws }: { ws?: Workspace }) {
       setBusy(false);
     }
   }
+  const audience = ws
+    ? `Shared with readers of ${ws.name}.`
+    : "Private to you. Administrators and colleagues cannot open these lists.";
   return (
     <section className="todos">
-      {ws ? <h2>To-do lists</h2> : <h1>My To-do Lists</h1>}
-      <p className="notice">
-        {ws
-          ? `Shared with readers of ${ws.name}.`
-          : "Private to you. Administrators and colleagues cannot open these lists."}
-      </p>
+      {ws ? (
+        <h2 className="todos__heading">To-do lists</h2>
+      ) : (
+        <PageHeader title="My To-do Lists" scope={audience} />
+      )}
+      {ws && <p className="todos__muted">{audience}</p>}
       {ws && updates.pending && (
-        <div className="notice" role="status">
-          Shared tasks or discussion may have changed. Refresh to check the latest saved work. Your drafts are
-          kept.
-          <button type="button" disabled={loading || taskLoading || busy} onClick={refreshShared}>
+        <div className="todos__notice" role="status">
+          <span>
+            Shared tasks or discussion may have changed. Refresh to check the latest saved work. Your drafts
+            are kept.
+          </span>
+          <Button disabled={loading || taskLoading || busy} onClick={refreshShared}>
             Check shared updates
-          </button>
+          </Button>
         </div>
       )}
-      {!writable && <p>This workspace is read-only. You can read its tasks.</p>}
-      <button type="button" onClick={() => loadLists()}>
-        Refresh lists
-      </button>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      {!writable && <p className="todos__muted">This workspace is read-only. You can read its tasks.</p>}
+      {error && <ErrorState message={error} title="Something went wrong" />}
       {message && <p role="status">{message}</p>}
-      {writable && (
-        <form onSubmit={createList}>
-          <label>
-            New list title
-            <input
-              required
-              maxLength={200}
-              disabled={busy || unconfirmed}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          {unconfirmed && <p>List creation is unconfirmed. Retry the same request to recover it.</p>}
-          <button type="submit" disabled={busy}>
-            {unconfirmed ? "Retry same list creation" : "Create list"}
-          </button>
-        </form>
-      )}
-      {loading ? (
-        <p role="status">Loading lists…</p>
-      ) : lists.length === 0 ? (
-        <p>No to-do lists in this scope yet.</p>
-      ) : (
-        <nav aria-label="To-do lists">
-          <ul>
-            {lists.map((row) => (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  aria-pressed={selected?.id === row.id}
-                  disabled={busy}
-                  onClick={() => choose(row)}
-                >
-                  {row.title}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
-      {listCursor && (
-        <button type="button" onClick={() => loadLists(listCursor)}>
-          More lists
-        </button>
-      )}
-      {selected && (
-        <section aria-label="Selected to-do list">
-          <h3>{selected.title}</h3>
+      <Card
+        title="Lists"
+        level={3}
+        actions={
+          <Button icon="refresh" onClick={() => loadLists()}>
+            Refresh lists
+          </Button>
+        }
+      >
+        <div className="todos__stack">
           {writable && (
-            <form onSubmit={renameList}>
-              <label>
-                List name
-                <input required maxLength={200} value={rename} onChange={(e) => setRename(e.target.value)} />
-              </label>
-              <button type="submit" disabled={busy}>
-                Rename list
-              </button>
+            <form className="todos__inline" onSubmit={createList}>
+              <TextInput
+                label="New list title"
+                maxLength={200}
+                disabled={busy || unconfirmed}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <Button variant="primary" type="submit" disabled={busy || !title.trim()}>
+                {unconfirmed ? "Retry same list creation" : "Create list"}
+              </Button>
             </form>
           )}
-          {renameConflict && (
-            <p>Your list-name draft is kept. Loading the latest list will replace this draft.</p>
+          {unconfirmed && (
+            <p className="todos__muted">
+              List creation is unconfirmed. Retry the same request to recover it.
+            </p>
           )}
-          {renameConflict && writable && (
-            <button type="button" disabled={busy} onClick={latestList}>
-              Load latest list (replaces draft)
-            </button>
+          {loading ? (
+            <Skeleton lines={3} label="Loading lists…" />
+          ) : lists.length === 0 ? (
+            <EmptyState title="No to-do lists in this scope yet.">
+              {writable ? "Create a list above to start adding tasks." : "Lists will appear here."}
+            </EmptyState>
+          ) : (
+            <nav aria-label="To-do lists">
+              <ul className="todos__lists">
+                {lists.map((row) => (
+                  <li key={row.id}>
+                    <Button
+                      variant={selected?.id === row.id ? "primary" : "secondary"}
+                      aria-pressed={selected?.id === row.id}
+                      disabled={busy}
+                      onClick={() => choose(row)}
+                    >
+                      {row.title}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           )}
-          <button type="button" onClick={() => loadTasks(selected.id)}>
-            Refresh tasks
-          </button>
-          {writable && (
-            <button
-              type="button"
-              onClick={() => {
-                setCreating(true);
-                setEditing(null);
-                setEditorKey(++editorGeneration.current);
-              }}
-            >
-              New task
-            </button>
+          {listCursor && (
+            <div>
+              <Button onClick={() => loadLists(listCursor)}>More lists</Button>
+            </div>
           )}
-          {taskLoading && <p role="status">Loading tasks…</p>}
-          {!taskLoading && tasks.length === 0 && <p>No tasks on this page.</p>}
-          <ul className="todo-task-list">
-            {tasks.map((task) => (
-              <li className="card" key={task.id}>
-                <h4>
-                  {task.done ? "✓ " : ""}
-                  {task.title}
-                </h4>
-                <p>
-                  {workflowLabels[task.status] ?? (task.done ? "Done" : "To do")} · {task.priority} priority
-                  {task.due_date ? ` · Due ${task.due_date}` : ""}
-                </p>
-                <p className="preserve">{task.description}</p>
-                {task.checklist.length > 0 && (
-                  <ul>
-                    {task.checklist.map((item, i) => (
-                      <li key={i}>
-                        {item.done ? "✓" : "○"} {item.title}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <TaskAssignment
-                  listId={selected.id}
-                  taskId={task.id}
-                  revision={task.revision}
-                  assignee={task.assignee}
-                  writable={writable}
-                  saved={() => {
-                    if (selectedRef.current === selected.id) void loadTasks(selected.id);
-                  }}
-                />
-                <TaskComments
-                  listId={selected.id}
-                  taskId={task.id}
-                  writable={writable}
-                  workspaceId={ws?.id}
-                />
-                {task.has_source && <TaskSource listId={selected.id} taskId={task.id} />}
-                <TaskHistory listId={selected.id} taskId={task.id} revision={task.revision} />
+        </div>
+      </Card>
+      {selected && (
+        <section className="todos__selected" aria-label="Selected to-do list">
+          <Card
+            title={selected.title}
+            level={3}
+            actions={
+              <>
+                <Button icon="refresh" onClick={() => loadTasks(selected.id)}>
+                  Refresh tasks
+                </Button>
                 {writable && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="primary"
+                    icon="plus"
                     onClick={() => {
-                      setEditing(task);
-                      setCreating(false);
+                      setCreating(true);
+                      setEditing(null);
                       setEditorKey(++editorGeneration.current);
                     }}
                   >
-                    Edit task: {task.title}
-                  </button>
+                    New task
+                  </Button>
                 )}
-              </li>
+              </>
+            }
+          >
+            <div className="todos__stack">
+              {writable && (
+                <form className="todos__inline" onSubmit={renameList}>
+                  <TextInput
+                    label="List name"
+                    maxLength={200}
+                    value={rename}
+                    onChange={(e) => setRename(e.target.value)}
+                  />
+                  <Button type="submit" disabled={busy || !rename.trim()}>
+                    Rename list
+                  </Button>
+                </form>
+              )}
+              {renameConflict && (
+                <p className="todos__muted">
+                  Your list-name draft is kept. Loading the latest list will replace this draft.
+                </p>
+              )}
+              {renameConflict && writable && (
+                <div>
+                  <Button disabled={busy} onClick={latestList}>
+                    Load latest list (replaces draft)
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
+          {taskLoading && <Skeleton lines={3} label="Loading tasks…" />}
+          {!taskLoading && tasks.length === 0 && (
+            <EmptyState title="No tasks on this page.">
+              {writable ? "Choose New task to add the first one." : undefined}
+            </EmptyState>
+          )}
+          <ul className="todo-task-list">
+            {tasks.map((task) => (
+              <TodoTaskCard
+                key={task.id}
+                task={task}
+                listId={selected.id}
+                writable={writable}
+                workspaceId={ws?.id}
+                reload={() => {
+                  if (selectedRef.current === selected.id) void loadTasks(selected.id);
+                }}
+                edit={() => {
+                  setEditing(task);
+                  setCreating(false);
+                  setEditorKey(++editorGeneration.current);
+                }}
+              />
             ))}
           </ul>
           {taskCursor && (
-            <button type="button" onClick={() => loadTasks(selected.id, taskCursor)}>
-              More tasks
-            </button>
+            <div>
+              <Button onClick={() => loadTasks(selected.id, taskCursor)}>More tasks</Button>
+            </div>
           )}
           {writable && (creating || editing) && (
             <TaskEditor

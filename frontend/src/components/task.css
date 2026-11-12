@@ -1,0 +1,72 @@
+/* Shared pieces of the task screens: sub-panels inside a task card. */
+.task__error {
+  margin: 0;
+  color: var(--danger);
+}
+.task__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.task-panel {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.task-panel > p,
+.task-panel ol,
+.task-panel ul,
+.task-panel form > p {
+  margin: 0;
+}
+.task-panel ol,
+.task-panel ul {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+}
+.task-panel form {
+  display: grid;
+  gap: var(--space-3);
+}
+.task-panel h5 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.task-panel > .ui-button,
+.task-panel form > .ui-button {
+  justify-self: start;
+}
+
+.task-card {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.task-card p,
+.task-card ul {
+  margin: 0;
+}
+.task-card__title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.task-card__meta {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.task-card__checklist {
+  display: grid;
+  gap: var(--space-1);
+  padding: 0;
+  list-style: none;
+}

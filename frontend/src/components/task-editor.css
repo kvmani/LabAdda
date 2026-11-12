@@ -1,0 +1,35 @@
+/* Task editor card. */
+.task-editor,
+.task-editor__fields {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.task-editor__fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.task-editor p {
+  margin: 0;
+}
+.task-editor__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+.task-editor__heading {
+  margin: 0;
+  font-size: var(--text-md);
+}
+.task-editor__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+@media (max-width: 600px) {
+  .task-editor__item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { invalidate } from "../generation";
+import { Button, Select, TextInput } from "../ui";
+import "./task.css";
 import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 
 export type Assignee = { id: string; display_name: string; is_active: boolean };
@@ -111,15 +113,15 @@ export function TaskAssignment({
     }
   }
   return (
-    <section aria-label="Task assignment">
+    <section className="task-panel" aria-label="Task assignment">
       <p>
         Assignee:{" "}
         {assignee ? assignee.display_name + (assignee.is_active ? "" : " (inactive)") : "Unassigned"}
       </p>
       {writable && !open && (
-        <button type="button" onClick={() => load()}>
+        <Button size="sm" onClick={() => load()}>
           Change assignee
-        </button>
+        </Button>
       )}
       {writable && open && (
         <>
@@ -130,57 +132,55 @@ export function TaskAssignment({
               void load();
             }}
           >
-            <label>
-              Find eligible colleague
-              <input
-                maxLength={100}
-                disabled={busy}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-            <button disabled={busy || loading} type="submit">
+            <TextInput
+              label="Find eligible colleague"
+              maxLength={100}
+              disabled={busy}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <Button size="sm" disabled={busy || loading} type="submit">
               Search colleagues
-            </button>
+            </Button>
           </form>
           {loading && <p role="status">Loading eligible colleagues…</p>}
           {error && (
-            <p className="error" role="alert">
+            <p className="task__error" role="alert">
               {error}
             </p>
           )}
           {page && (
             <form onSubmit={assign}>
-              <label>
-                Assignee
-                <select
-                  aria-label="Assignee"
-                  value={selected}
-                  disabled={busy || reloadNeeded}
-                  onChange={(e) => setSelected(e.target.value)}
-                >
-                  <option value="">Unassigned</option>
-                  {assignee && !page.items.some((r) => r.id === assignee.id) && (
-                    <option value={assignee.id}>
-                      {assignee.display_name} (current; eligibility must be checked)
-                    </option>
-                  )}
-                  {page.items.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.display_name} ({person.username})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button type="submit" disabled={busy || reloadNeeded}>
+              <Select
+                label="Assignee"
+                value={selected}
+                disabled={busy || reloadNeeded}
+                onChange={(e) => setSelected(e.target.value)}
+                options={[
+                  { value: "", label: "Unassigned" },
+                  ...(assignee && !page.items.some((r) => r.id === assignee.id)
+                    ? [
+                        {
+                          value: assignee.id,
+                          label: `${assignee.display_name} (current; eligibility must be checked)`,
+                        },
+                      ]
+                    : []),
+                  ...page.items.map((person) => ({
+                    value: person.id,
+                    label: `${person.display_name} (${person.username})`,
+                  })),
+                ]}
+              />
+              <Button size="sm" variant="primary" type="submit" disabled={busy || reloadNeeded}>
                 Save assignment
-              </button>
+              </Button>
             </form>
           )}
           {page?.next_cursor && (
-            <button type="button" disabled={busy} onClick={() => load(page.next_cursor!)}>
+            <Button size="sm" disabled={busy} onClick={() => load(page.next_cursor!)}>
               More colleagues
-            </button>
+            </Button>
           )}
           {reloadNeeded && (
             <p>
@@ -189,12 +189,12 @@ export function TaskAssignment({
             </p>
           )}
           {reloadNeeded && (
-            <button type="button" disabled={busy} onClick={reload}>
+            <Button size="sm" disabled={busy} onClick={reload}>
               Reload task assignment
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            size="sm"
             disabled={busy}
             onClick={() => {
               ++generation.current;
@@ -203,7 +203,7 @@ export function TaskAssignment({
             }}
           >
             Close assignment
-          </button>
+          </Button>
         </>
       )}
     </section>

@@ -4,6 +4,9 @@ import { Link } from "react-router-dom";
 import { api, errorMessage } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 import { useWorkspaces } from "../workspaces";
+import { Button, Card, EmptyState, ErrorState, PageHeader, Select, Skeleton } from "../ui";
+import "../components/task.css";
+import "./todos.css";
 
 type Task = {
   id: string;
@@ -69,74 +72,73 @@ export function MyTasks() {
   }, [state, visibility]);
   return (
     <section className="todos">
-      <h1>My Tasks</h1>
-      <p>Your personal tasks and shared tasks assigned to you in spaces you can currently access.</p>
+      <PageHeader
+        title="My Tasks"
+        scope="Your personal tasks and shared tasks assigned to you in spaces you can currently access."
+      />
       {updates.pending && (
         <p role="status">Shared assignments may have changed. Refresh My Tasks to check current work.</p>
       )}
-      <label>
-        My Tasks state
-        <select
-          aria-label="My Tasks state"
+      <div className="todos__inline">
+        <Select
+          label="My Tasks state"
           value={state}
           onChange={(e) => {
             ++generation.current;
             setPage(null);
             setState(e.target.value);
           }}
-        >
-          <option value="">All states</option>
-          {Object.entries(states).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="button" onClick={() => load()} disabled={loading}>
-        Refresh My Tasks
-      </button>
-      {loading && <p role="status">Loading My Tasks…</p>}
+          options={[
+            { value: "", label: "All states" },
+            ...Object.entries(states).map(([value, label]) => ({ value, label })),
+          ]}
+        />
+        <Button icon="refresh" onClick={() => load()} disabled={loading}>
+          Refresh My Tasks
+        </Button>
+      </div>
+      {loading && <Skeleton lines={3} label="Loading My Tasks…" />}
       {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <ErrorState message={error} title="My Tasks could not be loaded" onRetry={() => void load()} />
       )}
       {page && (
         <>
           {page.restart_required && (
             <p role="status">Access changed while loading. Refresh My Tasks to start again.</p>
           )}
-          {page.items.length === 0 && <p>No personal or assigned tasks match this filter.</p>}
+          {page.items.length === 0 && (
+            <EmptyState title="No personal or assigned tasks match this filter.">
+              Tasks you create in My To-do Lists, or that colleagues assign to you, appear here.
+            </EmptyState>
+          )}
           <ul className="todo-task-list">
             {page.items.map((task) => (
-              <li key={task.id} className="card">
-                <h2>{task.title}</h2>
-                <p>
-                  {states[task.status]} · {task.priority} priority
-                  {task.due_date ? ` · Due ${task.due_date}` : ""}
-                </p>
-                <p>
-                  {task.description.slice(0, 200)}
-                  {task.description.length > 200 ? "…" : ""}
-                </p>
-                <p>
-                  {task.workspace_id
-                    ? (workspaces.find((w) => w.id === task.workspace_id)?.name ?? "Shared workspace")
-                    : "Private list"}{" "}
-                  · {task.list_title}
-                </p>
-                <Link to={task.workspace_id ? `/w/${task.workspace_id}/todos` : "/todos"}>
-                  Open list: {task.list_title}
-                </Link>
+              <li key={task.id}>
+                <Card title={task.title}>
+                  <div className="task-card">
+                    <p className="task-card__meta">
+                      {states[task.status]} · {task.priority} priority
+                      {task.due_date ? ` · Due ${task.due_date}` : ""}
+                    </p>
+                    <p>
+                      {task.description.slice(0, 200)}
+                      {task.description.length > 200 ? "…" : ""}
+                    </p>
+                    <p className="task-card__meta">
+                      {task.workspace_id
+                        ? (workspaces.find((w) => w.id === task.workspace_id)?.name ?? "Shared workspace")
+                        : "Private list"}{" "}
+                      · {task.list_title}
+                    </p>
+                    <Link to={task.workspace_id ? `/w/${task.workspace_id}/todos` : "/todos"}>
+                      Open list: {task.list_title}
+                    </Link>
+                  </div>
+                </Card>
               </li>
             ))}
           </ul>
-          {page.next_cursor && (
-            <button type="button" onClick={() => load(page.next_cursor!)}>
-              More My Tasks
-            </button>
-          )}
+          {page.next_cursor && <Button onClick={() => load(page.next_cursor!)}>More My Tasks</Button>}
         </>
       )}
     </section>

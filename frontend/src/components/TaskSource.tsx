@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidate } from "../generation";
 import { Link } from "react-router-dom";
+import { Button } from "../ui";
+import "./task.css";
 import { api, errorMessage, errorStatus } from "../api";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
@@ -62,10 +64,10 @@ export function TaskSource({ listId, taskId }: { listId: string; taskId: string 
     }
   }
   return (
-    <section aria-label="Task source reference">
-      <button type="button" disabled={loading} onClick={load}>
+    <section className="task-panel" aria-label="Task source reference">
+      <Button size="sm" disabled={loading} onClick={load}>
         {loading ? "Loading source…" : "View source reference"}
-      </button>
+      </Button>
       {error && <p role="alert">{error}</p>}
       {source && (
         <>
@@ -84,22 +86,22 @@ export function TaskSource({ listId, taskId }: { listId: string; taskId: string 
               </p>
             </>
           ) : (
-            <p className="preserve">{source.body}</p>
+            <p className="task__text">{source.body}</p>
           )}
           <Link
             to={`/w/${source.workspace_id}/${source.kind === "board" ? "board" : source.kind === "post" ? "noticeboard" : "chat"}`}
           >
             Open source {source.kind === "board" ? "board" : "workspace"}
           </Link>
-          <button
-            type="button"
+          <Button
+            size="sm"
             onClick={() => {
               ++generation.current;
               setSource(null);
             }}
           >
             Close source reference
-          </button>
+          </Button>
         </>
       )}
     </section>

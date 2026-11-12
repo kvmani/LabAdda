@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidate } from "../generation";
+import { Button } from "../ui";
+import "./task.css";
 import { api, errorMessage } from "../api";
 
 type Change = {
@@ -81,14 +83,14 @@ export function TaskHistory({
   }
   if (!open)
     return (
-      <button type="button" onClick={() => load()}>
+      <Button size="sm" onClick={() => load()}>
         View task history
-      </button>
+      </Button>
     );
   return (
-    <section aria-label="Task change history">
-      <button
-        type="button"
+    <section className="task-panel" aria-label="Task change history">
+      <Button
+        size="sm"
         onClick={() => {
           ++generation.current;
           setOpen(false);
@@ -96,9 +98,9 @@ export function TaskHistory({
         }}
       >
         Close task history
-      </button>
+      </Button>
       {error && (
-        <p className="error" role="alert">
+        <p className="task__error" role="alert">
           {error}
         </p>
       )}
@@ -132,9 +134,9 @@ export function TaskHistory({
             ))}
           </ol>
           {page.next_cursor && (
-            <button type="button" onClick={() => load(page.next_cursor!)}>
+            <Button size="sm" onClick={() => load(page.next_cursor!)}>
               Older task changes
-            </button>
+            </Button>
           )}
         </>
       )}

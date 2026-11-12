@@ -1,0 +1,56 @@
+/* To-do lists and My Tasks pages. */
+.todos,
+.todos__stack,
+.todos__selected {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.todos__stack {
+  gap: var(--space-3);
+}
+.todos__heading {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.todos p {
+  margin: 0;
+}
+.todos__muted {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.todos__notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+}
+.todos__inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.todos__inline > .ui-field {
+  flex: 1 1 240px;
+}
+.todos__lists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.todo-task-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
