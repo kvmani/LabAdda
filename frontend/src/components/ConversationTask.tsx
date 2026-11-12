@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { invalidate } from "../generation";
 import { Link } from "react-router-dom";
 import { accessDenied, api, errorCode, errorMessage, outcomeUnknown } from "../api";
@@ -24,35 +24,62 @@ type Props = { source: Workspace; text: string; close: () => void } & (
   | { kind: "board"; sourceId?: never; boardContext: Context }
 );
 
-/** The user reviews a copy. Source references never broaden source permissions. */
-export function ConversationTask({ source, kind, sourceId, text, close, boardContext }: Props) {
+const DENIAL_EVENTS = ["revoked", "subscribe_failed", "session_ended"];
+
+function headingFor(kind: Props["kind"]): string {
+  if (kind === "board") return "Create task from research plan board";
+  return kind === "post" ? "Create task from post" : "Create task from chat message";
+}
+
+function submitLabelFor(kind: Props["kind"], busy: boolean, unknown: boolean): string {
+  if (busy) return "Saving…";
+  if (unknown) return "Retry same task copy";
+  return kind === "board" ? "Save board task" : "Save conversation task";
+}
+
+/** Where the task will come from, as the server records it. */
+function provenanceOf(props: Props, context: Context | undefined): SourceIntent {
+  if (props.kind === "board") {
+    return {
+      source_workspace_id: props.source.id,
+      source_epoch: context!.epoch,
+      source_revision: context!.revision,
+    };
+  }
+  return { source_kind: props.kind, source_id: props.sourceId };
+}
+
+/**
+ * Draft, destination and save state for turning a conversation or board into a task copy.
+ * Every request is numbered; a response from an earlier number, or after access was lost, is dropped.
+ */
+function useConversationTask(props: Props) {
+  const { source, kind, text, boardContext } = props;
   const { workspaces } = useWorkspaces();
-  const [context, setContext] = useState(boardContext),
-    [needsContext, setNeedsContext] = useState(false);
-  const formLabel = kind === "board" ? "Create task from board" : "Create task from conversation";
-  const sourceLabel = kind === "board" ? "board" : "conversation";
+  const [context, setContext] = useState(boardContext);
+  const [needsContext, setNeedsContext] = useState(false);
   const [destination, setDestination] = useState(
     source.can_write && !source.archived ? source.id : "personal",
   );
-  const [lists, setLists] = useState<Page | null>(null),
-    [listId, setListId] = useState("");
-  const [title, setTitle] = useState((text.trim().split("\n")[0] ?? "").slice(0, 200)),
-    [description, setDescription] = useState(text.slice(0, 10000));
-  const [confirmed, setConfirmed] = useState(false),
-    [busy, setBusy] = useState(false),
-    [loading, setLoading] = useState(false);
-  const [unknown, setUnknown] = useState(false),
-    [blocked, setBlocked] = useState(false),
-    [error, setError] = useState(""),
-    [saved, setSaved] = useState(false);
-  const generation = useRef(0),
-    attempt = useRef<Intent | null>(null);
-  const target = workspaces.find((w) => w.id === destination),
-    broader = destination !== "personal" && destination !== source.id;
+  const [lists, setLists] = useState<Page | null>(null);
+  const [listId, setListId] = useState("");
+  const [title, setTitle] = useState((text.trim().split("\n")[0] ?? "").slice(0, 200));
+  const [description, setDescription] = useState(text.slice(0, 10000));
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [unknown, setUnknown] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const generation = useRef(0);
+  const attempt = useRef<Intent | null>(null);
+  const target = workspaces.find((workspace) => workspace.id === destination);
+  const broader = destination !== "personal" && destination !== source.id;
   const writable = destination === "personal" || (!!target?.can_write && !target.archived);
-  const location = destination === "personal" ? "/todos" : `/w/${destination}/todos`;
+
   function deny() {
-    ++generation.current;
+    generation.current += 1;
     setBlocked(true);
     setTitle("");
     setDescription("");
@@ -63,21 +90,25 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
     setLoading(false);
     setUnknown(false);
   }
+
   useEffect(() => {
     let active = true;
-    const unsubs = [...new Set([source.id, ...(destination === "personal" ? [] : [destination])])].map((id) =>
+    const watchedIds = [...new Set([source.id, ...(destination === "personal" ? [] : [destination])])];
+    const unsubscribers = watchedIds.map((id) =>
       realtime.subscribe(id, (event) => {
-        if (active && ["revoked", "subscribe_failed", "session_ended"].includes(event.type)) deny();
+        if (active && DENIAL_EVENTS.includes(event.type)) deny();
       }),
     );
     return () => {
       active = false;
       invalidate(generation);
-      unsubs.forEach((stop) => stop());
+      unsubscribers.forEach((stop) => stop());
     };
   }, [source.id, destination]);
+
   async function load(after?: string) {
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setLoading(true);
     setError("");
     try {
@@ -94,6 +125,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
       if (token === generation.current) setLoading(false);
     }
   }
+
   useEffect(() => {
     setLists(null);
     setListId("");
@@ -101,21 +133,33 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload lists only when the chosen destination changes
   }, [destination]);
+
+  function chooseDestination(nextDestination: string) {
+    generation.current += 1;
+    setDestination(nextDestination);
+    setLists(null);
+    setListId("");
+    setConfirmed(false);
+  }
+
+  function chooseList(nextListId: string) {
+    setListId(nextListId);
+    setConfirmed(false);
+  }
+
+  function reloadLists(after?: string) {
+    chooseList("");
+    void load(after);
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy || blocked || saved || needsContext || !writable || !listId || (broader && !confirmed)) return;
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setBusy(true);
     setError("");
     try {
-      const provenance: SourceIntent =
-        kind === "board"
-          ? {
-              source_workspace_id: source.id,
-              source_epoch: context!.epoch,
-              source_revision: context!.revision,
-            }
-          : { source_kind: kind, source_id: sourceId };
       attempt.current ??= {
         listId,
         endpoint: kind === "board" ? "from-board" : "from-conversation",
@@ -124,7 +168,7 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
           title,
           description,
           confirm_audience: confirmed,
-          ...provenance,
+          ...provenanceOf(props, context),
         },
       };
       await api(`/todos/lists/${attempt.current.listId}/${attempt.current.endpoint}`, {
@@ -147,9 +191,11 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
       if (token === generation.current) setBusy(false);
     }
   }
-  async function latestContext() {
+
+  async function loadLatestContext() {
     if (busy || unknown || loading) return;
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setBusy(true);
     setError("");
     try {
@@ -168,15 +214,200 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
       if (token === generation.current) setBusy(false);
     }
   }
-  const heading = `Create task from ${
-    kind === "board" ? "research plan board" : kind === "post" ? "post" : "chat message"
-  }`;
+
+  return {
+    context,
+    needsContext,
+    destination,
+    lists,
+    listId,
+    title,
+    setTitle,
+    description,
+    setDescription,
+    confirmed,
+    setConfirmed,
+    busy,
+    loading,
+    unknown,
+    blocked,
+    error,
+    saved,
+    target,
+    broader,
+    writable,
+    chooseDestination,
+    chooseList,
+    reloadLists,
+    submit,
+    loadLatestContext,
+  };
+}
+
+type Draft = ReturnType<typeof useConversationTask>;
+
+function BoardContextNotice({ draft, context }: { draft: Draft; context: Context }) {
+  return (
+    <>
+      <p>
+        Reviewed board context: epoch {context.epoch}, revision {context.revision}. The reference opens the
+        live board; it is not a saved image.
+      </p>
+      {draft.needsContext && (
+        <p role="status">
+          Your task draft is kept. Review the board, then load its latest context before saving.
+        </p>
+      )}
+      <div>
+        <Button disabled={draft.loading} onClick={draft.loadLatestContext}>
+          Load latest board context (keeps draft)
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function DestinationFields({ draft }: { draft: Draft }) {
+  const { workspaces } = useWorkspaces();
+  const { lists, loading, target } = draft;
+  return (
+    <>
+      <Select
+        label="Task destination"
+        value={draft.destination}
+        onChange={(e) => draft.chooseDestination(e.target.value)}
+        options={[
+          { value: "personal", label: "My personal lists (private)" },
+          ...workspaces
+            .filter((workspace) => workspace.can_write && !workspace.archived)
+            .map((workspace) => ({ value: workspace.id, label: workspace.name })),
+        ]}
+      />
+      <p className="conversation-task__audience">
+        {draft.destination === "personal"
+          ? "Audience: only you."
+          : `Audience: everyone who can read ${target?.name ?? "the selected workspace"}.`}
+      </p>
+      {loading && <p role="status">Loading destination lists…</p>}
+      {lists && (
+        <Select
+          label="Destination list"
+          placeholder="Choose a list"
+          value={draft.listId}
+          onChange={(e) => draft.chooseList(e.target.value)}
+          options={lists.items.map((row) => ({ value: row.id, label: row.title }))}
+        />
+      )}
+      {lists?.items.length === 0 && (
+        <p>Create a to-do list in the destination first, then reopen this form.</p>
+      )}
+      <div className="conversation-task__row">
+        <Button disabled={loading} onClick={() => draft.reloadLists()}>
+          Refresh destination lists
+        </Button>
+        {lists?.next_cursor && (
+          <Button disabled={loading} onClick={() => draft.reloadLists(lists.next_cursor!)}>
+            More destination lists
+          </Button>
+        )}
+      </div>
+    </>
+  );
+}
+
+function TextFields({ draft }: { draft: Draft }) {
+  return (
+    <>
+      <TextInput
+        label="Task title"
+        maxLength={200}
+        value={draft.title}
+        onChange={(e) => draft.setTitle(e.target.value)}
+      />
+      <TextArea
+        label="Task description"
+        maxLength={10000}
+        value={draft.description}
+        onChange={(e) => draft.setDescription(e.target.value)}
+      />
+      {draft.broader && (
+        <Checkbox
+          label={`I confirm this reviewed task text will be shared with a different audience in ${draft.target?.name}.`}
+          checked={draft.confirmed}
+          onChange={(e) => draft.setConfirmed(e.target.checked)}
+        />
+      )}
+    </>
+  );
+}
+
+function ReviewForm({
+  draft,
+  kind,
+  closeButton,
+}: {
+  draft: Draft;
+  kind: Props["kind"];
+  closeButton: ReactNode;
+}) {
+  const { busy, unknown, context } = draft;
+  const formLabel = kind === "board" ? "Create task from board" : "Create task from conversation";
+  const cannotSave =
+    busy ||
+    draft.loading ||
+    draft.blocked ||
+    draft.needsContext ||
+    !draft.writable ||
+    !draft.listId ||
+    !draft.title.trim() ||
+    (draft.broader && !draft.confirmed);
+  return (
+    <form className="conversation-task" aria-label={formLabel} onSubmit={draft.submit}>
+      <p className="conversation-task__intro">
+        {kind === "board"
+          ? "Describe the followup and review its destination. This records board context, without copying an image or board content."
+          : "Review the copied text and destination before saving. Later conversation changes do not update this task copy."}
+      </p>
+      <fieldset disabled={busy || unknown} className="conversation-task__fields">
+        {kind === "board" && context && <BoardContextNotice draft={draft} context={context} />}
+        <DestinationFields draft={draft} />
+        <TextFields draft={draft} />
+      </fieldset>
+      {draft.error && (
+        <p role="alert" className="conversation-task__error">
+          {draft.error}
+        </p>
+      )}
+      {unknown && (
+        <p role="status">
+          Creation is unconfirmed. Retry the same task copy; the original destination and text are kept
+          unchanged.
+        </p>
+      )}
+      <div className="conversation-task__actions">
+        {closeButton}
+        <Button variant="primary" type="submit" disabled={cannotSave}>
+          {submitLabelFor(kind, busy, unknown)}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** The user reviews a copy. Source references never broaden source permissions. */
+export function ConversationTask(props: Props) {
+  const { kind, close } = props;
+  const draft = useConversationTask(props);
+  const heading = headingFor(kind);
+  const formLabel = kind === "board" ? "Create task from board" : "Create task from conversation";
+  const sourceLabel = kind === "board" ? "board" : "conversation";
+  const location = draft.destination === "personal" ? "/todos" : `/w/${draft.destination}/todos`;
   const closeButton = (
-    <Button variant="quiet" disabled={busy} onClick={close}>
+    <Button variant="quiet" disabled={draft.busy} onClick={close}>
       Close task creation
     </Button>
   );
-  if (blocked)
+  if (draft.blocked) {
     return (
       <Dialog open title={heading} onClose={close} size="sm" footer={closeButton}>
         <section aria-label={formLabel}>
@@ -186,7 +417,8 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
         </section>
       </Dialog>
     );
-  if (saved)
+  }
+  if (draft.saved) {
     return (
       <Dialog open title={heading} onClose={close} size="sm" footer={closeButton}>
         <section className="conversation-task__done" aria-label={formLabel}>
@@ -197,153 +429,10 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
         </section>
       </Dialog>
     );
-  const submitLabel = busy
-    ? "Saving…"
-    : unknown
-      ? "Retry same task copy"
-      : kind === "board"
-        ? "Save board task"
-        : "Save conversation task";
+  }
   return (
     <Dialog open title={heading} onClose={close}>
-      <form className="conversation-task" aria-label={formLabel} onSubmit={submit}>
-        <p className="conversation-task__intro">
-          {kind === "board"
-            ? "Describe the followup and review its destination. This records board context, without copying an image or board content."
-            : "Review the copied text and destination before saving. Later conversation changes do not update this task copy."}
-        </p>
-        <fieldset disabled={busy || unknown} className="conversation-task__fields">
-          {kind === "board" && context && (
-            <>
-              <p>
-                Reviewed board context: epoch {context.epoch}, revision {context.revision}. The reference
-                opens the live board; it is not a saved image.
-              </p>
-              {needsContext && (
-                <p role="status">
-                  Your task draft is kept. Review the board, then load its latest context before saving.
-                </p>
-              )}
-              <div>
-                <Button disabled={loading} onClick={latestContext}>
-                  Load latest board context (keeps draft)
-                </Button>
-              </div>
-            </>
-          )}
-          <Select
-            label="Task destination"
-            value={destination}
-            onChange={(e) => {
-              ++generation.current;
-              setDestination(e.target.value);
-              setLists(null);
-              setListId("");
-              setConfirmed(false);
-            }}
-            options={[
-              { value: "personal", label: "My personal lists (private)" },
-              ...workspaces
-                .filter((w) => w.can_write && !w.archived)
-                .map((w) => ({ value: w.id, label: w.name })),
-            ]}
-          />
-          <p className="conversation-task__audience">
-            {destination === "personal"
-              ? "Audience: only you."
-              : `Audience: everyone who can read ${target?.name ?? "the selected workspace"}.`}
-          </p>
-          {loading && <p role="status">Loading destination lists…</p>}
-          {lists && (
-            <Select
-              label="Destination list"
-              placeholder="Choose a list"
-              value={listId}
-              onChange={(e) => {
-                setListId(e.target.value);
-                setConfirmed(false);
-              }}
-              options={lists.items.map((row) => ({ value: row.id, label: row.title }))}
-            />
-          )}
-          {lists?.items.length === 0 && (
-            <p>Create a to-do list in the destination first, then reopen this form.</p>
-          )}
-          <div className="conversation-task__row">
-            <Button
-              disabled={loading}
-              onClick={() => {
-                setListId("");
-                setConfirmed(false);
-                void load();
-              }}
-            >
-              Refresh destination lists
-            </Button>
-            {lists?.next_cursor && (
-              <Button
-                disabled={loading}
-                onClick={() => {
-                  setListId("");
-                  setConfirmed(false);
-                  void load(lists.next_cursor!);
-                }}
-              >
-                More destination lists
-              </Button>
-            )}
-          </div>
-          <TextInput
-            label="Task title"
-            maxLength={200}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <TextArea
-            label="Task description"
-            maxLength={10000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          {broader && (
-            <Checkbox
-              label={`I confirm this reviewed task text will be shared with a different audience in ${target?.name}.`}
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-            />
-          )}
-        </fieldset>
-        {error && (
-          <p role="alert" className="conversation-task__error">
-            {error}
-          </p>
-        )}
-        {unknown && (
-          <p role="status">
-            Creation is unconfirmed. Retry the same task copy; the original destination and text are kept
-            unchanged.
-          </p>
-        )}
-        <div className="conversation-task__actions">
-          {closeButton}
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={
-              busy ||
-              loading ||
-              blocked ||
-              needsContext ||
-              !writable ||
-              !listId ||
-              !title.trim() ||
-              (broader && !confirmed)
-            }
-          >
-            {submitLabel}
-          </Button>
-        </div>
-      </form>
+      <ReviewForm draft={draft} kind={kind} closeButton={closeButton} />
     </Dialog>
   );
 }
