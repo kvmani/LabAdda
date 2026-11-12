@@ -166,8 +166,24 @@ def activate(
     ):
         raise TooMany()
     _validate_password(body.password)
+    # Lock the account before its token, the same order as an administrator reissuing a code,
+    # so a reissue either sees this redemption or withdraws the token before it is redeemed.
+    owner = db.scalar(select(CredentialToken.user_id).where(CredentialToken.token_hash == digest(body.token)))
+    user = (
+        db.scalar(
+            select(User)
+            .where(User.id == owner)
+            .with_for_update(key_share=True)
+            .execution_options(populate_existing=True)
+        )
+        if owner is not None
+        else None
+    )
     cred = db.scalar(
-        select(CredentialToken).where(CredentialToken.token_hash == digest(body.token)).with_for_update()
+        select(CredentialToken)
+        .where(CredentialToken.token_hash == digest(body.token))
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     now = utcnow()
     if cred is None or cred.used_at is not None or cred.expires_at <= now:
@@ -175,7 +191,6 @@ def activate(
             "token_invalid",
             "This activation link is invalid or has expired. Ask an administrator for a new one.",
         )
-    user = db.get(User, cred.user_id)
     if user is None or not user.is_active:
         raise Invalid(
             "token_invalid",

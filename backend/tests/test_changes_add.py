@@ -1,11 +1,12 @@
 """Reviewed onboarding: invited account, home membership, one-time code, guards and isolation."""
 
+import time
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text, update
 
 from labadda import audit
 from labadda.models import AuditEvent, CredentialToken, Membership, User, Workspace
@@ -277,3 +278,57 @@ def test_fresh_activation_code_guards(as_user, ids, make_client):
     assert reissue(as_user("ben"), ids["users"]["ben"]).status_code == 403
     assert reissue(make_client(), ids["users"]["ben"]).status_code == 401
     assert reissue(pair(as_user, make_client, ids), ids["users"]["ben"]).status_code == 401
+
+
+def test_redemption_waits_for_a_reissue_holding_the_account(as_user, ids, db_factory, make_client):
+    admin = as_user("admin")
+    receipt = admin.post("/admin/changes/apply", json=reviewed(admin, add(ids))).json()
+    code = receipt["activation"]["code"]
+    newcomer = make_client()
+    with db_factory() as writer, ThreadPoolExecutor(max_workers=1) as pool:
+        person = writer.scalar(select(User).where(User.id == receipt["person_id"]).with_for_update())
+        pending = pool.submit(
+            newcomer.client.post,
+            newcomer.url("/auth/activate"),
+            json={"token": code, "password": "a-long-password"},
+        )
+        deadline = time.monotonic() + 1.5
+        blocked = False
+        while time.monotonic() < deadline:
+            writer.execute(text("select pg_stat_clear_snapshot()"))
+            blocked = writer.scalar(
+                text(
+                    "select exists(select 1 from pg_stat_activity where datname=current_database() and "
+                    "wait_event_type='Lock' and query like '%FROM users%FOR NO KEY UPDATE%')"
+                )
+            )
+            if blocked:
+                break
+            time.sleep(0.01)
+        try:
+            assert blocked, "Redemption must wait on the account lock a reissue holds"
+            writer.execute(
+                update(CredentialToken).where(CredentialToken.user_id == person.id).values(used_at=func.now())
+            )
+            writer.commit()
+        except BaseException:
+            writer.rollback()
+            raise
+        response = pending.result(timeout=5)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "token_invalid"
+    assert admin.get(f"/admin/people/{receipt['person_id']}").json()["status"] == "invited"
+
+
+def test_reissue_after_redemption_is_refused(as_user, ids, make_client):
+    admin = as_user("admin")
+    receipt = admin.post("/admin/changes/apply", json=reviewed(admin, add(ids))).json()
+    newcomer = make_client()
+    redeemed = newcomer.client.post(
+        newcomer.url("/auth/activate"),
+        json={"token": receipt["activation"]["code"], "password": "a-long-password"},
+    )
+    assert redeemed.status_code == 200
+    response = reissue(admin, receipt["person_id"])
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "not_invited"

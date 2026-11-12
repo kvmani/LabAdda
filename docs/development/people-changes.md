@@ -58,6 +58,9 @@ Hold authority through the edit/audit commit, then revalidate realtime delivery.
 The receipt is returned after commit without a further authority check, so a
 one-time code is never lost to a session ending mid-request. If connectivity is lost
 after commit, reload before retrying; `changes/activation.py` issues a fresh code.
+Reissue and `/auth/activate` lock the account row before its tokens, so a code is
+never left live on an activated account. Reissue, like the legacy reset, also serves an
+invited administrator account (one created by the old account tools).
 No automatic retry or replay of an old plan. Optional contact text is never sent
 externally. General settings, permissions, employment state and username cannot be
 edited through the staff-field route.
