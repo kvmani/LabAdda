@@ -51,6 +51,15 @@ ROUTE_GROUPS: dict[str, str] = {
 }
 ROUTE_GROUP_VALUES = tuple(sorted({*ROUTE_GROUPS.values(), OTHER_ROUTES}))
 
+# Upload size bands for "uploads by size band" (AD-08): dimension value and exclusive upper
+# bound in bytes; the last band is open-ended.
+SIZE_BANDS: tuple[tuple[str, int | None], ...] = (
+    ("under_100kb", 100 * 1024),
+    ("under_1mb", 1024 * 1024),
+    ("under_10mb", 10 * 1024 * 1024),
+    ("10mb_or_more", None),
+)
+
 # Percentile series stored for each histogram, as stored-name suffix and quantile.
 PERCENTILES: dict[str, float] = {"p50": 0.50, "p95": 0.95}
 
@@ -102,6 +111,7 @@ _METRICS = (
     _feature("uploads.count"),
     _feature("uploads.bytes", "bytes"),
     _feature("notifications.created"),
+    Metric("uploads.size_band", "counter", "count", tuple(band for band, _ in SIZE_BANDS)),
     Metric("db.size_bytes", "gauge", "bytes", (NO_DIMENSION,)),
     Metric("assets.bytes", "gauge", "bytes", (NO_DIMENSION,)),
     Metric("disk.free_bytes", "gauge", "bytes", (NO_DIMENSION,)),
@@ -147,6 +157,14 @@ def check_dimension(entry: Metric, dimension: str) -> None:
     if entry.per_unit and is_unit_dimension(dimension):
         return
     raise UnknownDimension(f"{entry.name}:{dimension[:40]}")
+
+
+def size_band(size: int) -> str:
+    """The size band dimension value for a file of ``size`` bytes."""
+    for band, limit in SIZE_BANDS:
+        if limit is None or size < limit:
+            return band
+    raise AssertionError("SIZE_BANDS ends with an open band")
 
 
 def unit_dimension(unit_id: uuid.UUID) -> str:

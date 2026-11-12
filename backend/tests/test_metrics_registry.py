@@ -139,3 +139,12 @@ def test_percentile_within_one_bucket_interpolates():
 def test_naive_time_is_refused():
     with pytest.raises(ValueError, match="timezone-aware"):
         minute_of(datetime(2026, 11, 11, 12, 0))
+
+
+@pytest.mark.parametrize(
+    ("size", "band"),
+    [(0, "under_100kb"), (102_399, "under_100kb"), (102_400, "under_1mb"), (10_485_760, "10mb_or_more")],
+)
+def test_upload_sizes_fall_into_fixed_bands(size, band):
+    assert catalog.size_band(size) == band
+    catalog.check_dimension(catalog.metric("uploads.size_band"), band)

@@ -588,10 +588,12 @@ current usage readers (console section `activity`, read-only). Members without a
   `http.latency_p50`, `http.latency_p95`, `auth.signin_ok`, `auth.signin_failed`,
   `sessions.active`, `sockets.connected`, `posts.created`, `replies.created`, `chat.messages`,
   `board.operations`, `tasks.created`, `tasks.completed`, `uploads.count`, `uploads.bytes`,
-  `notifications.created`, `db.size_bytes`, `assets.bytes`, `disk.free_bytes`); otherwise
+  `notifications.created`, `uploads.size_band`, `db.size_bytes`, `assets.bytes`,
+  `disk.free_bytes`); otherwise
   422 `unknown_metric`.
 - `dimension` (default empty): a route group for `http.*` (`all` only for latency), `org`,
-  `project` or `group` for feature counters, empty for the rest; otherwise 422
+  `project` or `group` for feature counters, `under_100kb | under_1mb | under_10mb |
+  10mb_or_more` for `uploads.size_band`, empty for the rest; otherwise 422
   `unknown_dimension`. Per-unit values (`unit:<id>`, `unit:other`) are stored but never served
   here (422 `unit_series_not_available`): they need the small-group protection of the
   Activity summaries.
@@ -644,6 +646,56 @@ unavailable or stale (it resolves itself when the check passes); 409 `event_reso
 
 Events are raised only for `degraded | unavailable | stale` and are resolved automatically when
 the item reads `healthy`; `unknown` and `unsupported` neither raise nor resolve.
+
+## A5 · Usage analytics (AD-08)
+
+Console section `activity`: administrators and current usage readers (read-only; the export is
+a GET). Members without a grant 403 `usage_read_required`; signed-out, deactivated and
+board-only/explicit panel requests 401. Computed only from `metric_samples`, `activity_days`
+and the people and unit tables; results are cached for 60 s and every query runs under a 2 s
+statement bound (503 `analytics_unavailable`). Authorization is checked before and after
+reading, also for cached results. No response contains content, project or group names.
+
+`period` is `7d | 30d | 90d | 12m` (default `30d`; 422 otherwise): whole site-local days
+ending today (`12m` = 365 days), compared with the equal-length period just before.
+`current` and `previous` are `{first_day, last_day}`.
+
+`GET /admin/analytics/summary?period=` — 200 `{period, timezone, generated_at, current,
+previous, state, tiles, charts}`. `state` is `unknown` (with `tiles: []`, `charts: null`) when
+the period has no activity day and no metric sample; never zeros.
+- `tiles[]`: `{key, label, unit, state: measured|unknown, value, previous}` for
+  `active_day`, `active_week`, `active_month` (distinct people on the last 1/7/30 days of the
+  period), `active_share` (unit `fraction`, plus `active` and `accounts`: people active in
+  the period over accounts that may sign in now), `peak_connections` (highest
+  `sockets.connected`), `items_created` (posts, replies, chat messages, tasks created and files
+  added). A figure without data is `unknown` with `value: null`; `previous` is null when the
+  previous period has no data.
+- `charts.active_per_day[]` `{day, value}` (null for a day with no trace of collection);
+  `charts.features` `{bucket: day|week|month, series[{key,label}], points[{start, values}]}`
+  (`values` null for an unmeasured bucket); `charts.items_by_kind[]` `{key: org|project|group,
+  label, value}` — projects and groups only as these totals; `charts.weekday_hour` `{state,
+  from, cells[{weekday 1-7 (Monday 1), hour 0-23, value}]}` from API request counts over the
+  hours still kept (35 days); `charts.storage[]` `{day, files_bytes, database_bytes}` (daily
+  peaks, null when not read); `charts.upload_sizes[]` `{key, label, value}`.
+
+`GET /admin/analytics/units?period=` — 200 `{period, timezone, generated_at, current,
+previous, minimum_group: 5, rounded_to: 5, state, units[], no_home_unit, chart[]}`. One row per
+organisation unit `{id, name, parent_id, archived, active_people, items_created,
+previous_active_people}`; `no_home_unit` has the same figures (`items_created` null). A figure
+is `{state: "shown", value}` or `{state: "suppressed"}` (no number is sent; shown as "fewer
+than 5"), or `{state: "unknown"}` for items when nothing was collected. Small-group protection,
+on the server: a row is shown only when at least 5 of its home people were active in that
+period; while suppressed rows together hold fewer than 5 active people, the smallest shown row
+is suppressed too (so total minus shown units cannot reveal them); shown people counts are
+rounded to the nearest 5 (so overlapping periods cannot be subtracted); a unit counts only its
+own home people, never its sub-units. `chart[]` `{label, value}`: top 10 shown units by active
+people plus "Other units"; suppressed rows are left out. `state` is `unknown` when the period
+has no activity day.
+
+`GET /admin/analytics/export.csv?period=` — the same protected figures as CSV (`section, item,
+this period, previous period`; UTF-8 with BOM, formula-escaped; suppressed figures read "fewer
+than 5", missing ones "not measured"). Audited as `analytics.export` (period words and row
+count) before delivery.
 
 ## A7 · Backups page, settings and site notice (AD-10, AD-11)
 

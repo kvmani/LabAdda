@@ -48,7 +48,7 @@ downgrade tests clear synthetic rows through `tests/migration_helpers.downgrade_
 | `chat.messages` | `api/chat.send` |
 | `board.operations` | `api/board.submit_op` (duplicates excluded) |
 | `tasks.created`, `tasks.completed` | `api/todos._create_task_row`, `edit_task` (workspace lists) |
-| `uploads.count`, `uploads.bytes` | When a file is attached to a post, chat message or board |
+| `uploads.count`, `uploads.bytes`, `uploads.size_band` | When a file is attached to a post, chat message or board (size band: under 100 KB, 1 MB, 10 MB, or more; not per unit) |
 | `notifications.created` | `notify.create` (workspace notifications, on commit) |
 | `auth.signin_ok`, `auth.signin_failed` | `api/auth.login` |
 
@@ -86,5 +86,5 @@ duplicates); it is cleared when the site day changes. It records no pages, actio
 
 - One server process (the systemd service runs one uvicorn worker). Minute rows are absolute
   per process; several workers would overwrite each other's minutes.
-- Series do not expose per-unit values; A5 adds summaries with small-group protection.
+- Series do not expose per-unit values; the A5 Activity summaries (`analytics/`) apply small-group protection.
 - The S4 load rehearsal with metrics on is recorded by the coordinator (see the A3 card).

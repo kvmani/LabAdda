@@ -52,6 +52,7 @@ def test_chat_message_and_its_attachment_are_counted_once(as_user, ids):
     assert counts("chat.messages") == {"group": 1}
     assert counts("uploads.count") == {"group": 1}
     assert counts("uploads.bytes") == {"group": len(data)}
+    assert counts("uploads.size_band") == {"under_100kb": 1}
 
 
 def test_duplicate_board_operation_counts_once(as_user, ids):

@@ -49,6 +49,9 @@ from .api import (
     workspaces,
 )
 from .api import (
+    analytics as analytics_api,
+)
+from .api import (
     audit as audit_api,
 )
 from .api import (
@@ -184,6 +187,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         usage,
         inventory_jobs,
         metrics_api,
+        analytics_api,
         health_api,
         events,
         capabilities,

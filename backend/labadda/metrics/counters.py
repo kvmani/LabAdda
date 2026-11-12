@@ -49,6 +49,8 @@ def count_attachments(workspace: Workspace, assets: list[Asset]) -> None:
     if assets:
         count_workspace("uploads.count", workspace, len(assets))
         count_workspace("uploads.bytes", workspace, sum(asset.size for asset in assets))
+        for asset in assets:
+            REGISTRY.count("uploads.size_band", catalog.size_band(asset.size))
 
 
 def count_attachments_on_commit(db: Session, workspace: Workspace, assets: list[Asset]) -> None:
@@ -56,6 +58,10 @@ def count_attachments_on_commit(db: Session, workspace: Workspace, assets: list[
     if assets:
         count_workspace_on_commit(db, "uploads.count", workspace, len(assets))
         count_workspace_on_commit(db, "uploads.bytes", workspace, sum(asset.size for asset in assets))
+        for asset in assets:
+            db.info.setdefault(_PENDING, []).append(
+                ("uploads.size_band", (catalog.size_band(asset.size),), 1)
+            )
 
 
 @event.listens_for(Session, "after_commit")

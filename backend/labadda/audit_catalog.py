@@ -77,6 +77,7 @@ CATALOG: dict[str, Entry] = {
     "ops_event.resolve": Entry("settings", "{actor} marked a system event as resolved."),
     "people.export": Entry("exports", "{actor} exported {rows} rows of the staff directory."),
     "audit.export": Entry("exports", "{actor} exported {rows} entries of the audit trail."),
+    "analytics.export": Entry("exports", "{actor} exported the usage figures for the {period}."),
 }
 
 UNKNOWN = Entry("settings", "{actor} performed an action this version does not describe.")
