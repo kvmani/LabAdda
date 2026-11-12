@@ -122,7 +122,11 @@ def _commit(db: Session, user: User, body: BulkApply, settings: Settings) -> tup
     if any(plan.blockers for plan in plans):
         raise Invalid("plan_blocked", "Resolve the blocking problems before applying this change.")
     done, added = [], []
-    for item, plan in zip(body.requests, plans, strict=True):
+    for index, (item, plan) in enumerate(zip(body.requests, plans, strict=True)):
+        if index and service.build(db, item, user.id, settings).blockers:
+            # Plans above were built from the state before any row applied; earlier rows can
+            # together defeat a guard (two stewards leaving one unit), so recheck on current state.
+            raise Invalid("plan_blocked", "Resolve the blocking problems before applying this change.")
         person, extra = service.KINDS[plan.kind].apply(db, user, plan, item, settings, body.reason)
         service.record_plan(db, user, plan, body.reason, settings, person.id)
         done.append((person, plan))

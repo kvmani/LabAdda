@@ -1,7 +1,9 @@
 """Staff-list import and bulk changes: report, atomic apply, denials and stale plans."""
 
+import uuid
+
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from labadda.models import AuditEvent, Membership, User
 from tests.test_panel import PANEL, pair
@@ -199,3 +201,28 @@ def test_ordinary_staff_edits_do_not_change_and_unselected_rows_stay_untouched(a
         assert db.scalar(select(User.status).where(User.username == "chen")) == "active"
         assert db.scalar(select(User.id).where(User.username == "gita.sen")) is None
         assert db.scalar(select(User.id).where(User.username == "hari.rao")) is not None
+
+
+def test_changes_that_together_leave_a_unit_without_a_steward_are_blocked(as_user, ids, db_factory):
+    """Each plan alone leaves one steward, but applied together they leave none."""
+    with db_factory() as db:
+        db.execute(
+            update(Membership)
+            .where(Membership.user_id == uuid.UUID(ids["users"]["ben"]))
+            .where(Membership.workspace_id == uuid.UUID(ids["workspaces"]["section_a"]))
+            .values(role="steward")
+        )
+        db.commit()
+    admin = as_user("admin")
+    section_b = ids["workspaces"]["section_b"]
+    requests = [
+        {"kind": "transfer", "person_id": ids["users"][who], "to_unit_id": section_b, "role": "member"}
+        for who in ("asha", "ben")
+    ]
+    plan = admin.post("/admin/changes/bulk/preview", json={"requests": requests}).json()
+    body = {"requests": requests, "digest": plan["digest"], "revisions": plan["revisions"], "reason": "Move"}
+    response = admin.post("/admin/changes/bulk/apply", json=body)
+    assert response.status_code == 422 and response.json()["error"]["code"] == "plan_blocked"
+    with db_factory() as db:
+        homes = set(db.scalars(select(User.home_workspace_id).where(User.username.in_(["asha", "ben"]))))
+        assert homes == {uuid.UUID(ids["workspaces"]["section_a"])}
