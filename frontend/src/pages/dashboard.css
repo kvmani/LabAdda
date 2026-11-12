@@ -1,0 +1,37 @@
+/* My day: four cards in a responsive grid. */
+.daily-dashboard {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  max-width: 1280px;
+}
+.daily-dashboard p {
+  margin: 0;
+}
+.daily-dashboard__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.daily-dashboard__panel {
+  display: grid;
+  gap: var(--space-3);
+  overflow-wrap: anywhere;
+}
+.daily-dashboard__panel ul {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.daily-dashboard__muted {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.daily-dashboard__notice {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+}
