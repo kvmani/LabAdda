@@ -4,6 +4,11 @@
   gap: var(--space-4);
   min-width: 0;
 }
+/* Grid items default to min-width:auto, which lets a wide table stretch the whole page on a phone. */
+.storage-stack > *,
+.storage-section > * {
+  min-width: 0;
+}
 .storage-stack p,
 .storage-stack ul,
 .storage-stack ol,

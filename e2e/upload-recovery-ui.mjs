@@ -33,7 +33,7 @@ try {
     const section = spaces.workspaces.find((w) => w.name === "Thin Films Section");
     const initial = await (await ctx.request.get(api + "/usage")).json();
     await page.goto(origin + base + "/w/" + section.id + "/noticeboard");
-    await page.getByLabel("Message", { exact: true }).fill("Synthetic recovered colleague attachment");
+    await page.getByLabel("Message").fill("Synthetic recovered colleague attachment");
     const posted = [];
     let lose = true;
     let truncate = false;
@@ -61,8 +61,7 @@ try {
       base + ": unresolved upload prevents incomplete post",
     );
     check(
-      (await page.getByLabel("Message", { exact: true }).inputValue()) ===
-        "Synthetic recovered colleague attachment",
+      (await page.getByLabel("Message").inputValue()) === "Synthetic recovered colleague attachment",
       base + ": text draft preserved",
     );
     check(/^[A-Za-z0-9_-]{8,64}$/.test(posted[0]), base + ": file picker sends valid request key");

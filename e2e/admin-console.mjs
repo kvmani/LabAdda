@@ -96,7 +96,10 @@ async function checkAdmin(admin, base) {
   await audit(page, 390, base);
   await page.getByLabel("Administration section", { exact: true }).selectOption("/admin/health");
   await page.getByRole("heading", { name: "System health", exact: true }).waitFor();
-  check(await page.getByText("Not available yet", { exact: true }).isVisible(), base + " mobile navigation");
+  check(
+    await page.getByRole("heading", { name: "System health", exact: true }).isVisible(),
+    base + " mobile navigation",
+  );
   await page.screenshot({
     path: output + (base ? "/prefix-console.png" : "/root-console.png"),
     fullPage: true,
