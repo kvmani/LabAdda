@@ -191,12 +191,12 @@
   color: var(--danger);
 }
 
-/* Main region: legacy page styles keep their light palette until U4. */
+/* Main region. */
 .shell-main {
   min-width: 0;
   padding: var(--space-5) var(--space-6);
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--surface-page);
+  color: var(--text);
 }
 .shell-main:focus {
   outline: none;

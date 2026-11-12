@@ -3,7 +3,7 @@ title: Finding your way around
 summary: What the top bar, the left-hand list and the tabs on each workspace are for.
 audience: everyone
 screen: /w/:workspaceId
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 ## What this is for
@@ -12,7 +12,7 @@ LabAdda has the same layout on every screen, so once you know where things are y
 
 ## Steps
 
-1. Look at the top bar. **Help** opens this guide, **Notifications** shows what has changed for you, and the menu with your name has **Sign out**.
+1. Look at the top bar. **Help** opens this guide, **Notifications** shows what has changed for you, and the menu with your name has **Sign out** and the **Theme** choices: **Follow the system**, **Light** or **Dark**. Your choice is kept in this browser.
 2. Look at the list on the left. Under **Personal** you will find **My day**, **My Tasks**, **My To-do Lists**, **My Notes**, **Alert preferences** and **My storage usage**. Only you can see these.
 3. Further down the list are the units, projects and groups you belong to. Choose one to open its workspace.
 4. At the top of a workspace there is a row of tabs: **Noticeboard**, **Whiteboard**, **Chat**, **Tasks**, **Members** and **Storage**. Choose a tab to change what you see.

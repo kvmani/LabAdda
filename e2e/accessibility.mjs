@@ -12,6 +12,8 @@ const AXE = require.resolve("../frontend/node_modules/axe-core/axe.min.js");
 const origin = process.argv[2] ?? "http://127.0.0.1:8080";
 if (!["127.0.0.1", "localhost"].includes(new URL(origin).hostname))
   throw Error("Use a local disposable test stack");
+// LABADDA_E2E_THEME=dark runs every audit with the system preference set to dark (no stored choice).
+const colorScheme = process.env.LABADDA_E2E_THEME === "dark" ? "dark" : "light";
 const out = process.argv[3] ?? "/tmp/labadda-accessibility";
 mkdirSync(out, { recursive: true });
 const password = process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123";
@@ -28,6 +30,7 @@ function check(value, text) {
 }
 
 async function audit(page, label) {
+  await page.screenshot({ path: `${out}/${colorScheme}-${label.replace(/[^a-z0-9]+/gi, "-")}.png` });
   await page.addScriptTag({ path: AXE });
   const result = await page.evaluate(() =>
     window.axe.run(document, {
@@ -107,7 +110,7 @@ async function noHorizontalScroll(page, label) {
 try {
   for (const base of ["", "/labadda-staging"]) {
     const tag = base || "root";
-    const desktop = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+    const desktop = await browser.newContext({ colorScheme, viewport: { width: 1366, height: 900 } });
     const anon = await desktop.newPage();
     await anon.goto(origin + base + "/");
     await anon.getByLabel("Username").waitFor();
@@ -132,6 +135,8 @@ try {
       [`/w/${section}/chat`, "form[aria-label='Send chat message']", "chat"],
       [`/w/${group}/members`, "table", "group members"],
       ["/notes", "form", "my notes"],
+      ["/today", "h1", "my day"],
+      ["/my-tasks", "h1", "my tasks"],
       ["/usage", "table", "storage usage"],
       ["/groups/new", "form", "new group"],
     ]) {
@@ -142,14 +147,22 @@ try {
     await page.screenshot({ path: `${out}/${tag.replace("/", "")}-desktop-usage.png`, fullPage: true });
     await desktop.close();
 
-    const adminCtx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+    const adminCtx = await browser.newContext({ colorScheme, viewport: { width: 1366, height: 900 } });
     const admin = await signIn(adminCtx, base, "admin");
     await admin.goto(origin + base + "/admin");
     await admin.getByRole("heading", { name: "Overview", exact: true }).waitFor();
     await audit(admin, `${tag} administration console overview`);
+    for (const [path, label] of [
+      ["/admin/people/basic", "basic people tools"],
+      ["/admin/org/basic", "basic organisation tools"],
+    ]) {
+      await admin.goto(origin + base + path);
+      await admin.getByRole("heading", { level: 2 }).first().waitFor();
+      await audit(admin, `${tag} ${label}`);
+    }
     await adminCtx.close();
 
-    const tablet = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+    const tablet = await browser.newContext({ colorScheme, viewport: { width: 1024, height: 768 } });
     const tabletPage = await signIn(tablet, base, "ben");
     await tabletPage.goto(origin + base + `/w/${section}/noticeboard`);
     await tabletPage.locator(".post").first().waitFor();
@@ -162,6 +175,7 @@ try {
     await tablet.close();
 
     const phone = await browser.newContext({
+      colorScheme,
       viewport: { width: 390, height: 844 },
       hasTouch: true,
       isMobile: true,
@@ -181,7 +195,7 @@ try {
     await phone.close();
 
     // Touch panel: pairing screen and board view.
-    const pairCtx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+    const pairCtx = await browser.newContext({ colorScheme, viewport: { width: 1366, height: 900 } });
     const pairer = await signIn(pairCtx, base, "ben");
     const code = (
       await (
@@ -194,7 +208,7 @@ try {
         })
       ).json()
     ).code;
-    const kiosk = await browser.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true });
+    const kiosk = await browser.newContext({ colorScheme, viewport: { width: 1280, height: 800 }, hasTouch: true });
     const panel = await kiosk.newPage();
     await panel.goto(origin + base + "/panel");
     await panel.getByLabel("Panel code").waitFor();

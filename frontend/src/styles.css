@@ -1,103 +1,36 @@
-/* LabAdda legacy screen styles: local system fonts only, no external requests.
- * These variables point at the fixed light palette in ui/tokens.css, so screens not yet built
- * from ui/ components look the same in every theme. U4 removes this file's rules screen by screen.
- */
+/* Global resets. Everything else comes from ui/tokens.css and the component stylesheets;
+ * local system fonts only, no external requests. */
 :root {
-  --bg: var(--palette-page);
-  --panel: var(--palette-card);
-  --ink: var(--palette-ink);
-  --muted: var(--palette-muted); /* >= 4.5:1 on white and on the active rail highlight (WCAG AA) */
-  --legacy-line: var(--palette-line);
-  --legacy-accent: var(--palette-accent);
-  --accent-ink: var(--palette-on-accent);
-  --legacy-ok: var(--palette-ok);
-  --warn-bg: var(--palette-warn-soft);
-  --err: var(--palette-danger);
-  --official: var(--palette-official);
-  --radius: 8px;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Ubuntu,
-    sans-serif;
-  color: var(--ink);
-  background: var(--bg);
+  font-family: var(--font-ui);
+  color: var(--text);
+  background: var(--surface-page);
+  color-scheme: var(--color-scheme);
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
+  background: var(--surface-page);
+  color: var(--text);
 }
 a {
-  color: var(--legacy-accent);
-}
-h1 {
-  font-size: 1.5rem;
-  margin: 0 0 0.25rem;
-}
-h2 {
-  font-size: 1.05rem;
-  margin: 0 0 0.5rem;
+  color: var(--accent);
 }
 button,
-.button {
+input,
+select,
+textarea {
   font: inherit;
-  cursor: pointer;
-  border-radius: 6px;
-  border: 1px solid var(--legacy-accent);
-  background: var(--legacy-accent);
-  color: var(--accent-ink);
-  padding: 0.45rem 0.9rem;
-  text-decoration: none;
-  display: inline-block;
-}
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 :focus-visible {
-  outline: 3px solid #f59e0b;
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
-input,
-textarea,
-select {
-  font: inherit;
-  padding: 0.45rem 0.55rem;
-  border: 1px solid var(--legacy-line);
-  border-radius: 6px;
-  width: 100%;
-  background: #fff;
-  color: var(--ink);
-}
-input[type="checkbox"] {
-  width: auto;
-}
-label {
-  display: block;
-  margin: 0.5rem 0;
-  font-weight: 500;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-th,
-td {
-  text-align: left;
-  padding: 0.35rem;
-  border-bottom: 1px solid #eef0f3;
-  vertical-align: middle;
-}
-
 main:focus {
   outline: none;
 }
 main:focus-visible {
-  outline: 3px solid #f59e0b;
+  outline: 3px solid var(--focus-ring);
   outline-offset: -3px;
 }

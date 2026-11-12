@@ -1,8 +1,20 @@
+import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { INSTANCE } from "../../config";
 import type { ConnState } from "../../realtime";
 import { useSession } from "../../session";
-import { Badge, Icon, Menu, StatusPill, Tag, type IconName, type Tone } from "../../ui";
+import {
+  Badge,
+  Icon,
+  Menu,
+  StatusPill,
+  Tag,
+  readThemeChoice,
+  saveThemeChoice,
+  type IconName,
+  type ThemeChoice,
+  type Tone,
+} from "../../ui";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import type { Workspace } from "../../types";
 
@@ -12,6 +24,12 @@ const CONNECTION: Record<ConnState, { word: string; tone: Tone; icon: IconName }
   reconnecting: { word: "Reconnecting…", tone: "warn", icon: "refresh" },
   offline: { word: "Offline", tone: "danger", icon: "error" },
 };
+
+const THEMES: { choice: ThemeChoice; label: string; icon: IconName }[] = [
+  { choice: "system", label: "Follow the system", icon: "monitor" },
+  { choice: "light", label: "Light", icon: "sun" },
+  { choice: "dark", label: "Dark", icon: "moon" },
+];
 
 type TopBarProps = {
   workspaces: Workspace[];
@@ -38,6 +56,7 @@ export function TopBar({
 }: TopBarProps) {
   const { session, signOut } = useSession();
   const navigate = useNavigate();
+  const [theme, setTheme] = useState<ThemeChoice>(readThemeChoice);
   const status = CONNECTION[connection];
   const name = session?.user.display_name ?? "";
   return (
@@ -82,6 +101,14 @@ export function TopBar({
           items={[
             { label: "My profile", icon: "user", onSelect: () => navigate("/profile") },
             { label: "Alert preferences", icon: "bell", onSelect: () => navigate("/preferences") },
+            ...THEMES.map(({ choice, label, icon }) => ({
+              label: `Theme: ${label}${theme === choice ? " (selected)" : ""}`,
+              icon,
+              onSelect: () => {
+                saveThemeChoice(choice);
+                setTheme(choice);
+              },
+            })),
             { label: "Sign out", icon: "external", onSelect: () => void signOut() },
           ]}
         />

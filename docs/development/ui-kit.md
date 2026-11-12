@@ -92,11 +92,11 @@ cd .. && node e2e/ui-kit.mjs /tmp/ui-kit     # starts Vite on port 5199; set LAB
 
 ## Decisions and limits
 
-- **Legacy screens stay light until U2/U4.** `styles.css` variables point at the fixed
-  `--palette-*` tokens, and native colour scheme is a token applied only by ui/ components, so
-  an OS dark setting does not half-restyle screens that were not designed for it. U2 (shell) and
-  U4 (screens) switch each screen to the semantic tokens; delete the palette when `styles.css`
-  no longer uses it.
+- **Every screen follows the theme.** U4 moved the last screens onto the semantic tokens, so the
+  app no longer forces light. People choose Follow the system, Light or Dark in the account menu
+  (`features/shell/TopBar.tsx`); `styles.css` holds resets only. The whiteboard canvas stays white
+  in both themes because pen colours are chosen for white. `e2e/accessibility.mjs` runs in either
+  theme with `LABADDA_E2E_THEME=dark`.
 - **The dark theme is declared twice** in `tokens.css` (explicit choice and system preference)
   because CSS cannot share the block; `theme.test.ts` fails if the two differ.
 - **No native `<dialog>`**: jsdom cannot open it, so focus trapping could not be unit-tested.
