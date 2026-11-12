@@ -26,6 +26,8 @@ type ChangeKind = Literal[
     "unit_split",
     "unit_close",
     "unit_reopen",
+    "unit_admin_grant",
+    "unit_admin_revoke",
 ]
 
 

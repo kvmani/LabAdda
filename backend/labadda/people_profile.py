@@ -27,6 +27,8 @@ SUMMARIES = {
     "position.appoint": "Position given",
     "position.end": "Position ended",
     "position.expire": "Dated position ended on its end date",
+    "unit_admin.grant": "Made a unit administrator",
+    "unit_admin.revoke": "Withdrawn as a unit administrator",
     "usage.reader.grant": "Operational read access granted",
     "usage.reader.revoke": "Operational read access revoked",
 }

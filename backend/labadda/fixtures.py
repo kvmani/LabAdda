@@ -81,6 +81,7 @@ def reset_database(db: Session) -> None:
         "audit_events",
         "scheduled_changes",
         "unit_positions",
+        "unit_admin_grants",
         "memberships",
         "credential_tokens",
         "auth_sessions",

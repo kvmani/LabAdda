@@ -49,6 +49,8 @@ CATALOG: dict[str, Entry] = {
     "group.create": Entry("organisation", "{actor} created {unit}."),
     "group.archive": Entry("organisation", "{actor} archived {unit}."),
     "group.unarchive": Entry("organisation", "{actor} restored {unit} from the archive."),
+    "unit_admin.grant": Entry("authority", "{actor} made {target} a unit administrator of {unit}."),
+    "unit_admin.revoke": Entry("authority", "{actor} withdrew {target} as a unit administrator of {unit}."),
     "usage.reader.grant": Entry("authority", "{actor} gave {target} read-only operational access."),
     "usage.reader.revoke": Entry("authority", "{actor} withdrew the operational access of {target}."),
     "usage.reader.reauthenticate": Entry(

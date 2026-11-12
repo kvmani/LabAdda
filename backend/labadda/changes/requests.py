@@ -290,6 +290,20 @@ class Reinstate(PersonChange):
     kind: Literal["reinstate"]
 
 
+class GrantUnitAdmin(PersonChange):
+    """PO-24: appoint a person to administer one unit's branch; site administrators only."""
+
+    kind: Literal["unit_admin_grant"]
+    unit_id: uuid.UUID
+
+
+class RevokeUnitAdmin(PersonChange):
+    """PO-24: withdraw an appointment; site administrators only."""
+
+    kind: Literal["unit_admin_revoke"]
+    unit_id: uuid.UUID
+
+
 ChangeRequest = Annotated[
     EditPerson
     | AddPerson
@@ -308,7 +322,9 @@ ChangeRequest = Annotated[
     | UnitMerge
     | UnitSplit
     | UnitClose
-    | UnitReopen,
+    | UnitReopen
+    | GrantUnitAdmin
+    | RevokeUnitAdmin,
     Field(discriminator="kind"),
 ]
 

@@ -576,6 +576,34 @@ class UsageReaderGrant(Base):
     created_at: Mapped[datetime] = _created()
 
 
+class UnitAdminGrant(Base):
+    """Appoints a person to administer people and units of one branch; revoked rows stay as history."""
+
+    __tablename__ = "unit_admin_grants"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False
+    )
+    granted_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index(
+            "uq_unit_admin_grants_current",
+            "user_id",
+            "workspace_id",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+        Index("ix_unit_admin_grants_workspace", "workspace_id"),
+    )
+
+
 class UploadReservation(Base):
     """Pending original-byte admission. Durable assets replace these on commit."""
 

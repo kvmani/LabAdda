@@ -28,6 +28,7 @@ from .kinds import (
     return_from_leave,
     suspend,
     transfer,
+    unit_admin,
     unit_close,
     unit_create,
     unit_merge,
@@ -60,6 +61,8 @@ KINDS: dict[str, ModuleType] = {
     "unit_split": unit_split,
     "unit_close": unit_close,
     "unit_reopen": unit_reopen,
+    "unit_admin_grant": unit_admin,
+    "unit_admin_revoke": unit_admin,
 }
 
 

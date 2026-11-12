@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .errors import Forbidden, NotFound
-from .models import Membership, UsageReaderGrant, User, Workspace
+from .models import Membership, UnitAdminGrant, UsageReaderGrant, User, Workspace
 from .security import utcnow
 
 
@@ -182,10 +182,61 @@ def can_read_usage(db: Session, user: User) -> bool:
     )
 
 
+UNIT_ADMIN_SECTIONS = ("people", "org")
+
+
+def unit_admin_roots(db: Session, user: User) -> frozenset[uuid.UUID]:
+    """Open units the person is currently appointed to administer; nothing for an inactive person."""
+    if not user.is_active:
+        return frozenset()
+    rows = db.scalars(
+        select(UnitAdminGrant.workspace_id)
+        .join(Workspace, Workspace.id == UnitAdminGrant.workspace_id)
+        .where(
+            UnitAdminGrant.user_id == user.id,
+            UnitAdminGrant.revoked_at.is_(None),
+            Workspace.kind == "org",
+            Workspace.archived.is_(False),
+        )
+    )
+    return frozenset(rows)
+
+
+def people_scope(db: Session, user: User) -> frozenset[uuid.UUID]:
+    """Unit IDs whose people and structure the person may administer, read from grants as they are now.
+
+    Site administrators reach every unit; a unit administrator reaches the unit they were appointed
+    to and the units below it, never a parent, a sibling or a project or group.
+    """
+    if not user.is_active:
+        return frozenset()
+    parents = _org_parents(db)
+    if user.is_admin:
+        return frozenset(parents)
+    roots = unit_admin_roots(db, user)
+    if not roots:
+        return frozenset()
+    return frozenset(
+        unit for unit in parents if unit in roots or any(anc in roots for anc in ancestors(parents, unit))
+    )
+
+
+def restricted_scope(db: Session, user: User) -> frozenset[uuid.UUID] | None:
+    """The scope a unit administrator is held to, or ``None`` for a site administrator (no limit)."""
+    return None if user.is_admin and user.is_active else people_scope(db, user)
+
+
+def is_unit_admin(db: Session, user: User) -> bool:
+    return not user.is_admin and bool(unit_admin_roots(db, user))
+
+
 def console_sections(db: Session, user: User) -> tuple[str, ...]:
     """Return only the console sections available under current authority."""
     if not user.is_active:
         return ()
     if user.is_admin:
         return CONSOLE_SECTIONS
-    return READER_SECTIONS if can_read_usage(db, user) else ()
+    granted = set(READER_SECTIONS) if can_read_usage(db, user) else set()
+    if is_unit_admin(db, user):
+        granted |= set(UNIT_ADMIN_SECTIONS)
+    return tuple(section for section in CONSOLE_SECTIONS if section in granted)
