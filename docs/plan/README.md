@@ -76,7 +76,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 23 | A7 | Backups page, settings and site notice | A1, D3 | done | [admin](admin.md#a7--backups-page-settings-and-site-notice) |
 | 24 | P7 | Unit administrators | P4 | in progress | [people](people.md#p7--unit-administrators) |
 | 25 | P8 | My profile and sessions | U2 | done | [people](people.md#p8--my-profile-and-sessions) |
-| 26 | U4 | Move existing screens onto the design system | U2 | in progress | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
+| 26 | U4 | Move existing screens onto the design system | U2 | done | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
 | 27 | Q3 | Readable rewrite of compressed modules | Q1, Q2 | in progress | [quality](quality.md#q3--readable-rewrite-of-compressed-modules) |
 | 28 | Q4 | Split oversized modules | Q3 | queued | [quality](quality.md#q4--split-oversized-modules) |
 | 29 | H4 | Operator handbook, first-use welcome, what's new | H1, D2 | done | [help](help.md#h4--operator-handbook-first-use-welcome-whats-new) |
