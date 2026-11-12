@@ -91,6 +91,8 @@ to reassign.
 - A unit is not left without an active steward unless the administrator ticks an explicit
   acknowledgement; a collaborative group or project is never left without an active steward
   while it has other active members — a successor from its members must be chosen.
+  Suspension, and leave with sign-in blocked, take effect at once and only warn when the person
+  is a group's or project's last active steward (owner decision 2026-11-12).
 - A position holder is active and has a home or membership in that unit.
 - Usernames and employee numbers stay unique; the tree stays a single-rooted tree without cycles.
 - The actor is allowed to act on every person and unit in the plan (PO-21).
@@ -105,7 +107,7 @@ always gets a fresh activation code.
 **PO-10. Add a person.** Name, username, optional staff fields, home unit, role in that unit,
 start date. Result: account in `invited` status, membership in the home unit, and a one-time
 activation code shown once with a printable slip (name, username, code, expiry, sign-in
-address). Duplicate detection warns on the same employee number or a very similar name.
+address). The same employee number blocks the plan (PO-08); a very similar name warns.
 
 **PO-11. Edit a record.** Display name, designation, employee number, contact fields. No access
 change. A display-name change is audited with before and after.
