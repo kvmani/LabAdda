@@ -73,6 +73,25 @@ export type RetireRequest = {
   successors: SuccessorChoice[];
   acknowledge_no_steward: boolean;
 };
+export type UnitCreateRequest = {
+  kind: "unit_create";
+  parent_id: string;
+  name: string;
+  code: string;
+  head_id?: string;
+};
+export type UnitRenameRequest = { kind: "unit_rename"; unit_id: string; name?: string; code?: string };
+export type UnitMoveRequest = { kind: "unit_move"; unit_id: string; new_parent_id: string };
+export type UnitMergeRequest = { kind: "unit_merge"; unit_id: string; into_unit_id: string };
+export type UnitSplitRequest = {
+  kind: "unit_split";
+  unit_id: string;
+  name: string;
+  code: string;
+  person_ids: string[];
+  acknowledge_no_steward: boolean;
+};
+export type UnitOnlyRequest = { kind: "unit_close" | "unit_reopen"; unit_id: string };
 export type PersonOnlyRequest = { kind: "return" | "suspend" | "reinstate"; person_id: string };
 export type ChangeRequest =
   | AddPersonRequest
@@ -82,7 +101,13 @@ export type ChangeRequest =
   | AdditionalChargeRequest
   | LeaveRequest
   | RetireRequest
-  | PersonOnlyRequest;
+  | PersonOnlyRequest
+  | UnitCreateRequest
+  | UnitRenameRequest
+  | UnitMoveRequest
+  | UnitMergeRequest
+  | UnitSplitRequest
+  | UnitOnlyRequest;
 export type Candidates = {
   workspace: { id: string; name: string; kind: string };
   people: { id: string; display_name: string; username: string; role: Role | null }[];
@@ -109,8 +134,10 @@ export type ChangePlan = {
 export type ChangeReceipt = {
   applied: true;
   kind: ChangeRequest["kind"];
-  person_id: string;
-  revision: number;
+  /** Staff changes name the person; unit changes name the unit instead. */
+  person_id?: string;
+  unit_id?: string;
+  revision?: number;
   digest: string;
   activation?: { code: string; expires_at: string };
   stewards_notified?: number;

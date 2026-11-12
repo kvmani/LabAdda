@@ -22,8 +22,12 @@ const LABELS: Record<string, string> = {
   ends_on: "Ends on",
   returns_to: "Role afterwards",
   is_admin: "Site administrator",
+  name: "Name",
+  code: "Code",
+  parent: "Under",
+  archived: "Closed",
 };
-const HIDDEN = new Set(["home_unit_id"]);
+const HIDDEN = new Set(["home_unit_id", "parent_id"]);
 
 function shown(value: unknown): string {
   if (value === null || value === undefined || value === "") return "None";

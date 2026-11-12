@@ -5,7 +5,7 @@ import { openUnitOptions } from "./model";
 import { useChangeReview } from "./useChangeReview";
 import { usePeopleData } from "./usePeopleData";
 import type { Role, TransferRequest } from "./changeTypes";
-import type { AccessPage, StaffRecord, Unit } from "./types";
+import type { AccessPage, Person, Unit } from "./types";
 
 const STEPS = ["Unit and role", "Options", "Review", "Done"];
 const ROLE_OPTIONS = [
@@ -21,7 +21,7 @@ function SharedSpaces({
   onChange,
   onDenied,
 }: {
-  person: StaffRecord;
+  person: Person;
   draft: Draft;
   onChange: (draft: Draft) => void;
   onDenied: () => void;
@@ -64,19 +64,22 @@ function SharedSpaces({
 export function TransferDialog({
   person,
   units,
+  initialUnitId = "",
   onClose,
   onDenied,
   onDone,
 }: {
-  person: StaffRecord;
+  person: Person;
   units: Unit[];
+  /** A unit chosen before the dialog opened, for example by dropping a person onto it. */
+  initialUnitId?: string;
   onClose: () => void;
   onDenied: () => void;
   onDone: () => void;
 }) {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Draft>({
-    to_unit_id: "",
+    to_unit_id: initialUnitId,
     role: "member",
     keep_previous: false,
     leave_workspace_ids: [],

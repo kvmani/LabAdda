@@ -146,7 +146,7 @@ export function AddPersonDialog({
   }
   const current = review.phase === "saved" ? 3 : step;
   function finish() {
-    if (receipt) onAdded(receipt.person_id);
+    if (receipt?.person_id) onAdded(receipt.person_id);
     onClose();
   }
   const footer =

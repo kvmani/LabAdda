@@ -1,0 +1,169 @@
+/* Organisation chart: SVG drawn only with design tokens; no literal colours or sizes. */
+.org-layout {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 70rem) {
+  .org-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+    align-items: start;
+  }
+}
+.org-layout__chart,
+.org-layout__side {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.org-layout__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.org-status {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--text-muted);
+}
+.org-search {
+  display: grid;
+  gap: var(--space-2);
+  min-width: min(100%, 18rem);
+}
+.org-search__results,
+.org-panel__people,
+.org-panel__subunits,
+.org-spaces {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.org-panel__people li,
+.org-panel__subunits li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+.org-panel__person {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  cursor: grab;
+  user-select: none;
+}
+.org-panel__hint,
+.org-spaces__meta {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.org-spaces__meta {
+  display: block;
+}
+.org-panel__facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+.org-panel__facts dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.org-panel__facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.org-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.org-panel__heading {
+  font-size: var(--text-md);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.org-chart {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.org-chart__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.org-chart__zoom {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.org-chart__scroll {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.org-chart__edges path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.org-node {
+  cursor: pointer;
+  outline: none;
+}
+.org-node__box {
+  fill: var(--surface-card);
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.org-node--selected .org-node__box {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.org-node--closed .org-node__box {
+  stroke-dasharray: 6 4;
+}
+.org-node--over .org-node__box {
+  stroke: var(--ok);
+  stroke-width: 4;
+}
+.org-node:focus-visible .org-node__box {
+  stroke: var(--focus-ring);
+  stroke-width: 4;
+}
+.org-node text {
+  fill: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+.org-node .org-node__code {
+  fill: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.org-node .org-node__name {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+.org-node .org-node__line {
+  fill: var(--text-muted);
+}
+.org-node__toggle circle {
+  fill: var(--surface-raised);
+  stroke: var(--line-strong);
+}
+.org-node__toggle text {
+  pointer-events: none;
+  font-weight: 700;
+}

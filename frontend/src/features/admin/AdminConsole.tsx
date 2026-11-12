@@ -9,6 +9,7 @@ import { ActivityPage } from "../activity/ActivityPage";
 import { AuditPage } from "../audit/AuditPage";
 import { EventsPage } from "../events/EventsPage";
 import { HealthPage } from "../health/HealthPage";
+import { OrgPage } from "../org/OrgPage";
 import { OverviewPage } from "../overview/OverviewPage";
 import { PeoplePage } from "../people/PeoplePage";
 import { BackupsPage } from "./BackupsPage";
@@ -70,7 +71,7 @@ export function AdminConsole() {
               ) : section.key === "people" ? (
                 <PeoplePage />
               ) : section.key === "org" ? (
-                <Basic area="org" />
+                <OrgPage />
               ) : section.key === "audit" ? (
                 <AuditPage />
               ) : section.key === "activity" ? (
@@ -92,6 +93,7 @@ export function AdminConsole() {
           />
         ))}
         <Route path="people/basic" element={<Basic area="people" />} />
+        <Route path="org/basic" element={<Basic area="org" />} />
         <Route path="*" element={null} />
       </Route>
     </Routes>
