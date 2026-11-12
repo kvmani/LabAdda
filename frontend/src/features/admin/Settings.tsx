@@ -52,7 +52,6 @@ export function Settings() {
       ) : (
         <>
           <NoticeEditor
-            key={current?.revision ?? 0}
             current={current}
             maxLength={data.banner_max_length}
             onSaved={(saved) => setNotice({ value: saved })}

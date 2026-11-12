@@ -44,7 +44,11 @@ it("shows an unknown backup as unknown, with guidance and no details", async () 
 it("publishes a notice with the revision it last read", async () => {
   vi.mocked(api).mockResolvedValue({ banner: null });
   const onSaved = vi.fn();
-  render(<NoticeEditor current={null} maxLength={280} onSaved={onSaved} />);
+  render(
+    <MemoryRouter>
+      <NoticeEditor current={null} maxLength={280} onSaved={onSaved} />
+    </MemoryRouter>,
+  );
   fireEvent.change(screen.getByLabelText(/Notice text/), { target: { value: "Back at six." } });
   fireEvent.change(screen.getByLabelText(/Show until/), { target: { value: "2030-01-01T10:00" } });
   fireEvent.click(screen.getByRole("button", { name: "Publish notice" }));

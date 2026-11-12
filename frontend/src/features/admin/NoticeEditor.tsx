@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { api, asApiError, errorMessage } from "../../api";
 import { fmtTime, isoToLocal, localToIso } from "../../format";
 import { Banner, Button, Card, DateInput, Select, TextArea } from "../../ui";
@@ -57,7 +58,7 @@ export function NoticeEditor({ current, maxLength, onSaved }: Props) {
     <Card title="Site notice">
       <p className="admin-note">
         One short message shown at the top of every page for everyone who is signed in. It disappears by
-        itself at the end time.
+        itself at the end time. <Link to="/help/admin/site-notice">How to publish a notice</Link>
       </p>
       {current && (
         <p>

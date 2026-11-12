@@ -65,3 +65,25 @@ sentence and before/after table, `ExportAudit`). The drawer opens from `?entry=`
 loaded page. Browser check: `e2e/audit.mjs` (with `e2e/audit-fixture.py`) at `/` and `/labadda-staging`: paging,
 filters, drawer, export, retry, axe at 1400 and 390 px, member denial.
 
+
+## A7 backups page, settings and site notice
+
+Backend: `backup_report.py` turns the D3 status file (`backup_status.read_status`, strict schema and 4 KiB limit,
+reused not copied) into the page payload and the AD-03 word: missing, unreadable or future-dated is `unknown` with
+guidance, never an error; failed backup or verification is `unavailable`; older than 26 h `degraded`; older than
+50 h `stale`. Next run and restore rehearsal are `null` (the receipt does not carry them) and the page says "Not
+recorded". `settings_report.py` lists an explicit set of non-secret `Settings` fields in groups with a plain
+explanation; add a row there to expose a new setting, never iterate over `Settings`. Every row says "Changed by the
+operator in the site configuration file." `banner.py` holds the notice rules (280 characters, one line, no control
+characters, `expected_revision`, audited as `site.banner_set` / `site.banner_clear` without the text);
+`api/admin_site.py` serves `/admin/backups/status` (backups console section, readers allowed), `/admin/settings`
+and `PUT /admin/settings/banner` (administrators only) and `/site/banner` (any signed-in person, panel 401).
+Migration 0029 creates the single-row `site_banner`; its downgrade refuses while a notice exists. Tests:
+`test_admin_site.py`.
+
+Frontend: `features/admin/BackupsPage.tsx`, `Settings.tsx` (site notice editor `NoticeEditor.tsx`, groups
+`SettingsGroups.tsx`, then the existing delegation tools), `useAdminData.ts`. `ui/Banner.tsx` (test, gallery entry)
+renders the notice as text; `Shell.tsx` polls `/site/banner` through `useSiteBanner.ts` every minute and gives it a
+full-width row under the top bar. Help: `help/admin/backups-page.md`, `site-notice.md`, `settings.md`. Browser check:
+`e2e/console-backups.mjs` at `/` and `/labadda-staging`: unknown backup, fresh and stale receipts, settings without
+paths or secrets, notice publish/appear/remove, member denial, axe at 1400 and 390 px.
