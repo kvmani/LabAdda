@@ -140,7 +140,22 @@ people together, the smallest published row is suppressed too, because site tota
 "total minus published units" would otherwise reveal them; published people counts are rounded to the
 nearest 5, so nested or adjacent periods cannot be subtracted down to one person; a unit counts only its own
 home people, never its sub-units. People without an organisation home unit form one more protected row.
-Projects and groups are reported only as "Projects" and "Groups" item totals. No activity row and no sample
+Item counts per unit are rounded too and have their own complementary rule (`published_items`): the
+"Organisation units" total is exact, so hidden units' items (units with no home people included) must
+total at least 5 and be spread over at least two hidden units. Site figures have a floor: people figures
+below 5, chart buckets and weekdays with fewer than 5 active people, and item and upload totals in a period
+with fewer than 5 active people are sent as `suppressed`. Projects and groups are reported only as "Projects"
+and "Groups" item totals.
+
+Accepted residual risks (privacy review, 2026-11-12):
+
+- **Transfers.** Activity is grouped by each person's *current* home unit; there is no home-unit history in
+  the people tables the card allows. An administrator who moves someone across a unit's 5-person threshold
+  (or a rounding boundary) and compares the page before and after can learn about that person. Transfers are
+  audited, which makes this visible. `test_home_units_are_read_as_they_are_now` pins the behaviour. A
+  stricter fix needs a home-unit history (P2/P3 change records) and is left for that work.
+- **Sliding windows.** Rounding to 5 is deterministic, so watching one unit day by day as a period slides
+  can show when its count crosses a rounding boundary. It never shows which person. No activity row and no sample
 in the period is `unknown`; a figure without its data is `unknown` with `value: null`. Upload size bands come
 from the new `uploads.size_band` counter (no figures before this release).
 

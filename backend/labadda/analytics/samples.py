@@ -181,3 +181,25 @@ def people_by_home_unit(db: Session) -> dict[object, int]:
         .group_by(Workspace.id)
     )
     return {row[0]: int(row[1]) for row in db.execute(query)}
+
+
+def active_per_bucket(db: Session, window: Window, size: str) -> dict[date, int]:
+    """Distinct active people per day, ISO week (from Monday) or calendar month of the window."""
+    bucket = cast(func.date_trunc(size, ActivityDay.day), Date)
+    query = (
+        select(bucket, func.count(func.distinct(ActivityDay.user_id)))
+        .where(ActivityDay.day >= window.first, ActivityDay.day <= window.last)
+        .group_by(bucket)
+    )
+    return {row[0]: int(row[1]) for row in db.execute(query)}
+
+
+def active_per_weekday(db: Session, window: Window, since: date) -> dict[int, int]:
+    """Distinct active people per ISO weekday (1-7) on days from ``since`` to the window's end."""
+    weekday = func.extract("isodow", ActivityDay.day)
+    query = (
+        select(weekday, func.count(func.distinct(ActivityDay.user_id)))
+        .where(ActivityDay.day >= max(since, window.first), ActivityDay.day <= window.last)
+        .group_by(weekday)
+    )
+    return {int(row[0]): int(row[1]) for row in db.execute(query)}

@@ -23,21 +23,38 @@ from .periods import Window, windows
 CHART_UNITS = 10
 
 
-def _items_by_unit(db: Session, window: Window) -> dict[str, float]:
-    found: dict[str, float] = {}
+OVERFLOW = "overflow"
+
+
+def _items_by_unit(db: Session, window: Window) -> dict[object, float]:
+    """Items per organisation unit (by id) and in the overflow bucket, as in the org total."""
+    found: dict[object, float] = {}
     for (_, dimension), value in samples.totals(db, ITEM_METRICS, window).items():
-        if dimension.startswith(catalog.UNIT_PREFIX) and dimension != catalog.UNIT_OVERFLOW:
-            found[dimension] = found.get(dimension, 0.0) + value
+        if dimension == catalog.UNIT_OVERFLOW:
+            key: object = OVERFLOW
+        elif catalog.is_unit_dimension(dimension):
+            key = uuid.UUID(dimension[len(catalog.UNIT_PREFIX) :])
+        else:
+            continue
+        found[key] = found.get(key, 0.0) + value
     return found
 
 
-def _unit_items(items: dict[str, float] | None, key: uuid.UUID | None, visible: bool) -> dict | None:
-    """Items made in a unit's own space; people without a home unit have no space."""
-    if key is None:
-        return None
-    if visible and items is None:
-        return {"state": "unknown"}
-    return protect.figure((items or {}).get(catalog.unit_dimension(key), 0.0), visible, people=False)
+def _item_figures(
+    db: Session, window: Window, keys: list[uuid.UUID | None], people_shown: set
+) -> dict[uuid.UUID | None, dict | None]:
+    """Each unit's published item count; people without a home unit have no space of their own."""
+    if not samples.has_samples(db, window):
+        return {key: None if key is None else _unknown_or_hidden(key in people_shown) for key in keys}
+    items = _items_by_unit(db, window)
+    every = {key: items.get(key, 0.0) for key in keys if key is not None}
+    every.update({key: value for key, value in items.items() if key not in every})
+    shown = protect.published_items(every, people_shown)
+    return {key: None if key is None else protect.figure(every[key], key in shown) for key in keys}
+
+
+def _unknown_or_hidden(visible: bool) -> dict:
+    return {"state": "unknown"} if visible else {"state": "suppressed"}
 
 
 def _figures(
@@ -45,17 +62,13 @@ def _figures(
 ) -> dict[uuid.UUID | None, dict]:
     """Each row's published figures for one window; suppression is decided on exact values."""
     active = samples.active_by_home_unit(db, window)
-    items = _items_by_unit(db, window) if samples.has_samples(db, window) else None
     at_risk = {key: active.get(key, 0) for key in keys if headcount.get(key, 0) > 0}
     shown = protect.published(at_risk)
-    figures = {}
-    for key in keys:
-        visible = key in shown
-        figures[key] = {
-            "active_people": protect.figure(active.get(key, 0), visible, people=True),
-            "items_created": _unit_items(items, key, visible),
-        }
-    return figures
+    items = _item_figures(db, window, keys, shown)
+    return {
+        key: {"active_people": protect.figure(active.get(key, 0), key in shown), "items_created": items[key]}
+        for key in keys
+    }
 
 
 def _chart(rows: list[dict]) -> list[dict]:

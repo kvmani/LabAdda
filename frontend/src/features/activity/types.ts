@@ -3,34 +3,41 @@ export type Period = "7d" | "30d" | "90d" | "12m";
 
 export type DayRange = { first_day: string; last_day: string };
 
+/** "suppressed": fewer than 5 people stand behind the figure, so no number is sent. */
+export type FigureState = "measured" | "unknown" | "suppressed";
+
 export type Tile = {
   key: "active_day" | "active_week" | "active_month" | "active_share" | "peak_connections" | "items_created";
   label: string;
   unit: "people" | "fraction" | "connections" | "items";
-  state: "measured" | "unknown";
+  state: FigureState;
   value: number | null;
+  previous_state: FigureState;
   previous: number | null;
   active?: number | null;
   accounts?: number;
 };
 
-export type FeaturePoint = { start: string; values: Record<string, number> | null };
+export type FeaturePoint = { start: string; state: FigureState; values: Record<string, number> | null };
+
+export type Total = { key: string; label: string; state: FigureState; value: number | null };
 
 export type SummaryCharts = {
-  active_per_day: { day: string; value: number | null }[];
+  active_per_day: { day: string; state: FigureState; value: number | null }[];
   features: {
     bucket: "day" | "week" | "month";
     series: { key: string; label: string }[];
     points: FeaturePoint[];
   };
-  items_by_kind: { key: "org" | "project" | "group"; label: string; value: number }[];
+  items_by_kind: Total[];
   weekday_hour: {
-    state: "measured" | "unknown";
+    state: FigureState;
     from: string | null;
-    cells: { weekday: number; hour: number; value: number }[];
+    cells: { weekday: number; hour: number; value: number | null }[];
+    suppressed_weekdays: number[];
   };
   storage: { day: string; files_bytes: number | null; database_bytes: number | null }[];
-  upload_sizes: { key: string; label: string; value: number }[];
+  upload_sizes: Total[];
 };
 
 type Common = {

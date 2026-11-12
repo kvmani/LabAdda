@@ -26,7 +26,7 @@ The figures refresh by themselves every minute while the page is on screen. Ever
 
 ## If something goes wrong
 
-If a figure says **Not measured**, nothing was collected for it in that period. This is not the same as no use: the server may have been switched off, or the figure is new. If the page says **Not measured yet**, choose a longer period or wait until people have used LabAdda for a few minutes. If a unit shows **Fewer than 5**, fewer than five of its people were active, so its numbers are hidden to protect their privacy. Another small unit may be hidden as well, so that no one can work out a single person's activity by subtracting. Unit figures are rounded to the nearest five for the same reason.
+If a figure says **Not measured**, nothing was collected for it in that period. This is not the same as no use: the server may have been switched off, or the figure is new. If the page says **Not measured yet**, choose a longer period or wait until people have used LabAdda for a few minutes. If a unit or a tile shows **Fewer than 5**, fewer than five people were active, so the number is hidden to protect their privacy. On a small site, days and weekdays with fewer than five active people are left out of the charts for the same reason. Another unit may be hidden as well, so that no one can work out a single person's activity by subtracting. Unit figures are rounded to the nearest five for the same reason.
 
 ## Related
 

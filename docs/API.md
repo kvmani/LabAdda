@@ -715,27 +715,35 @@ ending today (`12m` = 365 days), compared with the equal-length period just befo
 `GET /admin/analytics/summary?period=` — 200 `{period, timezone, generated_at, current,
 previous, state, tiles, charts}`. `state` is `unknown` (with `tiles: []`, `charts: null`) when
 the period has no activity day and no metric sample; never zeros.
-- `tiles[]`: `{key, label, unit, state: measured|unknown, value, previous}` for
-  `active_day`, `active_week`, `active_month` (distinct people on the last 1/7/30 days of the
-  period), `active_share` (unit `fraction`, plus `active` and `accounts`: people active in
-  the period over accounts that may sign in now), `peak_connections` (highest
-  `sockets.connected`), `items_created` (posts, replies, chat messages, tasks created and files
-  added). A figure without data is `unknown` with `value: null`; `previous` is null when the
-  previous period has no data.
-- `charts.active_per_day[]` `{day, value}` (null for a day with no trace of collection);
-  `charts.features` `{bucket: day|week|month, series[{key,label}], points[{start, values}]}`
-  (`values` null for an unmeasured bucket); `charts.items_by_kind[]` `{key: org|project|group,
-  label, value}` — projects and groups only as these totals; `charts.weekday_hour` `{state,
-  from, cells[{weekday 1-7 (Monday 1), hour 0-23, value}]}` from API request counts over the
-  hours still kept (35 days); `charts.storage[]` `{day, files_bytes, database_bytes}` (daily
-  peaks, null when not read); `charts.upload_sizes[]` `{key, label, value}`.
+Site figures are floored as well: a people figure below 5 (including 0) is `suppressed` with
+`value: null`, so a small site cannot show one person's activity.
+- `tiles[]`: `{key, label, unit, state, value, previous_state, previous}` with `state` and
+  `previous_state` one of `measured | unknown | suppressed`, for `active_day`, `active_week`,
+  `active_month` (distinct people on the last 1/7/30 days of the period), `active_share` (unit
+  `fraction`, plus `active` (null unless measured) and `accounts`: people active in the period
+  over accounts that may sign in now), `peak_connections` (highest `sockets.connected`, never
+  suppressed), `items_created` (posts, replies, chat messages, tasks created and files added;
+  suppressed when fewer than 5 people were active in that period). A figure without data is
+  `unknown`; `value`/`previous` are null unless `measured`.
+- `charts.active_per_day[]` `{day, state, value}`; `charts.features` `{bucket: day|week|month,
+  series[{key,label}], points[{start, state, values}]}` (`values` only when the bucket had at
+  least 5 active people); `charts.items_by_kind[]` and `charts.upload_sizes[]` `{key, label,
+  state, value}` (suppressed when fewer than 5 people were active in the period) — projects and
+  groups only as the `project`/`group` totals; `charts.weekday_hour` `{state, from,
+  cells[{weekday 1-7 (Monday 1), hour 0-23, value}], suppressed_weekdays[]}` from API request
+  counts over the hours still kept (35 days); a weekday with fewer than 5 active people on its
+  days has null cells, all seven make `state: suppressed`; `charts.storage[]` `{day,
+  files_bytes, database_bytes}` (daily peaks, null when not read).
 
 `GET /admin/analytics/units?period=` — 200 `{period, timezone, generated_at, current,
 previous, minimum_group: 5, rounded_to: 5, state, units[], no_home_unit, chart[]}`. One row per
 organisation unit `{id, name, parent_id, archived, active_people, items_created,
 previous_active_people}`; `no_home_unit` has the same figures (`items_created` null). A figure
-is `{state: "shown", value}` or `{state: "suppressed"}` (no number is sent; shown as "fewer
-than 5"), or `{state: "unknown"}` for items when nothing was collected. Small-group protection,
+is `{state: "shown", value}` (rounded to the nearest 5) or `{state: "suppressed"}` (no number is
+sent; shown as "fewer than 5"), or `{state: "unknown"}` for items when nothing was collected.
+Item counts are published only for rows whose people are shown and only while the items of all
+hidden units (including units that are nobody's home, and the overflow bucket) total at least 5
+and are spread over at least two units; otherwise more item counts are hidden. Small-group protection,
 on the server: a row is shown only when at least 5 of its home people were active in that
 period; while suppressed rows together hold fewer than 5 active people, the smallest shown row
 is suppressed too (so total minus shown units cannot reveal them); shown people counts are

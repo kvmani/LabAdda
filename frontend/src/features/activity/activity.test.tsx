@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { ActivityPage } from "./ActivityPage";
-import { comparison, featureSeries, figureText, heatValues, parsePeriod } from "./model";
+import { comparison, featureSeries, figureText, heatValues, parsePeriod, tileValue } from "./model";
 import type { Summary, SummaryCharts, Tile, Units } from "./types";
 
 vi.mock("../../api", async (original) => ({
@@ -31,26 +31,31 @@ const tile = (key: Tile["key"], value: number | null, previous: number | null): 
   unit: "people",
   state: value === null ? "unknown" : "measured",
   value,
+  previous_state: previous === null ? "unknown" : "measured",
   previous,
 });
 const charts: SummaryCharts = {
-  active_per_day: [{ day: "2026-11-11", value: 3 }],
+  active_per_day: [
+    { day: "2026-11-10", state: "suppressed", value: null },
+    { day: "2026-11-11", state: "measured", value: 6 },
+  ],
   features: {
     bucket: "day",
     series: [{ key: "posts.created", label: "Posts" }],
     points: [
-      { start: "2026-11-10", values: null },
-      { start: "2026-11-11", values: { "posts.created": 2, "replies.created": 1 } },
+      { start: "2026-11-10", state: "suppressed", values: null },
+      { start: "2026-11-11", state: "measured", values: { "posts.created": 2, "replies.created": 1 } },
     ],
   },
-  items_by_kind: [{ key: "project", label: "Projects", value: 4 }],
+  items_by_kind: [{ key: "project", label: "Projects", state: "measured", value: 4 }],
   weekday_hour: {
     state: "measured",
     from: "2026-11-05T00:00:00+00:00",
     cells: [{ weekday: 3, hour: 9, value: 7 }],
+    suppressed_weekdays: [7],
   },
   storage: [],
-  upload_sizes: [{ key: "under_100kb", label: "Under 100 KB", value: 1 }],
+  upload_sizes: [{ key: "under_100kb", label: "Under 100 KB", state: "measured", value: 1 }],
 };
 const units: Units = {
   ...common,
@@ -96,6 +101,16 @@ it("describes comparisons in words and unknown as not measured", () => {
   expect(figureText({ state: "suppressed" })).toBe("Fewer than 5");
   expect(figureText({ state: "shown", value: 10 })).toBe("10");
   expect(figureText(null)).toBe("Not applicable");
+  const hidden: Tile = {
+    ...tile("active_day", null, null),
+    state: "suppressed",
+    previous_state: "suppressed",
+  };
+  expect(tileValue(hidden)).toBe("Fewer than 5");
+  expect(comparison(hidden)).toBe("Fewer than 5 people were active, so the number is hidden.");
+  expect(comparison({ ...tile("active_day", 7, null), previous_state: "suppressed" })).toBe(
+    "Fewer than 5 in the previous period.",
+  );
 });
 
 it("keeps unmeasured buckets as gaps and fills the heat grid", () => {
@@ -117,4 +132,6 @@ it("shows suppressed units as fewer than 5 and leaves them out of the chart", as
   expect(screen.getAllByText("Fewer than 5").length).toBeGreaterThan(0);
   expect(screen.getByText(/No unit has enough active people/)).toBeTruthy();
   expect(screen.getByRole("button", { name: "Export figures" })).toBeTruthy();
+  expect(screen.getByText(/Days with fewer than 5 active people are left out/)).toBeTruthy();
+  expect(screen.getByText(/Weekdays with fewer than 5 active people are left empty/)).toBeTruthy();
 });

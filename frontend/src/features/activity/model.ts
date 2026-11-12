@@ -1,6 +1,6 @@
 import type { ChartPoint, Series } from "../../ui";
 import { scaleValues } from "../health/model";
-import type { DayRange, FeaturePoint, Figure, Period, SummaryCharts, Tile } from "./types";
+import type { DayRange, FeaturePoint, Figure, Period, SummaryCharts, Tile, Total } from "./types";
 
 export const PERIODS: { value: Period; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -42,14 +42,19 @@ const count = (value: number) => value.toLocaleString(undefined, { maximumFracti
 const percent = (value: number) =>
   value.toLocaleString(undefined, { style: "percent", maximumFractionDigits: 0 });
 
+export const SUPPRESSED_TEXT = "Fewer than 5";
+
 export function tileValue(tile: Tile): string {
+  if (tile.state === "suppressed") return SUPPRESSED_TEXT;
   if (tile.value === null) return "Not measured";
   return tile.unit === "fraction" ? percent(tile.value) : count(tile.value);
 }
 
 /** "Up 3 from 12 in the previous period", in words, never a bare arrow. */
 export function comparison(tile: Tile): string {
+  if (tile.state === "suppressed") return "Fewer than 5 people were active, so the number is hidden.";
   if (tile.value === null) return "No figures were collected in this period.";
+  if (tile.previous_state === "suppressed") return "Fewer than 5 in the previous period.";
   if (tile.previous === null) return "No figures for the previous period.";
   const format = tile.unit === "fraction" ? percent : count;
   const change = tile.value - tile.previous;
@@ -57,8 +62,6 @@ export function comparison(tile: Tile): string {
   const direction = change > 0 ? "Up" : "Down";
   return `${direction} ${format(Math.abs(change))} from ${format(tile.previous)} in the previous period.`;
 }
-
-export const SUPPRESSED_TEXT = "Fewer than 5";
 
 export function figureText(figure: Figure | null): string {
   if (figure === null) return "Not applicable";
@@ -110,18 +113,27 @@ export function bucketFormatter(bucket: SummaryCharts["features"]["bucket"]): (t
   return formatDay;
 }
 
-/** Totals of every feature over the period, including those grouped together in the chart. */
-export function featureTotals(charts: SummaryCharts): { label: string; value: number | null }[] {
-  const measured = charts.features.points.filter((point) => point.values !== null);
+/** Totals of every feature over the buckets whose figures were sent. */
+export function featureTotals(charts: SummaryCharts): Total[] {
+  const points = charts.features.points;
+  const measured = points.filter((point) => point.values !== null);
+  const hidden = points.some((point) => point.state === "suppressed");
+  const state: Total["state"] = measured.length ? "measured" : hidden ? "suppressed" : "unknown";
   return charts.features.series.map((series) => ({
+    key: series.key,
     label: series.label,
+    state,
     value: measured.length
       ? measured.reduce((total, point) => total + (point.values?.[series.key] ?? 0), 0)
       : null,
   }));
 }
 
-// Short names: the heat grid gives row labels a narrow column.
+export function totalText(total: Total): string {
+  if (total.state === "suppressed") return SUPPRESSED_TEXT;
+  return total.value === null ? "Not measured" : count(total.value);
+}
+
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const HOURS = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
 

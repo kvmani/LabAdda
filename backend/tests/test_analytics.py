@@ -1,5 +1,6 @@
 """Activity summary: periods, unknown states, totals, access, export and no content (T61, T64)."""
 
+import json
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 
@@ -15,7 +16,7 @@ from labadda.metrics import REGISTRY
 from labadda.metrics.flush import flush
 from labadda.models import AuditEvent
 from labadda.people import site_date
-from tests.analytics_support import fresh_cache, mark_active, store, tile
+from tests.analytics_support import add_people, fresh_cache, mark_active, store, tile
 from tests.test_capabilities import grant
 from tests.test_metrics_api import SECRETS, seed_content
 from tests.test_panel import PANEL, pair
@@ -46,18 +47,54 @@ def test_empty_installation_is_unknown_not_zero(db_factory, settings, ids):
     assert units(db_factory, settings)["units"] == []
 
 
+def crowd(db_factory, *days, count=5, prefix="crowd"):
+    people = add_people(db_factory, None, count, prefix)
+    mark_active(db_factory, people, *days)
+    return people
+
+
 def test_unmeasured_figures_stay_unknown_beside_measured_people(db_factory, settings, ids):
-    mark_active(db_factory, [ids["users"]["ben"]], TODAY)
+    crowd(db_factory, TODAY)
     found = summary(db_factory, settings)
     assert found["state"] == "measured"
-    assert tile(found, "active_day")["value"] == 1
-    assert tile(found, "active_day")["previous"] is None
+    assert tile(found, "active_day")["value"] == 5
+    assert (tile(found, "active_day")["previous"], tile(found, "active_day")["previous_state"]) == (
+        None,
+        "unknown",
+    )
     for key in ("items_created", "peak_connections"):
         assert tile(found, key)["state"] == "unknown"
         assert tile(found, key)["value"] is None
     assert found["charts"]["weekday_hour"]["state"] == "unknown"
-    assert [point["value"] for point in found["charts"]["active_per_day"]] == [None] * 6 + [1]
+    assert [point["state"] for point in found["charts"]["active_per_day"]] == ["unknown"] * 6 + ["measured"]
     assert all(point["values"] is None for point in found["charts"]["features"]["points"])
+
+
+def test_site_figures_below_five_people_are_suppressed(db_factory, settings, ids):
+    mark_active(db_factory, [ids["users"]["ben"]], TODAY)
+    mark_active(db_factory, [ids["users"]["ben"], ids["users"]["asha"]], TODAY - timedelta(days=8))
+    store(
+        db_factory,
+        "hour",
+        (NOW - timedelta(hours=1), "posts.created", "org", 3),
+        (NOW - timedelta(hours=1), "http.requests", "chat", 40),
+        (NOW - timedelta(hours=1), "uploads.size_band", "under_1mb", 1),
+        (NOW - timedelta(days=8), "posts.created", "org", 1),
+    )
+    found = summary(db_factory, settings)
+    body = json.dumps(found)
+    for key in ("active_day", "active_week", "active_month", "active_share", "items_created"):
+        assert (tile(found, key)["state"], tile(found, key)["value"]) == ("suppressed", None)
+        assert (tile(found, key)["previous_state"], tile(found, key)["previous"]) == ("suppressed", None)
+    assert tile(found, "active_share")["active"] is None
+    charts = found["charts"]
+    assert {point["state"] for point in charts["active_per_day"]} <= {"suppressed", "unknown"}
+    assert all(point["values"] is None for point in charts["features"]["points"])
+    assert charts["weekday_hour"]["state"] == "suppressed"
+    assert all(cell["value"] is None for cell in charts["weekday_hour"]["cells"])
+    assert all(kind["value"] is None for kind in charts["items_by_kind"] + charts["upload_sizes"])
+    assert '"value": 40' not in body
+    assert '"value": 3' not in body
 
 
 def test_periods_and_their_previous_period_cover_whole_site_days(settings):
@@ -75,6 +112,7 @@ def test_periods_and_their_previous_period_cover_whole_site_days(settings):
 def test_counts_follow_the_site_time_zone(db_factory, settings, ids):
     kolkata = replace(settings, timezone="Asia/Kolkata")
     late = datetime(2026, 11, 10, 19, 0, tzinfo=UTC)
+    crowd(db_factory, date(2026, 11, 10), date(2026, 11, 11))
     store(
         db_factory,
         "minute",
@@ -92,11 +130,16 @@ def test_counts_follow_the_site_time_zone(db_factory, settings, ids):
         **dict.fromkeys(FEATURE_METRICS, 0.0),
         "posts.created": 5.0,
     }
-    heat = {(c["weekday"], c["hour"]): c["value"] for c in found["charts"]["weekday_hour"]["cells"]}
-    assert (heat[(2, 23)], heat[(3, 0)], sum(heat.values())) == (20, 30, 50)
+    heat = found["charts"]["weekday_hour"]
+    cells = {(c["weekday"], c["hour"]): c["value"] for c in heat["cells"]}
+    assert (cells[(2, 23)], cells[(3, 0)]) == (20, 30)
+    # Only Tuesday and Wednesday had five active people; the other weekdays send no numbers.
+    assert heat["suppressed_weekdays"] == [1, 4, 5, 6, 7]
+    assert cells[(1, 0)] is None
 
 
 def test_rolled_up_buckets_are_not_counted_twice(db_factory, settings, ids):
+    crowd(db_factory, TODAY)
     yesterday = datetime(2026, 11, 10, tzinfo=UTC)
     store(db_factory, "day", (yesterday, "chat.messages", "group", 10))
     store(
@@ -113,17 +156,16 @@ def test_rolled_up_buckets_are_not_counted_twice(db_factory, settings, ids):
     )
     found = summary(db_factory, settings)
     assert tile(found, "items_created")["value"] == 15
-    assert found["charts"]["items_by_kind"] == [
-        {"key": "org", "label": "Organisation units", "value": 0},
-        {"key": "project", "label": "Projects", "value": 0},
-        {"key": "group", "label": "Groups", "value": 15.0},
+    assert [(kind["label"], kind["value"]) for kind in found["charts"]["items_by_kind"]] == [
+        ("Organisation units", 0),
+        ("Projects", 0),
+        ("Groups", 15.0),
     ]
 
 
 def test_tiles_compare_with_the_previous_period(db_factory, settings, ids):
-    people = [ids["users"][name] for name in ("asha", "ben", "chen")]
-    mark_active(db_factory, people, TODAY)
-    mark_active(db_factory, people[:1], TODAY - timedelta(days=8))
+    both = crowd(db_factory, TODAY, TODAY - timedelta(days=8))
+    crowd(db_factory, TODAY, count=2, prefix="newcomer")
     store(
         db_factory,
         "hour",
@@ -134,11 +176,15 @@ def test_tiles_compare_with_the_previous_period(db_factory, settings, ids):
         (NOW - timedelta(hours=3), "assets.bytes", "", 4096),
     )
     found = summary(db_factory, settings)
-    assert (tile(found, "active_day")["value"], tile(found, "active_day")["previous"]) == (3, 0)
-    assert (tile(found, "active_week")["value"], tile(found, "active_week")["previous"]) == (3, 1)
+    assert len(both) == 5
+    assert (tile(found, "active_day")["value"], tile(found, "active_day")["previous_state"]) == (
+        7,
+        "suppressed",
+    )
+    assert (tile(found, "active_week")["value"], tile(found, "active_week")["previous"]) == (7, 5)
     share = tile(found, "active_share")
-    assert share["accounts"] == 6
-    assert share["value"] == pytest.approx(0.5)
+    assert share["accounts"] == 13
+    assert share["value"] == pytest.approx(7 / 13)
     assert (tile(found, "peak_connections")["value"], tile(found, "peak_connections")["previous"]) == (7, 2)
     sizes = {band["key"]: band["value"] for band in found["charts"]["upload_sizes"]}
     assert sizes == {"under_100kb": 0, "under_1mb": 3, "under_10mb": 0, "10mb_or_more": 0}

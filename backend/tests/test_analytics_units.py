@@ -1,6 +1,7 @@
 """Activity by unit: small-group protection and differencing attacks (T64)."""
 
 import json
+import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -9,6 +10,7 @@ from labadda import analytics
 from labadda.analytics import protect
 from labadda.analytics.units import _chart
 from labadda.metrics import catalog
+from labadda.models import User
 from labadda.people import site_date
 from tests.analytics_support import add_people, fresh_cache, mark_active, store, tile
 
@@ -54,9 +56,10 @@ def test_rows_under_five_and_their_complements_are_suppressed(active, shown):
 
 
 @pytest.mark.parametrize(("exact", "shown"), [(5, 5), (7, 5), (8, 10), (12, 10), (13, 15)])
-def test_published_people_counts_are_rounded_to_fives(exact, shown):
-    assert protect.figure(exact, True, people=True) == {"state": "shown", "value": shown}
-    assert protect.figure(exact, False, people=True) == {"state": "suppressed"}
+def test_published_counts_are_rounded_to_fives(exact, shown):
+    assert protect.figure(exact, True) == {"state": "shown", "value": shown}
+    assert protect.figure(exact, False) == {"state": "suppressed"}
+    assert protect.figure(2, True) == {"state": "shown", "value": 0}
 
 
 def test_units_under_five_people_are_suppressed_on_the_server(db_factory, settings, ids):
@@ -92,11 +95,14 @@ def test_published_units_show_rounded_counts_and_their_items(db_factory, setting
         (NOW - timedelta(hours=1), "posts.created", unit, 4),
         (NOW - timedelta(hours=1), "chat.messages", unit, 2),
         (NOW - timedelta(hours=1), "board.operations", unit, 50),
+        (NOW - timedelta(hours=1), "posts.created", f"unit:{ids['workspaces']['root']}", 3),
+        (NOW - timedelta(hours=1), "posts.created", f"unit:{ids['workspaces']['division']}", 4),
     )
     found = units(db_factory, settings)
     films_row = row(found, ids, "section_a")
     assert films_row["active_people"] == {"state": "shown", "value": 5}
-    assert films_row["items_created"] == {"state": "shown", "value": 6}
+    assert films_row["items_created"] == {"state": "shown", "value": 5}
+    assert row(found, ids, "root")["items_created"] == {"state": "suppressed"}
     assert row(found, ids, "section_b")["active_people"] == {"state": "shown", "value": 5}
     assert found["chart"] == [
         {"label": "Catalysis Section", "value": 5},
@@ -112,7 +118,8 @@ def test_overlapping_periods_cannot_be_subtracted_to_reveal_one_person(db_factor
     mark_active(db_factory, films[5:], TODAY - timedelta(days=20))
     month = row(units(db_factory, settings, "30d"), ids, "section_a")["active_people"]
     week = row(units(db_factory, settings, "7d"), ids, "section_a")["active_people"]
-    # Exactly 6 and 5 people: "30 days minus 7 days" would single out the sixth person.
+    # Exactly 6 and 5 people: rounding hides this difference. Rounding is deterministic, so a
+    # window that slides across a rounding boundary can still show a change (see the guide).
     assert month == week == {"state": "shown", "value": 5}
 
 
@@ -209,3 +216,58 @@ def test_units_api_returns_suppressed_rows_without_numbers(as_user, ids, db_fact
     assert films["active_people"] == {"state": "suppressed"}
     assert body["minimum_group"] == 5
     assert all("value" not in unit["active_people"] for unit in body["units"])
+
+
+@pytest.mark.parametrize(
+    ("items", "candidates", "shown"),
+    [
+        ({"a": 9, "b": 4, "empty": 3}, {"a", "b"}, {"a"}),
+        ({"a": 9, "b": 4, "empty": 3, "other": 2}, {"a", "b"}, {"a", "b"}),
+        ({"a": 9, "b": 4, "empty": 0}, {"a", "b"}, set()),
+        ({"a": 9, "b": 6, "c": 1, "d": 4}, {"a", "b"}, {"a", "b"}),
+        ({"a": 9}, {"a"}, {"a"}),
+    ],
+)
+def test_hidden_item_counts_cannot_be_isolated(items, candidates, shown):
+    assert protect.published_items(items, candidates) == shown
+
+
+def test_items_of_a_unit_nobody_calls_home_are_not_revealed_by_the_total(db_factory, settings, ids):
+    films = add_people(db_factory, ids["workspaces"]["section_a"], 6, "films")
+    visitors = add_people(db_factory, None, 5, "visitor")
+    mark_active(db_factory, films + visitors, TODAY)
+    store(
+        db_factory,
+        "hour",
+        (NOW - timedelta(hours=1), "posts.created", "org", 7),
+        (NOW - timedelta(hours=1), "posts.created", f"unit:{ids['workspaces']['section_a']}", 4),
+        # One visitor posting in Materials Group, a unit that is nobody's home.
+        (NOW - timedelta(hours=1), "posts.created", f"unit:{ids['workspaces']['group']}", 3),
+    )
+    found = units(db_factory, settings)
+    with db_factory() as db:
+        summary = analytics.build_summary(db, settings, "30d", now=NOW)
+    org_total = next(kind for kind in summary["charts"]["items_by_kind"] if kind["key"] == "org")
+    assert org_total["value"] == 7
+    assert row(found, ids, "section_a")["active_people"]["state"] == "shown"
+    assert row(found, ids, "section_a")["items_created"] == {"state": "suppressed"}
+    assert row(found, ids, "group")["items_created"] == {"state": "suppressed"}
+
+
+def test_home_units_are_read_as_they_are_now(db_factory, settings, ids):
+    """Pins the accepted residual risk of transfers (console guide, "Transfers")."""
+    films = add_people(db_factory, ids["workspaces"]["section_a"], 6, "films")
+    division = add_people(db_factory, ids["workspaces"]["division"], 4, "division")
+    mark_active(db_factory, [*films, *division, ids["users"]["chen"]], TODAY - timedelta(days=3))
+    assert row(units(db_factory, settings), ids, "section_a")["active_people"] == {
+        "state": "shown",
+        "value": 5,
+    }
+    with db_factory() as db:
+        moved = db.get(User, uuid.UUID(films[0]))
+        moved.home_workspace_id = uuid.UUID(ids["workspaces"]["section_b"])
+        db.commit()
+    # Past activity follows the person to their new home unit; nothing records the old one.
+    after = units(db_factory, settings)
+    assert row(after, ids, "section_a")["active_people"] == {"state": "shown", "value": 5}
+    assert row(after, ids, "section_b")["active_people"] == {"state": "suppressed"}

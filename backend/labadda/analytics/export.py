@@ -13,7 +13,9 @@ NOT_MEASURED = "not measured"
 SUPPRESSED = "fewer than 5"
 
 
-def _value(value: object) -> str:
+def _value(value: object, word: str = "measured") -> str:
+    if word == "suppressed":
+        return SUPPRESSED
     if value is None:
         return NOT_MEASURED
     if isinstance(value, float) and value.is_integer():
@@ -38,31 +40,39 @@ def _tiles(summary: dict) -> list[list[str]]:
         if tile["unit"] == "fraction":
             value = None if value is None else f"{value:.1%}"
             previous = None if previous is None else f"{previous:.1%}"
-        rows.append(["Summary", tile["label"], _value(value), _value(previous)])
+        rows.append(
+            ["Summary", tile["label"], _value(value, tile["state"]), _value(previous, tile["previous_state"])]
+        )
     return rows
 
 
 def _charts(charts: dict) -> list[list[str]]:
     rows = [
-        ["Active people per day", point["day"], _value(point["value"]), ""]
+        ["Active people per day", point["day"], _value(point["value"], point["state"]), ""]
         for point in charts["active_per_day"]
     ]
     labels = {series["key"]: series["label"] for series in charts["features"]["series"]}
     for point in charts["features"]["points"]:
         for key, label in labels.items():
             value = None if point["values"] is None else point["values"][key]
-            rows.append(["Activity by feature", f"{point['start']} {label}", _value(value), ""])
+            item = f"{point['start']} {label}"
+            rows.append(["Activity by feature", item, _value(value, point["state"]), ""])
     rows += [
-        ["Items created by kind", kind["label"], _value(kind["value"]), ""]
+        ["Items created by kind", kind["label"], _value(kind["value"], kind["state"]), ""]
         for kind in charts["items_by_kind"]
     ]
-    for cell in charts["weekday_hour"]["cells"]:
+    heat = charts["weekday_hour"]
+    for cell in heat["cells"]:
         item = f"{WEEKDAYS[cell['weekday'] - 1]} {cell['hour']:02d}:00"
-        rows.append(["Requests by weekday and hour", item, _value(cell["value"]), ""])
+        word = "suppressed" if cell["weekday"] in heat["suppressed_weekdays"] else "measured"
+        rows.append(["Requests by weekday and hour", item, _value(cell["value"], word), ""])
     for point in charts["storage"]:
         rows.append(["Storage (bytes)", f"{point['day']} files", _value(point["files_bytes"]), ""])
         rows.append(["Storage (bytes)", f"{point['day']} database", _value(point["database_bytes"]), ""])
-    rows += [["Uploads by size", band["label"], _value(band["value"]), ""] for band in charts["upload_sizes"]]
+    rows += [
+        ["Uploads by size", band["label"], _value(band["value"], band["state"]), ""]
+        for band in charts["upload_sizes"]
+    ]
     return rows
 
 
