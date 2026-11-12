@@ -143,8 +143,8 @@ def test_required_pages_are_enforced_when_listed(tmp_path):
 
 def test_every_planned_page_is_required():
     required = set(check_help.REQUIRED_PAGES)
-    assert {"using/noticeboard.md", "stewards/removing-a-post.md"} <= required
-    assert not [path for path in required if not path.startswith(("using/", "stewards/"))]
+    assert {"using/noticeboard.md", "stewards/removing-a-post.md", "operator/install.md"} <= required
+    assert not [path for path in required if not path.startswith(("using/", "stewards/", "operator/"))]
     assert len(required) == len(check_help.REQUIRED_PAGES)
 
 
@@ -179,3 +179,55 @@ def test_exempt_and_admin_routes_need_no_page():
 def test_event_code_rule_is_off_until_h3(tmp_path):
     assert check_help.EVENT_CODE_CHECK_ENABLED is False
     assert check_help.check_event_codes(tmp_path) == []
+
+
+OPERATOR_FRONT = FRONT.replace("everyone", "operator").replace("/today", "none")
+
+
+def operator_problems(tmp_path: Path, commands: str) -> list[str]:
+    make_repository(tmp_path)
+    for name in ("lifecycle.py", "operations.py", "release.py", "commission.py"):
+        write(tmp_path, f"scripts/{name}", (ROOT / "scripts" / name).read_text(encoding="utf-8"))
+    write(tmp_path, "backend/labadda/cli.py", (ROOT / "backend/labadda/cli.py").read_text(encoding="utf-8"))
+    page = OPERATOR_FRONT + BODY.replace("1. Choose **Save changes**.", commands).replace(
+        "(other.md)", "(../using/other.md)"
+    )
+    write(tmp_path, "frontend/src/help/operator/task.md", page)
+    return [p for p in run_isolated(tmp_path) if "operator/task.md" in p]
+
+
+def test_real_commands_in_operator_pages_pass(tmp_path):
+    block = (
+        "```bash\n"
+        "python3 <tools>/scripts/lifecycle.py --site /etc/x.json upgrade \\\n"
+        "  --expected-current a --expected-schema b --candidate c --apply --external-writers-stopped\n"
+        "python3 <tools>/scripts/operations.py --site s.json probe --direct\n"
+        "../venv/bin/python -m labadda.cli doctor --env-file e --json | cat\n"
+        "python3.12 <tools>/scripts/release.py activate --instance i --release r \\\n"
+        "  --database-schema 0005 --writers-quiesced --backup-verified\n"
+        "sudo systemctl start whatever --not-checked\n"
+        "```\n"
+    )
+    assert operator_problems(tmp_path, block) == []
+
+
+def test_unknown_script_subcommand_and_option_are_reported(tmp_path):
+    block = (
+        "```bash\n"
+        "python3 <tools>/scripts/nothing.py run\n"
+        "python3 <tools>/scripts/release.py explode --sha256 x\n"
+        "python3 <tools>/scripts/release.py verify a --bogus\n"
+        "../venv/bin/python -m labadda.cli doctor --nope\n"
+        "```\n"
+    )
+    problems = operator_problems(tmp_path, block)
+    assert any("'nothing.py', which is not one of the supplied tools" in p for p in problems)
+    assert any("has no command 'explode'" in p for p in problems)
+    assert any("'release.py' has no option --bogus" in p for p in problems)
+    assert any("'labadda' has no option --nope" in p for p in problems)
+
+
+def test_option_in_a_code_span_must_exist_somewhere(tmp_path):
+    assert operator_problems(tmp_path, "1. Add `--apply`.\n") == []
+    problems = operator_problems(tmp_path, "1. Add `--appply`.\n")
+    assert any("no supplied tool has the option --appply" in p for p in problems)

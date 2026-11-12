@@ -10,6 +10,11 @@ changes nothing.
 
 The event-code rule (H3) is a separate function that H3 switches on by setting
 EVENT_CODE_CHECK_ENABLED. H3 also adds the administrator pages to REQUIRED_PAGES.
+
+Operator pages (H4) must quote only real commands: every `scripts/<name>.py` or `labadda`
+command in a code block or code span must name an existing tool, one of its subcommands, and
+only options that tool defines. The tools' argparse definitions are read from their source
+(never executed).
 """
 
 from __future__ import annotations
@@ -17,6 +22,10 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from help_commands import check_commands, operator_tools
 
 HELP_DIRECTORY = "frontend/src/help"
 APP_FILE = "frontend/src/App.tsx"
@@ -59,6 +68,15 @@ REQUIRED_PAGES: tuple[str, ...] = (
     "stewards/removing-a-post.md",
     "stewards/handing-over-stewardship.md",
     "stewards/workspace-storage.md",
+    "operator/install.md",
+    "operator/upgrade.md",
+    "operator/backup.md",
+    "operator/restore.md",
+    "operator/certificate-renewal.md",
+    "operator/site-is-down.md",
+    "operator/status-report.md",
+    "operator/disk-is-filling.md",
+    "operator/moving-to-a-new-server.md",
 )
 # Routes with no page of their own: redirects, the catch-all, the help centre (which never explains
 # itself) and the activation form, which the signing-in page explains from the sign-in screen.
@@ -77,6 +95,7 @@ BOLD = re.compile(r"\*\*([^*]+)\*\*")
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 ROUTE = re.compile(r"""<Route\b[^>]*?\bpath=["']([^"']+)["']""", re.DOTALL)
 SOURCE_SUFFIXES = {".ts", ".tsx"}
+OPERATOR_SHELF = "operator"
 
 
 def help_pages(root: Path) -> list[Path]:
@@ -223,6 +242,7 @@ def run(root: Path, required: tuple[str, ...] = REQUIRED_PAGES, cover_routes: bo
     source = source_text(root)
     problems = []
     screens: set[str] = set()
+    tools = operator_tools(root)
     for page in help_pages(root):
         name = str(page.relative_to(root))
         data, body, body_start = split_front_matter(page.read_text(encoding="utf-8"))
@@ -232,6 +252,8 @@ def run(root: Path, required: tuple[str, ...] = REQUIRED_PAGES, cover_routes: bo
             problems += check_sections(name, body, body_start)
         problems += check_labels(name, body, body_start, source)
         problems += check_links(root, page, body, body_start)
+        if page.relative_to(root / HELP_DIRECTORY).parts[0] == OPERATOR_SHELF:
+            problems += check_commands(page, root, body, body_start, tools)
     problems += check_required_pages(root, required)
     if cover_routes:
         problems += check_route_pages(routes, screens)
