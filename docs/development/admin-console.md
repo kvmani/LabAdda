@@ -123,3 +123,34 @@ Help: `help/admin/{system-health,status-words,events}.md` and `help/troubleshoot
 Checks: `tests/test_health_items.py` (every status per item), `test_health_events.py` (dedupe, recovery,
 stale, forced, migration guard), `test_health_api.py` (access, denials, paging, acknowledge, no content),
 vitest `features/health`, browser `e2e/console-health.mjs` at `/` and `/labadda-staging`.
+
+## A5 usage analytics
+
+Backend package `analytics/`: `periods.py` (7/30/90 days and 12 months as whole site-local days, plus the
+previous period), `samples.py` (bounded reads of `metric_samples` — day buckets, then hours after the newest
+day, then minutes after the newest hour, so nothing counts twice — and of `activity_days`), `summary.py`
+(site totals, tiles, six charts), `units.py` and `protect.py` (small-group protection), `export.py` (CSV
+rows of exactly the published figures), `cache.py` (60 s, 32 entries). `api/analytics.py` serves
+`/admin/analytics/summary`, `/units` and `/export.csv` (`require_console("activity")`, 2 s statement bound,
+authority rechecked after reading and before an export is delivered; `analytics.export` is audited).
+
+Protection is decided on exact values and only the result leaves the server: a unit row is published when
+at least 5 of its home people were active; while suppressed rows (that have people) hold fewer than 5 active
+people together, the smallest published row is suppressed too, because site totals are exact and
+"total minus published units" would otherwise reveal them; published people counts are rounded to the
+nearest 5, so nested or adjacent periods cannot be subtracted down to one person; a unit counts only its own
+home people, never its sub-units. People without an organisation home unit form one more protected row.
+Projects and groups are reported only as "Projects" and "Groups" item totals. No activity row and no sample
+in the period is `unknown`; a figure without its data is `unknown` with `value: null`. Upload size bands come
+from the new `uploads.size_band` counter (no figures before this release).
+
+Tests: `test_analytics.py` (unknown states, site time zone, roll-up cut-offs, tiles and comparison, cache,
+denial matrix, audited export, no content for every period) and `test_analytics_units.py` (suppression,
+complementary suppression, rounding, overlapping periods, parent and sibling differencing, no home unit,
+chart top 10 + other, projects and groups never by name).
+
+Frontend `features/activity/` (`ActivityPage` with the period in the URL, `ActivityTiles`, `ActivityCharts`,
+`UnitActivity`, `ExportActivity`). Suppressed figures read "Fewer than 5" and are never charted. Help:
+`help/admin/activity-page.md`. Browser check `e2e/console-activity.mjs` (with `e2e/activity-fixture.py`) at
+`/` and `/labadda-staging`: tiles, every chart, suppressed and rounded unit rows, no project or group names,
+table view, period in the URL, audited export, usage reader deep link, member refusal, axe at 1400/390 px.

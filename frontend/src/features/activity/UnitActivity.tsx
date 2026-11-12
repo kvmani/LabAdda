@@ -20,7 +20,7 @@ const COLUMNS: Column<Row>[] = [
     key: "previous",
     header: "Previous period",
     align: "end",
-    render: (row) => figureText(row.previous_active_people),
+    render: (row) => (row.previous_active_people ? figureText(row.previous_active_people) : "Not measured"),
     sortValue: (row) => figureSort(row.previous_active_people),
   },
   {

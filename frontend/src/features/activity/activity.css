@@ -69,6 +69,7 @@
 }
 .activity-chart {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   min-width: 0;
   padding: var(--space-4);
@@ -86,6 +87,7 @@
 }
 .activity-units {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   min-width: 0;
 }

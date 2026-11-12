@@ -121,7 +121,8 @@ export function featureTotals(charts: SummaryCharts): { label: string; value: nu
   }));
 }
 
-export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+// Short names: the heat grid gives row labels a narrow column.
+export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const HOURS = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
 
 export function heatValues(charts: SummaryCharts): (number | null)[][] {
