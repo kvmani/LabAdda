@@ -1,0 +1,95 @@
+/* Activity page: a tile row, a two-column chart grid and the unit section. */
+.activity-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  max-width: 20rem;
+}
+.activity-export {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: end;
+}
+.activity-export p {
+  margin: 0;
+}
+.activity-note {
+  margin: 0;
+  color: var(--text-muted);
+  max-width: 70ch;
+}
+.activity-warning {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--text);
+}
+.activity-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.activity-tile {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  min-width: 0;
+}
+.activity-tile p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.activity-tile__label {
+  font-weight: 600;
+}
+.activity-tile__value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+.activity-tile__value--unknown {
+  color: var(--text-muted);
+  font-size: var(--text-xl);
+}
+.activity-tile__note,
+.activity-tile__period {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.activity-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  gap: var(--space-5);
+}
+.activity-chart {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.activity-chart--wide {
+  grid-column: 1 / -1;
+}
+.activity-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-4);
+}
+.activity-units {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.activity-section-title {
+  margin: 0;
+  font-size: var(--text-xl);
+}

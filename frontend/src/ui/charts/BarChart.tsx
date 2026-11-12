@@ -27,7 +27,7 @@ export function BarChart({ stacked = false, height = 240, ...props }: BarChartPr
   const readout = active
     ? [
         series[active.series]?.label ?? "",
-        formatFullTime(categories[active.index] ?? 0),
+        (props.formatTime ?? formatFullTime)(categories[active.index] ?? 0),
         withUnit(valueAt(active.series, active.index), unit, formatValue),
       ].join(", ")
     : null;

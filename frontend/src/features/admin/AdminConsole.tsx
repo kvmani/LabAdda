@@ -5,6 +5,7 @@ import { Governance } from "../../components/Governance";
 import { Operations } from "../../pages/Operations";
 import { AdminLayout } from "./AdminLayout";
 import { BasicAdministration } from "./BasicAdministration";
+import { ActivityPage } from "../activity/ActivityPage";
 import { AuditPage } from "../audit/AuditPage";
 import { EventsPage } from "../events/EventsPage";
 import { HealthPage } from "../health/HealthPage";
@@ -69,6 +70,8 @@ export function AdminConsole() {
                 <Basic area="org" />
               ) : section.key === "audit" ? (
                 <AuditPage />
+              ) : section.key === "activity" ? (
+                <ActivityPage />
               ) : section.key === "health" ? (
                 <HealthPage />
               ) : section.key === "events" ? (
