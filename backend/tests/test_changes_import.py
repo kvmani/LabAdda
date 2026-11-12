@@ -226,3 +226,67 @@ def test_changes_that_together_leave_a_unit_without_a_steward_are_blocked(as_use
     with db_factory() as db:
         homes = set(db.scalars(select(User.home_workspace_id).where(User.username.in_(["asha", "ben"]))))
         assert homes == {uuid.UUID(ids["workspaces"]["section_a"])}
+
+
+def _two_stewards(ids, db_factory):
+    with db_factory() as db:
+        db.execute(
+            update(Membership)
+            .where(Membership.user_id == uuid.UUID(ids["users"]["ben"]))
+            .where(Membership.workspace_id == uuid.UUID(ids["workspaces"]["section_a"]))
+            .values(role="steward")
+        )
+        db.commit()
+    section_b = ids["workspaces"]["section_b"]
+    return [
+        {"kind": "transfer", "person_id": ids["users"][who], "to_unit_id": section_b, "role": "member"}
+        for who in ("asha", "ben")
+    ]
+
+
+def _counts(db_factory):
+    from labadda import models
+
+    tables = (User, Membership, AuditEvent, models.CredentialToken)
+    with db_factory() as db:
+        return [db.scalar(select(func.count()).select_from(t)) for t in tables]
+
+
+def test_preview_shows_the_joint_blocker_and_leaves_the_database_unchanged(as_user, ids, db_factory):
+    requests = _two_stewards(ids, db_factory)
+    admin = as_user("admin")
+    added = {
+        "kind": "add_person",
+        "username": "newbie",
+        "display_name": "New Bie",
+        "role": "member",
+        "home_unit_id": ids["workspaces"]["section_b"],
+    }
+    before = _counts(db_factory)
+    plan = admin.post("/admin/changes/bulk/preview", json={"requests": [*requests, added]}).json()
+    assert plan["blockers"]
+    assert any(b["message"].startswith("Ben") for b in plan["blockers"])
+    assert _counts(db_factory) == before
+    # The apply-time digest is unchanged by the sequential look-ahead.
+    single = admin.post("/admin/changes/bulk/preview", json={"requests": requests[:1]}).json()
+    assert single["blockers"] == [] and _counts(db_factory) == before
+
+
+def test_a_bulk_run_over_its_time_limit_is_refused_and_rolls_back(as_user, app, ids, db_factory):
+    from dataclasses import replace
+
+    admin = as_user("admin")
+    data = report(admin, FILE)
+    request = bulk(admin, selected(data, 2, 3, 4, 5))
+    before = _counts(db_factory)
+    app.state.settings = replace(app.state.settings, bulk_change_seconds=0.000001)
+    for path, body in (
+        ("/admin/changes/bulk/apply", request),
+        ("/admin/changes/bulk/preview", {"requests": request["requests"]}),
+    ):
+        response = admin.post(path, json=body)
+        assert response.status_code == 503, response.text
+        assert response.json()["error"]["code"] == "changes_unavailable"
+        assert "too long" in response.json()["error"]["message"]
+    assert upload(admin, FILE).status_code == 503
+    assert _counts(db_factory) == before

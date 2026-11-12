@@ -3,6 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Request, Response
+from psycopg.errors import QueryCanceled
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -15,6 +16,14 @@ from .people import read_metadata
 
 router = APIRouter(prefix="/admin/changes", tags=["people changes"])
 console_people = require_console("people")
+
+
+def _unavailable(db: Session, error: DBAPIError, message: str) -> ApiError:
+    """A bulk run cut off by its time limit says so; other database failures keep their wording."""
+    db.rollback()
+    if isinstance(error.orig, QueryCanceled):
+        return service.TooLong()
+    return ApiError("changes_unavailable", message, status=503)
 
 
 @router.post("/preview")
@@ -114,7 +123,7 @@ async def _read_csv(request: Request) -> bytes:
 
 def _import_report(db: Session, actor: Actor, settings, data: bytes) -> dict:
     user = service.authorize(db, actor, settings)
-    payload = import_report.build(db, data, user.id, settings)
+    payload = import_report.build(db, data, user.id, settings, service.Deadline(db, settings))
     service.authorize(db, actor, settings)
     return payload
 
@@ -129,11 +138,8 @@ async def preview_import(
     data = await _read_csv(request)
     try:
         return await run_in_threadpool(_import_report, db, actor, get_settings(request), data)
-    except DBAPIError:
-        db.rollback()
-        raise ApiError(
-            "changes_unavailable", "Staff changes are unavailable. Try again.", status=503
-        ) from None
+    except DBAPIError as error:
+        raise _unavailable(db, error, "Staff changes are unavailable. Try again.") from None
 
 
 @router.post("/bulk/preview")
@@ -146,11 +152,8 @@ def preview_bulk(
     """Review the selected changes together without writing anything."""
     try:
         return bulk.preview(db, actor, get_settings(request), body)
-    except DBAPIError:
-        db.rollback()
-        raise ApiError(
-            "changes_unavailable", "Staff changes are unavailable. Try again.", status=503
-        ) from None
+    except DBAPIError as error:
+        raise _unavailable(db, error, "Staff changes are unavailable. Try again.") from None
 
 
 @router.post("/bulk/apply")
@@ -163,10 +166,6 @@ def apply_bulk(
     """Commit every selected change together, or none."""
     try:
         return bulk.apply(db, actor, get_settings(request), body, request.app.state.hub)
-    except DBAPIError:
-        db.rollback()
-        raise ApiError(
-            "changes_unavailable",
-            "The changes could not be confirmed. Reload the people list before retrying.",
-            status=503,
-        ) from None
+    except DBAPIError as error:
+        message = "The changes could not be confirmed. Reload the people list before retrying."
+        raise _unavailable(db, error, message) from None

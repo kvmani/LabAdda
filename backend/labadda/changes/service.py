@@ -1,6 +1,7 @@
 """Serialize current authority and atomically apply exactly reviewed staff changes."""
 
 import hmac
+import time
 import uuid
 from contextlib import nullcontext
 from datetime import date
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 from .. import audit, identity_locks, memberships, people, policy
 from ..config import Settings
 from ..deps import Actor
-from ..errors import Conflict, Forbidden, Invalid, NotFound
+from ..errors import ApiError, Conflict, Forbidden, Invalid, NotFound
 from ..models import ScheduledChange, User, Workspace
 from ..realtime import Hub
 from .kinds import (
@@ -79,6 +80,27 @@ def authorize(db: Session, actor: Actor, settings: Settings) -> User:
         raise Forbidden("admin_required", "Administrator access is required.")
     db.execute(text("select set_config('statement_timeout', :value, true)"), {"value": previous})
     return user
+
+
+class Deadline:
+    """Overall time limit for one bulk run; the lock is released by rolling back when it passes."""
+
+    def __init__(self, db: Session, settings: Settings) -> None:
+        self.limit = settings.bulk_change_seconds
+        self.start = time.monotonic()
+        # Bounds each statement too, so one slow query cannot outlast the limit.
+        millis = max(1, int(self.limit * 1000))
+        db.execute(text(f"SET LOCAL statement_timeout = '{millis}ms'"))
+
+    def check(self) -> None:
+        if time.monotonic() - self.start > self.limit:
+            raise TooLong()
+
+
+class TooLong(ApiError):
+    status = 503
+    code = "changes_unavailable"
+    message = "This change took too long and nothing was saved. Try fewer people at a time."
 
 
 def build(db: Session, request: ChangeRequest, actor_id: uuid.UUID, settings: Settings) -> Plan:

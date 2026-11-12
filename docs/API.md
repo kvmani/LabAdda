@@ -986,6 +986,14 @@ memory and never stored.
   `edit_person`, `transfer` or `suspend` (the same bodies as `/admin/changes/preview`; one per
   kind per person, else 422). Returns the merged plan `{kind:"bulk",count,steps,warnings,
   blockers,revisions,affected_people,digest}`; blocker messages begin with the person's name.
+  Later requests are also checked as if the earlier ones had been applied (in a rolled-back
+  savepoint: nothing is stored, audited, issued or signalled), so a joint blocker such as two
+  stewards leaving one unit appears here exactly as apply would refuse it.
+  Time limit: `import/preview`, `bulk/preview` and `bulk/apply` run for at most
+  `LABADDA_BULK_CHANGE_SECONDS` (default 60; also shown in `deploy/labadda.env.example`) while
+  holding the admin change lock; past it everything is rolled back and the reply is 503
+  `changes_unavailable` ("This change took too long and nothing was saved..."). Single-person
+  changes are not affected.
 - `POST /admin/changes/bulk/apply`: the same `requests` plus `digest`, `revisions` and
   `reason` (3-500). Every request is rebuilt under the usual locks; 409 `plan_stale` when any
   record or consequence changed, 422 `plan_blocked` when any request is blocked, in both

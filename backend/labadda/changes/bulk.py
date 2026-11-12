@@ -69,8 +69,38 @@ def _label(db: Session, item: BulkItem) -> str:
     return person.display_name if person else "Unknown person"
 
 
-def _plans(db: Session, body: BulkPreview, actor_id: uuid.UUID, settings: Settings) -> list[Plan]:
-    return [service.build(db, item, actor_id, settings) for item in body.requests]
+def _plans(
+    db: Session, body: BulkPreview, actor_id: uuid.UUID, settings: Settings, deadline: service.Deadline
+) -> list[Plan]:
+    plans = []
+    for item in body.requests:
+        deadline.check()
+        plans.append(service.build(db, item, actor_id, settings))
+    return plans
+
+
+def _joint_blockers(
+    db: Session, user: User, body: BulkPreview, plans: list[Plan], settings: Settings, deadline
+) -> list[list]:
+    """Blockers of each row when earlier rows have been applied, as apply will see them.
+
+    Runs in a savepoint that is always rolled back, so nothing is kept: no rows, audit,
+    activation codes or live-delivery signals.
+    """
+    found: list[list] = []
+    savepoint = db.begin_nested()
+    try:
+        for index, (item, plan) in enumerate(zip(body.requests, plans, strict=True)):
+            deadline.check()
+            current = service.build(db, item, user.id, settings) if index else plan
+            found.append(current.blockers)
+            if current.blockers:
+                continue
+            person, _ = service.KINDS[current.kind].apply(db, user, current, item, settings, "Preview")
+            service.record_plan(db, user, current, "Preview", settings, person.id)
+    finally:
+        savepoint.rollback()
+    return found
 
 
 def _digest(actor_id: uuid.UUID, plans: list[Plan]) -> str:
@@ -93,11 +123,17 @@ def _revisions(plans: list[Plan]) -> dict[str, int]:
 def preview(db: Session, actor: Actor, settings: Settings, body: BulkPreview) -> dict:
     """Merge the rebuilt plans; blockers say whose change they belong to."""
     user = service.authorize(db, actor, settings)
-    plans = _plans(db, body, user.id, settings)
+    deadline = service.Deadline(db, settings)
+    plans = _plans(db, body, user.id, settings, deadline)
+    joint = _joint_blockers(db, user, body, plans, settings, deadline)
     blockers = []
-    for item, plan in zip(body.requests, plans, strict=True):
+    for item, plan, later in zip(body.requests, plans, joint, strict=True):
         label = _label(db, item)
-        blockers += [{**asdict(b), "message": f"{label}: {b.message}"} for b in plan.blockers]
+        seen = set()
+        for b in [*plan.blockers, *later]:
+            if (b.code, b.message) not in seen:
+                seen.add((b.code, b.message))
+                blockers.append({**asdict(b), "message": f"{label}: {b.message}"})
     payload = {
         "kind": "bulk",
         "count": len(plans),
@@ -113,9 +149,10 @@ def preview(db: Session, actor: Actor, settings: Settings, body: BulkPreview) ->
 
 
 def _commit(db: Session, user: User, body: BulkApply, settings: Settings) -> tuple[dict, list[tuple]]:
+    deadline = service.Deadline(db, settings)
     for item in body.requests:
         service.lock_targets(db, item)
-    plans = _plans(db, body, user.id, settings)
+    plans = _plans(db, body, user.id, settings, deadline)
     revisions = {str(identity): revision for identity, revision in body.revisions.items()}
     if not hmac.compare_digest(_digest(user.id, plans), body.digest) or revisions != _revisions(plans):
         raise Conflict("plan_stale", "This record or its consequences changed. Review a fresh plan.")
@@ -123,6 +160,7 @@ def _commit(db: Session, user: User, body: BulkApply, settings: Settings) -> tup
         raise Invalid("plan_blocked", "Resolve the blocking problems before applying this change.")
     done, added = [], []
     for index, (item, plan) in enumerate(zip(body.requests, plans, strict=True)):
+        deadline.check()
         if index and service.build(db, item, user.id, settings).blockers:
             # Plans above were built from the state before any row applied; earlier rows can
             # together defeat a guard (two stewards leaving one unit), so recheck on current state.

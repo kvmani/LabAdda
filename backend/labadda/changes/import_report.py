@@ -140,12 +140,20 @@ def dump(item: BaseModel) -> dict:
     return item.model_dump(mode="json", exclude_unset=True)
 
 
-def build(db: Session, data: bytes, actor_id: uuid.UUID, settings: Settings) -> dict:
+def build(
+    db: Session,
+    data: bytes,
+    actor_id: uuid.UUID,
+    settings: Settings,
+    deadline: service.Deadline | None = None,
+) -> dict:
     """Parse and review; nothing is written and the file itself is never kept."""
     parsed = importer.parse(data)
     ctx = _Context(db)
     rows, unchanged = [], 0
     for row in parsed:
+        if deadline:
+            deadline.check()
         person = ctx.users.get(row.username)
         requests: list = []
         if not row.errors:
