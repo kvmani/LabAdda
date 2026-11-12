@@ -44,7 +44,10 @@ never accept executable client steps. A digest is a change detector, not authori
 
 Take the shared admin-role advisory lock, actor user/session locks, then (transfer)
 the workspace role locks of every unit/group in scope in sorted order, then the target
-user lock. Onboarding locks the home unit's roles; uniqueness races end in409. Rebuild the plan from the validated request and current state. Require
+user lock. Onboarding locks the home unit's roles; uniqueness races end in409.
+The 2s statement timeout covers only the authority lock waits and is restored before
+the change is built and written. A transfer whose home unit moved before the row lock
+is stale (409) without rebuilding. Rebuild the plan from the validated request and current state. Require
 both its digest and complete revision map to match. A stale or previously applied
 plan returns409; a matching blocked plan returns422. Preview writes no staff/audit
 rows. Existing normal-session heartbeat maintenance remains in authentication.

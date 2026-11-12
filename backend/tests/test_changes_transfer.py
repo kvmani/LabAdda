@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import func, select
 
 from labadda import audit
+from labadda.changes.kinds import transfer
 from labadda.models import AuditEvent, Membership, Notification, TodoTask, User, Workspace
 from tests.test_changes_edit import edit, reviewed
 from tests.test_panel import pair
@@ -368,8 +369,6 @@ def test_demoting_the_last_steward_of_the_new_unit_needs_acknowledgement(as_user
 
 
 def test_home_unit_moved_between_scope_read_and_row_lock_is_stale(as_user, ids, db_factory):
-    from labadda.changes.kinds import transfer
-
     admin = as_user("admin")
     confirmation = reviewed(admin, move(ids))
     original = transfer.lock_scope

@@ -23,11 +23,16 @@ KINDS: dict[str, ModuleType] = {"add_person": add_person, "edit_person": edit_pe
 
 def authorize(db: Session, actor: Actor, settings: Settings) -> User:
     """Refresh authority under the shared role and user/session locks without committing."""
+    # The short bound is for waiting on authority locks only; the change's own writes and
+    # commit run under the connection's normal limit. A failure aborts the transaction,
+    # which discards the local setting, so restoring is needed only on success.
+    previous = db.scalar(text("select current_setting('statement_timeout')"))
     db.execute(text("SET LOCAL statement_timeout = '2s'"))
     memberships.lock_admin_roles(db)
     user = identity_locks.lock_identity(db, actor, settings)
     if "people" not in policy.console_sections(db, user):
         raise Forbidden("admin_required", "Administrator access is required.")
+    db.execute(text("select set_config('statement_timeout', :value, true)"), {"value": previous})
     return user
 
 

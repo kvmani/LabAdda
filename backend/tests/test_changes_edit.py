@@ -5,11 +5,12 @@ from threading import Barrier
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import OperationalError
 
 from labadda import audit
 from labadda.changes import service
+from labadda.changes.kinds import edit_person
 from labadda.models import AuditEvent, User
 from tests.test_capabilities import grant
 from tests.test_panel import PANEL, pair
@@ -261,3 +262,18 @@ def test_preview_never_writes_staff_or_audit_even_with_multiple_reads(as_user, i
     assert admin.get(f"/admin/people/{ids['users']['ben']}").json() == before
     with db_factory() as db:
         assert db.scalar(select(AuditEvent.id).where(AuditEvent.action.like("people.change%"))) is None
+
+
+def test_short_authority_timeout_does_not_cover_the_change_writes(as_user, ids):
+    admin = as_user("admin")
+    confirmation = reviewed(admin, edit(ids, designation="Research Officer E"))
+    original = edit_person.apply
+    seen = []
+
+    def observe(db, *args):
+        seen.append(db.scalar(text("show statement_timeout")))
+        return original(db, *args)
+
+    with patch.object(edit_person, "apply", side_effect=observe):
+        assert admin.post("/admin/changes/apply", json=confirmation).status_code == 200
+    assert seen and seen[0] != "2s"
