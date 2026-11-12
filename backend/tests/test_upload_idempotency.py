@@ -247,7 +247,7 @@ def test_expired_lease_failure_release_cannot_deadlock_new_admission(as_user, se
     with db_factory() as db:
         session = db.scalar(select(AuthSession).where(AuthSession.user_id == ids["users"]["ben"]))
         identity = SimpleNamespace(id=session.user_id, session=SimpleNamespace(id=session.id))
-        first = reserve_upload(db, identity, settings, len(PDF), KEY, "a" * 64)
+        first = reserve_upload(db, identity, settings, len(PDF), request_key=KEY, fingerprint="a" * 64)
         lease = db.get(UploadReservation, first.reservation_id)
         lease.created_at = utcnow() - timedelta(hours=2)
         lease.expires_at = utcnow() - timedelta(hours=1)
@@ -258,7 +258,7 @@ def test_expired_lease_failure_release_cannot_deadlock_new_admission(as_user, se
     admission_pid = []
     engine = db_factory.kw["bind"]
 
-    def pause_release(conn, cursor, statement, parameters, context, executemany):
+    def pause_release(conn, cursor, statement, parameters, context, executemany):  # noqa: PLR0917 — SQLAlchemy event signature
         if (
             threading.get_ident() in release_thread
             and statement.startswith("SELECT upload_receipts.")
@@ -267,7 +267,7 @@ def test_expired_lease_failure_release_cannot_deadlock_new_admission(as_user, se
             receipt_locked.set()
             assert resume.wait(10)
 
-    def observe_admission(conn, cursor, statement, parameters, context, executemany):
+    def observe_admission(conn, cursor, statement, parameters, context, executemany):  # noqa: PLR0917 — SQLAlchemy event signature
         if (
             threading.get_ident() not in release_thread
             and statement.startswith("SELECT users.")

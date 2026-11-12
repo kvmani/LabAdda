@@ -388,7 +388,7 @@ def test_invalid_arguments_refused(db_factory, ids):
             reconcile(db_factory, **kwargs)
 
 
-def test_cli_dry_run_and_exit_codes(as_user, ids, db_factory, settings, monkeypatch, capsys):
+def test_cli_dry_run_and_exit_codes(as_user, ids, db_factory, settings, *, monkeypatch, capsys):
     from labadda.cli import main
 
     monkeypatch.setenv("LABADDA_DATABASE_URL", settings.database_url)

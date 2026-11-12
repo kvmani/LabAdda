@@ -88,7 +88,7 @@ async def make_drawers(origin: str, api: str, n: int, workspace_name: str) -> tu
 
 
 async def observer(
-    origin: str, base: str, api: str, ws_id: str, seen: dict, ready: asyncio.Event, stop: asyncio.Event
+    origin: str, base: str, api: str, ws_id: str, *, seen: dict, ready: asyncio.Event, stop: asyncio.Event
 ):
     async with httpx.AsyncClient(base_url=origin) as c:
         await login(c, api, "asha", PASSWORD)
@@ -114,6 +114,7 @@ async def drawer(
     api: str,
     ws_id: str,
     username: str,
+    *,
     epoch: int,
     until: float,
     interval: float,
@@ -180,7 +181,7 @@ async def main() -> None:
         start_state = (await c.get(f"{api}/workspaces/{ws_id}/board")).json()
     seen, sent, acks, acked_objects, errors, list_latency = {}, {}, [], [], [], []
     ready, stop = asyncio.Event(), asyncio.Event()
-    obs = asyncio.create_task(observer(args.origin, args.base, api, ws_id, seen, ready, stop))
+    obs = asyncio.create_task(observer(args.origin, args.base, api, ws_id, seen=seen, ready=ready, stop=stop))
     await asyncio.wait_for(ready.wait(), 10)
     started = time.perf_counter()
     until = started + args.seconds
@@ -191,14 +192,14 @@ async def main() -> None:
                 api,
                 ws_id,
                 n,
-                start_state["epoch"],
-                until,
-                args.interval,
-                sent,
-                acks,
-                acked_objects,
-                errors,
-                list_latency,
+                epoch=start_state["epoch"],
+                until=until,
+                interval=args.interval,
+                sent=sent,
+                acks=acks,
+                acked_objects=acked_objects,
+                errors=errors,
+                list_latency=list_latency,
             )
             for n in names
         )

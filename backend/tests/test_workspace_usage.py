@@ -178,7 +178,7 @@ def test_board_coverage_never_reveals_other_workspace_state(as_user, ids, db_fac
 
 @pytest.mark.parametrize("revocation,expected", [("membership", 404), ("session", 401), ("identity", 401)])
 def test_authority_is_refreshed_after_measurement(
-    as_user, ids, db_factory, monkeypatch, revocation, expected
+    as_user, ids, db_factory, monkeypatch, *, revocation, expected
 ):
     from labadda.api import usage as module
 

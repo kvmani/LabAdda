@@ -99,6 +99,7 @@ def list_events(
     component: str | None = Query(default=None, max_length=32),
     cursor: str | None = Query(default=None, max_length=200),
     limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE),
+    *,
     actor: Actor = Depends(console_events),
     db: Session = Depends(get_db),
 ) -> dict:

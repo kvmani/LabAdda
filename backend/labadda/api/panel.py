@@ -185,6 +185,7 @@ def end(
     body: EndBody,
     request: Request,
     response: Response,
+    *,
     actor: Actor = Depends(panel_actor),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),

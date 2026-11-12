@@ -72,6 +72,7 @@ def post_json(
     authors: dict,
     assets: list[Asset],
     base: str,
+    *,
     replies: list[dict] | None = None,
     actor_id=None,
     can_moderate: bool = False,

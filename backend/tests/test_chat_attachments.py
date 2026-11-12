@@ -32,7 +32,7 @@ def upload(api, png=False):
 @pytest.mark.parametrize(
     "scope,reader,outsider", [("section_a", "asha", "chen"), ("reading_club", "chen", "dana")]
 )
-def test_chat_attachment_retry_delivery_and_accounting(as_user, ids, db_factory, scope, reader, outsider):
+def test_chat_attachment_retry_delivery_and_accounting(as_user, ids, db_factory, scope, *, reader, outsider):
     api = as_user("ben")
     ws = ids["workspaces"][scope]
     asset, data = upload(api)

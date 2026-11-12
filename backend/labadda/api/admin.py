@@ -355,6 +355,7 @@ def admin_remove_membership(
     user_id: uuid.UUID,
     request: Request,
     reason: str | None = Query(default=None, max_length=500),
+    *,
     actor: Actor = Depends(console_org),
     db: Session = Depends(get_db),
 ):

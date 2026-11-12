@@ -56,6 +56,7 @@ async def _read_limited(upload: UploadFile, limit: int) -> bytes:
 @router.post("/uploads", status_code=201)
 async def upload(
     request: Request,
+    *,
     file: UploadFile = File(...),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
@@ -64,11 +65,19 @@ async def upload(
 ):
     data = await _read_limited(file, settings.max_attachment_bytes)
     return await run_in_threadpool(
-        _persist_upload, request, db, actor, settings, data, file.content_type, file.filename, idempotency_key
+        _persist_upload,
+        request,
+        db,
+        actor,
+        settings,
+        data=data,
+        content_type=file.content_type,
+        filename=file.filename,
+        request_key=idempotency_key,
     )
 
 
-def _persist_upload(request, db, actor, settings, data, content_type, filename, request_key=None):
+def _persist_upload(request, db, actor, settings, *, data, content_type, filename, request_key=None):
     # Immutable references avoid consulting expired request-ORM objects during
     # failure resolution through a fresh connection.
     identity = SimpleNamespace(id=actor.id, session=SimpleNamespace(id=actor.session.id))
@@ -81,7 +90,9 @@ def _persist_upload(request, db, actor, settings, data, content_type, filename, 
             separators=(",", ":"),
         ).encode()
     ).hexdigest()
-    admission = reserve_upload(db, identity, settings, len(data), request_key, fingerprint)
+    admission = reserve_upload(
+        db, identity, settings, len(data), request_key=request_key, fingerprint=fingerprint
+    )
     if admission.asset_id is not None:
         return asset_json(_authorized_asset(db, actor, admission.asset_id), settings.api_prefix)
     reservation_id = admission.reservation_id
@@ -105,7 +116,9 @@ def _persist_upload(request, db, actor, settings, data, content_type, filename, 
         )
         db.add(asset)
         db.flush()
-        consume_upload(db, identity, settings, reservation_id, admission.receipt_id, candidate_id)
+        consume_upload(
+            db, identity, settings, reservation_id, receipt_id=admission.receipt_id, asset_id=candidate_id
+        )
         db.flush()
         lock_identity(db, identity, settings)
         commit_started = True

@@ -102,7 +102,13 @@ def _render(db: Session, posts: list[Post], actor: Actor, can_moderate: bool, ba
     return [
         {
             **post_json(
-                p, authors, assets.get(p.id, []), base, by_parent.get(p.id, []), actor.id, can_moderate
+                p,
+                authors,
+                assets.get(p.id, []),
+                base,
+                replies=by_parent.get(p.id, []),
+                actor_id=actor.id,
+                can_moderate=can_moderate,
             ),
             "snapshot": snapshot_info(p),
         }
@@ -121,7 +127,7 @@ def _load_post(db: Session, actor: Actor, post_id: uuid.UUID):
 
 
 def _existing_by_client_id(
-    db: Session, actor: Actor, client_id: str | None, workspace_id, body: str, parent_id=None
+    db: Session, actor: Actor, client_id: str | None, workspace_id, body: str, *, parent_id=None
 ):
     if not client_id:
         return None
@@ -138,6 +144,7 @@ def list_posts(
     workspace_id: uuid.UUID,
     before: int | None = None,
     limit: int = Query(default=20, ge=1, le=50),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -166,6 +173,7 @@ def create_post(
     workspace_id: uuid.UUID,
     body: NewPost,
     request: Request,
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -237,6 +245,7 @@ def reply(
     post_id: uuid.UUID,
     body: NewReply,
     request: Request,
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -245,7 +254,9 @@ def reply(
     if parent.parent_id is not None:
         raise Invalid("nested_reply", "Reply to the original post.")
     access = policy.require_write(db, actor.user, parent.workspace_id)
-    existing = _existing_by_client_id(db, actor, body.client_id, parent.workspace_id, body.body, parent.id)
+    existing = _existing_by_client_id(
+        db, actor, body.client_id, parent.workspace_id, body.body, parent_id=parent.id
+    )
     if existing is None:
         existing = Post(
             workspace_id=parent.workspace_id,
@@ -278,6 +289,7 @@ def edit_post(
     post_id: uuid.UUID,
     body: PostPatch,
     request: Request,
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),

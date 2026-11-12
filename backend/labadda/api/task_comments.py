@@ -78,6 +78,7 @@ def comments(
     request: Request,
     before: int | None = Query(default=None, ge=1),
     limit: int = Query(default=25, ge=1, le=50),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):

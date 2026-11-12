@@ -96,7 +96,9 @@ def test_expired_lease_is_reported_without_mutating_job(db_factory, ids, as_user
 
 @pytest.mark.parametrize("kind", ["list", "detail"])
 @pytest.mark.parametrize("loss", ["delegation", "admin", "session"])
-def test_authority_loss_during_measurement_denies_response(db_factory, ids, as_user, monkeypatch, kind, loss):
+def test_authority_loss_during_measurement_denies_response(
+    db_factory, ids, as_user, monkeypatch, *, kind, loss
+):
     from labadda.api import inventory_jobs as api_jobs
     from labadda.models import AuthSession
 

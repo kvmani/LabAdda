@@ -49,7 +49,7 @@ class Admission:
     asset_id: UUID | None = None
 
 
-def reserve_upload(db, actor, settings, size, request_key=None, fingerprint=None):
+def reserve_upload(db, actor, settings, size, *, request_key=None, fingerprint=None):
     lock_identity(db, actor, settings)
     now = utcnow()
     db.execute(
@@ -108,7 +108,7 @@ def reserve_upload(db, actor, settings, size, request_key=None, fingerprint=None
     return Admission(reservation_id=reservation_id, receipt_id=receipt_id)
 
 
-def consume_upload(db, actor, settings, reservation_id, receipt_id=None, asset_id=None):
+def consume_upload(db, actor, settings, reservation_id, *, receipt_id=None, asset_id=None):
     lock_identity(db, actor, settings)
     row = db.get(UploadReservation, reservation_id, with_for_update=True)
     if row is None or row.user_id != actor.id or row.expires_at <= utcnow():

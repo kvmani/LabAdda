@@ -169,6 +169,7 @@ def add_members(
     group_id: uuid.UUID,
     body: AddMembers,
     request: Request,
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -197,6 +198,7 @@ def change_role(
     user_id: uuid.UUID,
     body: RoleBody,
     request: Request,
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):

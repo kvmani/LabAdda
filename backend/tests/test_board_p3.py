@@ -116,7 +116,7 @@ def test_render_preview_is_scoped(as_user, ids):
     )
 
 
-def publish(api, src, dest, revision, client_id="snap-0001", confirm=None, summary="Board summary"):
+def publish(api, src, dest, revision, *, client_id="snap-0001", confirm=None, summary="Board summary"):
     body = {
         "revision": revision,
         "region": {"x": 0, "y": 0, "w": 200, "h": 120},

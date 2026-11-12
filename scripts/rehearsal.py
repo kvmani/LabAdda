@@ -131,6 +131,7 @@ async def listen(
     client: Client,
     origin: str,
     base: str,
+    *,
     cookie: str,
     ctx: ssl.SSLContext | None,
     stop: asyncio.Event,
@@ -169,6 +170,7 @@ async def run_client(
     api: str,
     origin: str,
     base: str,
+    *,
     ctx,
     epochs: dict,
     until: float,
@@ -180,7 +182,9 @@ async def run_client(
         h = {"X-CSRF-Token": await login(c, api, client.username, PASSWORD)}
         cookie = "; ".join(f"{k}={v}" for k, v in c.cookies.items())
         ready = asyncio.Event()
-        socket = asyncio.create_task(listen(client, origin, base, cookie, ctx, stop, ready))
+        socket = asyncio.create_task(
+            listen(client, origin, base, cookie=cookie, ctx=ctx, stop=stop, ready=ready)
+        )
         await asyncio.wait_for(ready.wait(), 20)
         await shared.window_open.wait()
         i = 0
@@ -279,7 +283,19 @@ async def main() -> None:
     until = started + args.seconds + 20  # sockets get up to 20 s to subscribe before the window opens
     tasks = [
         asyncio.create_task(
-            run_client(c, http, api, args.origin, args.base, ctx, epochs, until, args.interval, shared, stop)
+            run_client(
+                c,
+                http,
+                api,
+                args.origin,
+                args.base,
+                ctx=ctx,
+                epochs=epochs,
+                until=until,
+                interval=args.interval,
+                shared=shared,
+                stop=stop,
+            )
         )
         for c in clients
     ]

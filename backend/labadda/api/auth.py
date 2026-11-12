@@ -209,6 +209,7 @@ def change_password(
     body: PasswordBody,
     request: Request,
     response: Response,
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),

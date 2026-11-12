@@ -35,6 +35,7 @@ def jobs(
     state: JobState | None = None,
     before: uuid.UUID | None = None,
     limit: int = Query(default=20, ge=1, le=25),
+    *,
     actor: Actor = Depends(console_storage),
     db: Session = Depends(get_db),
 ):

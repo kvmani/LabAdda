@@ -72,7 +72,7 @@ def generate():
             }
         )
 
-    def hand(text, x, y, scale=2, actor="ben", color="#1f2933"):
+    def hand(text, x, y, scale=2, actor="ben", color="#1f2933"):  # noqa: PLR0917 — drawing helper, many positional call sites
         for i, c in enumerate(text):
             if c == " ":
                 continue
@@ -91,7 +91,7 @@ def generate():
                     1.8,
                 )
 
-    def box(x, y, w, h, actor, color):
+    def box(x, y, w, h, actor, color):  # noqa: PLR0917 — geometry helper, many positional call sites
         stroke(
             [(x + 2, y), (x + w, y + 2), (x + w - 1, y + h), (x, y + h - 2), (x + 2, y)], actor, color, 2.4
         )

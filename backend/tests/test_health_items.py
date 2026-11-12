@@ -287,7 +287,7 @@ def test_backups_malformed_file_is_unknown(settings, db_factory, tmp_path):
         (timedelta(hours=-2), {}, "unknown"),
     ],
 )
-def test_backups_age_and_verification(settings, db_factory, tmp_path, age, overrides, status):
+def test_backups_age_and_verification(settings, db_factory, tmp_path, age, *, overrides, status):
     write_backup(tmp_path, age, **overrides)
     assert backups.check(with_status_dir(settings, db_factory, tmp_path)).status == status
 

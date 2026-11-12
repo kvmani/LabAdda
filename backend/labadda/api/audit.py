@@ -34,6 +34,7 @@ def audit_filters(
     actor_id: uuid.UUID | None = None,
     person_id: uuid.UUID | None = None,
     unit_id: uuid.UUID | None = None,
+    *,
     group: str | None = Query(default=None, max_length=32),
     outcome: str | None = Query(default=None, max_length=16),
     q: str = Query(default="", max_length=120),
@@ -65,6 +66,7 @@ def _bounded(request: Request, db: Session, load: Callable[[], dict]) -> dict:
 @router.get("")
 def list_audit(
     request: Request,
+    *,
     filters: AuditFilters = Depends(audit_filters),
     limit: int = Query(default=100, ge=1, le=500),
     cursor: str | None = Query(default=None, max_length=1024),

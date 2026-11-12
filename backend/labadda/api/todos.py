@@ -158,7 +158,7 @@ def _task_json(row):
     }
 
 
-def _page(db, query, model, after, limit, serialize):
+def _page(db, query, model, *, after, limit, serialize):
     if after:
         query = query.where(model.id > after)
     rows = db.scalars(query.order_by(model.id).limit(limit + 1)).all()
@@ -174,6 +174,7 @@ def lists(
     workspace_id: uuid.UUID | None = None,
     after: uuid.UUID | None = None,
     limit: int = Query(default=25, ge=1, le=50),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
@@ -184,7 +185,7 @@ def lists(
         if workspace_id
         else select(TodoList).where(TodoList.owner_id == user.id)
     )
-    result = _page(db, query, TodoList, after, limit, _list_json)
+    result = _page(db, query, TodoList, after=after, limit=limit, serialize=_list_json)
     _scope(db, _actor(request, actor, db), workspace_id)
     return result
 
@@ -252,13 +253,19 @@ def tasks(
     request: Request,
     after: uuid.UUID | None = None,
     limit: int = Query(default=25, ge=1, le=50),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
     user = _actor(request, actor, db)
     _list(db, user, list_id)
     result = _page(
-        db, select(TodoTask).where(TodoTask.list_id == list_id), TodoTask, after, limit, _task_json
+        db,
+        select(TodoTask).where(TodoTask.list_id == list_id),
+        TodoTask,
+        after=after,
+        limit=limit,
+        serialize=_task_json,
     )
     _list(db, _actor(request, actor, db), list_id)
     return result
@@ -331,6 +338,7 @@ def edit_task(
     task_id: uuid.UUID,
     body: TaskEdit,
     request: Request,
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
@@ -395,6 +403,7 @@ def history(
     request: Request,
     before: int | None = Query(default=None, ge=1),
     limit: int = Query(default=10, ge=1, le=25),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):

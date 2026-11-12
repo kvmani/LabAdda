@@ -49,7 +49,7 @@ def test_personal_comments_are_owner_only(as_user):
         ("eli", "project", "dana", "ben"),
     ],
 )
-def test_shared_comments_follow_actual_source_policy(as_user, ids, author, scope, reader, outsider):
+def test_shared_comments_follow_actual_source_policy(as_user, ids, author, scope, *, reader, outsider):
     api = as_user(author)
     _, _, path = task(api, ids["workspaces"][scope])
     assert api.post(path + "/comments", json=body()).status_code == 201

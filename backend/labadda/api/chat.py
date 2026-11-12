@@ -54,6 +54,7 @@ def history(
     before: int | None = None,
     after: int | None = None,
     limit: int = Query(default=50, ge=1, le=200),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
@@ -212,6 +213,7 @@ def replies(
     request: Request,
     before: int | None = Query(default=None, ge=1),
     limit: int = Query(default=25, ge=1, le=100),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):

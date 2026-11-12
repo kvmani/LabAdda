@@ -68,6 +68,7 @@ def assignees(
     q: str = Query(default="", max_length=100),
     after: uuid.UUID | None = None,
     limit: int = Query(default=25, ge=1, le=50),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
@@ -155,6 +156,7 @@ def mine(
     status: State | None = None,
     after: uuid.UUID | None = None,
     limit: int = Query(default=25, ge=1, le=50),
+    *,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
