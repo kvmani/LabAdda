@@ -58,7 +58,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 5 | U2 | Application shell refresh | U1 | done | [ui](ui.md#u2--application-shell-refresh) |
 | 6 | A1 | Admin console shell and navigation | U2 | done | [admin](admin.md#a1--admin-console-shell-and-navigation) |
 | 7 | P1 | Staff record, people list and profile | A1, Q1 | done | [people](people.md#p1--staff-record-people-list-and-profile) |
-| 8 | P2 | Change protocol; add, edit, transfer | P1 | in progress | [people](people.md#p2--change-protocol-add-edit-transfer) |
+| 8 | P2 | Change protocol; add, edit, transfer | P1 | done | [people](people.md#p2--change-protocol-add-edit-transfer) |
 | 9 | P3 | Positions, authority, leave, retirement, suspension | P2 | in progress | [people](people.md#p3--positions-authority-leave-retirement-suspension) |
 | 10 | A2 | Audit explorer | A1 | done | [admin](admin.md#a2--audit-explorer) |
 | 11 | U3 | Charts kit | U1 | done | [ui](ui.md#u3--charts-kit) |
@@ -66,7 +66,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 13 | A4 | System health and operational events | A1, A3, U3 | done | [admin](admin.md#a4--system-health-and-operational-events) |
 | 14 | A5 | Usage analytics | A3, U3, P1 | done | [admin](admin.md#a5--usage-analytics) |
 | 15 | A6 | Overview dashboard | A4, A5, P3 | queued | [admin](admin.md#a6--overview-dashboard) |
-| 16 | P4 | Organisation chart and unit changes | P2 | queued | [people](people.md#p4--organisation-chart-and-unit-changes) |
+| 16 | P4 | Organisation chart and unit changes | P2 | in progress | [people](people.md#p4--organisation-chart-and-unit-changes) |
 | 17 | P5 | Scheduled changes and attention list | P3, P4 | queued | [people](people.md#p5--scheduled-changes-and-attention-list) |
 | 18 | H1 | Help centre framework and sync check | U2 | done | [help](help.md#h1--help-centre-framework-and-sync-check) |
 | 19 | H2 | Help for members and stewards | H1 | done | [help](help.md#h2--help-for-members-and-stewards) |
