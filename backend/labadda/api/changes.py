@@ -26,7 +26,7 @@ def preview_change(
 ) -> dict:
     """Return a bounded staff-only review without writing staff or audit rows."""
     try:
-        return service.preview(db, actor, get_settings(request), body.request)
+        return service.preview(db, actor, get_settings(request), body.request, body.effective_on)
     except DBAPIError:
         db.rollback()
         raise ApiError(

@@ -261,6 +261,35 @@ class UnitPosition(Base):
     )
 
 
+class ScheduledChange(Base):
+    """A reviewed staff change that takes effect at the start of a future site day (PO-06)."""
+
+    __tablename__ = "scheduled_changes"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    request: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    plan_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    effective_on: Mapped[date] = mapped_column(Date, nullable=False)
+    state: Mapped[str] = mapped_column(String(12), nullable=False, default="pending")
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    subject_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    steps: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = _created()
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        CheckConstraint(
+            "state in ('pending','applied','cancelled','needs_review')", name="ck_scheduled_change_state"
+        ),
+        Index("ix_scheduled_changes_due", "effective_on", postgresql_where=text("state = 'pending'")),
+        Index("ix_scheduled_changes_subject", "subject_id"),
+        Index("ix_scheduled_changes_state", "state"),
+    )
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 

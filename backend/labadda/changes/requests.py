@@ -318,6 +318,7 @@ class PreviewRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     request: ChangeRequest
+    effective_on: date | None = None
 
 
 class ApplyRequest(PreviewRequest):

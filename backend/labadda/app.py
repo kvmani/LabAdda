@@ -42,6 +42,7 @@ from .api import (
     panel,
     people,
     posts,
+    scheduled_changes,
     task_assignment,
     task_board_conversion,
     task_comments,
@@ -62,6 +63,7 @@ from .api import (
 from .api import (
     metrics as metrics_api,
 )
+from .changes import scheduled
 from .config import Settings, get_settings
 from .db import session_factory
 from .errors import ApiError
@@ -115,7 +117,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     scheduler.run_forever(
                         factory,
                         settings.reminder_interval_seconds,
-                        (cleanup, collector.tick, positions.expiry_job(factory, settings)),
+                        (
+                            cleanup,
+                            collector.tick,
+                            positions.expiry_job(factory, settings, hub),
+                            scheduled.run_job(factory, settings, hub),
+                        ),
                     )
                 ),
                 asyncio.create_task(scheduler.run_periodic(sampler.run_once, settings.health.sample_seconds)),
@@ -209,6 +216,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         notifications,
         chat,
         changes,
+        scheduled_changes,
         board,
         panel,
         me,

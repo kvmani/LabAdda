@@ -2,6 +2,8 @@
 
 import hmac
 import uuid
+from contextlib import nullcontext
+from datetime import date
 from types import ModuleType
 
 from sqlalchemy import select, text
@@ -12,7 +14,7 @@ from .. import audit, identity_locks, memberships, people, policy
 from ..config import Settings
 from ..deps import Actor
 from ..errors import Conflict, Forbidden, Invalid, NotFound
-from ..models import User, Workspace
+from ..models import ScheduledChange, User, Workspace
 from ..realtime import Hub
 from .kinds import (
     add_person,
@@ -34,6 +36,7 @@ from .kinds import (
     unit_reopen,
     unit_split,
 )
+from .kinds.common import MAX_TERM
 from .plan import Plan
 from .requests import AddPerson, ApplyRequest, ChangeAuthority, ChangeRequest, Transfer
 from .unit_requests import UnitChange
@@ -80,10 +83,34 @@ def build(db: Session, request: ChangeRequest, actor_id: uuid.UUID, settings: Se
     return KINDS[request.kind].build(db, request, actor_id, settings)
 
 
-def preview(db: Session, actor: Actor, settings: Settings, request: ChangeRequest) -> dict:
+# Their one-time activation code must reach the administrator who applies them.
+NOT_SCHEDULABLE = ("add_person", "reinstate")
+
+
+def check_day(settings: Settings, request: ChangeRequest, day: date | None) -> None:
+    """A scheduled change starts tomorrow or later, within five years, and never issues a code."""
+    if day is None:
+        return
+    if request.kind in NOT_SCHEDULABLE:
+        raise Invalid("not_schedulable", "This change issues an activation code, so it cannot be scheduled.")
+    start = people.site_date(settings)
+    if not start < day <= start + MAX_TERM:
+        raise Invalid("invalid_date", "Choose a day after today and within five years.")
+
+
+def dated(day: date | None):
+    """Build and apply with the effective day as 'today' so review and run agree."""
+    return people.as_of(day) if day else nullcontext()
+
+
+def preview(
+    db: Session, actor: Actor, settings: Settings, request: ChangeRequest, effective_on: date | None = None
+) -> dict:
     """Build metadata without staff/audit writes and recheck session before delivery."""
     user = authorize(db, actor, settings)
-    payload = build(db, request, user.id, settings).to_dict()
+    check_day(settings, request, effective_on)
+    with dated(effective_on):
+        payload = build(db, request, user.id, settings).to_dict()
     authorize(db, actor, settings)
     return payload
 
@@ -145,9 +172,8 @@ def record_plan(
         )
 
 
-def _commit(
-    db: Session, user: User, body: ApplyRequest, settings: Settings
-) -> tuple[User | Workspace, dict, Plan]:
+def _reviewed(db: Session, user: User, body: ApplyRequest, settings: Settings) -> Plan:
+    """Lock, rebuild and require the plan the administrator reviewed, with no blockers."""
     lock_targets(db, body.request)
     plan = build(db, body.request, user.id, settings)
     revisions = {str(identity): revision for identity, revision in body.revisions.items()}
@@ -155,6 +181,69 @@ def _commit(
         raise Conflict("plan_stale", "This record or its consequences changed. Review a fresh plan.")
     if plan.blockers:
         raise Invalid("plan_blocked", "Resolve the blocking problems before applying this change.")
+    return plan
+
+
+def subject_of(request: ChangeRequest) -> uuid.UUID | None:
+    """The person or unit a scheduled change is about, for listing on their page."""
+    for name in ("person_id", "workspace_id", "unit_id"):
+        if getattr(request, name, None) is not None:
+            return getattr(request, name)
+    return None
+
+
+def schedule(db: Session, actor: Actor, settings: Settings, body: ApplyRequest) -> dict:
+    """Store a reviewed change for its day; nothing is applied and no access changes yet."""
+    day = body.effective_on
+    try:
+        user = authorize(db, actor, settings)
+        check_day(settings, body.request, day)
+        with dated(day):
+            plan = _reviewed(db, user, body, settings)
+        row = ScheduledChange(
+            kind=plan.kind,
+            request=body.request.model_dump(mode="json"),
+            plan_digest=plan.digest,
+            effective_on=day,
+            created_by=user.id,
+            reason=body.reason,
+            subject_id=subject_of(body.request),
+            steps=[step.summary for step in plan.steps],
+        )
+        db.add(row)
+        db.flush()
+        audit.record(
+            db,
+            actor=user,
+            action="people.schedule",
+            scope_type="identity",
+            target_id=row.subject_id,
+            reason=body.reason,
+            kind=plan.kind,
+            plan_digest=plan.digest,
+            effective_on=day,
+            scheduled_id=row.id,
+        )
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise Conflict("plan_stale", "Staff information changed. Review a fresh plan.") from None
+    except Exception:
+        db.rollback()
+        raise
+    return {
+        "scheduled": True,
+        "id": str(row.id),
+        "kind": plan.kind,
+        "effective_on": day.isoformat(),
+        "digest": plan.digest,
+    }
+
+
+def _commit(
+    db: Session, user: User, body: ApplyRequest, settings: Settings
+) -> tuple[User | Workspace, dict, Plan]:
+    plan = _reviewed(db, user, body, settings)
     person, extra = KINDS[plan.kind].apply(db, user, plan, body.request, settings, body.reason)
     if isinstance(person, Workspace):
         record_plan(db, user, plan, body.reason, settings, person.id, "workspace")
@@ -177,6 +266,10 @@ def _commit(
     return person, receipt, plan
 
 
+def is_unit(person: User | Workspace) -> bool:
+    return isinstance(person, Workspace)
+
+
 def revalidate(hub: Hub, person: User | Workspace, plan: Plan) -> None:
     """Refresh live delivery for the person and every identity and workspace the plan touched."""
     if isinstance(person, Workspace):
@@ -192,6 +285,8 @@ def revalidate(hub: Hub, person: User | Workspace, plan: Plan) -> None:
 
 def apply(db: Session, actor: Actor, settings: Settings, body: ApplyRequest, hub: Hub) -> dict:
     """Rebuild under locks, reject stale review, commit once, then revalidate delivery."""
+    if body.effective_on is not None:
+        return schedule(db, actor, settings, body)
     try:
         user = authorize(db, actor, settings)
         person, receipt, plan = _commit(db, user, body, settings)

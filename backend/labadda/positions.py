@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from . import audit, memberships, people
 from .config import Settings
 from .models import UnitPosition, User, Workspace
+from .realtime import Hub
 from .security import utcnow
 
 type PositionKind = Literal["head", "deputy", "charge"]
@@ -167,7 +168,9 @@ def revert(db: Session, row: UnitPosition, *, actor: User | None, reason: str | 
 EXPIRY_REASON = "The appointment reached its end date."
 
 
-def expire_due(db: Session, settings: Settings, now: datetime | None = None, batch: int = 100) -> int:
+def expire_due(
+    db: Session, settings: Settings, now: datetime | None = None, batch: int = 100, hub: Hub | None = None
+) -> int:
     """End positions whose end date has arrived and apply their recorded role; idempotent.
 
     The ``position.expire`` audit row and the ended acting row are what the P5 attention list
@@ -184,6 +187,7 @@ def expire_due(db: Session, settings: Settings, now: datetime | None = None, bat
     for workspace_id in sorted({workspace for _, workspace in due}, key=str):
         memberships.lock_workspace_roles(db, workspace_id)
     ended = 0
+    touched: list[tuple[uuid.UUID, uuid.UUID]] = []
     for position_id, _ in due:
         row = db.scalar(
             select(UnitPosition)
@@ -194,17 +198,23 @@ def expire_due(db: Session, settings: Settings, now: datetime | None = None, bat
             continue
         end(db, row, actor=None, reason=EXPIRY_REASON, end_reason="expired", now=now)
         revert(db, row, actor=None, reason=EXPIRY_REASON)
+        touched.append((row.user_id, row.workspace_id))
         ended += 1
     db.commit()
+    if hub is not None:
+        # Like a live apply: sockets of the holder and of the unit must drop what the role end removed.
+        for user_id, workspace_id in touched:
+            hub.revalidate_user(user_id)
+            hub.revalidate_workspace(workspace_id)
     return ended
 
 
-def expiry_job(factory: sessionmaker, settings: Settings):
+def expiry_job(factory: sessionmaker, settings: Settings, hub: Hub | None = None):
     """Scheduler step: one bounded pass per tick."""
 
     def expire_positions() -> None:
         with factory() as db:
-            expire_due(db, settings)
+            expire_due(db, settings, hub=hub)
 
     return expire_positions
 

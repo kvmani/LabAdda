@@ -1,6 +1,9 @@
 """Staff-state consistency and date-only sign-in observations; no content authority."""
 
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date, datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
@@ -18,8 +21,24 @@ StaffStatus = Literal["invited", "active", "on_leave", "suspended", "retired", "
 STATUSES = ("invited", "active", "on_leave", "suspended", "retired", "left")
 
 
+_as_of: ContextVar[date | None] = ContextVar("people_as_of", default=None)
+
+
+@contextmanager
+def as_of(day: date) -> Iterator[None]:
+    """Plan and apply a change as of its effective day, so a scheduled plan is built with the same
+    dates at review time and at run time (the plan digest includes them)."""
+    token = _as_of.set(day)
+    try:
+        yield
+    finally:
+        _as_of.reset(token)
+
+
 def site_date(settings: Settings, *, now: datetime | None = None) -> date:
     """Resolve a calendar date in the configured site zone, not the host zone."""
+    if now is None and _as_of.get() is not None:
+        return _as_of.get()
     instant = now or utcnow()
     if instant.tzinfo is None or instant.utcoffset() is None:
         raise ValueError("A timezone-aware observation is required")
