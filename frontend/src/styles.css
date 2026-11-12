@@ -154,13 +154,6 @@ label.inline input:not([type="checkbox"]) {
   font-weight: 500;
   vertical-align: middle;
 }
-.state {
-  padding: 2rem;
-  text-align: center;
-}
-.empty {
-  color: var(--muted);
-}
 
 /* Whiteboard drawing toolbar, canvas and the touch panel share these rules; U4 leaves them untouched. */
 .whiteboard {
@@ -270,6 +263,8 @@ tr.selected {
   font-family: ui-monospace, monospace;
 }
 .panel-state {
+  padding: 2rem;
+  text-align: center;
   font-size: 1.4rem;
 }
 .panel-pair {

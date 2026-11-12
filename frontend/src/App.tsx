@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Skeleton } from "./ui";
+import { EmptyState, PageHeader, Skeleton } from "./ui";
 import { AdminBoundary } from "./features/admin/AdminBoundary";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Shell } from "./features/shell/Shell";
@@ -23,30 +23,31 @@ const Help = lazy(() => import("./pages/Help"));
 
 function Home() {
   const { homeId, workspaces, loading } = useWorkspaces();
-  if (loading) return <p className="state">Loading workspaces…</p>;
+  if (loading) return <Skeleton label="Loading workspaces…" lines={3} />;
   const target = homeId ?? workspaces[0]?.id;
   if (target) return <Navigate to={`/w/${target}/noticeboard`} replace />;
   return (
-    <section className="state empty" aria-live="polite">
-      <h1>No workspaces yet</h1>
-      <p>
-        You are not a member of any workspace. Ask an administrator to add you, or start a collaborative group
-        with colleagues.
-      </p>
-      <p>
-        <Link className="button" to="/groups/new">
-          Create a group
-        </Link>{" "}
-        or open <Link to="/notes">My Notes</Link>.
-      </p>
-    </section>
+    <>
+      <PageHeader title="No workspaces yet" />
+      <EmptyState
+        title="You are not a member of any workspace"
+        action={
+          <Link className="ui-button ui-button--primary ui-button--md" to="/groups/new">
+            <span>Create a group</span>
+          </Link>
+        }
+      >
+        Ask an administrator to add you, or start a collaborative group with colleagues. You can also open{" "}
+        <Link to="/notes">My Notes</Link>.
+      </EmptyState>
+    </>
   );
 }
 
 export function App() {
   const { session, loading } = useSession();
   const location = useLocation();
-  if (loading) return <p className="state">Loading LabAdda…</p>;
+  if (loading) return <Skeleton label="Loading LabAdda…" lines={3} />;
   if (!session) {
     return (
       <Routes>
@@ -99,10 +100,12 @@ export function App() {
           <Route
             path="*"
             element={
-              <section className="state">
-                <h1>Page not found</h1>
-                <Link to="/">Go to your home workspace</Link>
-              </section>
+              <>
+                <PageHeader title="Page not found" />
+                <EmptyState title="This page does not exist or you cannot open it">
+                  <Link to="/">Go to your home workspace</Link>
+                </EmptyState>
+              </>
             }
           />
         </Routes>

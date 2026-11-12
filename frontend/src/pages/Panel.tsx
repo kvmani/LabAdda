@@ -38,7 +38,7 @@ export function PanelApp() {
       .finally(() => setChecking(false));
   }, [accept]);
 
-  if (checking) return <p className="state panel-state">Starting panel…</p>;
+  if (checking) return <p className="panel-state">Starting panel…</p>;
   if (!session)
     return (
       <PairScreen
