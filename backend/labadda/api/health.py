@@ -20,9 +20,8 @@ def _chart(item) -> dict | None:
     return {"metric": chart.metric, "dimension": chart.dimension, "unit": chart.unit} if chart else None
 
 
-@router.get("/admin/health")
-def health(request: Request, actor: Actor = Depends(console_health)) -> dict:
-    """Nothing here touches content tables; the figures were measured by the background sampler."""
+def current_items(request: Request) -> list[dict]:
+    """The latest result of every item, measured now when no background scheduler runs."""
     sampler: Sampler = request.app.state.health
     # Without a background scheduler (a development instance) nobody else would measure.
     if not request.app.state.settings.run_scheduler and sampler.due(utcnow()):
@@ -40,6 +39,13 @@ def health(request: Request, actor: Actor = Depends(console_health)) -> dict:
                 "chart": _chart(item),
             }
         )
+    return items
+
+
+@router.get("/admin/health")
+def health(request: Request, actor: Actor = Depends(console_health)) -> dict:
+    """Nothing here touches content tables; the figures were measured by the background sampler."""
+    items = current_items(request)
     return {
         "overall": worst([row["status"] for row in items]),
         "generated_at": iso(utcnow()),

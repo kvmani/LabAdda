@@ -169,3 +169,14 @@ Frontend `features/activity/` (`ActivityPage` with the period in the URL, `Activ
 `help/admin/activity-page.md`. Browser check `e2e/console-activity.mjs` (with `e2e/activity-fixture.py`) at
 `/` and `/labadda-staging`: tiles, every chart, suppressed and rounded unit rows, no project or group names,
 table view, period in the URL, audited export, usage reader deep link, member refusal, axe at 1400/390 px.
+
+## A6 overview
+
+Backend `overview/`: `attention.py` (health, event and people entries, ordering), `tiles.py` (the six tiles and two
+charts), `build.py` (assembly); `api/overview.py` serves `GET /admin/overview` (section `overview`, readers allowed, 2 s
+bound, authority rechecked after reading). It reuses `api.health.current_items`, the Activity page's cached 7-day
+summary (same cache key, so its floor is applied once), `backup_report` for the last-backup age, and the latest
+`metric_samples` gauges. People figures below 5 (including signed-in now and each day of its trend) are `suppressed`.
+An open event about an item that already has a health entry is not listed twice. Units without an active steward or
+Head are the only people item until P5. Tests: `test_overview.py` (clean site, severity order, no double listing,
+unknown/stale, suppression and agreement with the Activity page, access matrix, no content).

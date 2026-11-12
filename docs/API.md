@@ -868,3 +868,34 @@ length, not the text) and `site.banner_clear` in the same transaction.
 
 `GET /site/banner` (any signed-in person). Returns `{banner: {message, level, starts_at,
 ends_at} | null}` for the notice whose window contains now. Clients render the text as text.
+
+## A6 · Console overview (AD-12)
+
+`GET /admin/overview` (console section `overview`: administrators and current usage readers;
+members without a grant 403 `usage_read_required`; signed-out, deactivated and board-only/explicit
+panel requests 401). One request, no content: statuses, counts, sizes, times and unit names. Health
+is the sampler's latest result (measured now when no scheduler runs); the 7-day summary is the
+Activity page's own cached result, so its small-group floor applies once and a figure that page
+suppresses is never sent here. Queries run under a 2 s bound (503 `overview_unavailable`); authority
+is rechecked after reading. 200:
+
+- `generated_at`, `timezone`, `period` `{first_day, last_day}` (the last 7 site-local days) and
+  `overall`: the worst health word, ignoring `unsupported` (AD-03).
+- `attention[]`, most severe first, then health, events, people: `{id, kind (health|event|people),
+  severity (critical|error|warning|info), status (health word or null), title, detail, route, help,
+  at}`. `route` is the console page that fixes it. Health items that are not `healthy` or
+  `unsupported` (`unavailable` is `error`, `degraded` and `stale` `warning`, `unknown` `info`; the
+  Backups item links to `/admin/backups`); open events (not those about an item already listed;
+  at most 10, then one "N more" entry); one entry for units without an active steward or Head.
+  Empty means nothing needs attention.
+- `tiles[]` in the order `active_today`, `signed_in_now`, `connected_now`, `storage_used`,
+  `last_backup`, `open_events`: `{key, label, unit, link, state, value, trend, updated_at}`.
+  `state` is `measured | unknown | stale | suppressed`, or a health word for `last_backup`. People
+  figures (`active_today`, `signed_in_now`, and the days of their `trend`) below 5 are
+  `suppressed` with `value: null`. `trend` is seven daily values (null where not measured), or null
+  for `last_backup`. `last_backup.value` is the age in seconds and adds `finished_at`;
+  `open_events.value` counts open events and adds `by_severity`. `storage_used` is files plus the
+  database in bytes.
+- `charts.activity` `{state, points[{day, state, value}]}` (people active per day, as on the
+  Activity page) and `charts.response_time` `{state, unit: "ms", points[{day, state, value}]}`
+  (the slowest hourly 95th percentile of each day). Missing days are `unknown` with `value: null`.
