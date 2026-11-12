@@ -6,6 +6,8 @@ import { ChatFiles } from "./ChatFiles";
 import { ChatComposer } from "./ChatComposer";
 import { fmtTime } from "../format";
 import type { ChatMessage, Workspace } from "../types";
+import { Button, Card, Skeleton } from "../ui";
+import "./chat.css";
 type Page = { root: ChatMessage; messages: ChatMessage[]; next_before: number | null };
 export function ChatThread({ ws, rootId, close }: { ws: Workspace; rootId: string; close: () => void }) {
   const [page, setPage] = useState<Page | null>(null),
@@ -65,52 +67,63 @@ export function ChatThread({ ws, rootId, close }: { ws: Workspace; rootId: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload and resubscribe only when the thread changes
   }, [ws.id, rootId]);
   return (
-    <section className="card chat-thread" aria-label="Chat thread" ref={section}>
-      <h2>Thread discussion</h2>
-      <button type="button" onClick={close}>
-        Close thread
-      </button>
-      {blocked ? (
-        <p role="alert">This thread is no longer available.</p>
-      ) : (
-        <>
-          <button type="button" disabled={loading} onClick={() => load()}>
-            Refresh thread
-          </button>
-          {changed && (
-            <p role="status">Discussion may have changed. Refresh the thread; your reply draft is kept.</p>
-          )}
-          {loading && <p role="status">Loading thread…</p>}
-          {error && <p role="alert">{error}</p>}
-          {page && (
+    <section className="chat-thread" aria-label="Chat thread" ref={section}>
+      <Card title="Thread discussion" actions={<Button onClick={close}>Close thread</Button>}>
+        <div className="chat-thread__body">
+          {blocked ? (
+            <p role="alert">This thread is no longer available.</p>
+          ) : (
             <>
-              <p className="preserve">
-                <strong>{page.root.author?.display_name}</strong>: {page.root.body}
-              </p>
-              <ChatFiles files={page.root.attachments} />
-              {page.messages.length === 0 ? (
-                <p>No replies yet.</p>
-              ) : (
-                <ol>
-                  {page.messages.map((message) => (
-                    <li key={message.id}>
-                      <strong>{message.author?.display_name}</strong> · {fmtTime(message.created_at)}
-                      <p className="preserve">{message.body}</p>
-                      <ChatFiles files={message.attachments} />
-                    </li>
-                  ))}
-                </ol>
+              <div>
+                <Button disabled={loading} onClick={() => load()}>
+                  Refresh thread
+                </Button>
+              </div>
+              {changed && (
+                <p role="status">
+                  Discussion may have changed. Refresh the thread; your reply draft is kept.
+                </p>
               )}
-              {page.next_before && (
-                <button type="button" disabled={loading} onClick={() => load(page.next_before!)}>
-                  Older thread replies
-                </button>
+              {loading && !page && <Skeleton lines={3} label="Loading thread…" />}
+              {loading && page && <p role="status">Loading thread…</p>}
+              {error && (
+                <p className="chat__error" role="alert">
+                  {error}
+                </p>
               )}
+              {page && (
+                <>
+                  <p className="chat__text">
+                    <strong>{page.root.author?.display_name}</strong>: {page.root.body}
+                  </p>
+                  <ChatFiles files={page.root.attachments} />
+                  {page.messages.length === 0 ? (
+                    <p>No replies yet.</p>
+                  ) : (
+                    <ol className="chat__list">
+                      {page.messages.map((message) => (
+                        <li key={message.id}>
+                          <strong>{message.author?.display_name}</strong> · {fmtTime(message.created_at)}
+                          <p className="chat__text">{message.body}</p>
+                          <ChatFiles files={message.attachments} />
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  {page.next_before && (
+                    <div>
+                      <Button disabled={loading} onClick={() => load(page.next_before!)}>
+                        Older thread replies
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+              <ChatComposer ws={ws} parentId={rootId} sent={() => load()} denied={deny} />
             </>
           )}
-          <ChatComposer ws={ws} parentId={rootId} sent={() => load()} denied={deny} />
-        </>
-      )}
+        </div>
+      </Card>
     </section>
   );
 }

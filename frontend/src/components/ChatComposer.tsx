@@ -4,6 +4,8 @@ import { useSession } from "../session";
 import { UploadRecovery, useUploadQueue } from "./UploadRecovery";
 import type { UploadedAsset } from "../uploads";
 import type { ChatMessage, Workspace } from "../types";
+import { Button, Field, TextInput } from "../ui";
+import "./chat.css";
 
 type Intent = { body: string; client_id: string; parent_id: string | null; attachment_ids: string[] };
 export function ChatComposer({
@@ -67,44 +69,48 @@ export function ChatComposer({
       if (token === generation.current) setBusy(false);
     }
   }
-  if (!ws.can_write) return <p className="notice">Chat is read-only here.</p>;
+  if (!ws.can_write) return <p className="chat__meta">Chat is read-only here.</p>;
+  const messageLabel = parentId ? "Thread reply" : `Message ${ws.name}`;
   return (
-    <form onSubmit={submit} aria-label={parentId ? "Reply to thread" : "Send chat message"}>
-      <label>
-        {parentId ? "Thread reply" : `Message ${ws.name}`}
-        <input
-          aria-label={parentId ? "Thread reply" : `Message ${ws.name}`}
-          value={text}
-          maxLength={4000}
-          disabled={busy || unknown}
-          onChange={(e) => setText(e.target.value)}
-        />
-      </label>
-      <fieldset disabled={busy || unknown} className="chat-file-controls">
+    <form
+      className="chat-composer"
+      onSubmit={submit}
+      aria-label={parentId ? "Reply to thread" : "Send chat message"}
+    >
+      <TextInput
+        label={messageLabel}
+        value={text}
+        maxLength={4000}
+        disabled={busy || unknown}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <fieldset disabled={busy || unknown} className="chat-composer__files">
         <legend>Attachments</legend>
-        <label>
-          Attach files
-          <input
-            aria-label="Attach files"
-            type="file"
-            multiple
-            accept="application/pdf,image/png,image/jpeg"
-            onChange={(event) => {
-              try {
-                uploads.queue.add(Array.from(event.target.files ?? []), maxFiles - files.length);
-              } catch (e: unknown) {
-                setError(errorMessage(e));
-              }
-              event.target.value = "";
-            }}
-          />
-        </label>
+        <Field label="Attach files">
+          {(control) => (
+            <input
+              {...control}
+              type="file"
+              multiple
+              accept="application/pdf,image/png,image/jpeg"
+              onChange={(event) => {
+                try {
+                  uploads.queue.add(Array.from(event.target.files ?? []), maxFiles - files.length);
+                } catch (e: unknown) {
+                  setError(errorMessage(e));
+                }
+                event.target.value = "";
+              }}
+            />
+          )}
+        </Field>
         <ul>
           {files.map((file) => (
             <li key={file.id}>
-              {file.display_name}
-              <button
-                type="button"
+              <span>{file.display_name}</span>
+              <Button
+                variant="quiet"
+                size="sm"
                 onClick={() => {
                   setFiles((current) => current.filter((row) => row.id !== file.id));
                   api(`/uploads/${file.id}`, { method: "DELETE" }).catch(() =>
@@ -113,14 +119,14 @@ export function ChatComposer({
                 }}
               >
                 Remove file: {file.display_name}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
       </fieldset>
       <UploadRecovery queue={uploads.queue} />
       {error && (
-        <p className="error" role="alert">
+        <p className="chat__error" role="alert">
           {error}
         </p>
       )}
@@ -129,9 +135,17 @@ export function ChatComposer({
           Message outcome is unconfirmed. Retry the same message; its text and thread are kept unchanged.
         </p>
       )}
-      <button type="submit" disabled={busy || uploads.attempts.length > 0}>
-        {busy ? "Sending…" : unknown ? "Retry same message" : parentId ? "Send reply" : "Send"}
-      </button>
+      <div>
+        <Button
+          variant="primary"
+          type="submit"
+          disabled={uploads.attempts.length > 0}
+          busy={busy}
+          busyLabel="Sending…"
+        >
+          {unknown ? "Retry same message" : parentId ? "Send reply" : "Send"}
+        </Button>
+      </div>
     </form>
   );
 }

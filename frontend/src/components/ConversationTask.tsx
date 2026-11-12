@@ -5,6 +5,8 @@ import { accessDenied, api, errorCode, errorMessage, outcomeUnknown } from "../a
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import type { Workspace } from "../types";
+import { Button, Checkbox, Dialog, Select, TextArea, TextInput } from "../ui";
+import "./conversation-task.css";
 
 type List = { id: string; title: string };
 type Page = { items: List[]; next_cursor: string | null };
@@ -166,63 +168,71 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
       if (token === generation.current) setBusy(false);
     }
   }
+  const heading = `Create task from ${
+    kind === "board" ? "research plan board" : kind === "post" ? "post" : "chat message"
+  }`;
+  const closeButton = (
+    <Button variant="quiet" disabled={busy} onClick={close}>
+      Close task creation
+    </Button>
+  );
   if (blocked)
     return (
-      <section className="card" aria-label={formLabel}>
-        <p role="alert">The source or destination is no longer available. Reopen it after checking access.</p>
-        <button type="button" onClick={close}>
-          Close task creation
-        </button>
-      </section>
+      <Dialog open title={heading} onClose={close} size="sm" footer={closeButton}>
+        <section aria-label={formLabel}>
+          <p role="alert">
+            The source or destination is no longer available. Reopen it after checking access.
+          </p>
+        </section>
+      </Dialog>
     );
   if (saved)
     return (
-      <section className="card" aria-label={formLabel}>
-        <p role="status">Task saved. Its source link still requires access to the original {sourceLabel}.</p>
-        <Link to={location}>Open destination tasks</Link>
-        <button type="button" onClick={close}>
-          Close task creation
-        </button>
-      </section>
+      <Dialog open title={heading} onClose={close} size="sm" footer={closeButton}>
+        <section className="conversation-task__done" aria-label={formLabel}>
+          <p role="status">
+            Task saved. Its source link still requires access to the original {sourceLabel}.
+          </p>
+          <Link to={location}>Open destination tasks</Link>
+        </section>
+      </Dialog>
     );
+  const submitLabel = busy
+    ? "Saving…"
+    : unknown
+      ? "Retry same task copy"
+      : kind === "board"
+        ? "Save board task"
+        : "Save conversation task";
   return (
-    <form className="card conversation-task" aria-label={formLabel} onSubmit={submit}>
-      <h3>
-        Create task from{" "}
-        {kind === "board" ? "research plan board" : kind === "post" ? "post" : "chat message"}
-      </h3>
-      {kind === "board" ? (
-        <p>
-          Describe the followup and review its destination. This records board context, without copying an
-          image or board content.
+    <Dialog open title={heading} onClose={close}>
+      <form className="conversation-task" aria-label={formLabel} onSubmit={submit}>
+        <p className="conversation-task__intro">
+          {kind === "board"
+            ? "Describe the followup and review its destination. This records board context, without copying an image or board content."
+            : "Review the copied text and destination before saving. Later conversation changes do not update this task copy."}
         </p>
-      ) : (
-        <p>
-          Review the copied text and destination before saving. Later conversation changes do not update this
-          task copy.
-        </p>
-      )}
-      <fieldset disabled={busy || unknown}>
-        {kind === "board" && context && (
-          <>
-            <p>
-              Reviewed board context: epoch {context.epoch}, revision {context.revision}. The reference opens
-              the live board; it is not a saved image.
-            </p>
-            {needsContext && (
-              <p role="status">
-                Your task draft is kept. Review the board, then load its latest context before saving.
+        <fieldset disabled={busy || unknown} className="conversation-task__fields">
+          {kind === "board" && context && (
+            <>
+              <p>
+                Reviewed board context: epoch {context.epoch}, revision {context.revision}. The reference
+                opens the live board; it is not a saved image.
               </p>
-            )}
-            <button type="button" disabled={loading} onClick={latestContext}>
-              Load latest board context (keeps draft)
-            </button>
-          </>
-        )}
-        <label>
-          Task destination
-          <select
-            aria-label="Task destination"
+              {needsContext && (
+                <p role="status">
+                  Your task draft is kept. Review the board, then load its latest context before saving.
+                </p>
+              )}
+              <div>
+                <Button disabled={loading} onClick={latestContext}>
+                  Load latest board context (keeps draft)
+                </Button>
+              </div>
+            </>
+          )}
+          <Select
+            label="Task destination"
             value={destination}
             onChange={(e) => {
               ++generation.current;
@@ -231,119 +241,109 @@ export function ConversationTask({ source, kind, sourceId, text, close, boardCon
               setListId("");
               setConfirmed(false);
             }}
-          >
-            <option value="personal">My personal lists (private)</option>
-            {workspaces
-              .filter((w) => w.can_write && !w.archived)
-              .map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-          </select>
-        </label>
-        <p className="notice">
-          {destination === "personal"
-            ? "Audience: only you."
-            : `Audience: everyone who can read ${target?.name ?? "the selected workspace"}.`}
-        </p>
-        {loading && <p role="status">Loading destination lists…</p>}
-        {lists && (
-          <label>
-            Destination list
-            <select
-              aria-label="Destination list"
-              required
+            options={[
+              { value: "personal", label: "My personal lists (private)" },
+              ...workspaces
+                .filter((w) => w.can_write && !w.archived)
+                .map((w) => ({ value: w.id, label: w.name })),
+            ]}
+          />
+          <p className="conversation-task__audience">
+            {destination === "personal"
+              ? "Audience: only you."
+              : `Audience: everyone who can read ${target?.name ?? "the selected workspace"}.`}
+          </p>
+          {loading && <p role="status">Loading destination lists…</p>}
+          {lists && (
+            <Select
+              label="Destination list"
+              placeholder="Choose a list"
               value={listId}
               onChange={(e) => {
                 setListId(e.target.value);
                 setConfirmed(false);
               }}
+              options={lists.items.map((row) => ({ value: row.id, label: row.title }))}
+            />
+          )}
+          {lists?.items.length === 0 && (
+            <p>Create a to-do list in the destination first, then reopen this form.</p>
+          )}
+          <div className="conversation-task__row">
+            <Button
+              disabled={loading}
+              onClick={() => {
+                setListId("");
+                setConfirmed(false);
+                void load();
+              }}
             >
-              <option value="">Choose a list</option>
-              {lists.items.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.title}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {lists?.items.length === 0 && (
-          <p>Create a to-do list in the destination first, then reopen this form.</p>
-        )}
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => {
-            setListId("");
-            setConfirmed(false);
-            void load();
-          }}
-        >
-          Refresh destination lists
-        </button>
-        {lists?.next_cursor && (
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              setListId("");
-              setConfirmed(false);
-              void load(lists.next_cursor!);
-            }}
-          >
-            More destination lists
-          </button>
-        )}
-        <label>
-          Task title
-          <input required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <label>
-          Task description
-          <textarea
-            aria-label="Task description"
+              Refresh destination lists
+            </Button>
+            {lists?.next_cursor && (
+              <Button
+                disabled={loading}
+                onClick={() => {
+                  setListId("");
+                  setConfirmed(false);
+                  void load(lists.next_cursor!);
+                }}
+              >
+                More destination lists
+              </Button>
+            )}
+          </div>
+          <TextInput
+            label="Task title"
+            maxLength={200}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <TextArea
+            label="Task description"
             maxLength={10000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-        </label>
-        {broader && (
-          <label className="warning">
-            <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />I
-            confirm this reviewed task text will be shared with a different audience in {target?.name}.
-          </label>
+          {broader && (
+            <Checkbox
+              label={`I confirm this reviewed task text will be shared with a different audience in ${target?.name}.`}
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+            />
+          )}
+        </fieldset>
+        {error && (
+          <p role="alert" className="conversation-task__error">
+            {error}
+          </p>
         )}
-      </fieldset>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      {unknown && (
-        <p role="status">
-          Creation is unconfirmed. Retry the same task copy; the original destination and text are kept
-          unchanged.
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={
-          busy || loading || blocked || needsContext || !writable || !listId || (broader && !confirmed)
-        }
-      >
-        {busy
-          ? "Saving…"
-          : unknown
-            ? "Retry same task copy"
-            : kind === "board"
-              ? "Save board task"
-              : "Save conversation task"}
-      </button>
-      <button type="button" disabled={busy} onClick={close}>
-        Close task creation
-      </button>
-    </form>
+        {unknown && (
+          <p role="status">
+            Creation is unconfirmed. Retry the same task copy; the original destination and text are kept
+            unchanged.
+          </p>
+        )}
+        <div className="conversation-task__actions">
+          {closeButton}
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={
+              busy ||
+              loading ||
+              blocked ||
+              needsContext ||
+              !writable ||
+              !listId ||
+              !title.trim() ||
+              (broader && !confirmed)
+            }
+          >
+            {submitLabel}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

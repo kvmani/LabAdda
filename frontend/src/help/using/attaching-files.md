@@ -18,7 +18,7 @@ Your site limits how many files one post may carry and how large each may be. Th
 
 1. On the **Noticeboard** tab, write your post in the message box.
 2. Next to **Attach**, choose the file button and pick one or more files from your computer.
-3. Wait until each file name appears in the list under the box. You can remove a file with its **×** button before posting.
+3. Wait until each file name appears in the list under the box. You can remove a file with the cross button next to it (its name starts with **Remove**) before posting.
 4. Choose **Post**.
 
 ## What happens next

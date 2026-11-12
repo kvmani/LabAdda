@@ -1,8 +1,10 @@
 import type { Attachment } from "../types";
+import "./chat.css";
+
 export function ChatFiles({ files }: { files: Attachment[] }) {
   if (!files?.length) return null;
   return (
-    <ul className="attachments" aria-label="Message attachments">
+    <ul className="attachments chat-files" aria-label="Message attachments">
       {files.map((file) => (
         <li key={file.id}>
           {file.preview_url && (
@@ -11,7 +13,7 @@ export function ChatFiles({ files }: { files: Attachment[] }) {
             </a>
           )}
           <a href={file.url}>{file.display_name}</a>
-          <span className="muted small"> · {Math.ceil(file.size / 1024)} KiB</span>
+          <span className="chat__meta"> · {Math.ceil(file.size / 1024)} KiB</span>
         </li>
       ))}
     </ul>

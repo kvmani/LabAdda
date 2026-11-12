@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { invalidate } from "../generation";
 import { ChatFiles } from "../components/ChatFiles";
 import { ChatComposer } from "../components/ChatComposer";
@@ -9,6 +9,8 @@ import { fmtTime } from "../format";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import type { ChatMessage, ChatPage, Workspace } from "../types";
+import { Button, Card, Checkbox, Dialog, EmptyState, Select, Tag, TextArea } from "../ui";
+import "../components/chat.css";
 
 export function Chat({ ws }: { ws: Workspace }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]),
@@ -156,87 +158,91 @@ export function Chat({ ws }: { ws: Workspace }) {
   }
   return (
     <>
-      <section className="chat card" aria-label={`Chat in ${ws.name}`}>
-        {blocked ? (
-          <p role="alert">This chat is no longer available.</p>
-        ) : (
-          <>
-            <button type="button" onClick={latest}>
-              Refresh chat
-            </button>
-            {earlier && (
-              <p>
-                Viewing earlier messages.{" "}
-                <button type="button" onClick={latest}>
-                  Return to latest messages
-                </button>
-              </p>
-            )}
-            {hasMore && (
-              <button type="button" onClick={older}>
-                Load earlier messages
-              </button>
-            )}
-            {moreNew && (
-              <button type="button" onClick={earlier ? latest : catchUp}>
-                Load more new messages
-              </button>
-            )}
-            <ol className="messages" ref={listRef} aria-live="polite">
-              {messages.length === 0 && <li>No messages yet.</li>}
-              {messages.map((message) => (
-                <li key={message.id}>
-                  <strong>{message.author?.display_name}</strong>{" "}
-                  <span className="muted small">{fmtTime(message.created_at)}</span>
-                  {message.parent_id && <span className="tag">Thread reply</span>}
-                  <button
-                    type="button"
-                    className="ghost small"
-                    onClick={() => setThread(message.parent_id ?? message.id)}
-                  >
-                    Open thread
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost small"
-                    onClick={() =>
-                      setSummary(
-                        `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
-                      )
-                    }
-                    aria-label="Publish to noticeboard"
-                  >
-                    Share to noticeboard
-                  </button>
-                  <button type="button" className="ghost small" onClick={() => setTaskSource(message)}>
-                    Create task
-                  </button>
-                  <p className="body">{message.body}</p>
-                  <ChatFiles files={message.attachments} />
-                </li>
-              ))}
-            </ol>
-            {error && (
-              <p role="alert" className="error">
-                {error}
-              </p>
-            )}
-            <ChatComposer ws={ws} sent={(message) => merge([message])} denied={deny} />
-            {taskSource && (
-              <ConversationTask
-                key={taskSource.id}
-                source={ws}
-                kind="chat"
-                sourceId={taskSource.id}
-                text={taskSource.body}
-                close={() => setTaskSource(null)}
-              />
-            )}
-            {summary !== null && (
-              <PublishSummary source={ws} text={summary} onClose={() => setSummary(null)} />
-            )}
-          </>
-        )}
+      <section className="chat" aria-label={`Chat in ${ws.name}`}>
+        <Card>
+          {blocked ? (
+            <p role="alert">This chat is no longer available.</p>
+          ) : (
+            <div className="chat__panel">
+              <div className="chat__toolbar">
+                <Button icon="refresh" onClick={latest}>
+                  Refresh chat
+                </Button>
+                {hasMore && <Button onClick={older}>Load earlier messages</Button>}
+                {moreNew && <Button onClick={earlier ? latest : catchUp}>Load more new messages</Button>}
+              </div>
+              {earlier && (
+                <p className="chat__notice">
+                  Viewing earlier messages.{" "}
+                  <Button variant="quiet" size="sm" onClick={latest}>
+                    Return to latest messages
+                  </Button>
+                </p>
+              )}
+              {messages.length === 0 && (
+                <EmptyState title="No messages yet.">
+                  {ws.can_write ? "Write the first message below." : "Messages will appear here."}
+                </EmptyState>
+              )}
+              <ol className="messages chat__list" ref={listRef} aria-live="polite">
+                {messages.map((message) => (
+                  <li key={message.id}>
+                    <div className="chat__byline">
+                      <strong>{message.author?.display_name}</strong>
+                      <span className="chat__meta">{fmtTime(message.created_at)}</span>
+                      {message.parent_id && <Tag>Thread reply</Tag>}
+                    </div>
+                    <p className="chat__text">{message.body}</p>
+                    <ChatFiles files={message.attachments} />
+                    <div className="chat__actions">
+                      <Button
+                        variant="quiet"
+                        size="sm"
+                        onClick={() => setThread(message.parent_id ?? message.id)}
+                      >
+                        Open thread
+                      </Button>
+                      <Button
+                        variant="quiet"
+                        size="sm"
+                        onClick={() =>
+                          setSummary(
+                            `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
+                          )
+                        }
+                        aria-label="Publish to noticeboard"
+                      >
+                        Share to noticeboard
+                      </Button>
+                      <Button variant="quiet" size="sm" onClick={() => setTaskSource(message)}>
+                        Create task
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              {error && (
+                <p role="alert" className="chat__error">
+                  {error}
+                </p>
+              )}
+              <ChatComposer ws={ws} sent={(message) => merge([message])} denied={deny} />
+              {taskSource && (
+                <ConversationTask
+                  key={taskSource.id}
+                  source={ws}
+                  kind="chat"
+                  sourceId={taskSource.id}
+                  text={taskSource.body}
+                  close={() => setTaskSource(null)}
+                />
+              )}
+              {summary !== null && (
+                <PublishSummary source={ws} text={summary} onClose={() => setSummary(null)} />
+              )}
+            </div>
+          )}
+        </Card>
       </section>
       {!blocked && thread && (
         <ChatThread key={thread} ws={ws} rootId={thread} close={() => setThread(null)} />
@@ -253,6 +259,7 @@ function PublishSummary({ source, text, onClose }: { source: Workspace; text: st
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clientId = useRef(newId("s"));
+  const formId = useId();
   const target = workspaces.find((w) => w.id === dest);
   const broader = dest !== source.id;
 
@@ -267,44 +274,45 @@ function PublishSummary({ source, text, onClose }: { source: Workspace; text: st
   }
 
   return (
-    <form className="dialog card" onSubmit={publish} aria-label="Publish chat summary">
-      <h2>Publish summary to a noticeboard</h2>
-      <label>
-        Destination
-        <select
+    <Dialog
+      open
+      title="Publish summary to a noticeboard"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="quiet" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form={formId} disabled={(broader && !confirmed) || !target}>
+            Post to {target?.name}
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} className="chat__form" onSubmit={publish} aria-label="Publish chat summary">
+        <Select
+          label="Destination"
           value={dest}
           onChange={(e) => {
             setDest(e.target.value);
             setConfirmed(false);
           }}
-        >
-          {targets.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Summary
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
-      </label>
-      {broader && (
-        <label className="warning">
-          <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /> I
-          understand this copy will be visible to everyone who can read <strong>{target?.name}</strong>, a
-          different audience from {source.name}.
-        </label>
-      )}
-      {error && <p className="error">{error}</p>}
-      <div className="row">
-        <button type="submit" disabled={broader && !confirmed}>
-          Post to {target?.name}
-        </button>
-        <button type="button" className="ghost" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </form>
+          options={targets.map((w) => ({ value: w.id, label: w.name }))}
+        />
+        <TextArea label="Summary" value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
+        {broader && (
+          <Checkbox
+            label={`I understand this copy will be visible to everyone who can read ${target?.name}, a different audience from ${source.name}.`}
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+          />
+        )}
+        {error && (
+          <p className="chat__error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </Dialog>
   );
 }

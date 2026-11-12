@@ -1,0 +1,39 @@
+/* Task-from-conversation form inside a dialog. */
+.conversation-task,
+.conversation-task__fields {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.conversation-task__fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.conversation-task p,
+.conversation-task__done p {
+  margin: 0;
+}
+.conversation-task__intro,
+.conversation-task__audience {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.conversation-task__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.conversation-task__error {
+  color: var(--danger);
+}
+.conversation-task__done {
+  display: grid;
+  gap: var(--space-3);
+}
+.conversation-task__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

@@ -1,0 +1,92 @@
+/* Chat panel, thread and composer. */
+.chat__panel,
+.chat-thread__body,
+.chat-composer,
+.chat__form {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.chat__toolbar,
+.chat__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.chat__list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  max-height: calc(100vh - 420px);
+  min-height: 160px;
+}
+.chat__list li {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.chat__list p,
+.chat__panel p,
+.chat-thread__body p {
+  margin: 0;
+}
+.chat__byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.chat__meta {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.chat__text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat__error {
+  color: var(--danger);
+}
+.chat__notice {
+  color: var(--text-muted);
+}
+.chat-composer__files {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.chat-composer__files legend {
+  padding: 0;
+  font-weight: 600;
+}
+.chat-composer__files ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chat-composer__files li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+}
+.chat-composer__files input {
+  max-width: 100%;
+}
+.chat-files {
+  display: block;
+}
+.chat-files img {
+  max-width: min(220px, 100%);
+}

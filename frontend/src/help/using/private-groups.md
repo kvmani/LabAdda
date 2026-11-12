@@ -16,7 +16,7 @@ A group is a private workspace for you and the colleagues you choose, from any s
 2. In **Group name**, type a name. A private conversation can leave this blank.
 3. If you like, describe the group in **Purpose (optional)**.
 4. In **Find colleagues**, type part of a name or username, then choose a name from the list. For a private conversation choose one person.
-5. Check the names under the box. Remove someone with the **×** next to their name.
+5. Check the names under the box. Remove someone with the cross button next to their name (its name starts with **Remove**).
 6. Choose the **Create group** button. It also shows how many colleagues you picked.
 
 ## What happens next
