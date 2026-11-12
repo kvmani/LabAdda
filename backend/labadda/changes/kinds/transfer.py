@@ -161,7 +161,9 @@ def _positions(db: Session, proposal: Proposal) -> tuple[list[Step], list[Warnin
     steps, warnings = [], []
     for row in positions.current(db, user_id=proposal.person.id):
         role = proposal.after.get(row.workspace_id)
-        if role == "steward" or (role == "member" and row.position == "charge"):
+        # A dated charge in the new home unit would otherwise remove the home membership on its end date.
+        folded = row.position == "charge" and row.workspace_id == proposal.target.id
+        if not folded and (role == "steward" or (role == "member" and row.position == "charge")):
             continue
         space = proposal.names.get(row.workspace_id) or db.get(Workspace, row.workspace_id)
         steps.append(end_position(proposal.person, row, space).step)
@@ -220,6 +222,7 @@ def apply(
         raise NotFound()
     person.home_workspace_id = request.to_unit_id
     person.revision += 1
+    positions.end_held(db, person.id, request.to_unit_id, actor=actor, reason=reason, kinds=("charge",))
     for step in plan.steps[1:]:
         if step.target_type != "workspace":
             continue  # a position step: removing or demoting the membership below ends it

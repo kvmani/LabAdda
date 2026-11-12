@@ -377,3 +377,24 @@ def test_candidates_are_active_people_of_the_unit_or_group_members(as_user, ids,
     assert as_user("dana").get(path).status_code == 403
     assert make_client().get(path).status_code == 401
     assert admin.get(f"/admin/changes/candidates?workspace_id={ids['users']['ben']}").status_code == 404
+
+
+def test_transfer_into_a_unit_with_a_dated_charge_is_not_undone_by_expiry(as_user, ids, db_factory, settings):
+    """A charge that became the home unit must not remove the home membership on its end date."""
+    admin = as_user("admin")
+    ends = site_today(settings) + timedelta(days=10)
+    charge = change(
+        ids,
+        "additional_charge",
+        person_id="chen",
+        workspace_id="section_a",
+        role="member",
+        ends_on=ends.isoformat(),
+    )
+    apply(admin, charge)
+    apply(admin, move(ids, person="chen", unit="section_a"))
+    with db_factory() as db:
+        positions.expire_due(db, settings, now=start_of(ends, settings))
+    assert grants(db_factory, ids["users"]["chen"]).get(ids["workspaces"]["section_a"]) == "member"
+    with db_factory() as db:
+        assert str(db.get(User, ids["users"]["chen"]).home_workspace_id) == ids["workspaces"]["section_a"]
