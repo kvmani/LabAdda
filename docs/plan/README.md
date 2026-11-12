@@ -66,7 +66,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 13 | A4 | System health and operational events | A1, A3, U3 | done | [admin](admin.md#a4--system-health-and-operational-events) |
 | 14 | A5 | Usage analytics | A3, U3, P1 | done | [admin](admin.md#a5--usage-analytics) |
 | 15 | A6 | Overview dashboard | A4, A5, P3 | done | [admin](admin.md#a6--overview-dashboard) |
-| 16 | P4 | Organisation chart and unit changes | P2 | in progress | [people](people.md#p4--organisation-chart-and-unit-changes) |
+| 16 | P4 | Organisation chart and unit changes | P2 | done | [people](people.md#p4--organisation-chart-and-unit-changes) |
 | 17 | P5 | Scheduled changes and attention list | P3, P4 | in progress | [people](people.md#p5--scheduled-changes-and-attention-list) |
 | 18 | H1 | Help centre framework and sync check | U2 | done | [help](help.md#h1--help-centre-framework-and-sync-check) |
 | 19 | H2 | Help for members and stewards | H1 | done | [help](help.md#h2--help-for-members-and-stewards) |
@@ -74,7 +74,7 @@ Track D needs a real host and the site owner, so it runs alongside the others wh
 | 21 | P6 | Staff list import and bulk changes | P3 | in progress | [people](people.md#p6--staff-list-import-and-bulk-changes) |
 | 22 | D3 | Scheduled backups with status file | — | done | [deployment](deployment.md#d3--scheduled-backups-with-status-file) |
 | 23 | A7 | Backups page, settings and site notice | A1, D3 | done | [admin](admin.md#a7--backups-page-settings-and-site-notice) |
-| 24 | P7 | Unit administrators | P4 | queued | [people](people.md#p7--unit-administrators) |
+| 24 | P7 | Unit administrators | P4 | next | [people](people.md#p7--unit-administrators) |
 | 25 | P8 | My profile and sessions | U2 | done | [people](people.md#p8--my-profile-and-sessions) |
 | 26 | U4 | Move existing screens onto the design system | U2 | in progress | [ui](ui.md#u4--move-existing-screens-onto-the-design-system) |
 | 27 | Q3 | Readable rewrite of compressed modules | Q1, Q2 | in progress | [quality](quality.md#q3--readable-rewrite-of-compressed-modules) |
