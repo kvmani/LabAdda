@@ -1,172 +1,157 @@
-import assert from "node:assert/strict";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url),
-  { chromium } = require("playwright");
-const browser = await chromium.launch({
-    executablePath: process.env.LABADDA_CHROMIUM ?? "/usr/bin/chromium",
-  }),
-  origin = "http://127.0.0.1:8080";
-let checks = 0;
-const check = (v, label) => {
-  assert.ok(v, label);
-  checks++;
-  console.log("PASS " + label);
-};
-async function login(base, name) {
-  const ctx = await browser.newContext({ viewport: { width: 1400, height: 1100 } }),
-    page = await ctx.newPage(),
-    errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(origin + base + "/");
-  await page.getByLabel("Username").fill(name);
-  await page.getByLabel("Password").fill("fixture-pass-123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
-  const session = await (await ctx.request.get(origin + base + "/api/v1/auth/session")).json();
-  return {
-    ctx,
-    page,
-    errors,
-    session,
-    api: origin + base + "/api/v1",
-    headers: { "X-CSRF-Token": session.csrf_token },
-  };
-}
-async function call(a, path, body, method = body ? "POST" : "GET") {
-  const r = await a.ctx.request.fetch(a.api + path, { method, headers: a.headers, data: body });
-  assert.ok(r.ok(), await r.text());
-  return r.json();
-}
-async function task(a, workspace, title, date) {
-  const list = await call(a, "/todos/lists", {
+import {
+  axeViolations,
+  bases,
+  call,
+  hasNoSideScroll,
+  holdFirstResponse,
+  nextPaint,
+  origin,
+  startHarness,
+} from "./lib/harness.mjs";
+
+const harness = await startHarness();
+const { check, login } = harness;
+
+const linkNamed = (page, name) => page.getByRole("link", { name, exact: true });
+const refreshButton = (page) => page.getByRole("button", { name: "Refresh My day", exact: true });
+const noActiveTasks = (page) => page.getByText("No active tasks in this loaded view.", { exact: true });
+
+async function createTask(user, workspaceId, title, dueDate) {
+  const list = await call(user, "/todos/lists", {
     title: title + " list",
-    workspace_id: workspace,
+    workspace_id: workspaceId,
     client_id: crypto.randomUUID(),
   });
-  const task = await call(a, `/todos/lists/${list.id}/tasks`, {
+  const task = await call(user, `/todos/lists/${list.id}/tasks`, {
     title,
-    due_date: date,
+    due_date: dueDate,
     client_id: crypto.randomUUID(),
   });
   return { list, task };
 }
+
+async function seedDailyWork({ ben, asha, workspaceId, today }) {
+  await createTask(ben, null, "Private daily action", today);
+  const shared = await createTask(asha, workspaceId, "Shared daily action", today);
+  await call(
+    asha,
+    `/todos/lists/${shared.list.id}/tasks/${shared.task.id}/assignee`,
+    { revision: 1, user_id: ben.session.user.id },
+    "PUT",
+  );
+  await call(ben, "/notes", {
+    title: "Private daily reminder",
+    body: "Check uncertainty before publication",
+    due_at: new Date(Date.now() + 86400000).toISOString(),
+  });
+  await call(asha, `/workspaces/${workspaceId}/chat`, {
+    body: "@ben examine the witness blank",
+    client_id: crypto.randomUUID(),
+  });
+}
+
+async function checkOverviewContent(ben, base, today) {
+  const page = ben.page;
+  await page.goto(origin + base + "/today");
+  await linkNamed(page, "Private daily action").waitFor();
+  await linkNamed(page, "Shared daily action").waitFor();
+  check(
+    await linkNamed(page, "Private daily reminder").isVisible(),
+    base + " daily overview combines personal work assigned tasks and private reminders",
+  );
+  const dueToday = await page.getByText("Due today " + today, { exact: false }).count();
+  check(dueToday === 2, base + " date-only task deadlines use advertised calendar date");
+  await page.getByRole("button", { name: /mention: @ben examine/ }).waitFor();
+  const unreadRegion = page.getByRole("region", { name: "Unread conversations", exact: true });
+  check(
+    await unreadRegion.getByText("1 unread", { exact: false }).isVisible(),
+    base + " current mentions and unread source are shown",
+  );
+}
+
+async function checkOverviewLayouts(ben, base) {
+  for (const width of [1400, 390]) {
+    await ben.page.setViewportSize({ width, height: 1100 });
+    const violations = await axeViolations(ben.page);
+    check(!violations.length, base + " daily overview accessibility " + width + " " + violations);
+    check(await hasNoSideScroll(ben.page), base + " daily overview overflow " + width);
+  }
+}
+
+async function checkSiblingOverview(chen, base) {
+  await chen.page.goto(origin + base + "/today");
+  await noActiveTasks(chen.page).waitFor();
+  const privateReminder = await chen.page.getByText("Private daily reminder", { exact: true }).count();
+  const sharedAction = await chen.page.getByText("Shared daily action", { exact: true }).count();
+  check(
+    privateReminder === 0 && sharedAction === 0,
+    base + " sibling overview cannot expose private or unassigned section work",
+  );
+}
+
+async function checkReadFailureIsNotZero(ben, base) {
+  const page = ben.page;
+  await page.route("**/api/v1/dashboard", (route) => route.abort(), { times: 1 });
+  await refreshButton(page).click();
+  await page.getByRole("alert").waitFor();
+  check(
+    (await noActiveTasks(page).count()) === 0,
+    base + " overview read failure is unavailable rather than a false zero",
+  );
+  await refreshButton(page).click();
+  await linkNamed(page, "Shared daily action").waitFor();
+}
+
+async function checkDelayedResponseAfterRevocation(ben, admin, base, workspaceId) {
+  const page = ben.page;
+  const heldOverview = await holdFirstResponse(page, "**/api/v1/dashboard");
+  await refreshButton(page).click();
+  await heldOverview.captured;
+  const delivered = page.waitForResponse((response) => response.request() === heldOverview.request());
+  await call(
+    admin,
+    `/admin/workspaces/${workspaceId}/memberships/${ben.session.user.id}`,
+    undefined,
+    "DELETE",
+  );
+  await linkNamed(page, "Private daily action").waitFor();
+  await page.evaluate(() => {
+    window.__dailyLeaked = false;
+    new MutationObserver(() => {
+      if (document.body.innerText.includes("Shared daily action")) window.__dailyLeaked = true;
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
+  heldOverview.release();
+  await (await delivered).finished();
+  await nextPaint(page);
+  const leaked = await page.evaluate(() => window.__dailyLeaked);
+  const sharedShown = await page.getByText("Shared daily action", { exact: true }).count();
+  check(!leaked && sharedShown === 0, base + " delayed daily response cannot restore revoked source");
+  check(
+    await linkNamed(page, "Private daily action").isVisible(),
+    base + " personal work survives source grant loss",
+  );
+}
+
 try {
-  for (const base of ["", "/labadda-staging"]) {
-    const ben = await login(base, "ben"),
-      asha = await login(base, "asha"),
-      chen = await login(base, "chen"),
-      admin = await login(base, "admin");
-    const ws = (await call(ben, "/workspaces")).workspaces.find((w) => w.name === "Thin Films Section").id,
-      today = (await call(ben, "/dashboard")).today;
-    await task(ben, null, "Private daily action", today);
-    const shared = await task(asha, ws, "Shared daily action", today);
-    await call(
-      asha,
-      `/todos/lists/${shared.list.id}/tasks/${shared.task.id}/assignee`,
-      { revision: 1, user_id: ben.session.user.id },
-      "PUT",
-    );
-    await call(ben, "/notes", {
-      title: "Private daily reminder",
-      body: "Check uncertainty before publication",
-      due_at: new Date(Date.now() + 86400000).toISOString(),
-    });
-    await call(asha, `/workspaces/${ws}/chat`, {
-      body: "@ben examine the witness blank",
-      client_id: crypto.randomUUID(),
-    });
-    await ben.page.goto(origin + base + "/today");
-    await ben.page.getByRole("link", { name: "Private daily action", exact: true }).waitFor();
-    await ben.page.getByRole("link", { name: "Shared daily action", exact: true }).waitFor();
-    check(
-      await ben.page.getByRole("link", { name: "Private daily reminder", exact: true }).isVisible(),
-      base + " daily overview combines personal work assigned tasks and private reminders",
-    );
-    check(
-      (await ben.page.getByText("Due today " + today, { exact: false }).count()) === 2,
-      base + " date-only task deadlines use advertised calendar date",
-    );
-    await ben.page.getByRole("button", { name: /mention: @ben examine/ }).waitFor();
-    check(
-      await ben.page
-        .getByRole("region", { name: "Unread conversations", exact: true })
-        .getByText("1 unread", { exact: false })
-        .isVisible(),
-      base + " current mentions and unread source are shown",
-    );
-    for (const width of [1400, 390]) {
-      await ben.page.setViewportSize({ width, height: 1100 });
-      await ben.page.addScriptTag({ path: require.resolve("../frontend/node_modules/axe-core/axe.min.js") });
-      const violations = await ben.page.evaluate(async () =>
-        (
-          await window.axe.run(document, {
-            runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
-          })
-        ).violations.map((v) => v.id),
-      );
-      check(!violations.length, base + " daily overview accessibility " + width + " " + violations);
-      check(
-        await ben.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-        base + " daily overview overflow " + width,
-      );
-    }
-    await chen.page.goto(origin + base + "/today");
-    await chen.page.getByText("No active tasks in this loaded view.", { exact: true }).waitFor();
-    check(
-      (await chen.page.getByText("Private daily reminder", { exact: true }).count()) === 0 &&
-        (await chen.page.getByText("Shared daily action", { exact: true }).count()) === 0,
-      base + " sibling overview cannot expose private or unassigned section work",
-    );
-    await ben.page.route("**/api/v1/dashboard", (route) => route.abort(), { times: 1 });
-    await ben.page.getByRole("button", { name: "Refresh My day", exact: true }).click();
-    await ben.page.getByRole("alert").waitFor();
-    check(
-      (await ben.page.getByText("No active tasks in this loaded view.", { exact: true }).count()) === 0,
-      base + " overview read failure is unavailable rather than a false zero",
-    );
-    await ben.page.getByRole("button", { name: "Refresh My day", exact: true }).click();
-    await ben.page.getByRole("link", { name: "Shared daily action", exact: true }).waitFor();
-    let release, captured, heldRequest;
-    const hold = new Promise((r) => (release = r)),
-      ready = new Promise((r) => (captured = r));
-    await ben.page.route(
-      "**/api/v1/dashboard",
-      async (route) => {
-        heldRequest = route.request();
-        const r = await route.fetch();
-        captured();
-        await hold;
-        await route.fulfill({ response: r });
-      },
-      { times: 1 },
-    );
-    await ben.page.getByRole("button", { name: "Refresh My day", exact: true }).click();
-    await ready;
-    const delivered = ben.page.waitForResponse((r) => r.request() === heldRequest);
-    await call(admin, `/admin/workspaces/${ws}/memberships/${ben.session.user.id}`, undefined, "DELETE");
-    await ben.page.getByRole("link", { name: "Private daily action", exact: true }).waitFor();
-    await ben.page.evaluate(() => {
-      window.__dailyLeaked = false;
-      new MutationObserver(() => {
-        if (document.body.innerText.includes("Shared daily action")) window.__dailyLeaked = true;
-      }).observe(document.body, { childList: true, subtree: true, characterData: true });
-    });
-    release();
-    await (await delivered).finished();
-    await ben.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    check(
-      !(await ben.page.evaluate(() => window.__dailyLeaked)) &&
-        (await ben.page.getByText("Shared daily action", { exact: true }).count()) === 0,
-      base + " delayed daily response cannot restore revoked source",
-    );
-    check(
-      await ben.page.getByRole("link", { name: "Private daily action", exact: true }).isVisible(),
-      base + " personal work survives source grant loss",
-    );
+  for (const base of bases) {
+    const ben = await login(base, "ben");
+    const asha = await login(base, "asha");
+    const chen = await login(base, "chen");
+    const admin = await login(base, "admin");
+    const workspaces = (await call(ben, "/workspaces")).workspaces;
+    const workspaceId = workspaces.find((workspace) => workspace.name === "Thin Films Section").id;
+    const today = (await call(ben, "/dashboard")).today;
+    await seedDailyWork({ ben, asha, workspaceId, today });
+    await checkOverviewContent(ben, base, today);
+    await checkOverviewLayouts(ben, base);
+    await checkSiblingOverview(chen, base);
+    await checkReadFailureIsNotZero(ben, base);
+    await checkDelayedResponseAfterRevocation(ben, admin, base, workspaceId);
     check(!ben.errors.length && !chen.errors.length, base + " no browser exceptions");
     await Promise.all([ben.ctx.close(), asha.ctx.close(), chen.ctx.close(), admin.ctx.close()]);
   }
-  console.log(`${checks} dashboard browser checks passed`);
+  console.log(`${harness.checks()} dashboard browser checks passed`);
 } finally {
-  await browser.close();
+  await harness.close();
 }
