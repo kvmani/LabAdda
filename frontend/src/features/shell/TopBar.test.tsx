@@ -19,6 +19,7 @@ function show() {
         workspaces={[]}
         currentId={undefined}
         operations={false}
+        unitAdmin={false}
         connection="online"
         unread={0}
         notificationsOpen={false}
