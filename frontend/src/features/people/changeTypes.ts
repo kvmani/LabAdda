@@ -91,6 +91,11 @@ export type UnitSplitRequest = {
   person_ids: string[];
   acknowledge_no_steward: boolean;
 };
+export type UnitAdminRequest = {
+  kind: "unit_admin_grant" | "unit_admin_revoke";
+  person_id: string;
+  unit_id: string;
+};
 export type UnitOnlyRequest = { kind: "unit_close" | "unit_reopen"; unit_id: string };
 export type PersonOnlyRequest = { kind: "return" | "suspend" | "reinstate"; person_id: string };
 export type ChangeRequest =
@@ -107,6 +112,7 @@ export type ChangeRequest =
   | UnitMoveRequest
   | UnitMergeRequest
   | UnitSplitRequest
+  | UnitAdminRequest
   | UnitOnlyRequest;
 export type Candidates = {
   workspace: { id: string; name: string; kind: string };

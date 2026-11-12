@@ -131,6 +131,7 @@ export function StaffProfile({
   onClose,
   onDenied,
   units,
+  canAppoint,
   onChanged,
 }: {
   identity: string;
@@ -139,6 +140,7 @@ export function StaffProfile({
   onClose: () => void;
   onDenied: () => void;
   units: Unit[] | null;
+  canAppoint?: boolean;
   onChanged: () => void;
 }) {
   const record = usePeopleData<StaffRecord>(`/admin/people/${encodeURIComponent(identity)}`, onDenied);
@@ -165,6 +167,7 @@ export function StaffProfile({
               <ProfileActions
                 person={record.data}
                 units={units}
+                canAppoint={canAppoint}
                 onDenied={onDenied}
                 onDone={() => {
                   record.refresh();

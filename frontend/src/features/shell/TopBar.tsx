@@ -17,6 +17,8 @@ type TopBarProps = {
   workspaces: Workspace[];
   currentId: string | undefined;
   operations: boolean;
+  /** A unit administrator reaches People and Organisation only. */
+  unitAdmin: boolean;
   connection: ConnState;
   unread: number;
   notificationsOpen: boolean;
@@ -28,6 +30,7 @@ export function TopBar({
   workspaces,
   currentId,
   operations,
+  unitAdmin,
   connection,
   unread,
   notificationsOpen,
@@ -67,7 +70,7 @@ export function TopBar({
           <Icon name="help" />
           <span className="shell-topbar__label">Help</span>
         </Link>
-        {(session?.user.is_admin || operations) && (
+        {(session?.user.is_admin || operations || unitAdmin) && (
           <NavLink to="/admin" className="shell-topbar__link">
             <Icon name="unit" />
             <span className="shell-topbar__label">Administration</span>

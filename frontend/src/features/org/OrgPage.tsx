@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { OrgUnit } from "./types";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
+import type { ConsoleAccess } from "../admin/console";
 import { api, errorMessage } from "../../api";
 import { BASE } from "../../config";
 import { Banner, Checkbox, ErrorState, PageHeader, Skeleton } from "../../ui";
@@ -9,6 +10,7 @@ import type { StaffRecord, Unit } from "../people/types";
 import { OrgChart } from "./OrgChart";
 import { OrgSearch } from "./OrgSearch";
 import { SpacesList } from "./SpacesList";
+import { UnitAdministrators } from "./UnitAdministrators";
 import {
   CloseUnitDialog,
   CreateUnitDialog,
@@ -44,6 +46,7 @@ export function OrgPage() {
 
 function Organisation({ onDenied }: { onDenied: () => void }) {
   const tree = useOrgTree(onDenied);
+  const unitAdmin = useOutletContext<ConsoleAccess | null>()?.unit_admin ?? false;
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [problem, setProblem] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -85,7 +88,7 @@ function Organisation({ onDenied }: { onDenied: () => void }) {
         title="Organisation"
         scope="Units, their heads and how many people they hold. Names, roles and counts only."
         helpHref={BASE + "/admin/help"}
-        action={<Link to="/admin/org/basic">Basic project tools</Link>}
+        action={unitAdmin ? undefined : <Link to="/admin/org/basic">Basic project tools</Link>}
       />
       <p className="org-status" role="status" aria-live="polite">
         {status}
@@ -125,6 +128,7 @@ function Organisation({ onDenied }: { onDenied: () => void }) {
                 unit={tree.selected}
                 units={tree.all}
                 isRoot={!tree.selected.parent_id}
+                canRename={!(unitAdmin && !tree.selected.parent_id)}
                 refreshKey={refresh}
                 onSelect={tree.show}
                 onAction={(action) => setDialog({ type: "unit", action, unitId: tree.selected?.id ?? "" })}
@@ -138,6 +142,9 @@ function Organisation({ onDenied }: { onDenied: () => void }) {
             <SpacesList spaces={tree.data.spaces} />
           </aside>
         </div>
+      )}
+      {!unitAdmin && tree.data && (
+        <UnitAdministrators key={`admins-${refresh}`} onDenied={onDenied} onChanged={done} />
       )}
       {dialog?.type === "transfer" && (
         <TransferDialog

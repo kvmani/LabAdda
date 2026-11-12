@@ -24,6 +24,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [connection, setConnection] = useState<ConnState>(realtime.state);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [operations, setOperations] = useState(false);
+  const [unitAdmin, setUnitAdmin] = useState(false);
   const [unread, setUnread] = useState(0);
   const notice = useSiteBanner();
   const currentId = /^\/w\/([^/]+)/.exec(location.pathname)?.[1];
@@ -32,12 +33,16 @@ export function Shell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let live = true;
-    api<{ "usage.read": boolean }>("/capabilities")
+    api<{ "usage.read": boolean; "unit.admin"?: boolean }>("/capabilities")
       .then((capabilities) => {
-        if (live) setOperations(capabilities["usage.read"]);
+        if (!live) return;
+        setOperations(capabilities["usage.read"]);
+        setUnitAdmin(capabilities["unit.admin"] === true);
       })
       .catch(() => {
-        if (live) setOperations(false);
+        if (!live) return;
+        setOperations(false);
+        setUnitAdmin(false);
       });
     return () => {
       live = false;
@@ -91,6 +96,7 @@ export function Shell({ children }: { children: ReactNode }) {
           workspaces={workspaces}
           currentId={currentId}
           operations={operations}
+          unitAdmin={unitAdmin}
           connection={connection}
           unread={unread}
           notificationsOpen={notificationsOpen}

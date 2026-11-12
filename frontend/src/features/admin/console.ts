@@ -13,4 +13,4 @@ export const SECTIONS = [
   { key: "help", label: "Help for administrators", path: "/admin/help" },
 ] as const;
 export type ConsoleSection = (typeof SECTIONS)[number]["key"];
-export type ConsoleAccess = { sections: ConsoleSection[]; read_only: boolean };
+export type ConsoleAccess = { sections: ConsoleSection[]; read_only: boolean; unit_admin: boolean };

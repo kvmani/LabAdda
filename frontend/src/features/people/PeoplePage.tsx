@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { BASE } from "../../config";
 import { Button, ErrorState, PageHeader } from "../../ui";
 import { peopleUrl } from "./model";
@@ -14,6 +14,8 @@ import { ExportReport } from "./ExportReport";
 import { AddPersonDialog } from "./AddPersonDialog";
 import { BulkActions, MAX_SELECTED } from "./BulkActions";
 import { ImportDialog } from "./ImportDialog";
+import type { ConsoleAccess } from "../admin/console";
+import type { OrgTree } from "../org/types";
 import type { Directory, Unit } from "./types";
 import "./people.css";
 
@@ -35,7 +37,25 @@ export function PeoplePage() {
 function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
   const { params, change, reset, profile } = usePeopleNavigation();
   const directory = usePeopleData<Directory>(peopleUrl(params), onDenied);
-  const units = usePeopleData<{ workspaces: Unit[] }>("/admin/workspaces", onDenied);
+  // A unit administrator reaches only their branch: its units come from the scoped chart, and the
+  // site-wide tools (import, attention list, basic account tools, appointments) are not offered.
+  const unitAdmin = useOutletContext<ConsoleAccess | null>()?.unit_admin ?? false;
+  const siteUnits = usePeopleData<{ workspaces: Unit[] }>(unitAdmin ? null : "/admin/workspaces", onDenied);
+  const branch = usePeopleData<OrgTree>(unitAdmin ? "/admin/org/tree" : null, onDenied);
+  const units = unitAdmin
+    ? {
+        ...branch,
+        data: branch.data && {
+          workspaces: branch.data.units.map((unit): Unit => ({
+            id: unit.id,
+            name: unit.name,
+            kind: "org",
+            parent_id: unit.parent_id,
+            archived: unit.archived,
+          })),
+        },
+      }
+    : siteUnits;
   const identity = params.get("person");
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -58,7 +78,8 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
         reportUrl={peopleUrl(params, true)}
         onDenied={onDenied}
         onAdd={unitList ? () => setAdding(true) : undefined}
-        onImport={() => setImporting(true)}
+        onImport={unitAdmin ? undefined : () => setImporting(true)}
+        basicTools={!unitAdmin}
       />
       {importing && (
         <ImportDialog onClose={() => setImporting(false)} onDenied={onDenied} onDone={directory.refresh} />
@@ -83,7 +104,7 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
           onDone={directory.refresh}
         />
       )}
-      <AttentionList key={`attention-${listVersion}`} onDenied={onDenied} />
+      {!unitAdmin && <AttentionList key={`attention-${listVersion}`} onDenied={onDenied} />}
       <ScheduledChanges key={`scheduled-${listVersion}`} onDenied={onDenied} onChanged={refreshAll} />
       <PeopleFilters
         params={params}
@@ -126,6 +147,7 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
           onClose={() => profile("person")}
           onDenied={onDenied}
           units={unitList}
+          canAppoint={!unitAdmin}
           onChanged={refreshAll}
         />
       )}
@@ -138,11 +160,13 @@ function PeopleHeader({
   onDenied,
   onAdd,
   onImport,
+  basicTools,
 }: {
   reportUrl: string;
   onDenied: () => void;
   onAdd?: () => void;
-  onImport: () => void;
+  onImport?: () => void;
+  basicTools: boolean;
 }) {
   return (
     <PageHeader
@@ -154,10 +178,12 @@ function PeopleHeader({
           <Button variant="primary" icon="plus" onClick={onAdd} disabled={!onAdd}>
             Add person
           </Button>
-          <Button icon="plus" onClick={onImport}>
-            Import staff list
-          </Button>
-          <Link to="/admin/people/basic">Basic account tools</Link>
+          {onImport && (
+            <Button icon="plus" onClick={onImport}>
+              Import staff list
+            </Button>
+          )}
+          {basicTools && <Link to="/admin/people/basic">Basic account tools</Link>}
           <ExportReport key={reportUrl} url={reportUrl} onDenied={onDenied} />
         </div>
       }

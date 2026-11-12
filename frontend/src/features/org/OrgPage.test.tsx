@@ -76,6 +76,7 @@ function serve(extra: Record<string, unknown> = {}) {
   vi.mocked(api).mockImplementation((path: string) => {
     if (path in extra) return Promise.resolve(extra[path]);
     if (path === "/admin/org/tree") return Promise.resolve(TREE);
+    if (path === "/admin/org/unit-admins") return Promise.resolve({ items: [] });
     if (path.startsWith("/admin/people")) return Promise.resolve({ people: [], next_cursor: null });
     return Promise.reject(new Error(`unexpected request ${path}`));
   });

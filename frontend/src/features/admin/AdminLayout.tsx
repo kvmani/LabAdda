@@ -21,6 +21,10 @@ function ConsoleFrame() {
   if (!result.access) return <ErrorState message={result.error} onRetry={() => setRetry(retry + 1)} />;
   const access = result.access;
   const entries = SECTIONS.filter((entry) => access.sections.includes(entry.key));
+  // A unit administrator has no overview; opening Administration lands on their first page.
+  const first = entries[0];
+  if (pathname === "/admin" && !access.sections.includes("overview") && first)
+    return <Navigate to={first.path} replace />;
   const selected = SECTIONS.find(
     (entry) =>
       entry.path === pathname || pathname === entry.path + "/basic" || pathname === entry.path + "/setup",
@@ -31,6 +35,7 @@ function ConsoleFrame() {
       <aside className="admin-console__navigation">
         <p className="admin-console__title">Administration</p>
         {access.read_only && <Tag>Read-only access</Tag>}
+        {access.unit_admin && !access.read_only && <Tag>Unit administrator</Tag>}
         <nav aria-label="Administration" className="admin-console__links">
           {entries.map((entry) => (
             <NavLink key={entry.key} to={entry.path} end={entry.key === "overview"}>

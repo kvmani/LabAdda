@@ -4,10 +4,20 @@ import { LeaveDialog, ReturnDialog } from "./AbsenceDialogs";
 import { AdditionalChargeDialog, AppointDialog, PromoteDialog } from "./AuthorityDialogs";
 import { ReinstateDialog, RetireDialog, SuspendDialog } from "./DepartureDialogs";
 import { TransferDialog } from "./TransferDialog";
+import { AppointUnitAdminDialog } from "./UnitAdminDialogs";
 import type { StaffRecord, Unit } from "./types";
 
 type Action =
-  "transfer" | "promote" | "appoint" | "charge" | "leave" | "return" | "retire" | "suspend" | "reinstate";
+  | "transfer"
+  | "promote"
+  | "appoint"
+  | "charge"
+  | "leave"
+  | "return"
+  | "retire"
+  | "suspend"
+  | "reinstate"
+  | "unit_admin";
 const LABELS: Record<Action, string> = {
   transfer: "Transfer to another unit",
   promote: "Promote or change role",
@@ -18,6 +28,7 @@ const LABELS: Record<Action, string> = {
   retire: "Retire or leave",
   suspend: "Suspend access",
   reinstate: "Reinstate",
+  unit_admin: "Make unit administrator",
 };
 const BY_STATUS: Record<StaffRecord["status"], Action[]> = {
   invited: ["transfer", "promote", "suspend", "retire"],
@@ -32,22 +43,27 @@ const BY_STATUS: Record<StaffRecord["status"], Action[]> = {
 export function ProfileActions({
   person,
   units,
+  canAppoint = false,
   onDenied,
   onDone,
 }: {
   person: StaffRecord;
   units: Unit[] | null;
+  /** Only site administrators appoint unit administrators (PO-24). */
+  canAppoint?: boolean;
   onDenied: () => void;
   onDone: () => void;
 }) {
   const [open, setOpen] = useState<Action | null>(null);
   const close = () => setOpen(null);
   const props = { person, onClose: close, onDenied, onDone };
-  const needsUnits: Action[] = ["transfer", "appoint", "charge"];
+  const needsUnits: Action[] = ["transfer", "appoint", "charge", "unit_admin"];
+  const offered = [...BY_STATUS[person.status]];
+  if (canAppoint && person.status === "active" && !person.is_admin) offered.push("unit_admin");
   return (
     <>
       <div className="people-actions" role="group" aria-label={`Changes for ${person.display_name}`}>
-        {BY_STATUS[person.status].map((action) => (
+        {offered.map((action) => (
           <Button
             key={action}
             onClick={() => setOpen(action)}
@@ -65,6 +81,7 @@ export function ProfileActions({
       {open === "return" && <ReturnDialog {...props} />}
       {open === "retire" && <RetireDialog {...props} />}
       {open === "suspend" && <SuspendDialog {...props} />}
+      {open === "unit_admin" && units && <AppointUnitAdminDialog {...props} units={units} />}
       {open === "reinstate" && <ReinstateDialog {...props} />}
     </>
   );

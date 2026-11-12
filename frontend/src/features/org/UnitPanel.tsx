@@ -71,6 +71,7 @@ export function UnitPanel({
   unit,
   units,
   isRoot,
+  canRename = true,
   refreshKey,
   onSelect,
   onAction,
@@ -81,6 +82,8 @@ export function UnitPanel({
   unit: OrgUnit;
   units: OrgUnit[];
   isRoot: boolean;
+  /** A unit administrator cannot rename the unit they were appointed to; its parent is not theirs. */
+  canRename?: boolean;
   refreshKey: number;
   onSelect: (id: string) => void;
   onAction: (action: UnitAction) => void;
@@ -125,7 +128,7 @@ export function UnitPanel({
         <Button icon="plus" onClick={() => onAction("create")} disabled={unit.archived}>
           Add sub-unit
         </Button>
-        <Button onClick={() => onAction("rename")}>Rename or recode</Button>
+        {canRename && <Button onClick={() => onAction("rename")}>Rename or recode</Button>}
         {!isRoot && <Button onClick={() => onAction("move")}>Move to…</Button>}
         {!isRoot && !unit.archived && <Button onClick={() => onAction("merge")}>Merge into…</Button>}
         {!isRoot && !unit.archived && (

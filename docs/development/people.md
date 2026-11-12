@@ -60,8 +60,8 @@ not proof a browser saved the file. Reports exclude private contacts/content.
 Every endpoint requires current normal site administration, has a2s statement
 budget and rechecks identity/session before delivery. Unknown home-unit pointers
 into legacy projects remain unchanged but are not mislabeled as organisation units.
-P7 must add branch predicates before accepting unit administrators; changing only
-the navigation policy would be insufficient.
+Unit administrators (P7) reach these routes through `require_console("people", unit_admin=True)`
+and `read_metadata(request, db, actor, load)`, which hands `load` the actor's current scope.
 
 Checks: `test_people_directory.py` (including500-person<200ms, ties/nulls,
 filter-bound cursors and demotion during read), `test_people_profile.py` (privacy,
@@ -118,3 +118,38 @@ so the cookie digest used as the primary key stays private. `POST /me/password` 
 sign-in rate-limit window, audits wrong attempts as `denied`, revokes only the other sessions
 and asks the hub to revalidate the person's sockets. `/me/*` refuses panel cookies and the panel
 header with 401. Tests: `backend/tests/test_me.py`; browser: `e2e/profile.mjs`.
+
+## Unit administrators (P7)
+
+`unit_admin_grants` (migration 0036: user, unit, granted_by, granted_at, revoked_at; one open row per
+person and unit) stores appointments. `policy.people_scope(db, user)` returns the unit IDs a person
+may administer (the appointed open units and everything below; every unit for a site
+administrator; nothing for an inactive person), `policy.restricted_scope` returns `None` for site
+administrators, and `policy.console_sections` adds People and Organisation for unit administrators.
+
+- `deps.require_console(..., unit_admin=True)` admits them only on the people and organisation
+  routers; the legacy `/admin/users` and `/admin/workspaces` routes stay site-administrator only,
+  because they can create administrators. Site-wide pieces (attention list, import, appointment
+  list) use the plain dependency.
+- Reads take the scope as a `scope` argument (`directory_query`, `profile`, `access_page`,
+  `timeline_page`, `prepare_csv`, `org_tree.tree`, `candidates`, `scheduled.listing`);
+  `read_metadata` discards the payload if the actor's scope changed while loading.
+- Changes: `changes/unit_scope.py` is the single check. `service.build` (used by preview, apply,
+  bulk and the scheduled run, always under the authority locks) calls `Reach.check` before the
+  kind builds, then `Reach.restrict` on the plan. `check` covers every request field that names a
+  person or unit; `test_every_request_field...` fails when a new field is added without being
+  classified. `restrict` replaces steps and messages about places outside the branch and adds the
+  `outside_your_units` blocker, so such a plan cannot be applied.
+- `changes/kinds/unit_admin.py` holds `unit_admin_grant` and `unit_admin_revoke`; both are refused
+  to anyone but site administrators in `Reach.check` and again in `apply`.
+- Decisions to review: unit changes other than create need a unit strictly below the appointed
+  unit (the unit's parent name would otherwise appear in the review); retirement or suspension of
+  someone who holds positions outside the branch, or memberships in projects and groups outside
+  it, needs a site administrator; people who administer a larger branch cannot be changed by a
+  smaller one; appointments confer upward read access to ancestors only through ordinary
+  membership, never through the role.
+
+Checks: `test_unit_admin_grants.py` (storage, appoint/withdraw, audit, scope, migration) and
+`test_unit_admin_scope.py` (T60 matrix: sibling, parent-only, child-only, former, deactivated,
+board-only, ordinary member, scope removed after review, scheduled run, no content, legacy routes).
+Frontend: `features/people/UnitAdmin.test.tsx`; browser: `e2e/unit-admin.mjs`.
