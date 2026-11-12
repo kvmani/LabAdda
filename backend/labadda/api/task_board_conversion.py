@@ -24,15 +24,34 @@ class BoardConversion(TaskCreate):
     confirm_audience: bool = Field(default=False, strict=True)
 
 
-def _board(db, user, workspace_id, lock=False):
+def _board(db: Session, user, workspace_id: uuid.UUID, lock: bool = False) -> Board:
+    """Load the board of a workspace the user can read; optionally hold a shared row lock."""
     policy.require_read(db, user, workspace_id)
     query = select(Board).where(Board.workspace_id == workspace_id)
     if lock:
         query = query.with_for_update(read=True)
-    row = db.scalar(query.execution_options(populate_existing=True))
-    if row is None:
+    board = db.scalar(query.execution_options(populate_existing=True))
+    if board is None:
         raise NotFound()
-    return row
+    return board
+
+
+def require_audience_confirmation(target, source_workspace_id: uuid.UUID, confirmed: bool) -> None:
+    """Refuse a copy into a different workspace audience unless the user confirmed it."""
+    crosses_audience = target.workspace_id is not None and target.workspace_id != source_workspace_id
+    if crosses_audience and not confirmed:
+        raise Invalid(
+            "audience_confirmation_required",
+            "Confirm that this task copy will be shared with a different workspace audience.",
+        )
+
+
+def _has_creation_receipt(db: Session, user, client_id: uuid.UUID) -> bool:
+    """True when this request id already created a task for the user."""
+    existing_task_id = db.scalar(
+        select(TodoTask.id).where(TodoTask.created_by == user.id, TodoTask.client_id == client_id)
+    )
+    return existing_task_id is not None
 
 
 @router.get("/board-context/{workspace_id}")
@@ -60,29 +79,22 @@ def convert(
     target = _list(db, user, list_id, True)
     _lock_source_read(db, user, target, body.source_workspace_id)
     board = _board(db, user, body.source_workspace_id, lock=True)
-    if (
-        target.workspace_id is not None
-        and target.workspace_id != board.workspace_id
-        and not body.confirm_audience
-    ):
-        raise Invalid(
-            "audience_confirmation_required",
-            "Confirm that this task copy will be shared with a different workspace audience.",
-        )
+    require_audience_confirmation(target, board.workspace_id, body.confirm_audience)
     # A committed retry keeps its original context even after later ink/restore.
     # Never apply a current-revision test before checking for a creation receipt.
-    existing = db.scalar(
-        select(TodoTask.id).where(TodoTask.created_by == user.id, TodoTask.client_id == body.client_id)
-    )
-    if existing is None and (body.source_epoch, body.source_revision) != (board.epoch, board.revision):
+    requested_context = (body.source_epoch, body.source_revision)
+    if not _has_creation_receipt(db, user, body.client_id) and requested_context != (
+        board.epoch,
+        board.revision,
+    ):
         raise Conflict(
             "board_context_changed", "The board changed. Review its latest context before creating this task."
         )
-    fields = body.model_dump(
+    reviewed_fields = body.model_dump(
         exclude={"source_workspace_id", "source_epoch", "source_revision", "confirm_audience"}
     )
     row, created = _create_task_row(
-        db, user, list_id, TaskCreate.model_validate(fields), _digest(body, list_id)
+        db, user, list_id, TaskCreate.model_validate(reviewed_fields), _digest(body, list_id)
     )
     if created:
         db.add(
@@ -101,7 +113,8 @@ def convert(
     return _task_json(row)
 
 
-def board_source(db, request, actor, list_id, reference):
+def board_source(db: Session, request: Request, actor: Actor, list_id: uuid.UUID, reference) -> dict:
+    """Describe the board a task was created from, re-checking access after reading."""
     user = _actor(request, actor, db)
     _list(db, user, list_id)
     board = _board(db, user, reference.board_workspace_id)
@@ -115,7 +128,7 @@ def board_source(db, request, actor, list_id, reference):
         "current_epoch": board.epoch,
         "current_revision": board.revision,
     }
-    fresh = _actor(request, actor, db)
-    _list(db, fresh, list_id)
-    _board(db, fresh, workspace_id)
+    fresh_user = _actor(request, actor, db)
+    _list(db, fresh_user, list_id)
+    _board(db, fresh_user, workspace_id)
     return result

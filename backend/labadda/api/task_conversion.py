@@ -10,11 +10,11 @@ from sqlalchemy.orm import Session
 
 from .. import policy, task_events
 from ..deps import Actor, current_actor, get_db, get_settings
-from ..errors import Invalid, NotFound
+from ..errors import NotFound
 from ..identity_locks import lock_identity
 from ..models import ChatMessage, Post, TodoSource, TodoTask, Workspace
 from ..serialize import iso
-from .task_board_conversion import board_source
+from .task_board_conversion import board_source, require_audience_confirmation
 from .todos import TaskCreate, _actor, _create_task_row, _digest, _list, _lock_source_read, _task_json
 
 router = APIRouter(prefix="/todos", tags=["todos"])
@@ -26,13 +26,16 @@ class Conversion(TaskCreate):
     confirm_audience: bool = Field(default=False, strict=True)
 
 
-def _source(db, user, kind, source_id, lock=False):
+def _source(db: Session, user, kind: str, source_id: uuid.UUID, lock: bool = False):
+    """Load a readable post or chat message; replies and deleted posts do not exist for this purpose."""
     model = Post if kind == "post" else ChatMessage
     query = select(model).where(model.id == source_id)
     if lock:
         query = query.with_for_update(read=True)
     row = db.scalar(query.execution_options(populate_existing=True))
-    if row is None or (kind == "post" and (row.deleted_at is not None or row.parent_id is not None)):
+    if row is None:
+        raise NotFound()
+    if kind == "post" and (row.deleted_at is not None or row.parent_id is not None):
         raise NotFound()
     policy.require_read(db, user, row.workspace_id)
     return row
@@ -53,19 +56,10 @@ def convert(
     source = _source(db, user, body.source_kind, body.source_id)
     _lock_source_read(db, user, target, source.workspace_id)
     source = _source(db, user, body.source_kind, body.source_id, lock=True)
-    if (
-        target.workspace_id is not None
-        and target.workspace_id != source.workspace_id
-        and not body.confirm_audience
-    ):
-        raise Invalid(
-            "audience_confirmation_required",
-            "Confirm that this task copy will be shared with a different workspace audience.",
-        )
+    require_audience_confirmation(target, source.workspace_id, body.confirm_audience)
     # No automatic source text or author copy: only fields the user reviews here.
-    task_body = TaskCreate.model_validate(
-        body.model_dump(exclude={"source_kind", "source_id", "confirm_audience"})
-    )
+    reviewed_fields = body.model_dump(exclude={"source_kind", "source_id", "confirm_audience"})
+    task_body = TaskCreate.model_validate(reviewed_fields)
     row, created = _create_task_row(db, user, list_id, task_body, _digest(body, list_id))
     if created:
         db.add(
@@ -103,17 +97,18 @@ def source(
     if reference is None or (reference.post_id is None and reference.chat_message_id is None):
         raise NotFound()
     kind = "post" if reference.post_id else "chat"
-    row = _source(db, user, kind, reference.post_id or reference.chat_message_id)
+    message = _source(db, user, kind, reference.post_id or reference.chat_message_id)
     result = {
         "kind": kind,
-        "id": str(row.id),
-        "workspace_id": str(row.workspace_id),
-        "workspace_name": db.get(Workspace, row.workspace_id).name,
-        "body": row.body,
-        "created_at": iso(row.created_at),
+        "id": str(message.id),
+        "workspace_id": str(message.workspace_id),
+        "workspace_name": db.get(Workspace, message.workspace_id).name,
+        "body": message.body,
+        "created_at": iso(message.created_at),
     }
-    source_id = row.id
-    fresh = _actor(request, actor, db)
-    _list(db, fresh, list_id)
-    _source(db, fresh, kind, source_id)
+    # Read before the refresh: the row may be gone (or expired) once the access re-check runs.
+    source_id = message.id
+    fresh_user = _actor(request, actor, db)
+    _list(db, fresh_user, list_id)
+    _source(db, fresh_user, kind, source_id)
     return result
