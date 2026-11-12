@@ -96,7 +96,22 @@ async function addPerson(page, base) {
   const profile = page.getByRole("dialog", { name: "Gita Sen", exact: true });
   await profile.getByText("invited", { exact: true }).waitFor();
   check(!(await profile.innerText()).includes(code), base + " code is not shown again after the slip");
+  const fresh = await newCode(page, profile, base);
+  check(fresh !== code, base + " a lost slip can be replaced with a new code");
   await page.keyboard.press("Escape");
+  return fresh;
+}
+async function newCode(page, profile, base) {
+  await press(profile.getByRole("button", { name: "Issue a new activation code", exact: true }));
+  const confirm = page.getByRole("dialog", { name: "New activation code for Gita Sen", exact: true });
+  await confirm.getByLabel(/^Reason for a new code/).fill("Slip was lost");
+  await press(confirm.getByRole("button", { name: "Issue new code", exact: true }));
+  const dialog = page.getByRole("dialog", { name: "New activation code", exact: true });
+  const slip = dialog.getByRole("region", { name: "Activation slip" });
+  await slip.waitFor();
+  const code = (await slip.locator(".people-slip__code").innerText()).trim();
+  await audit(page, 390, base + " new activation code");
+  await press(dialog.getByRole("button", { name: "Done", exact: true }));
   return code;
 }
 async function activate(base, code) {

@@ -231,7 +231,8 @@ def test_database_failure_is_sanitized(as_user, ids):
     assert "private database detail" not in response.text
 
 
-def test_receipt_is_withheld_if_authority_disappears_after_commit(as_user, ids, db_factory, app):
+def test_receipt_is_returned_even_if_authority_disappears_after_commit(as_user, ids, db_factory, app):
+    """A durable change must be acknowledged: a retry could only return plan_stale."""
     admin = as_user("admin")
     confirmation = reviewed(admin, edit(ids, designation="Research Officer E"))
 
@@ -245,11 +246,12 @@ def test_receipt_is_withheld_if_authority_disappears_after_commit(as_user, ids, 
 
     with patch.object(app.state.hub, "revalidate_user", side_effect=demote_after_commit):
         response = admin.post("/admin/changes/apply", json=confirmation)
-    assert response.status_code == 403
-    assert "Research Officer E" not in response.text
+    assert response.status_code == 200
+    assert response.json()["person_id"] == ids["users"]["ben"]
     with db_factory() as db:
         assert db.get(User, ids["users"]["ben"]).designation == "Research Officer E"
         assert db.scalar(select(func.count()).where(AuditEvent.action == "people.change")) == 1
+    assert admin.get(f"/admin/people/{ids['users']['ben']}").status_code == 403
 
 
 def test_preview_never_writes_staff_or_audit_even_with_multiple_reads(as_user, ids, db_factory):

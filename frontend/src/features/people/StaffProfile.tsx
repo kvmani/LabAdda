@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Drawer, EmptyState, ErrorState, Skeleton, Tabs } from "../../ui";
 import { calendarDate } from "./model";
 import { TransferDialog } from "./TransferDialog";
+import { NewActivationCode } from "./NewActivationCode";
 import { usePeopleData } from "./usePeopleData";
 import type { AccessPage, StaffRecord, TimelinePage, Unit } from "./types";
 
@@ -146,6 +147,9 @@ export function StaffProfile({
                 <Button icon="unit" onClick={() => setTransferring(true)} disabled={!units}>
                   Transfer to another unit
                 </Button>
+                {record.data.status === "invited" && (
+                  <NewActivationCode person={record.data} onDenied={onDenied} onIssued={onChanged} />
+                )}
               </div>
               <RecordFields person={record.data} />
               <p>Appointments and scheduled staff changes will appear here in a future update.</p>

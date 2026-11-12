@@ -542,8 +542,9 @@ identity lock, rechecks authority, matches the complete digest/revision map and
 writes the edit, revision and parent/per-step audits in one transaction. A retry
 of an applied plan returns409. Audit steps retain structured staff before/after;
 no request bodies or credentials are logged. Live identity revalidation follows
-commit. Authority is checked again before returning the receipt. Every receipt
-carries `kind`; the request is a discriminated union on `kind`.
+commit. Once committed, the receipt is returned even if the actor's session or
+authority ends immediately afterwards: the change is durable and a retry could only
+return409. Every receipt carries `kind`; the request is a discriminated union on `kind`.
 
 ### P2 add a person (PO-10)
 
@@ -561,9 +562,14 @@ Blockers: `username_taken`, `duplicate_employee`, `unit_unavailable` (project,
 group or archived unit). Warning `similar_name` (target: the existing person) when
 another display name is very similar; it never blocks. A missing unit returns404.
 `revisions` is `{}`. The receipt adds `activation:{code,expires_at}`: the only time
-the code is returned (only its hash is stored, never in audits). If the receipt is
-lost, issue a new code with a password reset. Concurrent identical confirmations
-create one person; the other gets409.
+the code is returned (only its hash is stored, never in audits). Concurrent identical
+confirmations create one person; the other gets409.
+
+`POST /admin/changes/activation-code` `{person_id,reason}` (reason 3–500): for a person
+still `invited` and not yet activated, marks every unused code of theirs as used,
+issues a fresh activation code and audits `identity.activation_reissued` with the
+reason (never the code) in one transaction. Returns `{person_id,code,expires_at}`.
+409 `not_invited` otherwise; missing person404; same denial matrix as apply.
 
 ### P2 transfer (PO-12)
 

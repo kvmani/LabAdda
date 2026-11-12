@@ -18,6 +18,7 @@ SUMMARIES = {
     "identity.create": "Account created",
     "identity.update": "Account updated",
     "identity.reset": "Password reset requested",
+    "identity.activation_reissued": "New activation code issued",
     "auth.login": "Sign-in recorded",
     "auth.activation_redeemed": "Account activated",
     "auth.reset_redeemed": "Password reset completed",

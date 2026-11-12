@@ -3,7 +3,7 @@ title: Adding a person
 summary: Create an account for a new member of staff, place them in their home unit and give them a one-time activation code.
 audience: administrator
 screen: none
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 ## What this is for
@@ -33,7 +33,8 @@ The person's account exists with the status Invited and they are a member of the
 - "That employee number is already assigned to another person". Check the number; two people cannot share one.
 - The home unit cannot be chosen. Projects, groups and archived units cannot be a home unit.
 - "Someone changed this record or its consequences". A fresh plan is shown; read it again and apply.
-- The code was lost before it was printed. Open **Basic account tools** and issue a password reset for the person to get a new code.
+- The code was lost, or it expired before the person used it. Open their profile, choose **Issue a new activation code**, give a reason and choose **Issue new code**. A new slip appears; any earlier unused code stops working. This is only offered while the person is Invited.
+- The confirmation did not arrive. Reload the people list: if the person is there, the account was created; issue a new activation code for them rather than adding them again.
 
 ## Related
 

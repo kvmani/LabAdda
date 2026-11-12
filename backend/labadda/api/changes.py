@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from ..changes import service
-from ..changes.requests import ApplyRequest, PreviewRequest
+from ..changes import activation, service
+from ..changes.requests import ApplyRequest, PreviewRequest, ReissueRequest
 from ..deps import Actor, get_db, get_settings, require_console
 from ..errors import ApiError
 
@@ -45,5 +45,24 @@ def apply_change(
         raise ApiError(
             "changes_unavailable",
             "The change could not be confirmed. Reload the record before retrying.",
+            status=503,
+        ) from None
+
+
+@router.post("/activation-code")
+def reissue_activation(
+    body: ReissueRequest,
+    request: Request,
+    actor: Actor = Depends(console_people),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Give an invited person a fresh one-time code; earlier unused codes stop working."""
+    try:
+        return activation.reissue(db, actor, get_settings(request), body.person_id, body.reason)
+    except DBAPIError:
+        db.rollback()
+        raise ApiError(
+            "changes_unavailable",
+            "The new code could not be confirmed. Reload the record before retrying.",
             status=503,
         ) from None

@@ -220,3 +220,60 @@ def test_onboarding_responses_carry_no_private_content(as_user, ids):
         assert response.status_code == 200
         assert marker not in response.text
         assert "password_hash" not in response.text and "token_hash" not in response.text
+
+
+def test_activation_code_survives_authority_loss_after_commit(as_user, ids, db_factory, app):
+    admin = as_user("admin")
+    confirmation = reviewed(admin, add(ids))
+
+    def demote_after_commit(_person_id):
+        with db_factory() as writer:
+            writer.get(User, ids["users"]["admin"]).is_admin = False
+            writer.commit()
+
+    with patch.object(app.state.hub, "revalidate_user", side_effect=demote_after_commit):
+        response = admin.post("/admin/changes/apply", json=confirmation)
+    assert response.status_code == 200
+    assert len(response.json()["activation"]["code"]) >= 10
+
+
+def reissue(client, person_id, reason="Slip was lost"):
+    return client.post("/admin/changes/activation-code", json={"person_id": person_id, "reason": reason})
+
+
+def test_fresh_activation_code_replaces_unused_codes(as_user, ids, db_factory, make_client):
+    admin = as_user("admin")
+    receipt = admin.post("/admin/changes/apply", json=reviewed(admin, add(ids))).json()
+    old_code = receipt["activation"]["code"]
+    response = reissue(admin, receipt["person_id"])
+    assert response.status_code == 200, response.text
+    fresh = response.json()
+    assert fresh["code"] != old_code and fresh["expires_at"]
+    newcomer = make_client()
+    stale = newcomer.client.post(
+        newcomer.url("/auth/activate"), json={"token": old_code, "password": "a-long-password"}
+    )
+    assert stale.status_code == 422
+    ok = newcomer.client.post(
+        newcomer.url("/auth/activate"), json={"token": fresh["code"], "password": "a-long-password"}
+    )
+    assert ok.status_code == 200
+    with db_factory() as db:
+        event = db.scalar(select(AuditEvent).where(AuditEvent.action == "identity.activation_reissued"))
+        assert event.reason == "Slip was lost" and event.target_id == receipt["person_id"]
+        assert fresh["code"] not in str(event.detail)
+    timeline = admin.get(f"/admin/people/{receipt['person_id']}/timeline").json()["items"]
+    assert "New activation code issued" in [item["summary"] for item in timeline]
+    assert reissue(admin, receipt["person_id"]).status_code == 409
+
+
+def test_fresh_activation_code_guards(as_user, ids, make_client):
+    admin = as_user("admin")
+    response = reissue(admin, ids["users"]["ben"])
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "not_invited"
+    assert reissue(admin, ids["workspaces"]["section_a"]).status_code == 404
+    assert reissue(admin, ids["users"]["ben"], reason="  ").status_code == 422
+    assert reissue(as_user("ben"), ids["users"]["ben"]).status_code == 403
+    assert reissue(make_client(), ids["users"]["ben"]).status_code == 401
+    assert reissue(pair(as_user, make_client, ids), ids["users"]["ben"]).status_code == 401

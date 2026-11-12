@@ -14,6 +14,12 @@ type Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 type Role = Literal["member", "steward"]
 
 
+def _ordinary_reason(value: str) -> str:
+    if "\x00" in value or any(unicodedata.category(character) == "Cs" for character in value):
+        raise ValueError("Use ordinary text for the reason.")
+    return value
+
+
 def _single_line(value: object) -> object:
     """Keep staff text single-line and valid for PostgreSQL/UTF-8 JSON."""
     if isinstance(value, str):
@@ -148,6 +154,18 @@ class ApplyRequest(PreviewRequest):
     @classmethod
     def valid_reason(cls, value: str) -> str:
         """Reject invalid Unicode and nulls without preventing ordinary multiline reasons."""
-        if "\x00" in value or any(unicodedata.category(character) == "Cs" for character in value):
-            raise ValueError("Use ordinary text for the reason.")
-        return value
+        return _ordinary_reason(value)
+
+
+class ReissueRequest(BaseModel):
+    """Ask for a fresh activation code for one invited person, with an audited reason."""
+
+    model_config = ConfigDict(extra="forbid")
+    person_id: uuid.UUID
+    reason: Reason
+
+    @field_validator("reason")
+    @classmethod
+    def valid_reason(cls, value: str) -> str:
+        """Reasons are stored in the audit trail as ordinary text."""
+        return _ordinary_reason(value)

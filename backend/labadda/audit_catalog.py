@@ -27,6 +27,7 @@ CATALOG: dict[str, Entry] = {
     "identity.create": Entry("people", "{actor} created the account for {target}."),
     "identity.update": Entry("people", "{actor} changed the account details of {target}."),
     "identity.reset": Entry("people", "{actor} issued a password reset link for {target}."),
+    "identity.activation_reissued": Entry("people", "{actor} issued a new activation code for {target}."),
     "people.change": Entry("people", "{actor} applied a reviewed staff change for {target}."),
     "people.change_step": Entry("people", "{actor} updated the staff record of {target}."),
     "membership.set": Entry("access", "{actor} set the role of {target} in {unit} to {after}."),

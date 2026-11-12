@@ -131,6 +131,7 @@ def apply(db: Session, actor: Actor, settings: Settings, body: ApplyRequest, hub
     except Exception:
         db.rollback()
         raise
+    # The change is durable: the receipt (with any one-time code) must reach the person who
+    # applied it even if their session ends now, because a retry can only return plan_stale.
     hub.revalidate_user(person.id)
-    authorize(db, actor, settings)
     return receipt
