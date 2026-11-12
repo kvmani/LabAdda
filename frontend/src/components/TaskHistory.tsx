@@ -24,27 +24,58 @@ const labels: Record<string, string> = {
   status: "Workflow state",
 };
 type ChecklistEntry = { title: string; done: boolean };
+
+const workflowNames: Record<string, string> = {
+  todo: "To do",
+  in_progress: "In progress",
+  blocked: "Blocked",
+  done: "Done",
+};
+
+const actionNames: Record<string, string> = {
+  created: "Created",
+  updated: "Updated",
+};
+
+function describeChecklist(entries: ChecklistEntry[]): string {
+  // History records a checklist as its list of entries.
+  const lines = entries.map((item) => `${item.done ? "✓" : "○"} ${item.title}`);
+  return lines.join("; ") || "Empty";
+}
+
 function value(data: unknown, key: string): string {
-  if (key === "status" && typeof data === "string")
-    return (
-      (
-        { todo: "To do", in_progress: "In progress", blocked: "Blocked", done: "Done" } as Record<
-          string,
-          string
-        >
-      )[data] ?? data
-    );
+  if (key === "status" && typeof data === "string") return workflowNames[data] ?? data;
   if (data === null) return "None";
   if (typeof data === "boolean") return data ? "Yes" : "No";
-  if (Array.isArray(data))
-    // History records a checklist as its list of entries.
-    return (
-      (data as ChecklistEntry[]).map((item) => `${item.done ? "✓" : "○"} ${item.title}`).join("; ") || "Empty"
-    );
+  if (Array.isArray(data)) return describeChecklist(data as ChecklistEntry[]);
   if (typeof data === "object" && "display_name" in data) return String(data.display_name);
   if (typeof data === "string" || typeof data === "number") return String(data);
   return JSON.stringify(data) ?? "";
 }
+
+function HistoryEntry({ event }: { event: Change }) {
+  const actionName = actionNames[event.action] ?? "Tracking began";
+  return (
+    <li>
+      <p>
+        Revision {event.revision} · {actionName} ·{" "}
+        {event.actor?.display_name ?? "Earlier author not recorded"} ·{" "}
+        {new Date(event.created_at).toLocaleString()}
+      </p>
+      {event.action === "baseline" && (
+        <p>History tracking began here. Earlier edits and their authors were not recorded.</p>
+      )}
+      <ul>
+        {Object.entries(event.changes).map(([key, change]) => (
+          <li key={key}>
+            {labels[key] ?? key}: {value(change.before, key)} → {value(change.after, key)}
+          </li>
+        ))}
+      </ul>
+    </li>
+  );
+}
+
 export function TaskHistory({
   listId,
   taskId,
@@ -54,12 +85,13 @@ export function TaskHistory({
   taskId: string;
   revision: number;
 }) {
-  const [open, setOpen] = useState(false),
-    [page, setPage] = useState<Page | null>(null),
-    [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState<Page | null>(null);
+  const [error, setError] = useState("");
   const generation = useRef(0);
+
   useEffect(() => {
-    ++generation.current;
+    generation.current += 1;
     setOpen(false);
     setPage(null);
     setError("");
@@ -67,8 +99,10 @@ export function TaskHistory({
       invalidate(generation);
     };
   }, [listId, taskId, revision]);
+
   async function load(before?: number) {
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setOpen(true);
     setPage(null);
     setError("");
@@ -81,22 +115,23 @@ export function TaskHistory({
       if (token === generation.current) setError(errorMessage(e));
     }
   }
-  if (!open)
+
+  function close() {
+    generation.current += 1;
+    setOpen(false);
+    setPage(null);
+  }
+
+  if (!open) {
     return (
       <Button size="sm" onClick={() => load()}>
         View task history
       </Button>
     );
+  }
   return (
     <section className="task-panel" aria-label="Task change history">
-      <Button
-        size="sm"
-        onClick={() => {
-          ++generation.current;
-          setOpen(false);
-          setPage(null);
-        }}
-      >
+      <Button size="sm" onClick={close}>
         Close task history
       </Button>
       {error && (
@@ -109,28 +144,7 @@ export function TaskHistory({
         <>
           <ol>
             {page.items.map((event) => (
-              <li key={event.revision}>
-                <p>
-                  Revision {event.revision} ·{" "}
-                  {event.action === "created"
-                    ? "Created"
-                    : event.action === "updated"
-                      ? "Updated"
-                      : "Tracking began"}{" "}
-                  · {event.actor?.display_name ?? "Earlier author not recorded"} ·{" "}
-                  {new Date(event.created_at).toLocaleString()}
-                </p>
-                {event.action === "baseline" && (
-                  <p>History tracking began here. Earlier edits and their authors were not recorded.</p>
-                )}
-                <ul>
-                  {Object.entries(event.changes).map(([key, change]) => (
-                    <li key={key}>
-                      {labels[key] ?? key}: {value(change.before, key)} → {value(change.after, key)}
-                    </li>
-                  ))}
-                </ul>
-              </li>
+              <HistoryEntry key={event.revision} event={event} />
             ))}
           </ol>
           {page.next_cursor && (
