@@ -93,6 +93,8 @@ def human_bytes(number: float) -> str:
 
 def human_duration(seconds: float) -> str:
     seconds = max(int(seconds), 0)
+    if seconds == 1:
+        return "1 second"
     if seconds < 90:
         return f"{seconds} seconds"
     if seconds < 5400:

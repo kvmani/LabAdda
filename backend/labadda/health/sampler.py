@@ -14,6 +14,9 @@ from .types import STATUSES, Context, Result, make, worst
 log = logging.getLogger("labadda.health")
 
 FORCED_NOTE = "Set by the test-only health setting."
+# Test-only: a file in the asset directory that browser tests write and delete while the server
+# runs, because the stack's start-up environment cannot be changed per test.
+FORCE_FILE = ".test-health-force"
 
 
 def parse_forced(text: str) -> dict[str, str]:
@@ -37,6 +40,15 @@ class Sampler:
         allowed = context.settings.fixtures_allowed
         self.forced = parse_forced(context.settings.test_health_force) if allowed else {}
 
+    def _forced_now(self) -> dict[str, str]:
+        if not self.context.settings.fixtures_allowed:
+            return {}
+        try:
+            text = (self.context.settings.asset_dir / FORCE_FILE).read_text(encoding="utf-8")
+        except OSError:
+            return self.forced
+        return {**self.forced, **parse_forced(text.replace("\n", ","))}
+
     def measure(self) -> dict[str, Result]:
         """Run every item once; an item that raises is reported unknown, never as an error."""
         results = {}
@@ -46,7 +58,7 @@ class Sampler:
             except Exception:
                 log.exception("health.item_failed", extra={"item": item.key})
                 result = make(self.context, "unknown", None, "", "This check could not be completed.")
-            forced = self.forced.get(item.key)
+            forced = self._forced_now().get(item.key)
             if forced:
                 result = replace(result, status=forced, detail=f"{FORCED_NOTE} {result.detail}")
             results[item.key] = result
