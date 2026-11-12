@@ -915,6 +915,19 @@ length, not the text) and `site.banner_clear` in the same transaction.
 `GET /site/banner` (any signed-in person). Returns `{banner: {message, level, starts_at,
 ends_at} | null}` for the notice whose window contains now. Clients render the text as text.
 
+## H3 · Setup checklist (HP-07)
+
+`GET /admin/setup-checklist` (console section `help`: administrators only; usage readers and other
+members 403 `admin_required`; signed-out, deactivated and board-only/explicit panel requests 401).
+No content: states, counts and sentences about counts. 200: `{checked_at, done, total, items[]}`
+where each item is `{key, label, state (done|not_done|unknown), detail, screen, help}`, in the
+order `second_admin`, `units`, `people`, `stewards`, `backups`, `time_zone`, `test_restore`. `screen`
+is the console route that fixes it and `help` the help page below `/help/`. Every state is derived
+on each request: two or more active administrators; an open unit below the top; an active person
+who is not an administrator; no open unit without an active steward or Head; the Backups report
+is `healthy` (`unknown` when no report exists); the operator set `LABADDA_TIMEZONE`; a test restore
+is recorded, which is `unknown` until the backup report can carry one. Nothing can be ticked.
+
 ## A6 · Console overview (AD-12)
 
 `GET /admin/overview` (console section `overview`: administrators and current usage readers;

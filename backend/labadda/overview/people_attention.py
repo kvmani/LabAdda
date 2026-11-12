@@ -56,6 +56,11 @@ def _units_without_steward(now, today) -> Select:
     )
 
 
+def count_units_without_steward(db: Session) -> int:
+    """How many open units have nobody in charge; the setup checklist asks the same question."""
+    return db.scalar(select(func.count()).select_from(_units_without_steward(None, None).subquery())) or 0
+
+
 def _no_home_unit(now, today) -> Select:
     return select(User.display_name).where(
         User.is_active.is_(True),

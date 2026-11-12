@@ -51,6 +51,8 @@ class Settings:
     frontend_dist: Path | None = None
     status_dir: Path | None = None  # operator status files (backup-status.json), read-only here
     timezone: str = "UTC"
+    # True only when the operator chose the zone, so the setup checklist can tell it from the default.
+    timezone_configured: bool = False
     session_idle_minutes: int = 120
     session_absolute_hours: int = 12
     activation_hours: int = 72
@@ -126,6 +128,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         frontend_dist=Path(dist) if dist else (default_dist if default_dist.exists() else None),
         status_dir=Path(status_dir) if status_dir else None,
         timezone=_timezone(env("LABADDA_TIMEZONE", "UTC")),
+        timezone_configured=bool(env("LABADDA_TIMEZONE")),
         session_idle_minutes=int(env("LABADDA_SESSION_IDLE_MINUTES", "120")),
         session_absolute_hours=int(env("LABADDA_SESSION_ABSOLUTE_HOURS", "12")),
         max_attachments=int(env("LABADDA_MAX_ATTACHMENTS", "5")),
