@@ -55,3 +55,9 @@ export function unitOptions(units: Unit[]): SelectOption[] {
     })
     .sort((left, right) => left.label.localeCompare(right.label));
 }
+
+/** Units a person can be placed in: open organisation units, still named by their full path. */
+export function openUnitOptions(units: Unit[], exclude?: string | null): SelectOption[] {
+  const closed = new Set(units.filter((unit) => unit.archived).map((unit) => unit.id));
+  return unitOptions(units).filter((option) => !closed.has(option.value) && option.value !== exclude);
+}

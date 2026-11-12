@@ -9,6 +9,7 @@ import { PeopleFilters } from "./PeopleFilters";
 import { PeopleTable } from "./PeopleTable";
 import { StaffProfile } from "./StaffProfile";
 import { ExportReport } from "./ExportReport";
+import { AddPersonDialog } from "./AddPersonDialog";
 import type { Directory, Unit } from "./types";
 import "./people.css";
 
@@ -32,9 +33,26 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
   const directory = usePeopleData<Directory>(peopleUrl(params), onDenied);
   const units = usePeopleData<{ workspaces: Unit[] }>("/admin/workspaces", onDenied);
   const identity = params.get("person");
+  const [adding, setAdding] = useState(false);
+  const unitList = units.data?.workspaces ?? null;
   return (
     <>
-      <PeopleHeader reportUrl={peopleUrl(params, true)} onDenied={onDenied} />
+      <PeopleHeader
+        reportUrl={peopleUrl(params, true)}
+        onDenied={onDenied}
+        onAdd={unitList ? () => setAdding(true) : undefined}
+      />
+      {adding && unitList && (
+        <AddPersonDialog
+          units={unitList}
+          onClose={() => setAdding(false)}
+          onDenied={onDenied}
+          onAdded={(id) => {
+            directory.refresh();
+            profile("person", id);
+          }}
+        />
+      )}
       <PeopleFilters
         params={params}
         units={units.data?.workspaces ?? null}
@@ -72,13 +90,23 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
           onView={(view) => profile("view", view)}
           onClose={() => profile("person")}
           onDenied={onDenied}
+          units={unitList}
+          onChanged={directory.refresh}
         />
       )}
     </>
   );
 }
 
-function PeopleHeader({ reportUrl, onDenied }: { reportUrl: string; onDenied: () => void }) {
+function PeopleHeader({
+  reportUrl,
+  onDenied,
+  onAdd,
+}: {
+  reportUrl: string;
+  onDenied: () => void;
+  onAdd?: () => void;
+}) {
   return (
     <PageHeader
       title="People"
@@ -86,6 +114,9 @@ function PeopleHeader({ reportUrl, onDenied }: { reportUrl: string; onDenied: ()
       helpHref={BASE + "/admin/help"}
       action={
         <div className="people-actions">
+          <Button variant="primary" icon="plus" onClick={onAdd} disabled={!onAdd}>
+            Add person
+          </Button>
           <Link to="/admin/people/basic">Basic account tools</Link>
           <ExportReport key={reportUrl} url={reportUrl} onDenied={onDenied} />
         </div>

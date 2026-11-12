@@ -21,7 +21,7 @@ export type StaffRecord = Person & {
   joined_on: string | null;
 };
 export type Directory = { people: Person[]; next_cursor: string | null };
-export type Unit = { id: string; name: string; kind: string; parent_id: string | null };
+export type Unit = { id: string; name: string; kind: string; parent_id: string | null; archived?: boolean };
 export type AccessPage = {
   memberships: {
     workspace: { id: string; name: string; kind: string; archived: boolean };

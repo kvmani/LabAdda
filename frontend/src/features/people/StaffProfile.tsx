@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button, Drawer, EmptyState, ErrorState, Skeleton, Tabs } from "../../ui";
 import { calendarDate } from "./model";
+import { TransferDialog } from "./TransferDialog";
 import { usePeopleData } from "./usePeopleData";
-import type { AccessPage, StaffRecord, TimelinePage } from "./types";
+import type { AccessPage, StaffRecord, TimelinePage, Unit } from "./types";
 
 function RecordFields({ person }: { person: StaffRecord }) {
   const fields = [
@@ -107,14 +108,20 @@ export function StaffProfile({
   onView,
   onClose,
   onDenied,
+  units,
+  onChanged,
 }: {
   identity: string;
   view: string;
   onView: (view: string) => void;
   onClose: () => void;
   onDenied: () => void;
+  units: Unit[] | null;
+  onChanged: () => void;
 }) {
   const record = usePeopleData<StaffRecord>(`/admin/people/${encodeURIComponent(identity)}`, onDenied);
+  const [transferring, setTransferring] = useState(false);
+  const person = record.data;
   const selected = ["record", "access", "timeline"].includes(view) ? view : "record";
   return (
     <Drawer open title={record.data?.display_name || "Staff profile"} onClose={onClose}>
@@ -135,6 +142,11 @@ export function StaffProfile({
         >
           {selected === "record" ? (
             <>
+              <div className="people-actions">
+                <Button icon="unit" onClick={() => setTransferring(true)} disabled={!units}>
+                  Transfer to another unit
+                </Button>
+              </div>
               <RecordFields person={record.data} />
               <p>Appointments and scheduled staff changes will appear here in a future update.</p>
             </>
@@ -144,6 +156,18 @@ export function StaffProfile({
             <Timeline key={identity} identity={identity} onDenied={onDenied} />
           )}
         </Tabs>
+      )}
+      {transferring && person && units && (
+        <TransferDialog
+          person={person}
+          units={units}
+          onClose={() => setTransferring(false)}
+          onDenied={onDenied}
+          onDone={() => {
+            record.refresh();
+            onChanged();
+          }}
+        />
       )}
     </Drawer>
   );

@@ -19,6 +19,7 @@ const kindText: Record<string, string> = {
   mention: "Mentioned you",
   reminder: "Reminder",
   official: "Official notice",
+  reassign: "Tasks to reassign",
 };
 
 export function Notifications({ onClose, onChange }: { onClose: () => void; onChange: (n: number) => void }) {

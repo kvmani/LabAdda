@@ -102,7 +102,8 @@ export type BoardOp = {
 export type NotificationLink =
   | { view: "notes"; id: string }
   | { view: "noticeboard"; workspace_id: string; post_id: string }
-  | { view: "chat"; workspace_id: string; seq: number };
+  | { view: "chat"; workspace_id: string; seq: number }
+  | { view: "todos"; workspace_id: string };
 export type OpenedNotification = { id: string; kind: string; link: NotificationLink };
 
 type SearchHit = { id: string; body: string; created_at: string; author: User | null };

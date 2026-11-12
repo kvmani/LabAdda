@@ -32,3 +32,88 @@
 .people-history li {
   overflow-wrap: anywhere;
 }
+/* Reviewed change dialogs: plain before/after rows, issues with icon and word. */
+.people-change,
+.people-change__form,
+.people-slip-wrap {
+  display: grid;
+  gap: var(--space-4);
+}
+.people-change__fieldset {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: 0;
+}
+.people-change__heading {
+  font-size: var(--text-md);
+  margin: 0;
+}
+.people-change__steps,
+.people-change__issues {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  overflow-wrap: anywhere;
+}
+.people-change__issues {
+  list-style: none;
+  padding-inline-start: 0;
+}
+.people-change__issues li,
+.people-change__problem {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.people-change__problem {
+  color: var(--danger);
+}
+.people-change__values {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+}
+.people-change__values dt {
+  color: var(--text-muted);
+}
+.people-change__values dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+}
+.people-slip {
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}
+.people-slip h3 {
+  margin: 0;
+}
+.people-slip__code {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  overflow-wrap: anywhere;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .people-slip,
+  .people-slip * {
+    visibility: visible;
+  }
+  .people-slip {
+    position: absolute;
+    inset: 0 auto auto 0;
+  }
+}
