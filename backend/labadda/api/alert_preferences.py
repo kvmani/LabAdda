@@ -21,7 +21,8 @@ class Choices(BaseModel):
     revision: int = Field(ge=0, strict=True)
 
 
-def _json(row):
+def _json(row: NotificationPreference | None) -> dict:
+    """Serialize saved choices; a user who never saved gets everything on at revision 0."""
     return {
         "mentions": row.mentions if row else True,
         "official_notices": row.official_notices if row else True,
@@ -43,19 +44,20 @@ def save(
     body: Choices, request: Request, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)
 ):
     user = _actor(request, actor, db, True)
-    row = db.get(NotificationPreference, user.id)
-    if body.revision != (row.revision if row else 0):
+    saved = db.get(NotificationPreference, user.id)
+    saved_revision = saved.revision if saved else 0
+    if body.revision != saved_revision:
         raise Conflict(
             "revision_conflict", "Your alert settings changed. Reload the current choices before saving."
         )
-    values = body.model_dump(exclude={"revision"})
-    if row is None:
-        row = NotificationPreference(user_id=user.id, revision=1, **values)
-        db.add(row)
+    choices = body.model_dump(exclude={"revision"})
+    if saved is None:
+        saved = NotificationPreference(user_id=user.id, revision=1, **choices)
+        db.add(saved)
     else:
-        for name, value in values.items():
-            setattr(row, name, value)
-        row.revision += 1
+        for name, value in choices.items():
+            setattr(saved, name, value)
+        saved.revision += 1
     lock_identity(db, actor, get_settings(request))
     db.commit()
-    return _json(row)
+    return _json(saved)
