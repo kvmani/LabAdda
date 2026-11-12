@@ -1,48 +1,19 @@
 // P8 My profile: record, access, password change and sessions at the root and prefixed instance.
-import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
-const require = createRequire(import.meta.url);
-const { chromium } = require("playwright");
-const origin = "http://127.0.0.1:8080";
+import { axeViolations, hasNoSideScroll, startHarness } from "./lib/harness.mjs";
+
 const output = process.argv[2] ?? "/tmp/labadda-profile";
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({
-  executablePath: process.env.LABADDA_CHROMIUM ?? "/usr/bin/chromium",
-});
+
+const harness = await startHarness();
+const { check, login } = harness;
 const OLD = "fixture-pass-123";
 const NEW = "a-brand-new-passphrase";
-let checks = 0;
-function check(condition, label) {
-  assert.ok(condition, label);
-  console.log("PASS " + label);
-  checks++;
-}
-async function login(base, username, password = OLD) {
-  const context = await browser.newContext({ viewport: { width: 1400, height: 1100 } });
-  const page = await context.newPage();
-  await page.goto(origin + base + "/");
-  await page.getByLabel("Username", { exact: true }).fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: /^Account menu for / }).waitFor();
-  return { context, page };
-}
 async function audit(page, width, label) {
   await page.setViewportSize({ width, height: 1100 });
-  await page.addScriptTag({ path: require.resolve("../frontend/node_modules/axe-core/axe.min.js") });
-  const violations = await page.evaluate(async () =>
-    (
-      await window.axe.run(document, {
-        runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
-      })
-    ).violations.map((item) => item.id),
-  );
+  const violations = await axeViolations(page);
   check(violations.length === 0, `${label} accessibility ${width}: ${violations}`);
-  check(
-    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-    `${label} fits ${width}`,
-  );
+  check(await hasNoSideScroll(page), `${label} fits ${width}`);
 }
 async function fillPasswords(page, current, next, again = next) {
   await page.getByLabel(/^Current password/).fill(current);
@@ -109,7 +80,7 @@ async function run(base, name) {
   check(true, `${label} other browser is signed out`);
 
   // Sign out one session by hand with the new password.
-  const third = await login(base, name, NEW);
+  const third = await login(base, name, { password: NEW });
   await page.reload();
   await page.getByRole("button", { name: "Sign out this session (Chrome on Linux)" }).first().click();
   await page.getByText("Signed out Chrome on Linux.").waitFor();
@@ -122,12 +93,12 @@ async function run(base, name) {
   await page.getByRole("button", { name: "Change password", exact: true }).click();
   await page.getByText(/Your password was changed\./).waitFor();
   await page.screenshot({ path: `${output}/${label.replace("/", "")}-profile-1400.png`, fullPage: true });
-  for (const part of [first, second, third]) await part.context.close();
+  for (const part of [first, second, third]) await part.ctx.close();
 }
 try {
   await run("", "eli");
   await run("/labadda-staging", "eli");
-  console.log(`profile: ${checks} checks passed`);
+  console.log(`profile: ${harness.checks()} checks passed`);
 } finally {
-  await browser.close();
+  await harness.close();
 }
