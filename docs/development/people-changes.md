@@ -144,3 +144,25 @@ Keep the old admin routes until P4. Retain races with legacy writes in qualifica
   size cap), `/bulk/preview`, `/bulk/apply`. Tests: `test_import_parser.py`,
   `test_changes_import.py`.
   Browser check: `e2e/people-import.mjs` (upload, report, selection, slips, bulk suspend, member 403).
+
+## Scheduled changes and the attention list (P5)
+
+- `changes/service.py`: `effective_on` on preview/apply. `people.as_of(day)` makes `site_date` return
+  the effective day while a plan is built or applied, so the dates inside a plan (and its digest) are
+  the same at review time and at run time. Apply with a day calls `schedule` (stores a
+  `ScheduledChange`, audits `people.schedule`); `add_person` and `reinstate` are refused because
+  their one-time code must reach the person applying.
+- `changes/scheduled.py`: `listing`, `cancel`, `run_due`. The runner locks a due row with
+  `FOR UPDATE SKIP LOCKED`, then takes the same locks as a live apply (admin roles, the original
+  actor's row, `lock_targets`), rebuilds, compares the digest, applies and audits. Any mismatch,
+  blocker, lost administrator access or error rolls back and marks `needs_review` with a note.
+  `app.py` runs it each scheduler tick beside `positions.expiry_job`.
+- `overview/people_attention.py`: the PO-22 items, each a live query, so each clears when fixed.
+  `api/org.py` serves them at `/admin/org/attention`; `overview/attention.py` merges them into the
+  Overview list.
+- Lock order for retire/leave: workspace role locks, then the person and every named successor in
+  one `ORDER BY users.id FOR UPDATE` statement.
+- Frontend: `WhenControl` inside `ChangeDialog` (every kind that can wait), `ScheduledChanges`
+  (People page and profile), `AttentionList`. Tests: `test_changes_scheduled.py`,
+  `test_people_attention.py`, `test_positions_review.py`, `ScheduledChanges.test.tsx`,
+  `e2e/people-scheduled.mjs`.

@@ -88,7 +88,7 @@ export function ScheduledChanges({ personId, onDenied, onChanged }: Props) {
               </span>
               <br />
               <Button variant="quiet" onClick={() => setCancelling(item)}>
-                {item.state === "needs_review" ? "Dismiss" : "Cancel"} this change
+                {item.state === "needs_review" ? "Dismiss this change" : "Cancel this change"}
               </Button>
             </li>
           ))}

@@ -979,3 +979,37 @@ memory and never stored.
   cases nothing is written. One transaction, one `people.change` audit parent and its steps
   per request. Receipt `{applied,kind:"bulk",digest,count,added:[{person_id,username,
   display_name,activation:{code,expires_at}}],site_date}`; codes appear only here.
+
+## P5 scheduled changes and attention list (schema 0035)
+
+Administrators with the People section only; signed out 401, members and panel sessions 403/401
+as for every `/admin/changes` route. Plans, notes and lists hold names, dates and counts only.
+
+- `POST /admin/changes/preview` and `/apply` accept an optional `effective_on` (`YYYY-MM-DD`).
+  Preview then builds the plan as of that day. Apply with `effective_on` checks the digest and
+  revisions exactly as a live apply, applies nothing, stores the change and returns
+  `{scheduled: true, id, kind, effective_on, digest}`. Errors: `422 invalid_date` (not after today,
+  or more than five years ahead), `422 not_schedulable` (`add_person` and `reinstate` issue a
+  one-time activation code), plus the usual `409 plan_stale` and `422 plan_blocked`.
+- `GET /admin/changes/scheduled?person_id=` returns `{items[{id, kind, effective_on, state:
+  pending|needs_review, note, reason, subject_id, steps[], created_by, created_at}]}`, soonest first,
+  at most 200. `steps` are the sentences that were reviewed; `note` explains `needs_review`.
+- `DELETE /admin/changes/scheduled/{id}?reason=` (3-500 characters) cancels a pending or
+  needs-review change: `{cancelled: true, id}`. `404` for an unknown id, `409 not_pending` once
+  applied or cancelled. Audited as `people.schedule_cancel`.
+- Scheduler step `changes.run_due` (every tick): for each pending change whose day has started it
+  takes the live locks, rebuilds the plan as of `effective_on` for the original actor, and applies it
+  only if the digest is identical and there are no blockers and the actor is still an administrator.
+  Otherwise the change becomes `needs_review` with a plain note and nothing is written. Running
+  twice applies once. Audit: `people.schedule`, `people.schedule_apply` (and the usual
+  `people.change` rows with the original actor and reason), `people.schedule_review`.
+- `GET /admin/org/attention` returns `{items[{id, kind:"people", severity, status:null, title,
+  detail, route, help:null, at:null}]}` for the PO-22 items: `units-without-steward`,
+  `no-home-unit`, `activation-pending`, `acting-ending`, `acting-expired`, `overdue-leave`,
+  `scheduled-review`, `groups-without-steward`, `never-signed-in`. The same entries are merged into
+  `GET /admin/overview` `attention`. Each is one bounded query; `detail` names at most three units
+  or people.
+- `positions.expire_due` now revalidates the holder's sockets and the unit's subscribers after
+  commit, like a live apply.
+- `change_authority` with `outgoing_role: "member"` lists, as its own step, every other position the
+  outgoing holder has in that unit that the demotion ends.
