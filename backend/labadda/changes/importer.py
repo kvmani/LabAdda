@@ -25,7 +25,7 @@ COLUMNS = (
 )
 TEMPLATE = (
     "﻿" + ",".join(COLUMNS) + "\r\n"
-    "NW-1001,example.person,Example Person,Research Officer,TF,member,active,2026-12-01\r\n"
+    "NW-1001,example.person,Example Person,Research Officer,TFS,member,active,2026-12-01\r\n"
 )
 ROLES = ("member", "steward")
 STATUSES = ("active", "invited", "suspended", "retired", "left", "on_leave")

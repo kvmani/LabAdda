@@ -945,3 +945,37 @@ is rechecked after reading. 200:
 - `charts.activity` `{state, points[{day, state, value}]}` (people active per day, as on the
   Activity page) and `charts.response_time` `{state, unit: "ms", points[{day, state, value}]}`
   (the slowest hourly 95th percentile of each day). Missing days are `unknown` with `value: null`.
+
+## P6 staff list import and bulk changes
+
+All endpoints are administrator-only (`people` console section): members, stewards and unit
+heads 403; signed out and board-only panel sessions 401. Metadata only; the file is parsed in
+memory and never stored.
+
+- `GET /admin/changes/import/template`: `text/csv` download, UTF-8 with BOM, columns
+  `employee_no,username,display_name,designation,unit_code,role,status,effective_on` and one
+  fictional example row.
+- `POST /admin/changes/import/preview`: the request body is the raw CSV with
+  `Content-Type: text/csv` (UTF-8, BOM tolerated; up to 1 MiB and 2 000 rows). Writes nothing.
+  Returns `{rows:[{line,group add|change|transfer|errors,username,display_name,summary[],
+  errors[],warnings[],requests[]}],counts:{add,change,transfer,errors,unchanged},
+  absent:[{username,display_name}],absent_total,digest}`. `requests` are ordinary
+  `add_person`, `edit_person`, `transfer` or `suspend` requests (empty for error rows). A blank
+  cell leaves the stored value alone. `unit_code` finds an open unit; a different code moves
+  the person (`transfer`, role from `role`, default member). `status: suspended` suspends;
+  leave, retirement and departure are refused with advice to use the profile. `effective_on`
+  is the joining date of a new person. People missing from the file are listed in `absent`
+  (capped at 500, `absent_total` is the full count) and never changed. Cells starting with
+  `= + - @` are kept as plain text and carry a warning. Errors: 422 `import_not_csv` (wrong
+  content type, binary data, unreadable CSV), `import_encoding`, `import_empty`,
+  `import_header`; 413 `import_too_large` (over 1 MiB or 2 000 rows).
+- `POST /admin/changes/bulk/preview`: `{requests:[1..2000]}` of kind `add_person`,
+  `edit_person`, `transfer` or `suspend` (the same bodies as `/admin/changes/preview`; one per
+  kind per person, else 422). Returns the merged plan `{kind:"bulk",count,steps,warnings,
+  blockers,revisions,affected_people,digest}`; blocker messages begin with the person's name.
+- `POST /admin/changes/bulk/apply`: the same `requests` plus `digest`, `revisions` and
+  `reason` (3-500). Every request is rebuilt under the usual locks; 409 `plan_stale` when any
+  record or consequence changed, 422 `plan_blocked` when any request is blocked, in both
+  cases nothing is written. One transaction, one `people.change` audit parent and its steps
+  per request. Receipt `{applied,kind:"bulk",digest,count,added:[{person_id,username,
+  display_name,activation:{code,expires_at}}],site_date}`; codes appear only here.

@@ -128,3 +128,19 @@ Keep the old admin routes until P4. Retain races with legacy writes in qualifica
   Transfer or Move review, never a write; `UnitDialogs.tsx` reuses `ChangeDialog`). The basic
   project tools stay at `/admin/org/basic` until projects get their own screen. Browser check:
   `e2e/org-chart.mjs` (keyboard path, split and merge, gestures, real reads, axe, root and prefix).
+
+## Staff list import and bulk changes (P6)
+
+- `changes/importer.py`: pure parser (standard `csv`, UTF-8 with BOM, strict header, 1 MiB,
+  2 000 rows, 200-character cells). Per-row problems carry the line number; file-level problems
+  raise `Invalid`/`UploadTooLarge` before any row is read. Formula-like cells stay literal text.
+- `changes/import_report.py`: matches rows to people by username and units by `unit_code`, makes
+  ordinary `add_person`/`edit_person`/`transfer`/`suspend` requests and asks each kind's own
+  `build` for warnings and blockers, so a blocked row becomes an error row with no request.
+- `changes/bulk.py`: `BulkPreview`/`BulkApply`. The digest hashes the ordered per-request plan
+  digests; apply locks every target, rebuilds, compares, then applies each kind and
+  `record_plan`s it in one transaction. A client never sends steps.
+- `api/changes.py`: `/import/template`, `/import/preview` (raw `text/csv` body streamed with a
+  size cap), `/bulk/preview`, `/bulk/apply`. Tests: `test_import_parser.py`,
+  `test_changes_import.py`.
+

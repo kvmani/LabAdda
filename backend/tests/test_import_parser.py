@@ -15,7 +15,7 @@ def parse(text: str | bytes):
 def test_template_round_trips_and_bom_is_tolerated():
     rows = parse(importer.TEMPLATE)
     assert len(rows) == 1 and rows[0].errors == []
-    assert rows[0].username == "example.person" and rows[0].unit_code == "TF"
+    assert rows[0].username == "example.person" and rows[0].unit_code == "TFS"
     assert rows[0].effective_on.isoformat() == "2026-12-01"
     assert parse("﻿" + HEAD + ",gita,Gita Sen,,CS,,,\n")[0].display_name == "Gita Sen"
 
@@ -76,6 +76,6 @@ def test_size_and_row_limits():
 
 def test_overlong_and_control_character_cells_are_row_errors():
     long = "x" * 201
-    rows = parse(f"username,display_name\ngita,{long}\nhari,\"Ha\x07ri\"\n")
+    rows = parse(f'username,display_name\ngita,{long}\nhari,"Ha\x07ri"\n')
     assert "longer than" in rows[0].errors[0]
     assert "control characters" in rows[1].errors[0]
