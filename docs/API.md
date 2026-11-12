@@ -676,6 +676,52 @@ Scheduler step `positions.expire_due(now)` (each reminder tick, idempotent, at m
 pass): at the start of `ends_on` in the site zone it ends the row (`end_reason:"expired"`),
 applies `revert_role` and writes `position.expire`. The P5 attention list reads those rows.
 
+## P4 · Organisation chart and unit changes (schema 0034)
+
+`workspaces.code` (organisation units only): 2-24 characters, uppercase letters, digits and
+dashes, unique among units (archived ones included); null for projects and groups. Existing
+units were given a code from the initials of their name. `workspace_json` adds `code`. The 0034
+downgrade refuses while any code was chosen rather than derived from the unit's name.
+
+`GET /admin/org/tree` (current administrators; members, stewards and usage readers 403; signed
+out and panel sessions 401) returns names, roles and counts only:
+`{units:[{id,code,name,archived,parent_id,head:{id,name}|null,acting_head:{id,name}|null,
+stewards:[{id,name}],people,members}], spaces:[{id,kind project|group,name,archived,
+stewards:[{id,name}],members}]}`. `people` counts home-unit people; `members` counts direct
+memberships; stewards are active people only. Projects and groups are not part of the tree.
+
+Unit kinds use the same `POST /admin/changes/preview` and `/apply` (digest, `revisions:{}`,
+reason, 409 `plan_stale`, 422 `plan_blocked`). A unit has no revision counter, so staleness is
+the digest over the unit's reviewed before/after state. Steps use `target_type:"workspace"`
+(a unit about to be created is `new:unit`). The receipt is `{applied,kind,unit_id,digest}`.
+The audit parent row has `scope_type:"workspace"`, `scope_id` = the unit; each step is a
+`people.change_step`. After commit every live socket is revalidated. Units are never deleted.
+
+- `unit_create {parent_id, name, code, head_id?}`: an optional Head becomes steward of the new
+  unit with a `head` position. Warnings `unit_without_steward` (no Head), `access_gained`.
+  Blockers `unit_unavailable` (parent not an open unit), `duplicate_code`, `holder_inactive`.
+- `unit_rename {unit_id, name?, code?}`: at least one. Ids do not change. Blockers `no_change`,
+  `duplicate_code`.
+- `unit_move {unit_id, new_parent_id}`: with its sub-units. Warnings `access_gained` and
+  `access_lost`, one per unit, with `target_id` and `count` of people (counts only). Blockers
+  `cycle` (beneath itself or a sub-unit), `root_fixed`, `same_parent`, `unit_unavailable`.
+- `unit_merge {unit_id, into_unit_id}`: sub-units move under the target; every person whose
+  home is the source gets the target as home and a `member` membership there (an existing
+  membership is kept); positions in the source end; the source is archived. Members keep their
+  memberships in the source, so they still read its history. Warnings `history_kept`,
+  `access_gained`, `access_lost`. Blockers `root_fixed`, `same_unit`, `cycle`,
+  `unit_unavailable`, `too_many_people` (over 500).
+- `unit_split {unit_id, name, code, person_ids[1..200], acknowledge_no_steward?}`: creates a
+  sibling under the source's parent and moves the chosen people (home must be the source) with
+  their role; their source memberships and positions end. Warnings `access_lost`, `open_tasks`
+  (a count; the stewards of the source are not notified), `unit_without_steward`. Blockers
+  `root_fixed`, `duplicate_code`, `person_not_in_unit`, `unit_without_steward` (for the source
+  or the new unit unless acknowledged).
+- `unit_close {unit_id}`: archives. Blockers `unit_has_people` (any person's home),
+  `unit_has_subunits` (open ones), `root_fixed`, `no_change`. Positions end; warning
+  `history_kept`.
+- `unit_reopen {unit_id}`: unarchives. Blockers `no_change`, `parent_closed`.
+
 ## A2 · Audit explorer (AD-09)
 
 Administrators only: usage readers and members get 403, signed-out 401, board-only panel sessions 401.

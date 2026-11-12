@@ -19,6 +19,13 @@ type ChangeKind = Literal[
     "retire",
     "suspend",
     "reinstate",
+    "unit_create",
+    "unit_rename",
+    "unit_move",
+    "unit_merge",
+    "unit_split",
+    "unit_close",
+    "unit_reopen",
 ]
 
 

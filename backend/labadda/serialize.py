@@ -40,6 +40,7 @@ def workspace_json(ws: Workspace, access: Access | None = None) -> dict:
         "id": str(ws.id),
         "kind": ws.kind,
         "name": ws.name,
+        "code": ws.code,
         "description": ws.description,
         "parent_id": str(ws.parent_id) if ws.parent_id else None,
         "archived": ws.archived,

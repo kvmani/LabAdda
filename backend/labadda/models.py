@@ -161,6 +161,7 @@ class Workspace(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    code: Mapped[str | None] = mapped_column(String(24))
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"))
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -175,6 +176,15 @@ class Workspace(Base):
         CheckConstraint("posting_policy in ('open','read_only')", name="ck_workspace_policy"),
         CheckConstraint("kind = 'org' or parent_id is null", name="ck_workspace_flat_spaces"),
         CheckConstraint("parent_id is null or parent_id <> id", name="ck_workspace_not_own_parent"),
+        CheckConstraint(
+            "code is null or code ~ '^[A-Z0-9][A-Z0-9-]{1,23}$'", name="ck_workspace_code_format"
+        ),
+        Index(
+            "uq_workspace_org_code",
+            "code",
+            unique=True,
+            postgresql_where=text("kind = 'org' AND code IS NOT NULL"),
+        ),
         Index(
             "uq_workspace_single_root",
             "kind",

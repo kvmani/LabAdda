@@ -12,12 +12,12 @@ from .models import Membership, User, Workspace
 from .security import hash_password, utcnow
 
 TREE = [
-    # key, name, parent key
-    ("root", "Northwind Research", None),
-    ("group", "Materials Group", "root"),
-    ("division", "Surface Science Division", "group"),
-    ("section_a", "Thin Films Section", "division"),
-    ("section_b", "Catalysis Section", "division"),
+    # key, name, parent key, code (the initials of the name, as a migrated unit would get)
+    ("root", "Northwind Research", None, "NR"),
+    ("group", "Materials Group", "root", "MG"),
+    ("division", "Surface Science Division", "group", "SSD"),
+    ("section_a", "Thin Films Section", "division", "TFS"),
+    ("section_b", "Catalysis Section", "division", "CS"),
 ]
 USERS = [
     # username, display name, is_admin, is_active
@@ -95,8 +95,8 @@ def reset_database(db: Session) -> None:
 def seed(db: Session) -> dict[str, object]:
     password_hash = hash_password(fixture_password())
     ws: dict[str, Workspace] = {}
-    for key, name, parent in TREE:
-        w = Workspace(kind="org", name=name, parent_id=ws[parent].id if parent else None)
+    for key, name, parent, code in TREE:
+        w = Workspace(kind="org", name=name, code=code, parent_id=ws[parent].id if parent else None)
         db.add(w)
         db.flush()
         ws[key] = w

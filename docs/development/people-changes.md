@@ -105,3 +105,21 @@ stale/concurrent/atomic apply, audits, T61, denial). Browser: `e2e/people-author
 Next: an edit dialog; handover period (P5's scheduler can now reuse dated rows);
 future-dated retirement (P5).
 Keep the old admin routes until P4. Retain races with legacy writes in qualification.
+
+## Unit kinds (P4)
+
+- `changes/unit_requests.py` holds the seven unit request models (`unit_create`, `unit_rename`,
+  `unit_move`, `unit_merge`, `unit_split`, `unit_close`, `unit_reopen`); `changes/text.py` is the
+  shared single-line text rule. Codes are upper-cased once, in the request.
+- `changes/kinds/unit_common.py`: `UnitDraft` (the unit counterpart of `Draft`: no person, empty
+  `revisions`, and a `box` that lets later steps reach a unit created earlier in the same plan),
+  `access_counts` (who gains or loses reads when parents change; counts only), the create/join/
+  home actions used by create and split, and the shared blockers (`root_fixed`, `open_unit`,
+  `code_taken`). Merge, split and close reuse `set_role`, `end_position` from `actions.py`.
+- `service.py` treats a `Workspace` returned by `apply` as the subject: the parent audit row has
+  `scope_type:"workspace"`, the receipt carries `unit_id`, and the hub revalidates every socket.
+- A unit has no revision counter; the digest over its before/after state is the stale guard.
+- Merge keeps the source's memberships, so former members still read its history after it is
+  archived; it never gives stewardship in the target.
+- Chart data: `org_tree.py` and `api/org.py` (`GET /admin/org/tree`). Tests: `test_changes_units.py`,
+  `test_org_tree.py`, `test_unit_codes_migration.py`.

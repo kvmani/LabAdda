@@ -8,6 +8,16 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
 from ..people import USERNAME_RE
+from .text import single_line as _single_line
+from .unit_requests import (
+    UnitClose,
+    UnitCreate,
+    UnitMerge,
+    UnitMove,
+    UnitRename,
+    UnitReopen,
+    UnitSplit,
+)
 
 type Revision = Annotated[int, Field(strict=True, ge=1, le=2_147_483_647)]
 type Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
@@ -18,15 +28,6 @@ type Position = Literal["head", "deputy"]
 def _ordinary_reason(value: str) -> str:
     if "\x00" in value or any(unicodedata.category(character) == "Cs" for character in value):
         raise ValueError("Use ordinary text for the reason.")
-    return value
-
-
-def _single_line(value: object) -> object:
-    """Keep staff text single-line and valid for PostgreSQL/UTF-8 JSON."""
-    if isinstance(value, str):
-        if any(unicodedata.category(character) in {"Cc", "Cs"} for character in value):
-            raise ValueError("Use ordinary single-line text without control characters.")
-        return value.strip() or None
     return value
 
 
@@ -300,7 +301,14 @@ ChangeRequest = Annotated[
     | Return
     | Retire
     | Suspend
-    | Reinstate,
+    | Reinstate
+    | UnitCreate
+    | UnitRename
+    | UnitMove
+    | UnitMerge
+    | UnitSplit
+    | UnitClose
+    | UnitReopen,
     Field(discriminator="kind"),
 ]
 

@@ -12,7 +12,7 @@ from .. import audit, identity_locks, memberships, people, policy
 from ..config import Settings
 from ..deps import Actor
 from ..errors import Conflict, Forbidden, Invalid, NotFound
-from ..models import User
+from ..models import User, Workspace
 from ..realtime import Hub
 from .kinds import (
     add_person,
@@ -26,9 +26,17 @@ from .kinds import (
     return_from_leave,
     suspend,
     transfer,
+    unit_close,
+    unit_create,
+    unit_merge,
+    unit_move,
+    unit_rename,
+    unit_reopen,
+    unit_split,
 )
 from .plan import Plan
 from .requests import AddPerson, ApplyRequest, ChangeAuthority, ChangeRequest, Transfer
+from .unit_requests import UnitChange
 
 KINDS: dict[str, ModuleType] = {
     "add_person": add_person,
@@ -42,6 +50,13 @@ KINDS: dict[str, ModuleType] = {
     "retire": retire,
     "suspend": suspend,
     "reinstate": reinstate,
+    "unit_create": unit_create,
+    "unit_rename": unit_rename,
+    "unit_move": unit_move,
+    "unit_merge": unit_merge,
+    "unit_split": unit_split,
+    "unit_close": unit_close,
+    "unit_reopen": unit_reopen,
 }
 
 
@@ -78,6 +93,9 @@ def lock_targets(db: Session, request: ChangeRequest) -> None:
     if isinstance(request, AddPerson):
         memberships.lock_workspace_roles(db, request.home_unit_id)
         return
+    if isinstance(request, UnitChange):
+        KINDS[request.kind].lock_scope(db, request)
+        return
     scope = KINDS[request.kind].lock_scope(db, request) if request.kind != "edit_person" else None
     person_id = request.successor_id if isinstance(request, ChangeAuthority) else request.person_id
     target = db.scalar(
@@ -90,14 +108,21 @@ def lock_targets(db: Session, request: ChangeRequest) -> None:
 
 
 def record_plan(
-    db: Session, actor: User, plan: Plan, reason: str, settings: Settings, person_id: uuid.UUID
+    db: Session,
+    actor: User,
+    plan: Plan,
+    reason: str,
+    settings: Settings,
+    person_id: uuid.UUID,
+    scope_type: str = "identity",
 ) -> None:
     """Write parent and structured per-step audit rows within the change transaction."""
     audit.record(
         db,
         actor=actor,
         action="people.change",
-        scope_type="identity",
+        scope_type=scope_type,
+        scope_id=person_id if scope_type == "workspace" else None,
         target_id=person_id,
         reason=reason,
         kind=plan.kind,
@@ -120,7 +145,9 @@ def record_plan(
         )
 
 
-def _commit(db: Session, user: User, body: ApplyRequest, settings: Settings) -> tuple[User, dict, Plan]:
+def _commit(
+    db: Session, user: User, body: ApplyRequest, settings: Settings
+) -> tuple[User | Workspace, dict, Plan]:
     lock_targets(db, body.request)
     plan = build(db, body.request, user.id, settings)
     revisions = {str(identity): revision for identity, revision in body.revisions.items()}
@@ -129,6 +156,14 @@ def _commit(db: Session, user: User, body: ApplyRequest, settings: Settings) -> 
     if plan.blockers:
         raise Invalid("plan_blocked", "Resolve the blocking problems before applying this change.")
     person, extra = KINDS[plan.kind].apply(db, user, plan, body.request, settings, body.reason)
+    if isinstance(person, Workspace):
+        record_plan(db, user, plan, body.reason, settings, person.id, "workspace")
+        db.commit()
+        return (
+            person,
+            {"applied": True, "kind": plan.kind, "unit_id": str(person.id), "digest": plan.digest, **extra},
+            plan,
+        )
     record_plan(db, user, plan, body.reason, settings, person.id)
     db.commit()
     receipt = {
@@ -142,8 +177,11 @@ def _commit(db: Session, user: User, body: ApplyRequest, settings: Settings) -> 
     return person, receipt, plan
 
 
-def revalidate(hub: Hub, person: User, plan: Plan) -> None:
+def revalidate(hub: Hub, person: User | Workspace, plan: Plan) -> None:
     """Refresh live delivery for the person and every identity and workspace the plan touched."""
+    if isinstance(person, Workspace):
+        hub.revalidate_all()  # a hierarchy change can alter what many people may read
+        return
     hub.revalidate_user(person.id)
     for step in plan.steps:
         if step.target_type == "workspace":
