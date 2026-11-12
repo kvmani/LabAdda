@@ -13,34 +13,29 @@ type Comment = {
   author: { id: string; display_name: string };
 };
 type Page = { items: Comment[]; next_cursor: number | null };
-export function TaskComments({
-  listId,
-  taskId,
-  writable,
-  workspaceId,
-}: {
-  listId: string;
-  taskId: string;
-  writable: boolean;
-  workspaceId?: string;
-}) {
-  const [open, setOpen] = useState(false),
-    [page, setPage] = useState<Page | null>(null),
-    [text, setText] = useState("");
-  const [error, setError] = useState(""),
-    [loading, setLoading] = useState(false),
-    [busy, setBusy] = useState(false),
-    [unconfirmed, setUnconfirmed] = useState(false);
-  const generation = useRef(0),
-    attempt = useRef<{ client_id: string; body: string } | null>(null);
+type CommentsProps = { listId: string; taskId: string; writable: boolean; workspaceId?: string };
+
+/** Comment panel state; a draft is kept, and a retry reuses one client id until the outcome is known. */
+function useTaskComments({ listId, taskId, workspaceId }: CommentsProps) {
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState<Page | null>(null);
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const generation = useRef(0);
+  const attempt = useRef<{ client_id: string; body: string } | null>(null);
   const path = `/todos/lists/${listId}/tasks/${taskId}/comments`;
+
   useEffect(() => {
     return () => {
       invalidate(generation);
     };
   }, [listId, taskId]);
+
   const updates = useTaskUpdates(open && workspaceId ? [workspaceId] : [], () => {
-    ++generation.current;
+    generation.current += 1;
     setPage(null);
     setOpen(false);
     setText("");
@@ -49,9 +44,11 @@ export function TaskComments({
     setBusy(false);
     setLoading(false);
   });
+
   async function load(before?: number) {
-    const seen = updates.snapshot();
-    const token = ++generation.current;
+    const seenVersion = updates.snapshot();
+    generation.current += 1;
+    const token = generation.current;
     setOpen(true);
     setPage(null);
     setError("");
@@ -60,7 +57,7 @@ export function TaskComments({
       const result = await api<Page>(path, { params: { before } });
       if (token === generation.current) {
         setPage(result);
-        if (before === undefined) updates.acknowledge(seen);
+        if (before === undefined) updates.acknowledge(seenVersion);
       }
     } catch (e: unknown) {
       if (token === generation.current) setError(errorMessage(e));
@@ -68,10 +65,12 @@ export function TaskComments({
       if (token === generation.current) setLoading(false);
     }
   }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    const token = ++generation.current;
+    generation.current += 1;
+    const token = generation.current;
     setBusy(true);
     setError("");
     setLoading(false);
@@ -95,80 +94,93 @@ export function TaskComments({
       if (token === generation.current) setBusy(false);
     }
   }
-  if (!open)
+
+  function close() {
+    generation.current += 1;
+    setOpen(false);
+    setPage(null);
+  }
+
+  return { open, page, text, setText, error, loading, busy, unconfirmed, updates, load, submit, close };
+}
+
+function CommentList({ page }: { page: Page }) {
+  if (page.items.length === 0) return <p>No comments yet.</p>;
+  return (
+    <ol>
+      {page.items.map((comment) => (
+        <li key={comment.id} data-comment-sequence={comment.sequence}>
+          <p>
+            <strong>{comment.author.display_name}</strong> · {new Date(comment.created_at).toLocaleString()}
+          </p>
+          <p className="task__text">{comment.body}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function CommentForm({ comments }: { comments: ReturnType<typeof useTaskComments> }) {
+  const { busy, unconfirmed, text } = comments;
+  return (
+    <form onSubmit={comments.submit}>
+      <TextArea
+        label="New task comment"
+        maxLength={4000}
+        value={text}
+        disabled={busy || unconfirmed}
+        onChange={(e) => comments.setText(e.target.value)}
+      />
+      {unconfirmed && (
+        <p role="status">
+          Comment creation is unconfirmed. Retry the same request to recover it; the original text is kept
+          unchanged.
+        </p>
+      )}
+      <Button size="sm" variant="primary" type="submit" disabled={busy || !text.trim()}>
+        {busy ? "Posting…" : unconfirmed ? "Retry same comment" : "Post comment"}
+      </Button>
+    </form>
+  );
+}
+
+export function TaskComments(props: CommentsProps) {
+  const { writable, workspaceId } = props;
+  const comments = useTaskComments(props);
+  const { page, busy } = comments;
+  if (!comments.open) {
     return (
-      <Button size="sm" onClick={() => load()}>
+      <Button size="sm" onClick={() => comments.load()}>
         View comments
       </Button>
     );
+  }
   return (
     <section className="task-panel" aria-label="Task comments">
       <h5>Comments</h5>
       <p>Refresh comments to see new discussion.</p>
-      {workspaceId && updates.pending && (
+      {workspaceId && comments.updates.pending && (
         <p role="status">Shared discussion may have changed. Refresh comments; your draft is kept.</p>
       )}
-      <Button size="sm" disabled={busy} onClick={() => load()}>
+      <Button size="sm" disabled={busy} onClick={() => comments.load()}>
         Refresh comments
       </Button>
-      <Button
-        size="sm"
-        disabled={busy}
-        onClick={() => {
-          ++generation.current;
-          setOpen(false);
-          setPage(null);
-        }}
-      >
+      <Button size="sm" disabled={busy} onClick={comments.close}>
         Close comments
       </Button>
-      {loading && <p role="status">Loading comments…</p>}
-      {error && (
+      {comments.loading && <p role="status">Loading comments…</p>}
+      {comments.error && (
         <p className="task__error" role="alert">
-          {error}
+          {comments.error}
         </p>
       )}
-      {page &&
-        (page.items.length === 0 ? (
-          <p>No comments yet.</p>
-        ) : (
-          <ol>
-            {page.items.map((comment) => (
-              <li key={comment.id} data-comment-sequence={comment.sequence}>
-                <p>
-                  <strong>{comment.author.display_name}</strong> ·{" "}
-                  {new Date(comment.created_at).toLocaleString()}
-                </p>
-                <p className="task__text">{comment.body}</p>
-              </li>
-            ))}
-          </ol>
-        ))}
+      {page && <CommentList page={page} />}
       {page?.next_cursor && (
-        <Button size="sm" disabled={busy} onClick={() => load(page.next_cursor!)}>
+        <Button size="sm" disabled={busy} onClick={() => comments.load(page.next_cursor!)}>
           Older comments
         </Button>
       )}
-      {writable && (
-        <form onSubmit={submit}>
-          <TextArea
-            label="New task comment"
-            maxLength={4000}
-            value={text}
-            disabled={busy || unconfirmed}
-            onChange={(e) => setText(e.target.value)}
-          />
-          {unconfirmed && (
-            <p role="status">
-              Comment creation is unconfirmed. Retry the same request to recover it; the original text is kept
-              unchanged.
-            </p>
-          )}
-          <Button size="sm" variant="primary" type="submit" disabled={busy || !text.trim()}>
-            {busy ? "Posting…" : unconfirmed ? "Retry same comment" : "Post comment"}
-          </Button>
-        </form>
-      )}
+      {writable && <CommentForm comments={comments} />}
       {!writable && <p>This task is read-only.</p>}
     </section>
   );
