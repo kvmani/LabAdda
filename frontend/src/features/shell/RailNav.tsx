@@ -63,6 +63,9 @@ export function RailNav({ workspaces, currentId, operations, error }: RailNavPro
         <PersonalLink to="/todos">
           <span className="shell-rail__name">My To-do Lists</span> <Tag>private</Tag>
         </PersonalLink>
+        <PersonalLink to="/whiteboard">
+          My Whiteboard <Tag>private</Tag>
+        </PersonalLink>
         <PersonalLink to="/notes">
           <span className="shell-rail__name">My Notes</span> <Tag>private</Tag>
         </PersonalLink>

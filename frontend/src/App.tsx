@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { EmptyState, PageHeader, Skeleton } from "./ui";
 import { AdminBoundary } from "./features/admin/AdminBoundary";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -17,6 +17,9 @@ import { ProfilePage } from "./features/profile/ProfilePage";
 import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
 import { HelpBoundary } from "./features/help/HelpBoundary";
+
+import { clearBoardDraft } from "./features/personal-board/draft";
+import { PersonalBoard } from "./features/personal-board/PersonalBoard";
 
 const Admin = lazy(() => import("./pages/Admin"));
 const Help = lazy(() => import("./pages/Help"));
@@ -47,6 +50,9 @@ function Home() {
 export function App() {
   const { session, loading } = useSession();
   const location = useLocation();
+  useEffect(() => {
+    if (!session) clearBoardDraft();
+  }, [session]);
   if (loading) return <Skeleton label="Loading LabAdda…" lines={3} />;
   if (!session) {
     return (
@@ -74,6 +80,7 @@ export function App() {
           <Route path="/my-tasks" element={<MyTasks />} />
           <Route path="/todos" element={<Todos />} />
           <Route path="/notes" element={<Notes />} />
+          <Route path="/whiteboard" element={<PersonalBoard key={session.user.id} />} />
           <Route path="/usage" element={<Usage />} />
           <Route path="/operations" element={<Navigate to="/admin/storage" replace />} />
           <Route path="/groups/new" element={<NewGroup />} />

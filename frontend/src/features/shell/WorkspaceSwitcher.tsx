@@ -4,6 +4,7 @@ import type { Workspace } from "../../types";
 
 /** Personal pages offered by the switcher; values are stable because browser checks select them. */
 const PERSONAL: { value: string; label: string; to: string }[] = [
+  { value: "whiteboard", label: "My Whiteboard (private)", to: "/whiteboard" },
   { value: "today", label: "My day", to: "/today" },
   { value: "preferences", label: "Alert preferences", to: "/preferences" },
   { value: "private_conversation", label: "Private conversation", to: "/groups/new?conversation=1" },
