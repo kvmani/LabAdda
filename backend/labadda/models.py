@@ -933,3 +933,13 @@ class OpsEvent(Base):
             postgresql_where=text("state <> 'resolved'"),
         ),
     )
+
+
+class PersonalBoardRevision(Base):
+    """Append-only owner-private board documents; older work survives later revisions."""
+
+    __tablename__ = "personal_board_revisions"
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    objects: Mapped[list] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _created()

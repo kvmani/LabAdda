@@ -50,6 +50,20 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
         json={"body": "Recovery post", "attachment_ids": [asset["id"], picture_id]},
     )
     assert post.status_code == 201
+    personal_board = ben.put(
+        "/me/whiteboard",
+        json={
+            "revision": 0,
+            "objects": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "kind": "sticky",
+                    "color": "mint",
+                    "text": "Private recovery sketch",
+                }
+            ],
+        },
+    ).json()
     note = ben.post("/notes", json={"title": "Private recovery note", "body": "fixture"})
     assert note.status_code == 201
     chat_asset = ben.post("/uploads", files={"file": ("chat-handoff.pdf", pdf, "application/pdf")}).json()
@@ -277,6 +291,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
                 p["id"] == post.json()["id"] and p["body"] == "Recovery post"
                 for p in api.get(f"/workspaces/{workspace}/posts").json()["posts"]
             )
+            assert api.get("/me/whiteboard").json() == personal_board
             assert api.get(f"/notes/{note.json()['id']}").json()["title"] == "Private recovery note"
             assert api.get(f"/files/{asset['id']}").content == pdf
             assert api.get(f"/files/{picture_id}/preview").content == preview

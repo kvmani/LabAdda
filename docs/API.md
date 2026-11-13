@@ -1088,3 +1088,14 @@ behaves for them exactly as for any member.
   `/admin/changes/import/*`, `/admin/org/unit-admins`, and every other `/admin/*` route
   including the legacy `/admin/users` and `/admin/workspaces` tools, audit, usage, storage,
   settings and health. Board-only sessions are 401 everywhere.
+
+## Personal whiteboard
+
+`GET /me/whiteboard` returns `{revision, objects}` for the authenticated owner only (empty revision 0
+initially). `PUT /me/whiteboard` accepts `{revision, objects}`; objects are bounded strokes or sticky
+notes. Successful saves append a retained revision and return the new document. A repeated identical
+save against the preceding revision returns the existing result; different stale content returns
+409 `stale_revision`. No caller-supplied owner or workspace is accepted. Other members and admins
+see only their own board; panel-intent and board sessions are denied (401). No shared socket,
+workspace search, notification, or analytics content path includes personal boards. At most 500
+objects, 20,000 points and 250,000 encoded bytes per save; 422 on invalid or oversized input.
