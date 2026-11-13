@@ -255,10 +255,10 @@
   }
   .shell-topbar__notifications,
   .shell-topbar__link {
-    padding: 0 var(--space-2);
+    padding: 0 var(--space-1);
   }
   .shell-topbar .ui-menu .ui-button > span {
-    max-width: 3.5rem;
+    max-width: 2.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -50,7 +50,7 @@ async function checkChunkRecovery(admin, base) {
   await admin.page.goto(origin + base + "/admin");
   await admin.page.getByRole("alert").filter({ hasText: "Administration could not be loaded" }).waitFor();
   check(
-    await admin.page.getByRole("link", { name: "LabAdda", exact: true }).isVisible(),
+    await admin.page.getByRole("link", { name: "LabAdda home", exact: true }).isVisible(),
     base + " failed console chunk leaves application navigation available",
   );
   await admin.page.unroute(chunk, unavailable);
@@ -59,6 +59,22 @@ async function checkChunkRecovery(admin, base) {
   check(true, base + " console chunk failure recovers through explicit reload");
 }
 
+const ADMIN_SECTIONS = [
+  "Overview",
+  "People",
+  "Organisation",
+  "Activity",
+  "System health",
+  "Storage",
+  "Backups",
+  "Audit",
+  "Events",
+  "Broadcast",
+  "Feedback",
+  "Settings",
+  "Help for administrators",
+];
+
 async function checkAdmin(admin, base) {
   const { page } = admin;
   await page.goto(origin + base + "/admin");
@@ -66,7 +82,11 @@ async function checkAdmin(admin, base) {
   await page.getByRole("region", { name: "Overall state" }).waitFor();
   check(true, base + " overview page is the console index");
   const navigation = page.getByRole("navigation", { name: "Administration", exact: true });
-  check((await navigation.getByRole("link").count()) === 11, base + " eleven administrator sections");
+  const sections = (await navigation.getByRole("link").allInnerTexts()).map((text) => text.trim());
+  check(
+    sections.join("|") === ADMIN_SECTIONS.join("|"),
+    base + " administrator sections are " + ADMIN_SECTIONS.join(", "),
+  );
   await navigation.getByRole("link", { name: "People", exact: true }).click();
   await page.getByRole("link", { name: "Basic account tools", exact: true }).click();
   await page.getByRole("heading", { name: "Accounts", exact: true }).waitFor();
