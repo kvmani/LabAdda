@@ -94,15 +94,19 @@ async function reviewAndApply(page, base, dialog, shot, confirm) {
   await press(dialog.getByRole("button", { name: "Done", exact: true }));
 }
 async function schedule(page, base) {
-  const drawer = await openProfile(page, base, "Ben Okafor");
+  const drawer = await openProfile(page, base, "Bharat Kulkarni");
   await press(drawer.getByRole("button", { name: "Record long leave", exact: true }));
-  const dialog = page.getByRole("dialog", { name: "Record long leave for Ben Okafor", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Record long leave for Bharat Kulkarni", exact: true });
   await dialog.getByLabel(/^Expected return date/).fill(day(90));
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
-  await dialog.getByText("Set the employment status of Ben Okafor to on leave", { exact: true }).waitFor();
+  await dialog
+    .getByText("Set the employment status of Bharat Kulkarni to on leave", { exact: true })
+    .waitFor();
   await choose(dialog, "When should this happen?", "At the start of a later day");
   await dialog.getByLabel(/^Day it takes effect/).fill(day(3));
-  await dialog.getByText("Set the employment status of Ben Okafor to on leave", { exact: true }).waitFor();
+  await dialog
+    .getByText("Set the employment status of Bharat Kulkarni to on leave", { exact: true })
+    .waitFor();
   await dialog.getByLabel(/^Reason for this change/).fill("Leave starts with the new term");
   await audit(page, 1400, `${base} schedule review`);
   await audit(page, 390, `${base} schedule review`);
@@ -113,10 +117,10 @@ async function schedule(page, base) {
   await press(dialog.getByRole("button", { name: "Done", exact: true }));
   await drawer.getByText("Scheduled changes for this person", { exact: true }).waitFor();
   check(
-    (await drawer.innerText()).includes("Set the employment status of Ben Okafor to on leave"),
+    (await drawer.innerText()).includes("Set the employment status of Bharat Kulkarni to on leave"),
     base + " profile lists the scheduled change",
   );
-  check(!(await drawer.getByText("on leave", { exact: true }).count()), base + " Ben is not on leave yet");
+  check(!(await drawer.getByText("on leave", { exact: true }).count()), base + " Bharat is not on leave yet");
   await page.keyboard.press("Escape");
 }
 async function overview(page, base) {

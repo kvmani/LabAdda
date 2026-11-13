@@ -34,7 +34,7 @@ def test_save_read_retry_and_conflict(as_user, db_factory):
         assert rows[0].objects[0]["text"] == "Private test note"
 
 
-@pytest.mark.parametrize("other", ["ben", "chen", "dana", "admin", "eli"])
+@pytest.mark.parametrize("other", ["bharat", "chitra", "deepa", "admin", "esha"])
 def test_no_other_user_or_admin_content_access(as_user, other):
     as_user("asha").put("/me/whiteboard", json={"revision": 0, "objects": [note("Private marker")]})
     client = as_user(other)
@@ -46,7 +46,7 @@ def test_no_other_user_or_admin_content_access(as_user, other):
 def test_denied_and_scope_injection(as_user, make_client):
     client = make_client()
     assert client.get("/me/whiteboard").status_code == 401
-    assert client.login("fay").status_code == 401
+    assert client.login("farhan").status_code == 401
     owner = as_user("asha")
     for path, headers in [("/me/whiteboard", {"X-LabAdda-Panel": "1"}), ("/me/whiteboard?panel=1", {})]:
         assert owner.get(path, headers=headers).status_code == 401

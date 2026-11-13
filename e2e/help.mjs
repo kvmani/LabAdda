@@ -161,7 +161,7 @@ async function checkDrawer(member, base) {
 
 try {
   for (const base of ["", "/labadda-staging"]) {
-    const member = await signIn(base, "ben"),
+    const member = await signIn(base, "bharat"),
       admin = await signIn(base, "admin");
     await checkHome(member, admin, base);
     await checkSearch(member, base);

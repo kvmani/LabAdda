@@ -71,8 +71,8 @@ def test_unmeasured_figures_stay_unknown_beside_measured_people(db_factory, sett
 
 
 def test_site_figures_below_five_people_are_suppressed(db_factory, settings, ids):
-    mark_active(db_factory, [ids["users"]["ben"]], TODAY)
-    mark_active(db_factory, [ids["users"]["ben"], ids["users"]["asha"]], TODAY - timedelta(days=8))
+    mark_active(db_factory, [ids["users"]["bharat"]], TODAY)
+    mark_active(db_factory, [ids["users"]["bharat"], ids["users"]["asha"]], TODAY - timedelta(days=8))
     store(
         db_factory,
         "hour",
@@ -223,12 +223,12 @@ def test_result_cache_serves_for_sixty_seconds():
 @pytest.mark.parametrize("path", PATHS)
 def test_administrator_and_usage_reader_may_read(as_user, ids, path):
     assert as_user("admin").get(path, params={"period": "90d"}).status_code == 200
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").get(path).status_code == 200
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").get(path).status_code == 200
 
 
 @pytest.mark.parametrize("path", PATHS)
-@pytest.mark.parametrize("username", ["asha", "chen", "dana", "eli", "ben"])
+@pytest.mark.parametrize("username", ["asha", "chitra", "deepa", "esha", "bharat"])
 def test_members_without_a_grant_are_forbidden(as_user, username, path):
     response = as_user(username).get(path)
     assert response.status_code == 403
@@ -239,7 +239,7 @@ def test_members_without_a_grant_are_forbidden(as_user, username, path):
 def test_signed_out_deactivated_and_panel_sessions_are_refused(as_user, make_client, ids, path):
     client = make_client()
     assert client.get(path).status_code == 401
-    assert client.login("fay").status_code == 401
+    assert client.login("farhan").status_code == 401
     assert client.get(path).status_code == 401
     kiosk = pair(as_user, make_client, ids)
     assert kiosk.get(path).status_code == 401
@@ -247,8 +247,8 @@ def test_signed_out_deactivated_and_panel_sessions_are_refused(as_user, make_cli
 
 
 def test_usage_reader_cannot_write_through_analytics(as_user, ids):
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    response = as_user("ben").post("/admin/analytics/summary", json={})
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    response = as_user("bharat").post("/admin/analytics/summary", json={})
     assert response.status_code == 405
 
 
@@ -275,9 +275,9 @@ def analytics_api():
 
 def test_export_is_audited_and_shows_only_protected_figures(as_user, ids, db_factory, settings):
     today = site_date(settings)
-    mark_active(db_factory, [ids["users"]["asha"], ids["users"]["ben"]], today)
-    assert grant(as_user("admin"), ids["users"]["dana"]).status_code == 201
-    response = as_user("dana").get("/admin/analytics/export.csv", params={"period": "7d"})
+    mark_active(db_factory, [ids["users"]["asha"], ids["users"]["bharat"]], today)
+    assert grant(as_user("admin"), ids["users"]["deepa"]).status_code == 201
+    response = as_user("deepa").get("/admin/analytics/export.csv", params={"period": "7d"})
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     body = response.text
@@ -285,16 +285,16 @@ def test_export_is_audited_and_shows_only_protected_figures(as_user, ids, db_fac
     assert "Active people by home unit,Thin Films Section,fewer than 5," in body
     with db_factory() as db:
         event = db.scalars(select(AuditEvent).where(AuditEvent.action == "analytics.export")).one()
-    assert str(event.actor_id) == ids["users"]["dana"]
+    assert str(event.actor_id) == ids["users"]["deepa"]
     assert event.detail == {"period": "last 7 days", "rows": str(body.count("\n") - 1)}
 
 
 def test_no_content_in_any_analytics_response(as_user, ids, db_factory):
-    seed_content(as_user("ben"), ids["workspaces"]["section_a"])
+    seed_content(as_user("bharat"), ids["workspaces"]["section_a"])
     with db_factory() as db:
         assert flush(db, now=datetime.now(UTC) + timedelta(minutes=2), registry=REGISTRY) > 0
     admin = as_user("admin")
-    hidden = (*SECRETS, "Project Aurora", "Microscopy Reading Club", "Invite-only pilot project")
+    hidden = (*SECRETS, "Project Tejas", "Microscopy Journal Club", "Invite-only pilot project")
     for period in analytics.PERIOD_DAYS:
         analytics.CACHE.clear()
         for path in PATHS:

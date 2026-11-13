@@ -51,34 +51,34 @@ async function postComment(region, text) {
   await commentItem(region, text).waitFor();
 }
 
-async function seedTasks(ben, section, division) {
+async function seedTasks(bharat, section, division) {
   return {
-    shared: await createListWithTask(ben, section.id, "Research discussion"),
-    personal: await createListWithTask(ben, null, "Private followup"),
-    other: await createListWithTask(ben, null, "Other private research"),
-    divisionTask: await createListWithTask(ben, division.id, "Division analysis"),
+    shared: await createListWithTask(bharat, section.id, "Research discussion"),
+    personal: await createListWithTask(bharat, null, "Private followup"),
+    other: await createListWithTask(bharat, null, "Other private research"),
+    divisionTask: await createListWithTask(bharat, division.id, "Division analysis"),
   };
 }
 
-async function checkLostCommentReply(ben, base, region, shared, text) {
+async function checkLostCommentReply(bharat, base, region, shared, text) {
   await commentBox(region).fill(text);
-  await loseNextResponse(ben.page, "**/api/v1/todos/lists/*/tasks/*/comments");
+  await loseNextResponse(bharat.page, "**/api/v1/todos/lists/*/tasks/*/comments");
   await buttonNamed(region, "Post comment").click();
   await buttonNamed(region, "Retry same comment").waitFor();
   check(await commentBox(region).isDisabled(), base + " unknown comment freezes original intent");
   await buttonNamed(region, "Retry same comment").click();
   await commentItem(region, text).waitFor();
-  const committed = (await jsonOf(ben, shared.path)).items;
+  const committed = (await jsonOf(bharat, shared.path)).items;
   check(
     committed.length === 1 && committed[0].sequence === 1,
     base + " lost reply recovers exactly one comment",
   );
   check((await region.locator("script").count()) === 0, base + " active-looking text is escaped");
-  const task = await jsonOf(ben, shared.path.replace("/comments", ""));
+  const task = await jsonOf(bharat, shared.path.replace("/comments", ""));
   check(task.revision === 1, base + " comment does not change task revision");
 }
 
-async function checkColleagueDiscussion(ben, asha, base, region, data, text) {
+async function checkColleagueDiscussion(bharat, asha, base, region, data, text) {
   const ashaRegion = await openComments(asha, base, data.section.id, data.shared);
   await ashaRegion.getByText(text, { exact: true }).waitFor();
   await postComment(ashaRegion, "Instrument calibrated before this run.");
@@ -88,8 +88,8 @@ async function checkColleagueDiscussion(ben, asha, base, region, data, text) {
   check(authorCount === 1, base + " colleague authorship and discussion visible after refresh");
 }
 
-async function checkDraftSurvivesRefreshAndEdit(ben, base, region, shared) {
-  const page = ben.page;
+async function checkDraftSurvivesRefreshAndEdit(bharat, base, region, shared) {
+  const page = bharat.page;
   const draft = "Unsent research followup β";
   await commentBox(region).fill(draft);
   const refreshed = page.waitForResponse(
@@ -111,23 +111,23 @@ async function checkDraftSurvivesRefreshAndEdit(ben, base, region, shared) {
   return draft;
 }
 
-async function checkAudienceBoundaries({ ben, asha, chen, dana, admin }, base, data) {
-  for (const outsider of [chen, dana, admin]) {
+async function checkAudienceBoundaries({ bharat, asha, chitra, deepa, admin }, base, data) {
+  for (const outsider of [chitra, deepa, admin]) {
     check(
       (await statusOf(outsider, data.shared.path)) === 404,
       base + " sibling/parent/admin cannot read section discussion",
     );
   }
-  const divisionRegion = await openComments(chen, base, data.division.id, data.divisionTask);
+  const divisionRegion = await openComments(chitra, base, data.division.id, data.divisionTask);
   await postComment(divisionRegion, "Cross-section correlation is ready for division review.");
-  const divisionComments = await jsonOf(dana, data.divisionTask.path);
+  const divisionComments = await jsonOf(deepa, data.divisionTask.path);
   check(
-    divisionComments.items[0].author.id === chen.session.user.id,
+    divisionComments.items[0].author.id === chitra.session.user.id,
     base + " division discussion spans sibling sections and steward",
   );
-  const privateRegion = await openComments(ben, base, null, data.personal);
+  const privateRegion = await openComments(bharat, base, null, data.personal);
   await postComment(privateRegion, "Owner-only experimental note.");
-  for (const outsider of [asha, chen, dana, admin]) {
+  for (const outsider of [asha, chitra, deepa, admin]) {
     check(
       (await statusOf(outsider, data.personal.path)) === 404,
       base + " personal discussion denies all colleagues/admin",
@@ -136,8 +136,8 @@ async function checkAudienceBoundaries({ ben, asha, chen, dana, admin }, base, d
   return privateRegion;
 }
 
-async function checkDelayedCommentsOnOtherTask(ben, base, privateRegion, data) {
-  const page = ben.page;
+async function checkDelayedCommentsOnOtherTask(bharat, base, privateRegion, data) {
+  const page = bharat.page;
   const heldComments = await holdFirstResponse(page, "**/api/v1" + data.personal.path);
   await buttonNamed(privateRegion, "Refresh comments").click();
   await heldComments.captured;
@@ -152,30 +152,30 @@ async function checkDelayedCommentsOnOtherTask(ben, base, privateRegion, data) {
   check(leaked === 0 && regions === 0, base + " delayed comments cannot populate another task");
 }
 
-async function checkReadOnlyWorkspace({ ben, asha }, base, data, draft) {
+async function checkReadOnlyWorkspace({ bharat, asha }, base, data, draft) {
   const policy = await asha.ctx.request.patch(asha.api + "/workspaces/" + data.section.id + "/policy", {
     headers: asha.headers,
     data: { posting_policy: "read_only" },
   });
   check(policy.status() === 200, base + " real workspace read-only policy applied");
-  const region = await openComments(ben, base, data.section.id, data.shared);
+  const region = await openComments(bharat, base, data.section.id, data.shared);
   await region.getByText(draft, { exact: true }).waitFor();
   const postButtons = await buttonNamed(region, "Post comment").count();
   check(postButtons === 0, base + " read-only view hides posting controls");
-  const denied = await ben.ctx.request.post(ben.api + data.shared.path, {
-    headers: ben.headers,
+  const denied = await bharat.ctx.request.post(bharat.api + data.shared.path, {
+    headers: bharat.headers,
     data: { client_id: crypto.randomUUID(), body: "Denied" },
   });
   check(denied.status() === 403, base + " read-only direct posting denied");
 }
 
-async function checkCommentLayouts(ben, base) {
+async function checkCommentLayouts(bharat, base) {
   for (const width of [1400, 390]) {
-    await ben.page.setViewportSize({ width, height: 1100 });
-    const violations = await axeViolations(ben.page);
+    await bharat.page.setViewportSize({ width, height: 1100 });
+    const violations = await axeViolations(bharat.page);
     check(violations.length === 0, base + " comments axe " + width + " " + violations.join(","));
-    check(await hasNoSideScroll(ben.page), base + " comments overflow " + width);
-    await ben.page.screenshot({
+    check(await hasNoSideScroll(bharat.page), base + " comments overflow " + width);
+    await bharat.page.screenshot({
       path: outputDir + "/" + (base ? "prefix" : "root") + "-" + width + ".png",
       fullPage: true,
     });
@@ -185,33 +185,33 @@ async function checkCommentLayouts(ben, base) {
 try {
   for (const base of bases) {
     const people = {
-      ben: await login(base, "ben"),
+      bharat: await login(base, "bharat"),
       asha: await login(base, "asha"),
-      chen: await login(base, "chen"),
-      dana: await login(base, "dana"),
+      chitra: await login(base, "chitra"),
+      deepa: await login(base, "deepa"),
       admin: await login(base, "admin"),
     };
-    const { ben, asha, admin } = people;
-    const spaces = (await jsonOf(ben, "/workspaces")).workspaces;
+    const { bharat, asha, admin } = people;
+    const spaces = (await jsonOf(bharat, "/workspaces")).workspaces;
     const section = spaces.find((workspace) => workspace.name === "Thin Films Section");
-    const division = spaces.find((workspace) => workspace.name === "Surface Science Division");
-    const tasks = await seedTasks(ben, section, division);
+    const division = spaces.find((workspace) => workspace.name === "Surface Engineering Division");
+    const tasks = await seedTasks(bharat, section, division);
     const data = { section, division, ...tasks };
-    const region = await openComments(ben, base, section.id, data.shared);
+    const region = await openComments(bharat, base, section.id, data.shared);
     await region.getByText("No comments yet.", { exact: true }).waitFor();
     const text = 'Calibrate α first.\n<script>alert("inert fixture")</script> is plain text.';
-    await checkLostCommentReply(ben, base, region, data.shared, text);
-    await checkColleagueDiscussion(ben, asha, base, region, data, text);
-    const draft = await checkDraftSurvivesRefreshAndEdit(ben, base, region, data.shared);
+    await checkLostCommentReply(bharat, base, region, data.shared, text);
+    await checkColleagueDiscussion(bharat, asha, base, region, data, text);
+    const draft = await checkDraftSurvivesRefreshAndEdit(bharat, base, region, data.shared);
     const privateRegion = await checkAudienceBoundaries(people, base, data);
-    await checkDelayedCommentsOnOtherTask(ben, base, privateRegion, data);
+    await checkDelayedCommentsOnOtherTask(bharat, base, privateRegion, data);
     await checkReadOnlyWorkspace(people, base, data, draft);
-    await checkCommentLayouts(ben, base);
+    await checkCommentLayouts(bharat, base);
     await admin.ctx.request.delete(
-      admin.api + `/admin/workspaces/${section.id}/memberships/${ben.session.user.id}`,
+      admin.api + `/admin/workspaces/${section.id}/memberships/${bharat.session.user.id}`,
       { headers: admin.headers },
     );
-    check((await statusOf(ben, data.shared.path)) === 404, base + " revoked discussion access denied");
+    check((await statusOf(bharat, data.shared.path)) === 404, base + " revoked discussion access denied");
     for (const person of Object.values(people)) await person.ctx.close();
   }
   console.log(`${harness.checks()} comment browser checks passed`);

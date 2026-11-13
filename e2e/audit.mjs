@@ -107,7 +107,7 @@ async function filters(page, base) {
     base + " refresh keeps every filter",
   );
   await page.getByRole("button", { name: "Clear audit filters" }).first().click();
-  await page.getByLabel("Done by", { exact: true }).selectOption({ label: "Ben Okafor (ben)" });
+  await page.getByLabel("Done by", { exact: true }).selectOption({ label: "Bharat Kulkarni (bharat)" });
   await page
     .getByRole("button", { name: /^Open details: .* signed in\.$/ })
     .first()
@@ -184,7 +184,7 @@ try {
   for (const base of ["", "/labadda-staging"]) {
     seed(base);
     const admin = await login(base, "admin");
-    const member = await login(base, "ben");
+    const member = await login(base, "bharat");
     try {
       await browse(admin.page, base);
       await filters(admin.page, base);

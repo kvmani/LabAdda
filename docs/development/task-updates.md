@@ -39,7 +39,7 @@ in-flight callbacks. A failed catch-up keeps the notice. Reconnect can signal a
 possible change even when no task changed: there is no durable task event cursor.
 
 Browser regression: `e2e/task-updates.mjs` on fresh disposable proxy fixtures; it
-revokes Ben at the end. Cover root/prefix, task/comment/assignment drafts, current
+revokes Bharat at the end. Cover root/prefix, task/comment/assignment drafts, current
 page preservation, in-flight newer hints, failed reads, offline writes/reconnect,
 My Tasks, actual hint payload and sibling/revocation boundaries. Run the existing
 assignment/comment/task browser regressions separately after fresh proxy resets.

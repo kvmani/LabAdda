@@ -15,7 +15,7 @@ from tests.test_panel import pair
 
 
 def add(ids, username="gita", display_name="Gita Sen", unit="section_b", role="member", **extra):
-    """Build a fictional onboarding request for the Catalysis Section by default."""
+    """Build a fictional onboarding request for the Corrosion Section by default."""
     return {
         "request": {
             "kind": "add_person",
@@ -48,13 +48,13 @@ def test_add_creates_invited_person_with_home_membership_and_one_time_code(
         username="  Gita.Sen ",
         display_name=" Gita Sen ",
         role="steward",
-        fields={"designation": "Scientific Officer C", "employee_no": "NW-310"},
+        fields={"designation": "Scientific Officer C", "employee_no": "NM-310"},
         joined_on="2026-11-16",
     )
     plan = preview(admin, request)
     assert [step["summary"] for step in plan["steps"]] == [
         "Create an invited account for Gita Sen (gita.sen)",
-        "Make Catalysis Section the home unit of Gita Sen, as steward",
+        "Make Corrosion Section the home unit of Gita Sen, as steward",
         "Issue a one-time activation code",
     ]
     assert plan["blockers"] == [] and plan["affected_people"] == 1
@@ -97,15 +97,15 @@ def test_add_creates_invited_person_with_home_membership_and_one_time_code(
 @pytest.mark.parametrize(
     ("request_overrides", "code"),
     [
-        ({"username": "ben", "display_name": "Bilal Shah"}, "username_taken"),
-        ({"fields": {"employee_no": "NW-200"}}, "duplicate_employee"),
+        ({"username": "bharat", "display_name": "Bilal Shah"}, "username_taken"),
+        ({"fields": {"employee_no": "NM-200"}}, "duplicate_employee"),
         ({"unit": "project"}, "unit_unavailable"),
         ({"unit": "reading_club"}, "unit_unavailable"),
     ],
 )
 def test_blocked_onboarding_cannot_be_applied(request_overrides, code, as_user, ids, db_factory):
     with db_factory() as db:
-        db.get(User, ids["users"]["chen"]).employee_no = "NW-200"
+        db.get(User, ids["users"]["chitra"]).employee_no = "NM-200"
         db.commit()
     admin = as_user("admin")
     request = add(ids, **request_overrides)
@@ -123,18 +123,20 @@ def test_archived_and_missing_home_units(as_user, ids, db_factory):
         db.commit()
     assert preview(admin, add(ids))["blockers"][0]["code"] == "unit_unavailable"
     missing = add(ids)
-    missing["request"]["home_unit_id"] = ids["users"]["ben"]
+    missing["request"]["home_unit_id"] = ids["users"]["bharat"]
     assert admin.post("/admin/changes/preview", json=missing).status_code == 404
 
 
-@pytest.mark.parametrize("display_name", ["Ben Okafor", "Okafor, Ben", "Ben Okafr", "BEN OKAFOR"])
+@pytest.mark.parametrize(
+    "display_name", ["Bharat Kulkarni", "Kulkarni, Bharat", "Bharat Kulkrni", "BHARAT KULKARNI"]
+)
 def test_very_similar_names_warn_without_blocking(display_name, as_user, ids):
-    plan = preview(as_user("admin"), add(ids, username="bokafor", display_name=display_name))
+    plan = preview(as_user("admin"), add(ids, username="bkulkarni", display_name=display_name))
     assert plan["blockers"] == []
     warning = plan["warnings"][0]
     assert warning["code"] == "similar_name"
-    assert warning["target_id"] == ids["users"]["ben"]
-    assert "Ben Okafor (ben)" in warning["message"]
+    assert warning["target_id"] == ids["users"]["bharat"]
+    assert "Bharat Kulkarni (bharat)" in warning["message"]
 
 
 def test_distinct_names_do_not_warn(as_user, ids):
@@ -196,7 +198,7 @@ def test_failure_in_the_last_audit_step_writes_nothing(as_user, ids, db_factory)
         assert db.scalar(select(func.count()).select_from(Membership)) == 9
 
 
-@pytest.mark.parametrize("username", ["asha", "ben", "chen", "dana", "eli"])
+@pytest.mark.parametrize("username", ["asha", "bharat", "chitra", "deepa", "esha"])
 def test_members_cannot_onboard(username, as_user, ids):
     member = as_user(username)
     assert member.post("/admin/changes/preview", json=add(ids)).status_code == 403
@@ -210,11 +212,11 @@ def test_signed_out_and_panels_cannot_onboard(as_user, ids, make_client):
 
 def test_onboarding_responses_carry_no_private_content(as_user, ids):
     marker = "Recognisable onboarding secret material"
-    assert as_user("ben").post("/notes", json={"title": marker, "body": marker}).status_code == 201
+    assert as_user("bharat").post("/notes", json={"title": marker, "body": marker}).status_code == 201
     unit = ids["workspaces"]["section_a"]
-    assert as_user("ben").post(f"/workspaces/{unit}/posts", json={"body": marker}).status_code == 201
+    assert as_user("bharat").post(f"/workspaces/{unit}/posts", json={"body": marker}).status_code == 201
     admin = as_user("admin")
-    request = add(ids, display_name="Ben Okafor", username="bokafor")
+    request = add(ids, display_name="Bharat Kulkarni", username="bkulkarni")
     plan = admin.post("/admin/changes/preview", json=request)
     receipt = admin.post("/admin/changes/apply", json=reviewed(admin, request))
     for response in (plan, receipt):
@@ -270,14 +272,14 @@ def test_fresh_activation_code_replaces_unused_codes(as_user, ids, db_factory, m
 
 def test_fresh_activation_code_guards(as_user, ids, make_client):
     admin = as_user("admin")
-    response = reissue(admin, ids["users"]["ben"])
+    response = reissue(admin, ids["users"]["bharat"])
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "not_invited"
     assert reissue(admin, ids["workspaces"]["section_a"]).status_code == 404
-    assert reissue(admin, ids["users"]["ben"], reason="  ").status_code == 422
-    assert reissue(as_user("ben"), ids["users"]["ben"]).status_code == 403
-    assert reissue(make_client(), ids["users"]["ben"]).status_code == 401
-    assert reissue(pair(as_user, make_client, ids), ids["users"]["ben"]).status_code == 401
+    assert reissue(admin, ids["users"]["bharat"], reason="  ").status_code == 422
+    assert reissue(as_user("bharat"), ids["users"]["bharat"]).status_code == 403
+    assert reissue(make_client(), ids["users"]["bharat"]).status_code == 401
+    assert reissue(pair(as_user, make_client, ids), ids["users"]["bharat"]).status_code == 401
 
 
 def test_redemption_waits_for_a_reissue_holding_the_account(as_user, ids, db_factory, make_client):

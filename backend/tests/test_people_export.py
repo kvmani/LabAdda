@@ -23,7 +23,7 @@ def test_formula_prefixes_are_escaped(value):
 
 def test_csv_matches_filters_and_audits_without_search_terms(as_user, ids, db_factory):
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         person.display_name = "=Synthetic staff"
         person.contact_email = "private-staff@research.example"
         db.commit()
@@ -71,4 +71,4 @@ def test_export_rechecks_after_audit_commit(as_user, ids, db_factory):
 
 
 def test_export_rejects_members(as_user):
-    assert as_user("ben").get("/admin/people/export.csv").status_code == 403
+    assert as_user("bharat").get("/admin/people/export.csv").status_code == 403

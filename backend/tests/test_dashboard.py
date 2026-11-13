@@ -20,7 +20,7 @@ def create(api, workspace, title, due=None, done=False):
 
 
 def test_dashboard_personal_assigned_deadlines_and_unread(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     create(api, None, "Personal control", "2026-11-12")
     create(api, None, "Already complete", "2026-11-01", True)
@@ -29,19 +29,19 @@ def test_dashboard_personal_assigned_deadlines_and_unread(as_user, ids):
         as_user("asha")
         .put(
             f"/todos/lists/{listing['id']}/tasks/{task['id']}/assignee",
-            json={"revision": 1, "user_id": ids["users"]["ben"]},
+            json={"revision": 1, "user_id": ids["users"]["bharat"]},
         )
         .status_code
         == 200
     )
     create(as_user("asha"), ws, "Unassigned hidden")
     as_user("asha").post(
-        f"/workspaces/{ws}/chat", json={"body": "@ben review the blank", "client_id": str(uuid.uuid4())}
+        f"/workspaces/{ws}/chat", json={"body": "@bharat review the blank", "client_id": str(uuid.uuid4())}
     )
     result = api.get("/dashboard").json()
     assert [row["title"] for row in result["tasks"]] == ["Assigned witness", "Personal control"]
     assert result["chats"][0]["unread"] == 1 and result["updates"][0]["kind"] == "mention"
-    assert as_user("chen").get("/dashboard").json()["tasks"] == []
+    assert as_user("chitra").get("/dashboard").json()["tasks"] == []
     assert as_user("admin").get("/dashboard").json()["tasks"] == []
     assert api.get("/dashboard", headers={"X-LabAdda-Panel": "1"}).status_code == 401
 
@@ -49,12 +49,12 @@ def test_dashboard_personal_assigned_deadlines_and_unread(as_user, ids):
 def test_dashboard_final_grant_loss_drops_task_chat_and_update(as_user, ids, db_factory, monkeypatch):
     from labadda.api import dashboard
 
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     listing, task = create(api, ws, "Protected assigned")
     api.put(
         f"/todos/lists/{listing['id']}/tasks/{task['id']}/assignee",
-        json={"revision": 1, "user_id": ids["users"]["ben"]},
+        json={"revision": 1, "user_id": ids["users"]["bharat"]},
     )
     original = dashboard._task_json
 
@@ -63,7 +63,7 @@ def test_dashboard_final_grant_loss_drops_task_chat_and_update(as_user, ids, db_
         with db_factory() as db:
             db.execute(
                 delete(Membership).where(
-                    Membership.user_id == ids["users"]["ben"], Membership.workspace_id == ws
+                    Membership.user_id == ids["users"]["bharat"], Membership.workspace_id == ws
                 )
             )
             db.commit()
@@ -82,12 +82,12 @@ def test_dashboard_calendar_uses_configured_timezone(as_user, monkeypatch, app, 
     from labadda.api import dashboard
 
     monkeypatch.setattr(dashboard, "utcnow", lambda: datetime(2026, 11, 10, 23, 30, tzinfo=UTC))
-    result = as_user("ben").get("/dashboard").json()
+    result = as_user("bharat").get("/dashboard").json()
     assert result["timezone"] == "Asia/Kolkata" and result["today"] == "2026-11-11"
 
 
 def test_dashboard_private_notes_are_owner_only(as_user):
-    as_user("ben").post(
+    as_user("bharat").post(
         "/notes",
         json={
             "title": "Private daily reminder",
@@ -95,8 +95,8 @@ def test_dashboard_private_notes_are_owner_only(as_user):
             "due_at": "2026-11-12T09:00:00+05:30",
         },
     )
-    assert as_user("ben").get("/dashboard").json()["notes"][0]["title"] == "Private daily reminder"
-    for name in ["asha", "chen", "admin"]:
+    assert as_user("bharat").get("/dashboard").json()["notes"][0]["title"] == "Private daily reminder"
+    for name in ["asha", "chitra", "admin"]:
         assert as_user(name).get("/dashboard").json()["notes"] == []
 
 
@@ -109,7 +109,7 @@ def test_invalid_dashboard_timezone_is_rejected_at_configuration_load(monkeypatc
 
 
 def test_dashboard_windows_apply_after_active_filter(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     listing = new_list(api)
     for index in range(28):
         assert (

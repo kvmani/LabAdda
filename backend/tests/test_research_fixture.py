@@ -20,7 +20,7 @@ def test_research_art_is_deterministic_and_native(tmp_path):
     for name in ("research-plan.svg", "sticky-notes.svg", "interface-schematic.svg", "board-objects.json"):
         assert (tmp_path / name).read_bytes() == (ART / name).read_bytes()
     objects = json.loads((ART / "board-objects.json").read_text())
-    assert {o["actor"] for o in objects} == {"asha", "ben", "mira", "chen", "dana"}
+    assert {o["actor"] for o in objects} == {"asha", "bharat", "mira", "chitra", "deepa"}
     assert sum(o["kind"] == "sticky" for o in objects) == 5
     assert all(o["kind"] == "sticky" for o in objects[:5])
     assert all(o["kind"] == "stroke" for o in objects[5:])
@@ -37,8 +37,8 @@ def test_research_art_is_deterministic_and_native(tmp_path):
 
 def test_realistic_svg_source_cannot_cross_upload_boundary(as_user):
     svg = (ART / "research-plan.svg").read_bytes()
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     for mime in ("image/svg+xml", "image/png"):
-        response = ben.post("/uploads", files={"file": ("research-plan.svg", svg, mime)})
+        response = bharat.post("/uploads", files={"file": ("research-plan.svg", svg, mime)})
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "unsupported_type"

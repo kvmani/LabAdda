@@ -49,44 +49,44 @@ def reconcile(db_factory, **kw):
 
 
 def test_post_reply_chat_and_note_use_utf8_octets(as_user, ids, db_factory):
-    ben = as_user("ben")
-    post = ben.post(f"/workspaces/{ws(ids)}/posts", json={"body": MULTIBYTE}).json()
+    bharat = as_user("bharat")
+    post = bharat.post(f"/workspaces/{ws(ids)}/posts", json={"body": MULTIBYTE}).json()
     row = charge(db_factory, "post", post["id"])
     assert row.bytes == len(MULTIBYTE.encode()) == 26 and len(MULTIBYTE) == 16  # bytes, not characters
     assert (row.method, row.state, str(row.user_id), str(row.workspace_id)) == (
         TEXT_METHOD,
         "live",
-        ids["users"]["ben"],
+        ids["users"]["bharat"],
         ws(ids),
     )
     reply = as_user("asha").post(f"/posts/{post['id']}/replies", json={"body": "ok"}).json()
     assert charge(db_factory, "post", reply["id"]).bytes == 2
-    ben.patch(f"/posts/{post['id']}", json={"body": "x" * 7})
+    bharat.patch(f"/posts/{post['id']}", json={"body": "x" * 7})
     assert charge(db_factory, "post", post["id"]).bytes == 7
-    ben.delete(f"/posts/{post['id']}")
+    bharat.delete(f"/posts/{post['id']}")
     removed = charge(db_factory, "post", post["id"])
     assert (removed.state, removed.bytes) == (
         "removed",
         7,
     )  # body is still stored: charged as removed, not live
-    msg = ben.post(f"/workspaces/{ws(ids)}/chat", json={"body": MULTIBYTE, "client_id": "chg-0001"}).json()
+    msg = bharat.post(f"/workspaces/{ws(ids)}/chat", json={"body": MULTIBYTE, "client_id": "chg-0001"}).json()
     assert charge(db_factory, "chat", msg["id"]).bytes == 26
-    note = ben.post("/notes", json={"title": "é", "body": "abc"}).json()
+    note = bharat.post("/notes", json={"title": "é", "body": "abc"}).json()
     note_row = charge(db_factory, "note", note["id"])
     assert (note_row.bytes, note_row.workspace_id) == (5, None)
-    ben.delete(f"/notes/{note['id']}")
+    bharat.delete(f"/notes/{note['id']}")
     assert charge(db_factory, "note", note["id"]) is None
 
 
 def test_usage_reports_own_charges_only(as_user, ids):
-    ben, chen = as_user("ben"), as_user("chen")
-    ben.post(f"/workspaces/{ws(ids)}/posts", json={"body": "secret plan text"})
-    ben.post("/notes", json={"title": "private", "body": "note body"})
-    own = ben.get("/usage").json()["logical_charges"]
+    bharat, chitra = as_user("bharat"), as_user("chitra")
+    bharat.post(f"/workspaces/{ws(ids)}/posts", json={"body": "secret plan text"})
+    bharat.post("/notes", json={"title": "private", "body": "note body"})
+    own = bharat.get("/usage").json()["logical_charges"]
     assert own["by_type"]["post"]["live_bytes"] == 16 and own["by_type"]["note"]["live_bytes"] == 16
     assert own["methods"] == {"text": TEXT_METHOD, "board": BOARD_METHOD}
     assert own["complete_for_enforcement"] is False and own["unreconciled_boards"] is None
-    assert chen.get("/usage").json()["logical_charges"]["live_logical_bytes"] == 0
+    assert chitra.get("/usage").json()["logical_charges"]["live_logical_bytes"] == 0
     site = as_user("admin").get("/admin/usage").json()["logical_charges"]
     assert site["live_logical_bytes"] == 32 and site["board_charges"] == "complete"
     dump = json.dumps(site) + json.dumps(own)
@@ -94,25 +94,25 @@ def test_usage_reports_own_charges_only(as_user, ids):
 
 
 def test_contributor_attribution_survives_deactivation(as_user, ids, db_factory):
-    post = as_user("ben").post(f"/workspaces/{ws(ids)}/posts", json={"body": "hello"}).json()
-    as_user("admin").patch(f"/admin/users/{ids['users']['ben']}", json={"is_active": False})
-    assert str(charge(db_factory, "post", post["id"]).user_id) == ids["users"]["ben"]
+    post = as_user("bharat").post(f"/workspaces/{ws(ids)}/posts", json={"body": "hello"}).json()
+    as_user("admin").patch(f"/admin/users/{ids['users']['bharat']}", json={"is_active": False})
+    assert str(charge(db_factory, "post", post["id"]).user_id) == ids["users"]["bharat"]
 
 
 # ---- board object charges ------------------------------------------------------
 
 
 def test_board_object_lifecycle(as_user, ids, db_factory):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     w = ws(ids)
-    ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "s1"))
+    bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "s1"))
     key = board_key(uuid.UUID(w), "s1")
     # Charged from the committed payload, where the server normalizes coordinates to floats.
     expected = board_object_bytes(
         "stroke", {"points": [[0.0, 0.0], [5.0, 5.0]], "color": "#1f2933", "width": 3.0}
     )
     row = charge(db_factory, "board_object", key)
-    assert (row.bytes, row.method, str(row.user_id)) == (expected, BOARD_METHOD, ids["users"]["ben"])
+    assert (row.bytes, row.method, str(row.user_id)) == (expected, BOARD_METHOD, ids["users"]["bharat"])
     sticky = {
         "op_id": "op-ash-001",
         "epoch": 1,
@@ -150,7 +150,7 @@ def test_board_object_lifecycle(as_user, ids, db_factory):
     asha.post(f"/workspaces/{w}/board/ops", json={"op_id": "op-ash-004", "epoch": 1, "type": "undo"})
     assert charge(db_factory, "board_object", key).bytes == expected
     # Erasing someone else's object never moves the charge to the eraser.
-    assert str(charge(db_factory, "board_object", key).user_id) == ids["users"]["ben"]
+    assert str(charge(db_factory, "board_object", key).user_id) == ids["users"]["bharat"]
     # Restore to empty clears; board stays complete for the new epoch.
     asha.post(f"/workspaces/{w}/board/restore", json={"revision": 0})
     with db_factory() as db:
@@ -160,23 +160,23 @@ def test_board_object_lifecycle(as_user, ids, db_factory):
 
 
 def test_restore_recharges_restored_objects_to_original_authors(as_user, ids, db_factory):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     w = ws(ids)
-    rev = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "keep")).json()["committed"][
+    rev = bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "keep")).json()["committed"][
         "revision"
     ]
-    ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-002", "drop"))
+    bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-002", "drop"))
     asha.post(f"/workspaces/{w}/board/restore", json={"revision": rev})
     with db_factory() as db:
         rows = db.scalars(select(ContentCharge).where(ContentCharge.item_type == "board_object")).all()
     assert [(r.item_key, str(r.user_id)) for r in rows] == [
-        (board_key(uuid.UUID(w), "keep"), ids["users"]["ben"])
+        (board_key(uuid.UUID(w), "keep"), ids["users"]["bharat"])
     ]
     assert reconcile(db_factory)["summary"]["issue_count"] == 0
 
 
 def test_panel_ops_charge_the_pairing_user(as_user, make_client, ids, db_factory):
-    code = as_user("ben").post("/panel/pairings", json={"workspace_id": ws(ids)}).json()["code"]
+    code = as_user("bharat").post("/panel/pairings", json={"workspace_id": ws(ids)}).json()["code"]
     kiosk = make_client()
     session = kiosk.client.post(kiosk.url("/panel/claim"), json={"code": code}).json()
     kiosk.client.post(
@@ -185,23 +185,23 @@ def test_panel_ops_charge_the_pairing_user(as_user, make_client, ids, db_factory
         headers={"X-LabAdda-Panel": "1", "X-CSRF-Token": session["csrf_token"]},
     )
     row = charge(db_factory, "board_object", board_key(uuid.UUID(ws(ids)), "p1"))
-    assert str(row.user_id) == ids["users"]["ben"]
+    assert str(row.user_id) == ids["users"]["bharat"]
 
 
 def test_historical_board_is_unknown_until_first_write_or_reconciliation(as_user, ids, db_factory):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     w = ws(ids)
     for i in range(3):
-        ben.post(f"/workspaces/{w}/board/ops", json=stroke(f"op-ben-00{i}", f"s{i}"))
+        bharat.post(f"/workspaces/{w}/board/ops", json=stroke(f"op-bharat-00{i}", f"s{i}"))
     with db_factory() as db:  # simulate a board created before migration 0014
         db.execute(update(Board).values(charges_epoch=None))
         db.execute(text("delete from content_charges where item_type = 'board_object'"))
         db.commit()
     site = as_user("admin").get("/admin/usage").json()["logical_charges"]
     assert site["board_charges"] == "incomplete" and site["unreconciled_boards"] == 1
-    assert ben.get("/usage").json()["logical_charges"]["board_charges"] == "incomplete"
+    assert bharat.get("/usage").json()["logical_charges"]["board_charges"] == "incomplete"
     # The next write completes the whole board's ledger, not just the new object.
-    ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-010", "s10"))
+    bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-010", "s10"))
     with db_factory() as db:
         assert db.scalar(text("select count(*) from content_charges where item_type = 'board_object'")) == 4
     assert as_user("admin").get("/admin/usage").json()["logical_charges"]["board_charges"] == "complete"
@@ -210,7 +210,7 @@ def test_historical_board_is_unknown_until_first_write_or_reconciliation(as_user
 
 def test_concurrent_drawing_keeps_ledger_exact(as_user, ids, db_factory):
     w = ws(ids)
-    users = [as_user(u) for u in ("ben", "asha")]
+    users = [as_user(u) for u in ("bharat", "asha")]
 
     def draw(api, tag):
         for i in range(12):
@@ -244,20 +244,20 @@ def tamper(db_factory, ids):
                 "bytes) "
                 "values ('chat', :k, :u, :w, 'utf8-text-v1', 'live', 5)"
             ),
-            {"k": str(uuid.uuid4()), "u": ids["users"]["ben"], "w": ws(ids)},
+            {"k": str(uuid.uuid4()), "u": ids["users"]["bharat"], "w": ws(ids)},
         )
         db.execute(
             text("update content_charges set user_id = :u where item_type = 'board_object'"),
-            {"u": ids["users"]["dana"]},
+            {"u": ids["users"]["deepa"]},
         )
         db.commit()
 
 
 def seed_content(as_user, ids):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     for i in range(3):
-        ben.post(f"/workspaces/{ws(ids)}/posts", json={"body": f"post {i} {MULTIBYTE}"})
-    ben.post(f"/workspaces/{ws(ids)}/board/ops", json=stroke("op-ben-001", "s1"))
+        bharat.post(f"/workspaces/{ws(ids)}/posts", json={"body": f"post {i} {MULTIBYTE}"})
+    bharat.post(f"/workspaces/{ws(ids)}/board/ops", json=stroke("op-bharat-001", "s1"))
 
 
 def ledger_snapshot(db_factory):
@@ -338,11 +338,11 @@ def test_apply_completes_historical_boards(as_user, ids, db_factory):
 
 
 def test_bounded_batches_resume_with_cursors(as_user, ids, db_factory):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     for i in range(5):
-        ben.post(f"/workspaces/{ws(ids)}/posts", json={"body": f"p{i}"})
+        bharat.post(f"/workspaces/{ws(ids)}/posts", json={"body": f"p{i}"})
     for key in ("section_a", "division", "reading_club"):
-        api = as_user("dana") if key == "division" else ben
+        api = as_user("deepa") if key == "division" else bharat
         api.post(f"/workspaces/{ws(ids, key)}/board/ops", json=stroke(f"op-{key[:6]}-01", "x"))
     seen_items, seen_boards, cursor_item, cursor_board = 0, 0, None, None
     while True:
@@ -364,8 +364,8 @@ def test_budget_exhaustion_stops_without_plan(as_user, ids, db_factory, monkeypa
     stopped = reconcile(db_factory, max_board_objects=1, max_items=1)
     ok = stopped["status"] == "completed"  # one object fits the budget exactly
     assert ok
-    ben = as_user("ben")
-    ben.post(f"/workspaces/{ws(ids)}/board/ops", json=stroke("op-ben-002", "s2"))
+    bharat = as_user("bharat")
+    bharat.post(f"/workspaces/{ws(ids)}/board/ops", json=stroke("op-bharat-002", "s2"))
     over = reconcile(db_factory, max_board_objects=1)
     assert over["status"] == "failed" and over["summary"]["stop_reason"] == "board_object_budget_exhausted"
     assert "plan_digest" not in over["summary"]

@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 ## What this is for
 
-Use this when a person moves from one unit to another, for example from Thin Films to Catalysis. LabAdda shows exactly which memberships change, which units they gain or lose sight of, and how many open tasks need a new owner, before anything is saved.
+Use this when a person moves from one unit to another, for example from Thin Films to Corrosion. LabAdda shows exactly which memberships change, which units they gain or lose sight of, and how many open tasks need a new owner, before anything is saved.
 
 ## Before you start
 

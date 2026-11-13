@@ -14,15 +14,15 @@ def sample_plan() -> Plan:
     return Plan(
         kind="edit_person",
         actor_id="administrator-id",
-        request=Snapshot({"person_id": "ben-id", "display_name": "Ben Okafor"}),
-        revisions=Snapshot({"ben-id": 3}),
+        request=Snapshot({"person_id": "bharat-id", "display_name": "Bharat Kulkarni"}),
+        revisions=Snapshot({"bharat-id": 3}),
         steps=(
             Step(
                 "identity",
-                "ben-id",
-                "Change Ben's display name",
-                Snapshot({"display_name": "Ben"}),
-                Snapshot({"display_name": "Ben Okafor"}),
+                "bharat-id",
+                "Change Bharat's display name",
+                Snapshot({"display_name": "Bharat"}),
+                Snapshot({"display_name": "Bharat Kulkarni"}),
             ),
         ),
         affected_people=0,
@@ -69,7 +69,7 @@ def test_plan_digest_covers_the_versioned_payload_without_hashing_itself():
     assert digest == plan.digest
     assert digest == sha256(canonical_json(payload).encode("utf-8")).hexdigest()
     assert payload["format_version"] == 1
-    assert payload["steps"][0]["summary"] == "Change Ben's display name"
+    assert payload["steps"][0]["summary"] == "Change Bharat's display name"
 
 
 @pytest.mark.parametrize(
@@ -77,8 +77,8 @@ def test_plan_digest_covers_the_versioned_payload_without_hashing_itself():
     [
         {"kind": "transfer"},
         {"actor_id": "other-administrator"},
-        {"request": Snapshot({"person_id": "chen-id"})},
-        {"revisions": Snapshot({"ben-id": 4})},
+        {"request": Snapshot({"person_id": "chitra-id"})},
+        {"revisions": Snapshot({"bharat-id": 4})},
         {"steps": ()},
         {"warnings": (Warning("last_steward", "The unit needs a steward", "unit-id"),)},
         {"blockers": (Blocker("duplicate_employee", "Employee number is already used"),)},
@@ -100,7 +100,7 @@ def test_ordered_steps_are_significant_and_input_collections_cannot_mutate_plan(
     assert replace(plan, steps=(second, first)).digest != plan.digest
     payload = plan.to_dict()
     payload["request"]["display_name"] = "Changed outside the plan"
-    assert plan.to_dict()["request"]["display_name"] == "Ben Okafor"
+    assert plan.to_dict()["request"]["display_name"] == "Bharat Kulkarni"
     with pytest.raises(FrozenInstanceError):
         plan.actor_id = "other-administrator"
 
@@ -114,4 +114,4 @@ def test_invalid_affected_counts_are_refused(count):
 @pytest.mark.parametrize("revision", [0, -1, True, "3"])
 def test_record_revisions_are_positive_integers(revision):
     with pytest.raises(ValueError):
-        replace(sample_plan(), revisions=Snapshot({"ben-id": revision}))
+        replace(sample_plan(), revisions=Snapshot({"bharat-id": revision}))

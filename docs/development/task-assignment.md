@@ -22,7 +22,7 @@ filter/paging, with request generations and workspace-visibility refresh. Todos.
 keeps a current selected-list ref so old component saves cannot refresh another
 list. Task field edits do not submit assignment fields. TaskAssignment blocks blind
 retries after uncertain outcomes; it reloads task revision/history instead.
-Browser regression: e2e/task-assignment.mjs (fresh disposable fixtures; revokes Ben).
+Browser regression: e2e/task-assignment.mjs (fresh disposable fixtures; revokes Bharat).
 
 ## Lock ordering and final reads
 

@@ -60,8 +60,8 @@ async function openTaskList(user, base, workspaceId, list) {
   await buttonNamed(user.page, list.title).click();
 }
 
-async function checkStaleContext(ben, asha, base, section, privateList) {
-  const form = await openBoardForm(ben, base, section.id, 1);
+async function checkStaleContext(bharat, asha, base, section, privateList) {
+  const form = await openBoardForm(bharat, base, section.id, 1);
   await labelled(form, "Task destination").selectOption("personal");
   await labelled(form, "Destination list").selectOption(privateList.id);
   await labelled(form, "Task title").fill("Review research controls");
@@ -72,7 +72,7 @@ async function checkStaleContext(ben, asha, base, section, privateList) {
     await form.getByText("Reviewed board context: epoch 1, revision 1.", { exact: false }).isVisible(),
     base + " task form pins reviewed epoch and revision",
   );
-  await checkLayouts(ben, base, "board task form");
+  await checkLayouts(bharat, base, "board task form");
   await addStroke(asha, section.id);
   await saveButton(form).click();
   await form
@@ -93,8 +93,8 @@ async function checkStaleContext(ben, asha, base, section, privateList) {
   return form;
 }
 
-async function checkLostWriteRecovery(ben, asha, base, form, privateList, section) {
-  await loseNextResponse(ben.page, "**/api/v1/todos/lists/*/from-board");
+async function checkLostWriteRecovery(bharat, asha, base, form, privateList, section) {
+  await loseNextResponse(bharat.page, "**/api/v1/todos/lists/*/from-board");
   await saveButton(form).click();
   await buttonNamed(form, "Retry same task copy").waitFor();
   await addStroke(asha, section.id);
@@ -104,35 +104,35 @@ async function checkLostWriteRecovery(ben, asha, base, form, privateList, sectio
     base + " unknown write freezes context text and destination",
   );
   await buttonNamed(form, "Retry same task copy").click();
-  await ben.page.getByText(savedNotice, { exact: true }).waitFor();
-  const saved = (await call(ben, `/todos/lists/${privateList.id}/tasks`)).items;
+  await bharat.page.getByText(savedNotice, { exact: true }).waitFor();
+  const saved = (await call(bharat, `/todos/lists/${privateList.id}/tasks`)).items;
   check(saved.length === 1, base + " retry after later ink recovers one task");
 }
 
-async function checkSourceViewAndRestore(ben, asha, base, section, privateList) {
-  await openTaskList(ben, base, null, privateList);
-  await viewSourceButton(ben.page).click();
-  await ben.page.getByText("Recorded context: epoch 1, revision 2.", { exact: true }).waitFor();
+async function checkSourceViewAndRestore(bharat, asha, base, section, privateList) {
+  await openTaskList(bharat, base, null, privateList);
+  await viewSourceButton(bharat.page).click();
+  await bharat.page.getByText("Recorded context: epoch 1, revision 2.", { exact: true }).waitFor();
   check(
-    await ben.page.getByText("Current board: epoch 1, revision 3.", { exact: false }).isVisible(),
+    await bharat.page.getByText("Current board: epoch 1, revision 3.", { exact: false }).isVisible(),
     base + " source view separates recorded context from live board",
   );
-  const href = await ben.page
+  const href = await bharat.page
     .getByRole("link", { name: "Open source board", exact: true })
     .getAttribute("href");
   check(href === base + `/w/${section.id}/board`, base + " live board link preserves URL prefix");
-  await checkLayouts(ben, base, "protected board source");
+  await checkLayouts(bharat, base, "protected board source");
   await call(asha, `/workspaces/${section.id}/board/restore`, { revision: 1 });
-  await viewSourceButton(ben.page).click();
-  await ben.page.getByText("Current board: epoch 2, revision", { exact: false }).waitFor();
+  await viewSourceButton(bharat.page).click();
+  await bharat.page.getByText("Current board: epoch 2, revision", { exact: false }).waitFor();
   check(
-    await ben.page.getByText("Recorded context: epoch 1, revision 2.", { exact: true }).isVisible(),
+    await bharat.page.getByText("Recorded context: epoch 1, revision 2.", { exact: true }).isVisible(),
     base + " restore does not rewrite recorded task context",
   );
 }
 
-async function checkDivisionAudience(ben, chen, base, section, division, sharedList) {
-  const form = await openBoardForm(ben, base, section.id, 2);
+async function checkDivisionAudience(bharat, chitra, base, section, division, sharedList) {
+  const form = await openBoardForm(bharat, base, section.id, 2);
   await labelled(form, "Task destination").selectOption(division.id);
   await labelled(form, "Destination list").selectOption(sharedList.id);
   await labelled(form, "Task title").fill("Reviewed division research action");
@@ -142,14 +142,14 @@ async function checkDivisionAudience(ben, chen, base, section, division, sharedL
   );
   await form.getByRole("checkbox").check();
   await saveButton(form).click();
-  await ben.page.getByText(savedNotice, { exact: true }).waitFor();
-  const shared = (await call(ben, `/todos/lists/${sharedList.id}/tasks`)).items[0];
+  await bharat.page.getByText(savedNotice, { exact: true }).waitFor();
+  const shared = (await call(bharat, `/todos/lists/${sharedList.id}/tasks`)).items[0];
   const sourcePath = `/todos/lists/${sharedList.id}/tasks/${shared.id}/source`;
-  await openTaskList(chen, base, division.id, sharedList);
-  await viewSourceButton(chen.page).click();
-  await chen.page.getByText(sourceUnavailable, { exact: true }).waitFor();
-  const contextShown = await chen.page.getByText("Recorded context:", { exact: false }).count();
-  const direct = await chen.ctx.request.get(chen.api + sourcePath);
+  await openTaskList(chitra, base, division.id, sharedList);
+  await viewSourceButton(chitra.page).click();
+  await chitra.page.getByText(sourceUnavailable, { exact: true }).waitFor();
+  const contextShown = await chitra.page.getByText("Recorded context:", { exact: false }).count();
+  const direct = await chitra.ctx.request.get(chitra.api + sourcePath);
   check(
     contextShown === 0 && direct.status() === 404,
     base + " sibling cannot retrieve protected board context",
@@ -157,23 +157,23 @@ async function checkDivisionAudience(ben, chen, base, section, division, sharedL
   return sourcePath;
 }
 
-async function checkHeldSourceAfterRevocation(ben, admin, base, ctx, sourcePath) {
+async function checkHeldSourceAfterRevocation(bharat, admin, base, ctx, sourcePath) {
   // A successful source response held before grant loss must never restore context.
   const { section, division, sharedList } = ctx;
-  const page = ben.page;
-  await openTaskList(ben, base, division.id, sharedList);
+  const page = bharat.page;
+  await openTaskList(bharat, base, division.id, sharedList);
   const heldSource = await holdFirstResponse(page, "**/api/v1" + sourcePath);
   await viewSourceButton(page).click();
   await heldSource.captured;
   await call(
     admin,
     `/admin/workspaces/${division.id}/memberships`,
-    { user_id: ben.session.user.id, role: "member" },
+    { user_id: bharat.session.user.id, role: "member" },
     "PUT",
   );
   await call(
     admin,
-    `/admin/workspaces/${section.id}/memberships/${ben.session.user.id}`,
+    `/admin/workspaces/${section.id}/memberships/${bharat.session.user.id}`,
     undefined,
     "DELETE",
   );
@@ -192,7 +192,7 @@ async function checkHeldSourceAfterRevocation(ben, admin, base, ctx, sourcePath)
     !(await page.evaluate(() => window.__contextLeaked)),
     base + " delayed source cannot restore revoked board metadata",
   );
-  const remaining = (await call(ben, `/todos/lists/${sharedList.id}/tasks`)).items;
+  const remaining = (await call(bharat, `/todos/lists/${sharedList.id}/tasks`)).items;
   check(remaining.length === 1, base + " reviewed task survives source-only access loss");
 }
 
@@ -207,26 +207,26 @@ async function saveFailureScreenshots() {
 
 try {
   for (const base of bases) {
-    const ben = await login(base, "ben");
+    const bharat = await login(base, "bharat");
     const asha = await login(base, "asha");
-    const chen = await login(base, "chen");
+    const chitra = await login(base, "chitra");
     const admin = await login(base, "admin");
-    const spaces = (await call(ben, "/workspaces")).workspaces;
+    const spaces = (await call(bharat, "/workspaces")).workspaces;
     const section = spaces.find((workspace) => workspace.name === "Thin Films Section");
-    const division = spaces.find((workspace) => workspace.name === "Surface Science Division");
-    const privateList = await createList(ben, null, "My plan actions");
-    const sharedList = await createList(ben, division.id, "Division plan actions");
+    const division = spaces.find((workspace) => workspace.name === "Surface Engineering Division");
+    const privateList = await createList(bharat, null, "My plan actions");
+    const sharedList = await createList(bharat, division.id, "Division plan actions");
     await addStroke(asha, section.id);
-    const form = await checkStaleContext(ben, asha, base, section, privateList);
-    await checkLostWriteRecovery(ben, asha, base, form, privateList, section);
-    await checkSourceViewAndRestore(ben, asha, base, section, privateList);
-    const sourcePath = await checkDivisionAudience(ben, chen, base, section, division, sharedList);
-    await checkHeldSourceAfterRevocation(ben, admin, base, { section, division, sharedList }, sourcePath);
+    const form = await checkStaleContext(bharat, asha, base, section, privateList);
+    await checkLostWriteRecovery(bharat, asha, base, form, privateList, section);
+    await checkSourceViewAndRestore(bharat, asha, base, section, privateList);
+    const sourcePath = await checkDivisionAudience(bharat, chitra, base, section, division, sharedList);
+    await checkHeldSourceAfterRevocation(bharat, admin, base, { section, division, sharedList }, sourcePath);
     check(
-      ben.errors.length === 0 && asha.errors.length === 0 && chen.errors.length === 0,
+      bharat.errors.length === 0 && asha.errors.length === 0 && chitra.errors.length === 0,
       base + " no browser exceptions",
     );
-    await Promise.all([ben.ctx.close(), asha.ctx.close(), chen.ctx.close(), admin.ctx.close()]);
+    await Promise.all([bharat.ctx.close(), asha.ctx.close(), chitra.ctx.close(), admin.ctx.close()]);
   }
   console.log(`${harness.checks()} board reference browser checks passed`);
 } catch (error) {

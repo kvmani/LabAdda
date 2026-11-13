@@ -57,14 +57,14 @@ def test_administrator_reads_one_series_in_order_within_the_period(as_user, db_f
 
 def test_usage_reader_may_read_series(as_user, ids, db_factory):
     seed_hours(db_factory)
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    response = as_user("ben").get(PATH, params=window(metric="http.latency_p95", dimension="all"))
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    response = as_user("bharat").get(PATH, params=window(metric="http.latency_p95", dimension="all"))
     assert response.status_code == 200
     assert response.json()["unit"] == "ms"
     assert response.json()["points"] == []
 
 
-@pytest.mark.parametrize("username", ["asha", "chen", "dana", "eli", "ben"])
+@pytest.mark.parametrize("username", ["asha", "chitra", "deepa", "esha", "bharat"])
 def test_members_without_a_grant_are_forbidden(as_user, username):
     response = as_user(username).get(PATH, params=window())
     assert response.status_code == 403
@@ -74,7 +74,7 @@ def test_members_without_a_grant_are_forbidden(as_user, username):
 def test_signed_out_deactivated_and_panel_sessions_are_refused(as_user, make_client, ids):
     client = make_client()
     assert client.get(PATH, params=window()).status_code == 401
-    assert client.login("fay").status_code == 401
+    assert client.login("farhan").status_code == 401
     assert client.get(PATH, params=window()).status_code == 401
     kiosk = pair(as_user, make_client, ids)
     assert kiosk.get(PATH, params=window()).status_code == 401
@@ -138,7 +138,7 @@ def seed_content(member, workspace):
 
 
 def test_no_content_in_metric_rows_activity_days_or_responses(as_user, ids, db_factory):
-    member = as_user("ben")
+    member = as_user("bharat")
     workspace = ids["workspaces"]["section_a"]
     seed_content(member, workspace)
     with db_factory() as db:

@@ -34,12 +34,12 @@ def task_body(**kwargs):
 
 
 def test_personal_lists_and_tasks_are_owner_only(as_user):
-    ben = as_user("ben")
-    row = new_list(ben)
+    bharat = as_user("bharat")
+    row = new_list(bharat)
     path = f"/todos/lists/{row['id']}/tasks"
-    task = ben.post(path, json=task_body()).json()
+    task = bharat.post(path, json=task_body()).json()
     assert task["title"] == "測定 sample α" and task["due_date"] == "2026-12-01"
-    for name in ["admin", "chen", "asha"]:
+    for name in ["admin", "chitra", "asha"]:
         api = as_user(name)
         assert api.get("/todos/lists").json()["items"] == []
         assert api.get(path).status_code == 404
@@ -48,16 +48,16 @@ def test_personal_lists_and_tasks_are_owner_only(as_user):
 
 
 def test_workspace_upward_access_and_parent_sibling_admin_denial(as_user, ids):
-    ben = as_user("ben")
-    section = new_list(ben, ids["workspaces"]["section_a"])
-    division = new_list(ben, ids["workspaces"]["division"])
+    bharat = as_user("bharat")
+    section = new_list(bharat, ids["workspaces"]["section_a"])
+    division = new_list(bharat, ids["workspaces"]["division"])
     assert (
-        as_user("chen")
+        as_user("chitra")
         .get("/todos/lists?workspace_id=" + ids["workspaces"]["division"])
         .json()["items"][0]["id"]
         == division["id"]
     )
-    for name in ["chen", "dana", "admin"]:
+    for name in ["chitra", "deepa", "admin"]:
         assert (
             as_user(name).get("/todos/lists?workspace_id=" + ids["workspaces"]["section_a"]).status_code
             == 404
@@ -67,28 +67,28 @@ def test_workspace_upward_access_and_parent_sibling_admin_denial(as_user, ids):
 
 
 def test_group_direct_membership_and_project_access(as_user, ids):
-    ben = as_user("ben")
-    group = ben.post("/groups", json={"name": "Task group", "member_ids": [ids["users"]["chen"]]}).json()
-    row = new_list(ben, group["id"])
-    assert as_user("chen").get(f"/todos/lists/{row['id']}/tasks").status_code == 200
-    assert as_user("dana").get(f"/todos/lists/{row['id']}/tasks").status_code == 404
-    project = new_list(as_user("eli"), ids["workspaces"]["project"])
-    assert as_user("dana").get(f"/todos/lists/{project['id']}/tasks").status_code == 200
-    assert ben.get(f"/todos/lists/{project['id']}/tasks").status_code == 404
+    bharat = as_user("bharat")
+    group = bharat.post("/groups", json={"name": "Task group", "member_ids": [ids["users"]["chitra"]]}).json()
+    row = new_list(bharat, group["id"])
+    assert as_user("chitra").get(f"/todos/lists/{row['id']}/tasks").status_code == 200
+    assert as_user("deepa").get(f"/todos/lists/{row['id']}/tasks").status_code == 404
+    project = new_list(as_user("esha"), ids["workspaces"]["project"])
+    assert as_user("deepa").get(f"/todos/lists/{project['id']}/tasks").status_code == 200
+    assert bharat.get(f"/todos/lists/{project['id']}/tasks").status_code == 404
 
 
 def test_read_only_and_archived_workspace(as_user, ids, db_factory):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     workspace = ids["workspaces"]["section_a"]
-    row = new_list(ben, workspace)
+    row = new_list(bharat, workspace)
     from labadda.models import Workspace
 
     with db_factory() as db:
         db.get(Workspace, workspace).posting_policy = "read_only"
         db.commit()
     path = f"/todos/lists/{row['id']}/tasks"
-    assert ben.get(path).status_code == 200
-    assert ben.post(path, json=task_body()).status_code == 403
+    assert bharat.get(path).status_code == 200
+    assert bharat.post(path, json=task_body()).status_code == 403
     assert as_user("asha").post(path, json=task_body()).status_code == 201
     with db_factory() as db:
         db.get(Workspace, workspace).archived = True
@@ -97,7 +97,7 @@ def test_read_only_and_archived_workspace(as_user, ids, db_factory):
 
 
 def test_create_retries_are_bound_to_intent_and_destination(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     body = list_body()
     first = api.post("/todos/lists", json=body).json()
     assert api.post("/todos/lists", json=body).json()["id"] == first["id"]
@@ -112,7 +112,7 @@ def test_create_retries_are_bound_to_intent_and_destination(as_user):
 
 
 def test_revisions_checklist_completion_and_reopening(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     path = f"/todos/lists/{row['id']}/tasks"
     task = api.post(path, json=task_body()).json()
@@ -147,13 +147,13 @@ def test_revisions_checklist_completion_and_reopening(as_user):
     ],
 )
 def test_invalid_task_payloads(as_user, change):
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     assert api.post(f"/todos/lists/{row['id']}/tasks", json=task_body(**change)).status_code == 422
 
 
 def test_cursor_pages_are_scoped_and_bounded(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     path = f"/todos/lists/{row['id']}/tasks"
     for i in range(3):
@@ -166,7 +166,7 @@ def test_cursor_pages_are_scoped_and_bounded(as_user):
 
 
 def test_panel_markers_and_csrf_refused(as_user, make_client, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     new_list(api)
     panel = pair(as_user, make_client, ids)
     assert panel.api.get("/todos/lists", headers=PANEL).status_code == 401
@@ -176,11 +176,11 @@ def test_panel_markers_and_csrf_refused(as_user, make_client, ids):
 
 
 def test_revoked_grant_no_longer_reads_or_writes(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     row = new_list(api, ws)
     assert (
-        as_user("admin").delete(f"/admin/workspaces/{ws}/memberships/{ids['users']['ben']}").status_code
+        as_user("admin").delete(f"/admin/workspaces/{ws}/memberships/{ids['users']['bharat']}").status_code
         == 200
     )
     assert api.get(f"/todos/lists/{row['id']}/tasks").status_code == 404
@@ -188,23 +188,23 @@ def test_revoked_grant_no_longer_reads_or_writes(as_user, ids):
 
 
 def test_two_writers_cannot_overwrite_same_revision(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
-    row = new_list(ben, ids["workspaces"]["section_a"])
+    bharat, asha = as_user("bharat"), as_user("asha")
+    row = new_list(bharat, ids["workspaces"]["section_a"])
     path = f"/todos/lists/{row['id']}/tasks"
-    task = ben.post(path, json=task_body()).json()
+    task = bharat.post(path, json=task_body()).json()
     body = {
         k: task[k] for k in ["title", "description", "due_date", "priority", "checklist", "done", "revision"]
     }
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
             pool.submit(api.put, path + "/" + task["id"], json={**body, "title": title})
-            for api, title in [(ben, "one"), (asha, "two")]
+            for api, title in [(bharat, "one"), (asha, "two")]
         ]
         assert sorted(f.result().status_code for f in futures) == [200, 409]
 
 
 def test_downgrade_protects_user_content(as_user, settings, db_factory):
-    new_list(as_user("ben"))
+    new_list(as_user("bharat"))
     with pytest.raises(RuntimeError, match="To-do lists exist"):
         downgrade_legacy(alembic_config(settings.database_url), "0016")
     with db_factory() as db:
@@ -225,7 +225,7 @@ def test_session_expiry_while_waiting_for_scope_lock_rolls_back(as_user, ids, mo
             monkeypatch.setattr(identity_locks, "session_valid", lambda *_: False)
         return result
 
-    api = as_user("ben")
+    api = as_user("bharat")
     monkeypatch.setattr(todos, "_scope", expire_after_scope)
     assert (
         api.post("/todos/lists", json=list_body(workspace_id=ids["workspaces"]["section_a"])).status_code
@@ -240,7 +240,7 @@ def test_workspace_row_writer_and_list_creation_do_not_deadlock(as_user, ids, db
 
     from labadda.models import Workspace
 
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     with db_factory() as writer, ThreadPoolExecutor(max_workers=1) as pool:
         row = writer.scalar(select(Workspace).where(Workspace.id == ws).with_for_update())
@@ -269,11 +269,11 @@ def test_workspace_row_writer_and_list_creation_do_not_deadlock(as_user, ids, db
 
 
 def test_list_detail_refresh_keeps_scope_private(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     personal = new_list(api)
     assert api.get("/todos/lists/" + personal["id"]).json()["revision"] == 1
-    for name in ["asha", "chen", "dana", "admin"]:
+    for name in ["asha", "chitra", "deepa", "admin"]:
         assert as_user(name).get("/todos/lists/" + personal["id"]).status_code == 404
     shared = new_list(api, ids["workspaces"]["section_a"])
     assert as_user("asha").get("/todos/lists/" + shared["id"]).status_code == 200
-    assert as_user("dana").get("/todos/lists/" + shared["id"]).status_code == 404
+    assert as_user("deepa").get("/todos/lists/" + shared["id"]).status_code == 404

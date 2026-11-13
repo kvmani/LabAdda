@@ -10,3 +10,7 @@ experimental observations. Actual team spaces and personal boards always show se
 The same logo is used in the public header, sign-in, authenticated shell, touch-panel pairing
 and favicon. All assets, styles and system fonts remain local. No public-registration or external
 service flow is introduced. Personal drawings and sticky notes are never marketing assets.
+
+Example names in screens, help and tests follow the repository rule in `AGENTS.md`: Indian personal
+names and national-research-laboratory settings only. The people in `research-board.png` already
+comply, so the image is unchanged.

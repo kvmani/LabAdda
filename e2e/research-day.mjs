@@ -130,31 +130,31 @@ try {
     mira = created.user;
   }
   const member = await admin.ctx.request.put(
-    origin + `/api/v1/admin/workspaces/${spaces["Catalysis Section"]}/memberships`,
+    origin + `/api/v1/admin/workspaces/${spaces["Corrosion Section"]}/memberships`,
     { headers: { "X-CSRF-Token": admin.csrf }, data: { user_id: mira.id } },
   );
   assert.equal(member.status(), 200);
   const people = {};
   for (const name of fixture.participants) people[name] = await actor(browser, name);
   check(Object.keys(people).length === 5, "five separate browser sessions signed in");
-  const { ben, chen, dana, asha } = people;
+  const { bharat, chitra, deepa, asha } = people;
   const group = await api(
-    ben,
+    bharat,
     "/groups",
     {
       name: fixture.group,
-      description: "Joint Thin Films / Catalysis working group. Synthetic scenario.",
-      member_ids: fixture.participants.filter((n) => n !== "ben").map((n) => people[n].id),
+      description: "Joint Thin Films / Corrosion working group. Synthetic scenario.",
+      member_ids: fixture.participants.filter((n) => n !== "bharat").map((n) => people[n].id),
     },
     201,
   );
   const privateGroup = await api(
-    ben,
+    bharat,
     "/groups",
     {
       name: fixture.private_group,
       description: "Two-person preliminary instrument handoff.",
-      member_ids: [chen.id],
+      member_ids: [chitra.id],
     },
     201,
   );
@@ -180,13 +180,13 @@ try {
     payload: { kind: first.kind, data: first.data },
   });
   check(retry.duplicate === true, "retry keeps the same board operation instead of duplicating ink");
-  const state = await api(ben, `/workspaces/${group.id}/board`);
+  const state = await api(bharat, `/workspaces/${group.id}/board`);
   check(state.revision === objects.length, "all handwritten strokes and native stickies committed");
   check(
     new Set(state.ops.map((o) => o.actor_id)).size === 5,
     "board history attributes edits to all five researchers",
   );
-  await ben.ctx.setOffline(true);
+  await bharat.ctx.setOffline(true);
   await api(people.mira, `/workspaces/${group.id}/board/ops`, {
     epoch: 1,
     type: "add",
@@ -205,9 +205,9 @@ try {
       },
     },
   });
-  await ben.ctx.setOffline(false);
-  await ben.page.reload();
-  const caughtUp = await api(ben, `/workspaces/${group.id}/board`);
+  await bharat.ctx.setOffline(false);
+  await bharat.page.reload();
+  const caughtUp = await api(bharat, `/workspaces/${group.id}/board`);
   check(caughtUp.revision === state.revision + 1, "offline researcher catches up after reconnect");
   for (const [i, [name, body]] of fixture.chat.entries())
     await api(people[name], `/workspaces/${group.id}/chat`, { body, client_id: `research-chat-${i}` }, 201);
@@ -215,12 +215,12 @@ try {
     [
       "asha",
       "Thin Films Section",
-      "Preparation log / batch AUR-40: thickness 40 nm. Witness coupon retained. Raw deposition settings stay in this section.",
+      "Preparation log / batch TEJ-40: thickness 40 nm. Witness coupon retained. Raw deposition settings stay in this section.",
     ],
     [
-      "chen",
-      "Catalysis Section",
-      "GC queue / batch AUR-40: reference, blank, then three replicates. Preliminary chromatograms stay in Catalysis.",
+      "chitra",
+      "Corrosion Section",
+      "GC queue / batch TEJ-40: reference, blank, then three replicates. Preliminary chromatograms stay in Corrosion.",
     ],
   ])
     await api(
@@ -230,13 +230,13 @@ try {
       201,
     );
   await api(
-    dana,
-    `/workspaces/${spaces["Surface Science Division"]}/posts`,
+    deepa,
+    `/workspaces/${spaces["Surface Engineering Division"]}/posts`,
     { body: fixture.division_notice, kind: "official", client_id: "research-division-review" },
     201,
   );
   await api(
-    ben,
+    bharat,
     "/notes",
     {
       title: "Private: check reference drift",
@@ -246,15 +246,15 @@ try {
   );
   const handoff = pdf(fixture.pdf_lines);
   writeFileSync(join(out, "preliminary-handoff.pdf"), handoff);
-  const attachment = await upload(ben, "preliminary-handoff.pdf", "application/pdf", handoff);
+  const attachment = await upload(bharat, "preliminary-handoff.pdf", "application/pdf", handoff);
   await api(
-    ben,
+    bharat,
     `/workspaces/${privateGroup.id}/posts`,
     { body: fixture.private_message, attachment_ids: [attachment.id], client_id: "research-private-handoff" },
     201,
   );
   await api(
-    chen,
+    chitra,
     `/workspaces/${privateGroup.id}/chat`,
     {
       body: "Received. I will repeat the reference before we share anything more widely.",
@@ -267,16 +267,16 @@ try {
   const png = await artwork.locator("svg").screenshot({ path: join(out, "research-plan.png") });
   await artwork.close();
   await upload(
-    ben,
+    bharat,
     "research-plan.svg",
     "image/svg+xml",
     readFileSync(join(root, "fixtures/research-day/research-plan.svg")),
     422,
   );
   check(true, "raw SVG remains rejected by the application upload boundary");
-  const image = await upload(ben, "research-plan.png", "image/png", png);
+  const image = await upload(bharat, "research-plan.png", "image/png", png);
   await api(
-    ben,
+    bharat,
     `/workspaces/${group.id}/posts`,
     {
       body: "Working plan / controls and handoff sequence. Handwritten notes on the live board remain editable. This PNG is a reviewed reference copy of the synthetic sketch.",
@@ -285,8 +285,8 @@ try {
     },
     201,
   );
-  const noteId = (await api(ben, "/notes")).notes[0].id;
-  for (const a of [asha, people.mira, dana, admin]) {
+  const noteId = (await api(bharat, "/notes")).notes[0].id;
+  for (const a of [asha, people.mira, deepa, admin]) {
     assert.equal((await a.ctx.request.get(origin + `/api/v1/files/${attachment.id}`)).status(), 404);
     assert.equal((await a.ctx.request.get(origin + `/api/v1/workspaces/${privateGroup.id}`)).status(), 404);
     assert.equal((await a.ctx.request.get(origin + `/api/v1/notes/${noteId}`)).status(), 404);
@@ -296,18 +296,20 @@ try {
     "private group, PDF and personal note excluded from colleagues, division steward and administrator",
   );
   for (const [a, section] of [
-    [ben, "Catalysis Section"],
-    [chen, "Thin Films Section"],
-    [dana, "Thin Films Section"],
+    [bharat, "Corrosion Section"],
+    [chitra, "Thin Films Section"],
+    [deepa, "Thin Films Section"],
   ])
     assert.equal((await a.ctx.request.get(origin + `/api/v1/workspaces/${spaces[section]}`)).status(), 404);
   for (const a of Object.values(people))
     assert.equal(
-      (await a.ctx.request.get(origin + `/api/v1/workspaces/${spaces["Surface Science Division"]}`)).status(),
+      (
+        await a.ctx.request.get(origin + `/api/v1/workspaces/${spaces["Surface Engineering Division"]}`)
+      ).status(),
       200,
     );
   check(true, "sibling sections remain isolated, grants flow upward to the shared division only");
-  assert.equal((await chen.ctx.request.get(origin + `/api/v1/files/${attachment.id}`)).status(), 200);
+  assert.equal((await chitra.ctx.request.get(origin + `/api/v1/files/${attachment.id}`)).status(), 200);
   check(true, "named colleague can download the private handoff PDF");
   for (const a of Object.values(people)) {
     await view(a, group.id, "board");
@@ -316,25 +318,25 @@ try {
     await a.page.getByText("Saved", { exact: true }).waitFor();
   }
   // All contexts are present on the shared board before capture.
-  await ben.page.getByText("Mira Sen", { exact: false }).first().waitFor();
+  await bharat.page.getByText("Mira Sen", { exact: false }).first().waitFor();
   for (const a of Object.values(people))
     await shot(a, `board-${a.username}.png`, `${a.username}: shared five-person research board`);
-  await view(chen, group.id, "chat");
-  await chen.page.getByText(fixture.chat.at(-1)[1], { exact: true }).waitFor();
-  await shot(chen, "group-chat.png", "Chen: cross-section research discussion");
-  await view(dana, spaces["Surface Science Division"], "noticeboard");
-  await dana.page.getByText("Aurora / Friday review", { exact: false }).first().waitFor();
-  await shot(dana, "division-notice.png", "Dana: division-level review notice");
-  await view(ben, privateGroup.id, "noticeboard");
-  await ben.page.getByRole("link", { name: /preliminary-handoff.pdf/ }).waitFor();
-  await shot(ben, "private-handoff.png", "Ben: private two-person group with PDF attachment");
+  await view(chitra, group.id, "chat");
+  await chitra.page.getByText(fixture.chat.at(-1)[1], { exact: true }).waitFor();
+  await shot(chitra, "group-chat.png", "Chitra: cross-section research discussion");
+  await view(deepa, spaces["Surface Engineering Division"], "noticeboard");
+  await deepa.page.getByText("Tejas / Friday review", { exact: false }).first().waitFor();
+  await shot(deepa, "division-notice.png", "Deepa: division-level review notice");
+  await view(bharat, privateGroup.id, "noticeboard");
+  await bharat.page.getByRole("link", { name: /preliminary-handoff.pdf/ }).waitFor();
+  await shot(bharat, "private-handoff.png", "Bharat: private two-person group with PDF attachment");
   await view(asha, spaces["Thin Films Section"], "noticeboard");
   await shot(asha, "section-thin-films.png", "Asha: section-only preparation log");
-  await view(people.mira, spaces["Catalysis Section"], "noticeboard");
-  await shot(people.mira, "section-catalysis.png", "Mira: sibling-section GC queue");
-  await ben.page.goto(origin + "/notes");
-  await ben.page.getByText("Private: check reference drift", { exact: false }).first().waitFor();
-  await shot(ben, "personal-notes.png", "Ben: owner-only reminder and note");
+  await view(people.mira, spaces["Corrosion Section"], "noticeboard");
+  await shot(people.mira, "section-corrosion.png", "Mira: sibling-section GC queue");
+  await bharat.page.goto(origin + "/notes");
+  await bharat.page.getByText("Private: check reference drift", { exact: false }).first().waitFor();
+  await shot(bharat, "personal-notes.png", "Bharat: owner-only reminder and note");
   check(errors.length === 0, `no browser errors or external asset requests (${errors.join(";")})`);
   writeFileSync(
     join(out, "report.json"),

@@ -8,7 +8,7 @@ from tests.test_changes_edit import reviewed
 from tests.test_changes_transfer import TASK_TITLE, assign_tasks, codes, preview
 from tests.test_panel import pair
 
-SPLIT = {"name": "Sensors Section", "code": "SSD-SE", "acknowledge_no_steward": True}
+SPLIT = {"name": "Sensors Section", "code": "SED-SE", "acknowledge_no_steward": True}
 
 
 def req(ids, kind, **fields):
@@ -31,7 +31,7 @@ def apply(admin, request):
     return response.json()
 
 
-def split_sensors(admin, ids, people=("ben",)):
+def split_sensors(admin, ids, people=("bharat",)):
     request = req(ids, "unit_split", unit_id="section_a", person_ids=list(people), **SPLIT)
     receipt = apply(admin, request)
     ids["workspaces"]["sensors"] = receipt["unit_id"]
@@ -48,19 +48,20 @@ def readable(client, ids):
 
 def test_scenario_split_moves_chosen_people_into_a_new_sibling(as_user, ids, db_factory):
     admin = as_user("admin")
-    plan = preview(admin, req(ids, "unit_split", unit_id="section_a", person_ids=["ben"], **SPLIT))
+    plan = preview(admin, req(ids, "unit_split", unit_id="section_a", person_ids=["bharat"], **SPLIT))
     assert plan["blockers"] == []
-    assert plan["steps"][0]["summary"].startswith("Create the unit Sensors Section (SSD-SE) under")
+    assert plan["steps"][0]["summary"].startswith("Create the unit Sensors Section (SED-SE) under")
     assert "access_lost" in codes(plan["warnings"])
-    assert db_factory().scalar(select(Workspace).where(Workspace.code == "SSD-SE")) is None
+    assert db_factory().scalar(select(Workspace).where(Workspace.code == "SED-SE")) is None
     split_sensors(admin, ids)
     with db_factory() as db:
         unit = db.get(Workspace, ids["workspaces"]["sensors"])
-        assert (unit.kind, unit.code, str(unit.parent_id)) == ("org", "SSD-SE", ids["workspaces"]["division"])
-        ben = db.get(User, ids["users"]["ben"])
-        assert ben.home_workspace_id == unit.id
+        assert (unit.kind, unit.code, str(unit.parent_id)) == ("org", "SED-SE", ids["workspaces"]["division"])
+        bharat = db.get(User, ids["users"]["bharat"])
+        assert bharat.home_workspace_id == unit.id
         roles = {
-            m.workspace_id: m.role for m in db.scalars(select(Membership).where(Membership.user_id == ben.id))
+            m.workspace_id: m.role
+            for m in db.scalars(select(Membership).where(Membership.user_id == bharat.id))
         }
         assert roles[unit.id] == "member" and ids["workspaces"]["section_a"] not in map(str, roles)
         records = db.scalars(select(AuditEvent).where(AuditEvent.action.like("people.change%"))).all()
@@ -68,9 +69,9 @@ def test_scenario_split_moves_chosen_people_into_a_new_sibling(as_user, ids, db_
         assert (parent.scope_type, parent.scope_id) == ("workspace", str(unit.id))
         assert parent.detail["kind"] == "unit_split" and parent.reason == "Annual staff review"
         assert len(records) > 3
-    ben = as_user("ben")
-    assert ben.get(f"/workspaces/{unit.id}").status_code == 200
-    assert ben.get(f"/workspaces/{ids['workspaces']['section_a']}").status_code == 404
+    bharat = as_user("bharat")
+    assert bharat.get(f"/workspaces/{unit.id}").status_code == 200
+    assert bharat.get(f"/workspaces/{ids['workspaces']['section_a']}").status_code == 404
     assert as_user("asha").get(f"/workspaces/{unit.id}").status_code == 404
     assert admin.get(f"/workspaces/{unit.id}").status_code == 404
 
@@ -143,10 +144,10 @@ def test_move_counts_match_real_reads_for_the_moved_branch(as_user, ids, db_fact
         lasers = Workspace(kind="org", name="Lasers Section", code="OPT-LA", parent_id=optics.id)
         db.add(lasers)
         db.flush()
-        db.add(Membership(user_id=ids["users"]["chen"], workspace_id=lasers.id, role="member"))
+        db.add(Membership(user_id=ids["users"]["chitra"], workspace_id=lasers.id, role="member"))
         db.commit()
         ids["workspaces"].update(optics=str(optics.id), lasers=str(lasers.id))
-    admin, chen = as_user("admin"), as_user("chen")
+    admin, chitra = as_user("admin"), as_user("chitra")
     request = req(ids, "unit_move", unit_id="lasers", new_parent_id="section_a")
     plan = preview(admin, request)
     gained = {
@@ -154,9 +155,9 @@ def test_move_counts_match_real_reads_for_the_moved_branch(as_user, ids, db_fact
     }
     lost = {item["target_id"]: item["count"] for item in plan["warnings"] if item["code"] == "access_lost"}
     assert lost == {ids["workspaces"]["optics"]: 1} and gained == {ids["workspaces"]["section_a"]: 1}
-    before = readable(chen, ids)
+    before = readable(chitra, ids)
     apply(admin, request)
-    after = readable(chen, ids)
+    after = readable(chitra, ids)
     assert after - before == {"section_a"} and before - after == {"optics"}
 
 
@@ -177,19 +178,23 @@ def test_move_counts_match_real_reads_for_the_moved_branch(as_user, ids, db_fact
         ("unit_reopen", {"unit_id": "section_a"}, "no_change"),
         ("unit_rename", {"unit_id": "section_a", "code": "CS"}, "duplicate_code"),
         ("unit_rename", {"unit_id": "section_a", "code": "TFS"}, "no_change"),
-        ("unit_split", {"unit_id": "root", "name": "X", "code": "XX", "person_ids": ["ben"]}, "root_fixed"),
         (
             "unit_split",
-            {"unit_id": "section_a", "name": "X", "code": "SSD", "person_ids": ["ben"]},
+            {"unit_id": "root", "name": "X", "code": "XX", "person_ids": ["bharat"]},
+            "root_fixed",
+        ),
+        (
+            "unit_split",
+            {"unit_id": "section_a", "name": "X", "code": "SED", "person_ids": ["bharat"]},
             "duplicate_code",
         ),
         (
             "unit_split",
-            {"unit_id": "section_a", "name": "X", "code": "XX", "person_ids": ["chen"]},
+            {"unit_id": "section_a", "name": "X", "code": "XX", "person_ids": ["chitra"]},
             "person_not_in_unit",
         ),
         ("unit_create", {"parent_id": "project", "name": "X", "code": "XX"}, "unit_unavailable"),
-        ("unit_create", {"parent_id": "division", "name": "X", "code": "SSD"}, "duplicate_code"),
+        ("unit_create", {"parent_id": "division", "name": "X", "code": "SED"}, "duplicate_code"),
     ],
 )
 def test_blockers(kind, fields, code, as_user, ids):
@@ -208,7 +213,7 @@ def test_blockers(kind, fields, code, as_user, ids):
 
 
 def test_splitting_off_the_last_steward_needs_acknowledgement(as_user, ids):
-    request = req(ids, "unit_split", unit_id="section_a", person_ids=["asha"], name="Sensors", code="SSD-SE")
+    request = req(ids, "unit_split", unit_id="section_a", person_ids=["asha"], name="Sensors", code="SED-SE")
     plan = preview(as_user("admin"), request)
     assert "unit_without_steward" in codes(plan["blockers"])
     acknowledged = {"request": {**request["request"], "acknowledge_no_steward": True}}
@@ -218,7 +223,7 @@ def test_splitting_off_the_last_steward_needs_acknowledgement(as_user, ids):
 def test_close_and_reopen_an_empty_unit_with_positions_ended(as_user, ids, db_factory):
     admin = as_user("admin")
     created = apply(
-        admin, req(ids, "unit_create", parent_id="division", name="Optics Lab", code="SSD-OP", head_id="eli")
+        admin, req(ids, "unit_create", parent_id="division", name="Optics Lab", code="SED-OP", head_id="esha")
     )
     ids["workspaces"]["optics"] = created["unit_id"]
     request = req(ids, "unit_close", unit_id="optics")
@@ -228,7 +233,7 @@ def test_close_and_reopen_an_empty_unit_with_positions_ended(as_user, ids, db_fa
     with db_factory() as db:
         assert db.get(Workspace, created["unit_id"]).archived
         assert db.scalar(select(UnitPosition).where(UnitPosition.ended_at.is_(None))) is None
-    assert as_user("eli").get(f"/workspaces/{created['unit_id']}").status_code == 200
+    assert as_user("esha").get(f"/workspaces/{created['unit_id']}").status_code == 200
     apply(admin, req(ids, "unit_reopen", unit_id="optics"))
     with db_factory() as db:
         assert not db.get(Workspace, created["unit_id"]).archived
@@ -237,71 +242,72 @@ def test_close_and_reopen_an_empty_unit_with_positions_ended(as_user, ids, db_fa
 def test_rename_and_recode_keep_the_unit_identity(as_user, ids, db_factory):
     admin = as_user("admin")
     apply(
-        admin, req(ids, "unit_rename", unit_id="section_b", name="  Catalysis and Surfaces  ", code="ssd-cs")
+        admin, req(ids, "unit_rename", unit_id="section_b", name="  Corrosion and Surfaces  ", code="sed-cs")
     )
     with db_factory() as db:
         unit = db.get(Workspace, ids["workspaces"]["section_b"])
-        assert (unit.name, unit.code) == ("Catalysis and Surfaces", "SSD-CS")
-    assert as_user("chen").get(f"/workspaces/{unit.id}").json()["code"] == "SSD-CS"
+        assert (unit.name, unit.code) == ("Corrosion and Surfaces", "SED-CS")
+    assert as_user("chitra").get(f"/workspaces/{unit.id}").json()["code"] == "SED-CS"
 
 
 def test_create_unit_with_head_makes_a_steward_and_a_head_position(as_user, ids, db_factory):
     admin = as_user("admin")
-    request = req(ids, "unit_create", parent_id="division", name="Optics Lab", code="ssd-op", head_id="eli")
+    request = req(ids, "unit_create", parent_id="division", name="Optics Lab", code="sed-op", head_id="esha")
     plan = preview(admin, request)
     assert next(step["target_id"] for step in plan["steps"]) == "new:unit"
     receipt = apply(admin, request)
     with db_factory() as db:
         unit = db.get(Workspace, receipt["unit_id"])
-        assert unit.code == "SSD-OP" and str(unit.parent_id) == ids["workspaces"]["division"]
+        assert unit.code == "SED-OP" and str(unit.parent_id) == ids["workspaces"]["division"]
         assert db.scalar(select(Membership.role).where(Membership.workspace_id == unit.id)) == "steward"
         head = db.scalar(select(UnitPosition).where(UnitPosition.workspace_id == unit.id))
-        assert (head.position, str(head.user_id)) == ("head", ids["users"]["eli"])
-    assert as_user("eli").get(f"/workspaces/{receipt['unit_id']}").status_code == 200
+        assert (head.position, str(head.user_id)) == ("head", ids["users"]["esha"])
+    assert as_user("esha").get(f"/workspaces/{receipt['unit_id']}").status_code == 200
     assert admin.get(f"/workspaces/{receipt['unit_id']}").status_code == 404
 
 
 def test_create_without_head_warns_and_inactive_head_is_blocked(as_user, ids):
     admin = as_user("admin")
-    plain = preview(admin, req(ids, "unit_create", parent_id="division", name="Optics Lab", code="SSD-OP"))
+    plain = preview(admin, req(ids, "unit_create", parent_id="division", name="Optics Lab", code="SED-OP"))
     assert "unit_without_steward" in codes(plain["warnings"])
     gone = preview(
-        admin, req(ids, "unit_create", parent_id="division", name="Optics Lab", code="SSD-OP", head_id="fay")
+        admin,
+        req(ids, "unit_create", parent_id="division", name="Optics Lab", code="SED-OP", head_id="farhan"),
     )
     assert "holder_inactive" in codes(gone["blockers"])
 
 
 def test_unit_plans_carry_no_content(as_user, ids, db_factory):
     assign_tasks(as_user, ids, db_factory)
-    request = req(ids, "unit_split", unit_id="section_a", person_ids=["ben"], **SPLIT)
+    request = req(ids, "unit_split", unit_id="section_a", person_ids=["bharat"], **SPLIT)
     text = as_user("admin").post("/admin/changes/preview", json=request).text
     assert TASK_TITLE not in text and "open_tasks" in text
 
 
 def test_stale_review_after_a_concurrent_change_writes_nothing(as_user, ids, db_factory):
     admin = as_user("admin")
-    confirmation = reviewed(admin, req(ids, "unit_rename", unit_id="section_b", name="Catalysis Lab"))
+    confirmation = reviewed(admin, req(ids, "unit_rename", unit_id="section_b", name="Corrosion Lab"))
     with db_factory() as db:
-        db.get(Workspace, ids["workspaces"]["section_b"]).name = "Catalysis Team"
+        db.get(Workspace, ids["workspaces"]["section_b"]).name = "Corrosion Team"
         db.commit()
     assert admin.post("/admin/changes/apply", json=confirmation).status_code == 409
     with db_factory() as db:
-        assert db.get(Workspace, ids["workspaces"]["section_b"]).name == "Catalysis Team"
+        assert db.get(Workspace, ids["workspaces"]["section_b"]).name == "Corrosion Team"
 
 
 KINDS = [
-    ("unit_create", {"parent_id": "division", "name": "Optics Lab", "code": "SSD-OP"}),
+    ("unit_create", {"parent_id": "division", "name": "Optics Lab", "code": "SED-OP"}),
     ("unit_rename", {"unit_id": "section_b", "name": "Other"}),
     ("unit_move", {"unit_id": "section_b", "new_parent_id": "group"}),
     ("unit_merge", {"unit_id": "section_b", "into_unit_id": "section_a"}),
-    ("unit_split", {"unit_id": "section_a", "name": "X", "code": "XX", "person_ids": ["ben"]}),
+    ("unit_split", {"unit_id": "section_a", "name": "X", "code": "XX", "person_ids": ["bharat"]}),
     ("unit_close", {"unit_id": "section_b"}),
     ("unit_reopen", {"unit_id": "section_b"}),
 ]
 
 
 @pytest.mark.parametrize(("kind", "fields"), KINDS)
-@pytest.mark.parametrize("username", ["asha", "ben", "chen", "dana", "eli"])
+@pytest.mark.parametrize("username", ["asha", "bharat", "chitra", "deepa", "esha"])
 def test_members_and_stewards_cannot_change_units(kind, fields, username, as_user, ids):
     request = req(ids, kind, **fields)
     assert as_user(username).post("/admin/changes/preview", json=request).status_code == 403
@@ -321,14 +327,14 @@ def test_deactivated_signed_out_and_panel_callers_are_refused(as_user, ids, make
 
 
 def test_unknown_unit_is_a_uniform_404(as_user, ids):
-    request = req(ids, "unit_rename", unit_id=ids["users"]["ben"], name="Other")
+    request = req(ids, "unit_rename", unit_id=ids["users"]["bharat"], name="Other")
     assert as_user("admin").post("/admin/changes/preview", json=request).status_code == 404
 
 
 def test_split_and_move_revoke_live_subscriptions_and_never_read_sideways(as_user, ids, settings):
-    admin, ben, dana = as_user("admin"), as_user("ben"), as_user("dana")
+    admin, bharat, deepa = as_user("admin"), as_user("bharat"), as_user("deepa")
     a, division = ids["workspaces"]["section_a"], ids["workspaces"]["division"]
-    with ben.client.websocket_connect(f"{settings.base_path}/ws/") as conn:
+    with bharat.client.websocket_connect(f"{settings.base_path}/ws/") as conn:
         conn.receive_json()
         conn.send_json({"type": "subscribe", "workspace_id": a})
         while conn.receive_json()["type"] != "subscribed":
@@ -342,8 +348,8 @@ def test_split_and_move_revoke_live_subscriptions_and_never_read_sideways(as_use
         else:
             raise AssertionError("the split did not revoke the live subscription")
     apply(admin, req(ids, "unit_move", unit_id="section_b", new_parent_id="section_a"))
-    for username in ("ben", "dana"):  # a section's member never reads its new sibling or children
+    for username in ("bharat", "deepa"):  # a section's member never reads its new sibling or children
         client = as_user(username)
         assert client.get(f"/workspaces/{ids['workspaces']['section_b']}").status_code == 404
     assert as_user("asha").get(f"/workspaces/{division}").status_code == 200
-    assert dana.get(f"/workspaces/{a}").status_code == 404
+    assert deepa.get(f"/workspaces/{a}").status_code == 404

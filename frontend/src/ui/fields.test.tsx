@@ -123,7 +123,7 @@ describe("SearchInput", () => {
   });
 
   it("offers a named clear button only when there is text", () => {
-    render(<SearchInput label="Search people" onSearch={() => undefined} initialValue="ben" />);
+    render(<SearchInput label="Search people" onSearch={() => undefined} initialValue="bharat" />);
     fireEvent.click(screen.getByRole("button", { name: "Clear search people" }));
     expect(screen.queryByRole("button", { name: "Clear search people" })).toBeNull();
   });

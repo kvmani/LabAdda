@@ -37,8 +37,8 @@ const DIRECTORY = {
   people: [
     {
       id: "p1",
-      username: "ben",
-      display_name: "Ben Okafor",
+      username: "bharat",
+      display_name: "Bharat Kulkarni",
       employee_no: null,
       designation: null,
       status: "active",
@@ -72,7 +72,7 @@ it("gives a unit administrator only their branch and none of the site-wide tools
     return Promise.reject(new Error(`unexpected request ${path}`));
   });
   renderPeople({ sections: ["people", "org"], read_only: false, unit_admin: true });
-  expect(await screen.findByText("Ben Okafor")).toBeTruthy();
+  expect(await screen.findByText("Bharat Kulkarni")).toBeTruthy();
   const asked = vi.mocked(api).mock.calls.map((call) => String(call[0]));
   expect(asked.some((path) => path.startsWith("/admin/workspaces"))).toBe(false);
   expect(asked).not.toContain("/admin/org/attention");
@@ -91,8 +91,8 @@ it("lists appointments and withdraws one through the reviewed change", async () 
         items: [
           {
             id: "g1",
-            person: { id: "p1", name: "Dana Whitfield" },
-            unit: { id: "ssd", name: "Surface Science Division", archived: false },
+            person: { id: "p1", name: "Deepa Nair" },
+            unit: { id: "sed", name: "Surface Engineering Division", archived: false },
             granted_by: "Site Administrator",
             granted_at: "2026-11-01T10:00:00Z",
           },
@@ -107,14 +107,14 @@ it("lists appointments and withdraws one through the reviewed change", async () 
     });
   });
   render(<UnitAdministrators onDenied={vi.fn()} onChanged={vi.fn()} />);
-  expect(await screen.findByText(/Dana Whitfield administers Surface Science Division/)).toBeTruthy();
+  expect(await screen.findByText(/Deepa Nair administers Surface Engineering Division/)).toBeTruthy();
   fireEvent.click(
-    screen.getByRole("button", { name: "Withdraw Dana Whitfield from Surface Science Division" }),
+    screen.getByRole("button", { name: "Withdraw Deepa Nair from Surface Engineering Division" }),
   );
   await waitFor(() => {
     const preview = vi.mocked(api).mock.calls.find((call) => call[0] === "/admin/changes/preview");
     expect(preview?.[1]?.body).toMatchObject({
-      request: { kind: "unit_admin_revoke", person_id: "p1", unit_id: "ssd" },
+      request: { kind: "unit_admin_revoke", person_id: "p1", unit_id: "sed" },
     });
   });
 });

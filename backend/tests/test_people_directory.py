@@ -17,7 +17,7 @@ from tests.test_panel import PANEL, pair
 def add_people(db_factory, ids, count=12):
     """Create fictional staff efficiently, with duplicate names and optional identifiers."""
     with db_factory() as db:
-        password_hash = db.get(User, ids["users"]["ben"]).password_hash
+        password_hash = db.get(User, ids["users"]["bharat"]).password_hash
         staff = [
             User(
                 username=f"employee{index:03}",
@@ -25,7 +25,7 @@ def add_people(db_factory, ids, count=12):
                 password_hash=password_hash,
                 must_set_password=False,
                 status="active",
-                employee_no=f"NW-{index:03}" if index % 2 == 0 else None,
+                employee_no=f"NM-{index:03}" if index % 2 == 0 else None,
                 home_workspace_id=ids["workspaces"]["section_a"],
             )
             for index in range(count)
@@ -38,15 +38,15 @@ def add_people(db_factory, ids, count=12):
 def test_directory_search_filters_and_home_subunits(as_user, ids, db_factory):
     add_people(db_factory, ids)
     admin = as_user("admin")
-    assert len(admin.get("/admin/people?q=nw-000").json()["people"]) == 1
+    assert len(admin.get("/admin/people?q=nm-000").json()["people"]) == 1
     assert len(admin.get("/admin/people?q=EMPLOYEE00").json()["people"]) == 10
     assert admin.get("/admin/people?q=%25").json()["people"] == []
-    assert admin.get("/admin/people?status=left").json()["people"][0]["username"] == "fay"
+    assert admin.get("/admin/people?status=left").json()["people"][0]["username"] == "farhan"
     branch = ids["workspaces"]["division"]
     rows = admin.get(f"/admin/people?unit_id={branch}").json()["people"]
-    assert any(person["username"] == "ben" for person in rows)
+    assert any(person["username"] == "bharat" for person in rows)
     direct = admin.get(f"/admin/people?unit_id={branch}&include_children=false").json()["people"]
-    assert [person["username"] for person in direct] == ["dana"]
+    assert [person["username"] for person in direct] == ["deepa"]
     assert all(person["is_admin"] for person in admin.get("/admin/people?role=admin").json()["people"])
     section = ids["workspaces"]["section_a"]
     stewards = admin.get(f"/admin/people?unit_id={section}&role=steward").json()["people"]
@@ -105,17 +105,17 @@ def test_cursor_binding_and_input_bounds(as_user, ids, db_factory):
         assert admin.get("/admin/people?" + query).status_code == 422
 
 
-@pytest.mark.parametrize("name", ["asha", "ben", "chen", "dana", "eli"])
+@pytest.mark.parametrize("name", ["asha", "bharat", "chitra", "deepa", "esha"])
 def test_non_administrators_do_not_get_staff_directory(as_user, name):
     assert as_user(name).get("/admin/people").status_code == 403
 
 
 def test_reader_panel_signed_out_and_disabled_are_denied(as_user, ids, make_client):
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").get("/admin/people").status_code == 403
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").get("/admin/people").status_code == 403
     assert make_client().get("/admin/people").status_code == 401
     client = make_client()
-    assert client.login("fay").status_code == 401
+    assert client.login("farhan").status_code == 401
     assert client.get("/admin/people").status_code == 401
     assert pair(as_user, make_client, ids).get("/admin/people").status_code == 401
     assert as_user("admin").get("/admin/people", headers=PANEL).status_code == 401
@@ -123,10 +123,10 @@ def test_reader_panel_signed_out_and_disabled_are_denied(as_user, ids, make_clie
 
 def test_directory_never_contains_private_contacts_or_content(as_user, ids, db_factory):
     private = "Recognisable private staff test material"
-    member = as_user("ben")
+    member = as_user("bharat")
     assert member.post("/notes", json={"title": private, "body": private}).status_code == 201
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         person.contact_email = "private-contact@research.example"
         db.commit()
     response = as_user("admin").get("/admin/people")
@@ -134,7 +134,9 @@ def test_directory_never_contains_private_contacts_or_content(as_user, ids, db_f
     assert private not in response.text
     assert "private-contact" not in response.text
     assert "password" not in response.text
-    seen = next(person for person in response.json()["people"] if person["username"] == "ben")["last_seen_on"]
+    seen = next(person for person in response.json()["people"] if person["username"] == "bharat")[
+        "last_seen_on"
+    ]
     assert len(seen) == 10 and "T" not in seen
 
 

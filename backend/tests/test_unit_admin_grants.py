@@ -72,7 +72,7 @@ def test_appointment_can_be_made_again_after_withdrawal(as_user, ids, db_factory
     ("person", "unit", "code"),
     [
         ("admin", "division", "already_admin"),
-        ("fay", "division", "person_inactive"),
+        ("farhan", "division", "person_inactive"),
         ("asha", "project", "unit_unavailable"),
     ],
 )
@@ -88,7 +88,7 @@ def test_duplicate_appointment_and_unneeded_withdrawal_are_blocked(as_user, ids,
     appoint(db_factory, ids, "asha", "division")
     again = preview(admin, grant_request(ids, "asha", "division")).json()
     assert [b["code"] for b in again["blockers"]] == ["no_change"]
-    none = preview(admin, grant_request(ids, "ben", "division", "unit_admin_revoke")).json()
+    none = preview(admin, grant_request(ids, "bharat", "division", "unit_admin_revoke")).json()
     assert [b["code"] for b in none["blockers"]] == ["no_change"]
 
 
@@ -103,23 +103,23 @@ def test_archived_unit_does_not_give_scope(as_user, ids, db_factory):
 
 
 def test_scope_is_the_unit_and_what_lies_below_it(ids, db_factory):
-    appoint(db_factory, ids, "dana", "division")
-    appoint(db_factory, ids, "chen", "section_b")
+    appoint(db_factory, ids, "deepa", "division")
+    appoint(db_factory, ids, "chitra", "section_b")
     with db_factory() as db:
-        dana, chen, ben = (db.get(User, ids["users"][name]) for name in ("dana", "chen", "ben"))
-        assert policy.people_scope(db, dana) == {
+        deepa, chitra, bharat = (db.get(User, ids["users"][name]) for name in ("deepa", "chitra", "bharat"))
+        assert policy.people_scope(db, deepa) == {
             ids_uuid(ids, key) for key in ("division", "section_a", "section_b")
         }
-        assert policy.people_scope(db, chen) == {ids_uuid(ids, "section_b")}
-        assert policy.people_scope(db, ben) == frozenset()
+        assert policy.people_scope(db, chitra) == {ids_uuid(ids, "section_b")}
+        assert policy.people_scope(db, bharat) == frozenset()
         admin = db.get(User, ids["users"]["admin"])
         assert len(policy.people_scope(db, admin)) == 5
         assert policy.restricted_scope(db, admin) is None
-        assert policy.console_sections(db, dana) == ("people", "org")
-        assert policy.console_sections(db, ben) == ()
-        dana.is_active = False
-        assert policy.people_scope(db, dana) == frozenset()
-        assert policy.console_sections(db, dana) == ()
+        assert policy.console_sections(db, deepa) == ("people", "org")
+        assert policy.console_sections(db, bharat) == ()
+        deepa.is_active = False
+        assert policy.people_scope(db, deepa) == frozenset()
+        assert policy.console_sections(db, deepa) == ()
 
 
 def test_only_one_current_appointment_per_person_and_unit(ids, db_factory):

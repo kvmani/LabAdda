@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 ## What this is for
 
-Use this when someone covers a position for a limited time, for example Asha acting as Head of the Surface Science Division for 60 days after Dana retires. You choose the end date; LabAdda ends the appointment on that date without anyone having to remember.
+Use this when someone covers a position for a limited time, for example Asha acting as Head of the Surface Engineering Division for 60 days after Deepa retires. You choose the end date; LabAdda ends the appointment on that date without anyone having to remember.
 
 ## Before you start
 

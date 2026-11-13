@@ -31,7 +31,7 @@ async function login(base, user) {
 try {
   for (const base of ["", "/labadda-staging"]) {
     const admin = await login(base, "admin"),
-      ben = await login(base, "ben"),
+      bharat = await login(base, "bharat"),
       api = origin + base + "/api/v1";
     const headers = { "X-CSRF-Token": admin.session.csrf_token };
     const legacy = await admin.ctx.request.post(api + "/admin/policy-drafts", {
@@ -39,7 +39,7 @@ try {
       data: { base_revision: 0, reason: "Synthetic legacy revision", profile: {} },
     });
     assert.equal(legacy.status(), 201);
-    const before = await (await ben.ctx.request.get(api + "/usage")).json();
+    const before = await (await bharat.ctx.request.get(api + "/usage")).json();
     await admin.page.goto(origin + base + "/admin/storage");
     await admin.page.getByRole("heading", { name: "Site proposal revision 1" }).waitFor();
     check(
@@ -111,12 +111,12 @@ try {
       base + ": immutable capacity proposal saved without activation",
     );
     check(history.drafts[1].schema_version === 1, base + ": old proposal remains version one");
-    const after = await (await ben.ctx.request.get(api + "/usage")).json();
+    const after = await (await bharat.ctx.request.get(api + "/usage")).json();
     check(after.runtime_limit.bytes === before.runtime_limit.bytes, base + ": current pilot limit unchanged");
     check(
       (
-        await ben.ctx.request.post(api + "/admin/capacity-forecasts", {
-          headers: { "X-CSRF-Token": ben.session.csrf_token },
+        await bharat.ctx.request.post(api + "/admin/capacity-forecasts", {
+          headers: { "X-CSRF-Token": bharat.session.csrf_token },
           data: { profile: { schema_version: 2 } },
         })
       ).status() === 403,
@@ -156,7 +156,7 @@ try {
       path: out + (base ? "/preview-prefix-mobile.png" : "/preview-root-mobile.png"),
     });
     await admin.ctx.close();
-    await ben.ctx.close();
+    await bharat.ctx.close();
   }
   console.log(`${checks} capacity proposal browser checks passed`);
 } finally {

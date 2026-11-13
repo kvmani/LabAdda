@@ -3,7 +3,8 @@
 
 Fails when a relative Markdown link or heading anchor does not resolve, when an agent
 instruction file exceeds its size limit, or when a package in the plan table has no card,
-an unknown status or an unknown dependency. Standard library only; changes nothing.
+an unknown status or an unknown dependency, or when a retired fixture name returns.
+Standard library only; changes nothing.
 
     python3 scripts/check_docs.py [repository-root]
 """
@@ -11,11 +12,21 @@ an unknown status or an unknown dependency. Standard library only; changes nothi
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 SKIPPED_DIRECTORIES = {".git", "node_modules", ".venv", "var", "dist", "build"}
 SIZE_LIMITS = {"AGENTS.md": 160, "backend/AGENTS.md": 80, "frontend/AGENTS.md": 80}
+# Fixture names retired by the Indian-names rule (docs/development/fixture-names.md). Records of
+# finished work and the mapping itself may still show them.
+RETIRED_NAMES = re.compile(
+    r"(?<![A-Za-z0-9])(?:ben|chen|dana|eli|fay)(?![a-z0-9])"
+    r"|Okafor|Whitfield|Novak|Moreau|Northwind|Aurora|Catalysis|Surface Science|Microscopy Reading Club",
+    re.IGNORECASE,
+)
+NAME_RECORDS = ("docs/history/", "docs/evidence/")
+NAME_EXEMPT = {"ROADMAP.md", "scripts/check_docs.py", "docs/development/fixture-names.md"}
 PLAN_INDEX = "docs/plan/README.md"
 PLAN_STATUSES = {"done", "in progress", "next", "queued", "owner", "deferred"}
 DEPENDENCY_WORDS = {"—", "all above"}
@@ -114,6 +125,31 @@ def check_sizes(root: Path) -> list[str]:
     return problems
 
 
+def check_names(root: Path) -> list[str]:
+    """Return a problem for each retired fixture name found in a tracked text file."""
+    try:
+        listing = subprocess.run(
+            ["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True
+        ).stdout.splitlines()
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    problems = []
+    for name in listing:
+        if name in NAME_EXEMPT or name.startswith(NAME_RECORDS) or name.endswith("package-lock.json"):
+            continue
+        try:
+            text = (root / name).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            found = RETIRED_NAMES.search(line)
+            if found:
+                problems.append(
+                    f"{name}:{number}: retired fixture name '{found.group(0)}'; see fixture-names.md"
+                )
+    return problems
+
+
 def plan_rows(text: str) -> list[tuple[int, list[str]]]:
     """Return (line number, cells) for each package row of the plan table."""
     rows = []
@@ -163,7 +199,7 @@ def check_plan(root: Path) -> list[str]:
 def run(root: Path) -> list[str]:
     """Return every documentation problem found below root."""
     files = markdown_files(root)
-    return check_links(root, files) + check_sizes(root) + check_plan(root)
+    return check_links(root, files) + check_sizes(root) + check_plan(root) + check_names(root)
 
 
 def main(arguments: list[str]) -> int:

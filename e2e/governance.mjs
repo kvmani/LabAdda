@@ -74,9 +74,9 @@ try {
     await page.getByText("Partial observation recorded.", { exact: true }).waitFor();
     await page.screenshot({ path: out + (base ? "/admin-prefix.png" : "/admin-root.png"), fullPage: true });
     check(true, base + ": admin observation and history rendered");
-    const ben = await signIn(base, "ben");
-    const bs = await (await ben.ctx.request.get(origin + base + "/api/v1/auth/session")).json();
-    const upload = await ben.ctx.request.post(origin + base + "/api/v1/uploads", {
+    const bharat = await signIn(base, "bharat");
+    const bs = await (await bharat.ctx.request.get(origin + base + "/api/v1/auth/session")).json();
+    const upload = await bharat.ctx.request.post(origin + base + "/api/v1/uploads", {
       headers: { "X-CSRF-Token": bs.csrf_token },
       multipart: {
         file: {
@@ -87,22 +87,25 @@ try {
       },
     });
     assert.equal(upload.status(), 201);
-    await ben.page.getByRole("link", { name: "My storage usage", exact: true }).click();
-    await ben.page.getByRole("heading", { name: "Pilot upload counter" }).waitFor();
-    check(await ben.page.getByText(/1 files/).isVisible(), base + ": user sees own original counter");
+    await bharat.page.getByRole("link", { name: "My storage usage", exact: true }).click();
+    await bharat.page.getByRole("heading", { name: "Pilot upload counter" }).waitFor();
+    check(await bharat.page.getByText(/1 files/).isVisible(), base + ": user sees own original counter");
     check(
-      !(await ben.page.locator("body").innerText()).includes("private-filename"),
+      !(await bharat.page.locator("body").innerText()).includes("private-filename"),
       base + ": usage does not expose filenames",
     );
-    const denied = await ben.ctx.request.get(origin + base + "/api/v1/admin/usage");
+    const denied = await bharat.ctx.request.get(origin + base + "/api/v1/admin/usage");
     check(denied.status() === 403, base + ": member denied site measurements");
-    await ben.page.setViewportSize({ width: 390, height: 844 });
-    await ben.page.getByLabel("Switch workspace").selectOption("usage");
-    await ben.page.getByRole("heading", { name: "Pilot upload counter" }).waitFor();
+    await bharat.page.setViewportSize({ width: 390, height: 844 });
+    await bharat.page.getByLabel("Switch workspace").selectOption("usage");
+    await bharat.page.getByRole("heading", { name: "Pilot upload counter" }).waitFor();
     check(true, base + ": mobile switcher opens storage usage");
-    await ben.page.setViewportSize({ width: 1400, height: 1100 });
-    await ben.page.screenshot({ path: out + (base ? "/user-prefix.png" : "/user-root.png"), fullPage: true });
-    await ben.ctx.close();
+    await bharat.page.setViewportSize({ width: 1400, height: 1100 });
+    await bharat.page.screenshot({
+      path: out + (base ? "/user-prefix.png" : "/user-root.png"),
+      fullPage: true,
+    });
+    await bharat.ctx.close();
     await ctx.close();
   }
   console.log(`${checks} governance browser checks passed`);

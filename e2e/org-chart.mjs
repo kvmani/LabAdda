@@ -59,7 +59,7 @@ async function keyboardPath(page, base) {
   await audit(page, 1400, base + " chart");
   await audit(page, 390, base + " chart");
   await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-chart.png` });
-  await unit(page, "Northwind Research").focus();
+  await unit(page, "National Materials Research Laboratory").focus();
   for (const key of ["ArrowDown", "ArrowDown", "ArrowDown", "ArrowRight"]) await page.keyboard.press(key);
   const focused = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
   check(
@@ -79,14 +79,16 @@ async function split(page, base) {
   await press(page.getByRole("button", { name: "Split off a new unit…", exact: true }));
   const dialog = page.getByRole("dialog", { name: "Split a new unit from Thin Films Section" });
   await dialog.getByLabel(/^New unit name/).fill("Sensors Section");
-  await dialog.getByLabel(/^New unit code/).fill("ssd-se");
-  await dialog.getByLabel("Ben Okafor", { exact: true }).check();
+  await dialog.getByLabel(/^New unit code/).fill("sed-se");
+  await dialog.getByLabel("Bharat Kulkarni", { exact: true }).check();
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
-  await dialog.getByText("Create the unit Sensors Section (SSD-SE) under Surface Science Division").waitFor();
+  await dialog
+    .getByText("Create the unit Sensors Section (SED-SE) under Surface Engineering Division")
+    .waitFor();
   const acknowledge = dialog.getByLabel("I understand a unit will be left with no steward");
   await acknowledge.check();
   await dialog
-    .getByText(/Ben Okafor/)
+    .getByText(/Bharat Kulkarni/)
     .first()
     .waitFor();
   await dialog.getByText("1 person will no longer be able to read Thin Films Section.").waitFor();
@@ -96,7 +98,7 @@ async function split(page, base) {
   await confirm(dialog, "Split unit", "Sensors becomes its own section");
   await dialog.getByText("Sensors Section now exists and its people have moved.").waitFor();
   await press(dialog.getByRole("button", { name: "Done", exact: true }));
-  await unit(page, "SSD-SE, Sensors Section").waitFor();
+  await unit(page, "SED-SE, Sensors Section").waitFor();
   check(true, base + " the new unit appears in the chart with its code");
 }
 async function merge(page, base) {
@@ -137,32 +139,32 @@ async function drag(page, from, to) {
   await page.mouse.up();
 }
 async function gestures(page, base) {
-  await unit(page, "Catalysis Section").click();
-  const person = page.locator(".org-panel__person", { hasText: "Chen Li" });
+  await unit(page, "Corrosion Section").click();
+  const person = page.locator(".org-panel__person", { hasText: "Chitra Iyer" });
   await drag(page, person, unit(page, "Sensors Section"));
-  const transfer = page.getByRole("dialog", { name: "Transfer Chen Li" });
+  const transfer = page.getByRole("dialog", { name: "Transfer Chitra Iyer" });
   await transfer.waitFor();
   check(
     (await transfer.getByLabel(/^New home unit/).inputValue()) !== "",
     base + " dropping a person opens the transfer with the unit chosen",
   );
   await press(transfer.getByRole("button", { name: "Cancel", exact: true }));
-  await drag(page, unit(page, "Catalysis Section"), unit(page, "Materials Group"));
-  const move = page.getByRole("dialog", { name: "Move Catalysis Section" });
+  await drag(page, unit(page, "Corrosion Section"), unit(page, "Materials Group"));
+  const move = page.getByRole("dialog", { name: "Move Corrosion Section" });
   await move.getByRole("button", { name: "Review change", exact: true }).click();
-  await move.getByText(/Move Catalysis Section with its sub-units under Materials Group/).waitFor();
+  await move.getByText(/Move Corrosion Section with its sub-units under Materials Group/).waitFor();
   check(true, base + " dropping a unit opens the move review");
   await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-move-review.png` });
   await press(move.getByRole("button", { name: "Cancel", exact: true }));
-  await drag(page, unit(page, "Surface Science Division"), unit(page, "Catalysis Section"));
-  const blocked = page.getByRole("dialog", { name: "Move Surface Science Division" });
+  await drag(page, unit(page, "Surface Engineering Division"), unit(page, "Corrosion Section"));
+  const blocked = page.getByRole("dialog", { name: "Move Surface Engineering Division" });
   await blocked.getByRole("button", { name: "Review change", exact: true }).click();
   await blocked.getByText("A unit cannot move beneath itself or its own sub-units.").waitFor();
   check(true, base + " moving a unit beneath its own descendant is blocked");
   await press(blocked.getByRole("button", { name: "Cancel", exact: true }));
 }
 async function reads(base) {
-  const ben = await login(base, "ben");
+  const bharat = await login(base, "bharat");
   const asha = await login(base, "asha");
   const admin = await login(base, "admin");
   try {
@@ -170,8 +172,11 @@ async function reads(base) {
     const tree = await (await admin.context.request.get(endpoint + "/admin/org/tree")).json();
     const id = (name) => tree.units.find((item) => item.name === name).id;
     const get = (who, name) => who.context.request.get(endpoint + "/workspaces/" + id(name));
-    check((await get(ben, "Sensors Section")).status() === 200, base + " Ben reads Sensors");
-    check((await get(ben, "Thin Films Section")).status() === 404, base + " Ben no longer reads Thin Films");
+    check((await get(bharat, "Sensors Section")).status() === 200, base + " Bharat reads Sensors");
+    check(
+      (await get(bharat, "Thin Films Section")).status() === 404,
+      base + " Bharat no longer reads Thin Films",
+    );
     check(
       (await get(asha, "Thin Films Section")).status() === 200,
       base + " Asha keeps reading closed Thin Films",
@@ -182,7 +187,7 @@ async function reads(base) {
     );
     check(JSON.stringify(tree).includes("fixture-pass") === false, base + " the chart data holds no secrets");
   } finally {
-    await Promise.all([ben.context.close(), asha.context.close(), admin.context.close()]);
+    await Promise.all([bharat.context.close(), asha.context.close(), admin.context.close()]);
   }
 }
 try {

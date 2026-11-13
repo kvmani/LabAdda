@@ -17,47 +17,49 @@ def choices(revision=0, **override):
 
 
 def test_defaults_owner_revision_and_validation(as_user):
-    ben, asha = as_user("ben"), as_user("asha")
-    assert ben.get("/notification-preferences").json() == choices()
-    response = ben.put("/notification-preferences", json=choices(mentions=False))
+    bharat, asha = as_user("bharat"), as_user("asha")
+    assert bharat.get("/notification-preferences").json() == choices()
+    response = bharat.put("/notification-preferences", json=choices(mentions=False))
     assert response.status_code == 200 and response.json() == choices(1, mentions=False)
     assert asha.get("/notification-preferences").json() == choices()
-    assert ben.put("/notification-preferences", json=choices()).status_code == 409
-    assert ben.put("/notification-preferences", json=choices(1, mentions="false")).status_code == 422
-    assert ben.put("/notification-preferences", json={**choices(1), "user_id": "another"}).status_code == 422
-    assert ben.get("/notification-preferences", headers={"X-LabAdda-Panel": "1"}).status_code == 401
-    assert ben.client.put(ben.url("/notification-preferences"), json=choices(1)).status_code == 403
+    assert bharat.put("/notification-preferences", json=choices()).status_code == 409
+    assert bharat.put("/notification-preferences", json=choices(1, mentions="false")).status_code == 422
+    assert (
+        bharat.put("/notification-preferences", json={**choices(1), "user_id": "another"}).status_code == 422
+    )
+    assert bharat.get("/notification-preferences", headers={"X-LabAdda-Panel": "1"}).status_code == 401
+    assert bharat.client.put(bharat.url("/notification-preferences"), json=choices(1)).status_code == 403
 
 
 def test_muted_mentions_do_not_queue_and_existing_history_remains(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     ws = ids["workspaces"]["section_a"]
 
     def mention(text):
         return asha.post(
-            f"/workspaces/{ws}/chat", json={"body": "@ben " + text, "client_id": str(uuid.uuid4())}
+            f"/workspaces/{ws}/chat", json={"body": "@bharat " + text, "client_id": str(uuid.uuid4())}
         )
 
     assert mention("Before mute").status_code == 201
-    assert ben.put("/notification-preferences", json=choices(mentions=False)).status_code == 200
+    assert bharat.put("/notification-preferences", json=choices(mentions=False)).status_code == 200
     assert mention("While muted").status_code == 201
-    titles = [row["title"] for row in ben.get("/notifications").json()["items"]]
+    titles = [row["title"] for row in bharat.get("/notifications").json()["items"]]
     assert len(titles) == 1 and "Before mute" in titles[0]
-    assert ben.put("/notification-preferences", json=choices(1)).status_code == 200
+    assert bharat.put("/notification-preferences", json=choices(1)).status_code == 200
     assert mention("After enabling").status_code == 201
-    assert len(ben.get("/notifications").json()["items"]) == 2
+    assert len(bharat.get("/notifications").json()["items"]) == 2
 
 
 @pytest.mark.parametrize(
     "kind,field", [("mention", "mentions"), ("official", "official_notices"), ("reminder", "reminders")]
 )
 def test_categories_filter_string_and_uuid_recipients_independently(as_user, ids, db_factory, kind, field):
-    api = as_user("ben")
+    api = as_user("bharat")
     assert api.put("/notification-preferences", json=choices(**{field: False})).status_code == 200
     with db_factory() as db:
         created = notify.create(
             db,
-            recipients=[ids["users"]["ben"], uuid.UUID(ids["users"]["asha"])],
+            recipients=[ids["users"]["bharat"], uuid.UUID(ids["users"]["asha"])],
             kind=kind,
             workspace_id=uuid.UUID(ids["workspaces"]["section_a"]),
             source_type="chat",
@@ -71,7 +73,7 @@ def test_categories_filter_string_and_uuid_recipients_independently(as_user, ids
 
 
 def test_concurrent_preferences_do_not_overwrite_and_downgrade_guard(as_user, settings):
-    api = as_user("ben")
+    api = as_user("bharat")
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = [
             future.result(timeout=5).status_code
@@ -89,7 +91,7 @@ def test_expired_save_rolls_back_choices(as_user, db_factory, monkeypatch):
     from labadda import identity_locks
     from labadda.api import alert_preferences
 
-    api = as_user("ben")
+    api = as_user("bharat")
     original = alert_preferences.lock_identity
 
     def expire(db, actor, settings):
@@ -108,7 +110,7 @@ def test_skipped_scheduled_reminder_is_not_replayed_after_enable(as_user, db_fac
     from labadda.scheduler import process_due_reminders
     from labadda.security import utcnow
 
-    api = as_user("ben")
+    api = as_user("bharat")
     now = utcnow()
     assert api.put("/notification-preferences", json=choices(reminders=False)).status_code == 200
     assert (

@@ -21,7 +21,7 @@ def test_similar_name_warning_never_names_people_outside_the_branch(as_user, ids
         ids,
         "add_person",
         username="newcomer",
-        display_name="Eli Novak",
+        display_name="Esha Menon",
         role="member",
         home_unit_id="section_a",
     )
@@ -29,33 +29,33 @@ def test_similar_name_warning_never_names_people_outside_the_branch(as_user, ids
     assert shown.status_code == 200
     assert shown.json()["warnings"] == []
     # A site administrator still gets the duplicate warning.
-    assert "Eli Novak (eli)" in preview(as_user("admin"), request).text
+    assert "Esha Menon (esha)" in preview(as_user("admin"), request).text
 
 
 def test_reinstate_review_does_not_list_places_outside_the_branch(as_user, ids, db_factory):
     appoint(db_factory, ids, "asha", "section_a")
     with db_factory() as db:
         project = ids["workspaces"]["project"]
-        db.add(Membership(user_id=ids["users"]["ben"], workspace_id=project, role="member"))
+        db.add(Membership(user_id=ids["users"]["bharat"], workspace_id=project, role="member"))
         db.commit()
     admin = as_user("admin")
-    suspend = reviewed(admin, change(ids, "suspend", person_id="ben"))
+    suspend = reviewed(admin, change(ids, "suspend", person_id="bharat"))
     assert admin.post("/admin/changes/apply", json=suspend).status_code == 200
-    shown = preview(as_user("asha"), change(ids, "reinstate", person_id="ben"))
+    shown = preview(as_user("asha"), change(ids, "reinstate", person_id="bharat"))
     assert shown.status_code == 200
-    for text in ("Reading Club", "Aurora"):
+    for text in ("Reading Club", "Tejas"):
         assert text not in shown.text
 
 
 def test_scheduled_list_hides_changes_whose_text_reaches_outside_the_branch(
     as_user, ids, db_factory, settings
 ):
-    appoint(db_factory, ids, "dana", "division")
+    appoint(db_factory, ids, "deepa", "division")
     admin = as_user("admin")
     day = (site_today(settings) + timedelta(days=1)).isoformat()
-    body = {**change(ids, "retire", person_id="chen", status="left"), "effective_on": day}
+    body = {**change(ids, "retire", person_id="chitra", status="left"), "effective_on": day}
     assert admin.post("/admin/changes/apply", json=reviewed_for(admin, body)).status_code == 200
-    shown = as_user("dana").get("/admin/changes/scheduled")
+    shown = as_user("deepa").get("/admin/changes/scheduled")
     assert shown.status_code == 200
     assert "Reading Club" not in shown.text
 
@@ -63,13 +63,13 @@ def test_scheduled_list_hides_changes_whose_text_reaches_outside_the_branch(
 def test_candidates_leave_out_site_administrators_and_people_homed_elsewhere(as_user, ids, db_factory):
     appoint(db_factory, ids, "asha", "section_a")
     with db_factory() as db:
-        for name in ("admin", "eli"):
+        for name in ("admin", "esha"):
             unit = ids["workspaces"]["section_a"]
             db.add(Membership(user_id=ids["users"][name], workspace_id=unit, role="member"))
         db.commit()
     path = f"/admin/changes/candidates?workspace_id={ids['workspaces']['section_a']}"
     listed = [row["username"] for row in as_user("asha").get(path).json()["people"]]
-    assert "admin" not in listed and "eli" not in listed and "ben" in listed
+    assert "admin" not in listed and "esha" not in listed and "bharat" in listed
     assert "admin" in [row["username"] for row in as_user("admin").get(path).json()["people"]]
 
 
@@ -82,6 +82,6 @@ def test_candidates_leave_out_site_administrators_and_people_homed_elsewhere(as_
     ],
 )
 def test_unit_administrator_cannot_give_themselves_access_to_a_unit(as_user, ids, db_factory, kind, fields):
-    appoint(db_factory, ids, "dana", "division")
-    plan = preview(as_user("dana"), change(ids, kind, person_id="dana", **fields)).json()
+    appoint(db_factory, ids, "deepa", "division")
+    plan = preview(as_user("deepa"), change(ids, kind, person_id="deepa", **fields)).json()
     assert "self_access" in codes(plan)

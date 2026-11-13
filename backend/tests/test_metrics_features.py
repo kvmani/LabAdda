@@ -32,23 +32,23 @@ def test_retried_post_counts_once_by_kind_and_unit(as_user, ids):
 
 
 def test_replies_in_a_project_count_by_kind_only(as_user, ids):
-    eli = as_user("eli")
-    post = eli.post(f"/workspaces/{ws(ids, 'project')}/posts", json={"body": "Plan"}).json()
+    esha = as_user("esha")
+    post = esha.post(f"/workspaces/{ws(ids, 'project')}/posts", json={"body": "Plan"}).json()
     reply = {"body": "Agreed", "client_id": "retry-reply-01"}
-    assert eli.post(f"/posts/{post['id']}/replies", json=reply).status_code == 201
-    assert eli.post(f"/posts/{post['id']}/replies", json=reply).status_code == 201
+    assert esha.post(f"/posts/{post['id']}/replies", json=reply).status_code == 201
+    assert esha.post(f"/posts/{post['id']}/replies", json=reply).status_code == 201
     assert counts("replies.created") == {"project": 1}
     assert counts("posts.created") == {"project": 1}
 
 
 def test_chat_message_and_its_attachment_are_counted_once(as_user, ids):
-    ben = as_user("ben")
-    asset, data = upload(ben)
+    bharat = as_user("bharat")
+    asset, data = upload(bharat)
     assert counts("uploads.count") == {}
     message = {"body": "Files attached", "client_id": "chat-retry-01", "attachment_ids": [asset["id"]]}
     path = f"/workspaces/{ws(ids, 'reading_club')}/chat"
-    assert ben.post(path, json=message).status_code == 201
-    assert ben.post(path, json=message).status_code in (200, 201)
+    assert bharat.post(path, json=message).status_code == 201
+    assert bharat.post(path, json=message).status_code in (200, 201)
     assert counts("chat.messages") == {"group": 1}
     assert counts("uploads.count") == {"group": 1}
     assert counts("uploads.bytes") == {"group": len(data)}
@@ -87,7 +87,7 @@ def test_personal_task_lists_are_never_counted(as_user):
 
 def test_mention_notifications_are_counted(as_user, ids):
     asha = as_user("asha")
-    assert asha.post(f"/workspaces/{ws(ids)}/posts", json={"body": "Ask @ben"}).status_code == 201
+    assert asha.post(f"/workspaces/{ws(ids)}/posts", json={"body": "Ask @bharat"}).status_code == 201
     assert counts("notifications.created") == {"org": 1, unit(ids): 1}
 
 
@@ -96,7 +96,7 @@ def test_rolled_back_work_is_not_counted(db_factory, ids):
         workspace = db.get(Workspace, uuid.UUID(ws(ids, "project")))
         notify.create(
             db,
-            recipients=[uuid.UUID(ids["users"]["eli"])],
+            recipients=[uuid.UUID(ids["users"]["esha"])],
             kind="mention",
             workspace_id=workspace.id,
             source_type="post",
@@ -113,6 +113,6 @@ def test_rolled_back_work_is_not_counted(db_factory, ids):
 def test_sign_ins_are_counted_by_outcome(make_client):
     make_client("asha")
     assert make_client().login("asha", "wrong-password-1").status_code == 401
-    assert make_client().login("fay").status_code == 401
+    assert make_client().login("farhan").status_code == 401
     assert counts("auth.signin_ok") == {"": 1}
     assert counts("auth.signin_failed") == {"": 2}

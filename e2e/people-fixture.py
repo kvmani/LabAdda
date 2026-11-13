@@ -19,13 +19,13 @@ def prepare() -> None:
     assert url.database in {"labadda_e2e_root", "labadda_e2e_prefix"}
     with session_factory(settings.database_url)() as db:
         admin = db.scalar(select(User).where(User.username == "admin"))
-        ben = db.scalar(select(User).where(User.username == "ben"))
-        assert admin is not None and ben is not None
-        ben.employee_no = "NW-100"
-        ben.designation = "Research Officer D"
-        ben.contact_email = "ben@research.example"
-        ben.contact_phone = "214"
-        ben.joined_on = date(2023, 7, 3)
+        bharat = db.scalar(select(User).where(User.username == "bharat"))
+        assert admin is not None and bharat is not None
+        bharat.employee_no = "NM-100"
+        bharat.designation = "Research Officer D"
+        bharat.contact_email = "bharat@research.example"
+        bharat.contact_phone = "214"
+        bharat.joined_on = date(2023, 7, 3)
         for index in range(55):
             username = f"directory{index:02}"
             if db.scalar(select(User.id).where(User.username == username)) is not None:
@@ -34,7 +34,7 @@ def prepare() -> None:
                 username=username,
                 display_name=f"Directory Researcher {index:02}",
                 employee_no=f"TEST-{index:03}",
-                home_workspace_id=ben.home_workspace_id,
+                home_workspace_id=bharat.home_workspace_id,
                 password_hash=None,
             )
             people.set_status(person, "invited")
@@ -54,7 +54,7 @@ def prepare() -> None:
             actor=admin,
             action="identity.update",
             scope_type="identity",
-            target_id=ben.id,
+            target_id=bharat.id,
             reason="Synthetic staff review",
             private_marker="PRIVATE-AUDIT-DETAIL-MUST-NOT-APPEAR",
         )

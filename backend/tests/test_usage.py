@@ -11,14 +11,14 @@ def upload(api):
 
 
 def test_users_only_measure_their_own_uploads(as_user):
-    ben, chen = as_user("ben"), as_user("chen")
-    response = upload(ben)
+    bharat, chitra = as_user("bharat"), as_user("chitra")
+    response = upload(bharat)
     assert response.status_code == 201
     size = response.json()["size"]
-    own = ben.get("/usage").json()
+    own = bharat.get("/usage").json()
     assert own["measurement"]["tracked_original_bytes"] == size
     assert own["measurement"]["provisional_original_bytes"] == size
-    assert chen.get("/usage").json()["measurement"]["tracked_original_bytes"] == 0
+    assert chitra.get("/usage").json()["measurement"]["tracked_original_bytes"] == 0
     assert own["measurement"]["complete_for_enforcement"] is False
     assert "secret-name" not in json.dumps(own)
     assert not own["available_features"]["archives"]
@@ -27,9 +27,9 @@ def test_users_only_measure_their_own_uploads(as_user):
 def test_site_measurement_is_admin_only_and_unknown_is_not_zero(as_user, monkeypatch):
     from labadda.api import usage
 
-    ben, admin = as_user("ben"), as_user("admin")
-    assert upload(ben).status_code == 201
-    assert ben.get("/admin/usage").status_code == 403
+    bharat, admin = as_user("bharat"), as_user("admin")
+    assert upload(bharat).status_code == 201
+    assert bharat.get("/admin/usage").status_code == 403
     monkeypatch.setattr(usage.os, "statvfs", lambda _: (_ for _ in ()).throw(OSError("missing")))
     measured = admin.get("/admin/usage").json()
     assert measured["assets"]["tracked_files"] == 1
@@ -47,7 +47,7 @@ def test_observation_history_is_explicit_and_audited(as_user):
     history = admin.get("/admin/usage-observations").json()
     assert history["observations"][0]["id"] == created.json()["id"]
     assert any(e["action"] == "usage.observe" for e in admin.get("/admin/audit").json()["events"])
-    assert as_user("ben").post("/admin/usage-observations", json={}).status_code == 403
+    assert as_user("bharat").post("/admin/usage-observations", json={}).status_code == 403
 
 
 def test_saved_history_is_bounded(as_user, db_factory):
@@ -69,8 +69,8 @@ def test_saved_history_is_bounded(as_user, db_factory):
 
 
 def test_usage_cannot_select_another_user(as_user, ids):
-    assert upload(as_user("ben")).status_code == 201
-    result = as_user("chen").get("/usage", params={"user_id": ids["users"]["ben"]}).json()
+    assert upload(as_user("bharat")).status_code == 201
+    result = as_user("chitra").get("/usage", params={"user_id": ids["users"]["bharat"]}).json()
     assert result["measurement"]["tracked_files"] == 0
 
 
@@ -92,8 +92,8 @@ def test_record_timestamp_is_actual_observation_clock(as_user, monkeypatch):
 
 
 def test_database_physical_storage_is_site_only_and_categorized(as_user, ids):
-    ben = as_user("ben")
-    ben.post(f"/workspaces/{ids['workspaces']['section_a']}/posts", json={"body": "measured text"})
+    bharat = as_user("bharat")
+    bharat.post(f"/workspaces/{ids['workspaces']['section_a']}/posts", json={"body": "measured text"})
     site = as_user("admin").get("/admin/usage").json()["database"]
     assert site["state"] == "ready" and site["database_bytes"] > 0
     assert set(site["categories"]) == {
@@ -107,8 +107,8 @@ def test_database_physical_storage_is_site_only_and_categorized(as_user, ids):
     assert all(isinstance(v, int) and v > 0 for v in site["categories"].values())  # every table has storage
     assert site["database_bytes"] >= sum(site["categories"].values()) + site["other_bytes"] - 1
     assert site["attribution"] == "site_overhead_not_charged_to_users"
-    assert "database" not in ben.get("/usage").json()  # users never see site physical storage
-    assert ben.get("/admin/usage").status_code == 403
+    assert "database" not in bharat.get("/usage").json()  # users never see site physical storage
+    assert bharat.get("/admin/usage").status_code == 403
 
 
 def test_database_measurement_unavailable_is_unknown_not_zero(as_user, monkeypatch):
@@ -134,12 +134,12 @@ def test_database_measurement_unavailable_is_unknown_not_zero(as_user, monkeypat
 def test_board_history_counts_follow_compaction(as_user, ids, db_factory):
     from labadda.boardstate import compact_all
 
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     for i in range(12):
-        ben.post(
+        bharat.post(
             f"/workspaces/{ids['workspaces']['section_a']}/board/ops",
             json={
-                "op_id": f"op-ben-{i:03d}",
+                "op_id": f"op-bharat-{i:03d}",
                 "epoch": 1,
                 "type": "add",
                 "object_id": f"s{i}",

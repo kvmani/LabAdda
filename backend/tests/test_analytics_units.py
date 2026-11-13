@@ -65,7 +65,7 @@ def test_published_counts_are_rounded_to_fives(exact, shown):
 def test_units_under_five_people_are_suppressed_on_the_server(db_factory, settings, ids):
     films = add_people(db_factory, ids["workspaces"]["section_a"], 5, "films")
     mark_active(db_factory, films, TODAY)
-    mark_active(db_factory, [ids["users"]["chen"], ids["users"]["dana"]], TODAY)
+    mark_active(db_factory, [ids["users"]["chitra"], ids["users"]["deepa"]], TODAY)
     store(
         db_factory,
         "hour",
@@ -73,21 +73,21 @@ def test_units_under_five_people_are_suppressed_on_the_server(db_factory, settin
     )
     found = units(db_factory, settings)
     assert found["state"] == "measured"
-    catalysis = row(found, ids, "section_b")
-    assert catalysis["active_people"] == {"state": "suppressed"}
-    assert catalysis["items_created"] == {"state": "suppressed"}
-    # Chen alone in Catalysis: no number, no count of posts, nothing the client must hide.
-    assert '"value": 3' not in json.dumps(catalysis)
+    corrosion = row(found, ids, "section_b")
+    assert corrosion["active_people"] == {"state": "suppressed"}
+    assert corrosion["items_created"] == {"state": "suppressed"}
+    # Chitra alone in Corrosion: no number, no count of posts, nothing the client must hide.
+    assert '"value": 3' not in json.dumps(corrosion)
     names = [bar["label"] for bar in found["chart"]]
-    assert "Catalysis Section" not in names
-    assert "Surface Science Division" not in names
+    assert "Corrosion Section" not in names
+    assert "Surface Engineering Division" not in names
 
 
 def test_published_units_show_rounded_counts_and_their_items(db_factory, settings, ids):
     films = add_people(db_factory, ids["workspaces"]["section_a"], 6, "films")
-    catalysis = add_people(db_factory, ids["workspaces"]["section_b"], 6, "catalysis")
+    corrosion = add_people(db_factory, ids["workspaces"]["section_b"], 6, "corrosion")
     visitors = add_people(db_factory, None, 5, "visitor")
-    mark_active(db_factory, films + catalysis + visitors, TODAY)
+    mark_active(db_factory, films + corrosion + visitors, TODAY)
     unit = f"unit:{ids['workspaces']['section_a']}"
     store(
         db_factory,
@@ -105,16 +105,16 @@ def test_published_units_show_rounded_counts_and_their_items(db_factory, setting
     assert row(found, ids, "root")["items_created"] == {"state": "suppressed"}
     assert row(found, ids, "section_b")["active_people"] == {"state": "shown", "value": 5}
     assert found["chart"] == [
-        {"label": "Catalysis Section", "value": 5},
+        {"label": "Corrosion Section", "value": 5},
         {"label": "Thin Films Section", "value": 5},
     ]
 
 
 def test_overlapping_periods_cannot_be_subtracted_to_reveal_one_person(db_factory, settings, ids):
     films = add_people(db_factory, ids["workspaces"]["section_a"], 6, "films")
-    # Four in the division and Chen are left out, five together, so Thin Films may be shown.
+    # Four in the division and Chitra are left out, five together, so Thin Films may be shown.
     division = add_people(db_factory, ids["workspaces"]["division"], 4, "division")
-    mark_active(db_factory, [*films[:5], *division, ids["users"]["chen"]], TODAY)
+    mark_active(db_factory, [*films[:5], *division, ids["users"]["chitra"]], TODAY)
     mark_active(db_factory, films[5:], TODAY - timedelta(days=20))
     month = row(units(db_factory, settings, "30d"), ids, "section_a")["active_people"]
     week = row(units(db_factory, settings, "7d"), ids, "section_a")["active_people"]
@@ -125,12 +125,12 @@ def test_overlapping_periods_cannot_be_subtracted_to_reveal_one_person(db_factor
 
 def test_a_suppressed_unit_cannot_be_found_by_subtracting_from_totals(db_factory, settings, ids):
     films = add_people(db_factory, ids["workspaces"]["section_a"], 9, "films")
-    mark_active(db_factory, [*films, ids["users"]["chen"]], TODAY)
+    mark_active(db_factory, [*films, ids["users"]["chitra"]], TODAY)
     with db_factory() as db:
         summary = analytics.build_summary(db, settings, "30d", now=NOW)
     assert tile(summary, "active_month")["value"] == 10
     found = units(db_factory, settings)
-    # The site total is exact, so publishing Thin Films (9) would reveal Chen in Catalysis.
+    # The site total is exact, so publishing Thin Films (9) would reveal Chitra in Corrosion.
     assert row(found, ids, "section_a")["active_people"] == {"state": "suppressed"}
     assert row(found, ids, "section_b")["active_people"] == {"state": "suppressed"}
     assert found["chart"] == []
@@ -144,8 +144,8 @@ def test_one_persons_activity_in_a_small_unit_changes_no_published_figure(db_fac
     before = units(db_factory, settings)
     assert row(before, ids, "division")["active_people"]["state"] == "shown"
     analytics.CACHE.clear()
-    # Chen is the only person in Catalysis, a section of the reported division.
-    mark_active(db_factory, [ids["users"]["chen"]], TODAY, TODAY - timedelta(days=31))
+    # Chitra is the only person in Corrosion, a section of the reported division.
+    mark_active(db_factory, [ids["users"]["chitra"]], TODAY, TODAY - timedelta(days=31))
     after = units(db_factory, settings)
     assert published(after) == published(before)
     assert after["chart"] == before["chart"]
@@ -153,7 +153,7 @@ def test_one_persons_activity_in_a_small_unit_changes_no_published_figure(db_fac
 
 
 def test_people_without_a_home_unit_are_one_protected_row(db_factory, settings, ids):
-    mark_active(db_factory, [ids["users"]["eli"], ids["users"]["admin"]], TODAY)
+    mark_active(db_factory, [ids["users"]["esha"], ids["users"]["admin"]], TODAY)
     found = units(db_factory, settings)
     assert found["no_home_unit"]["active_people"] == {"state": "suppressed"}
     assert found["no_home_unit"]["items_created"] is None
@@ -161,7 +161,7 @@ def test_people_without_a_home_unit_are_one_protected_row(db_factory, settings, 
     mark_active(db_factory, visitors, TODAY)
     # Only shown once the people left out elsewhere are at least five together.
     assert units(db_factory, settings)["no_home_unit"]["active_people"] == {"state": "suppressed"}
-    others = [ids["users"][name] for name in ("asha", "ben", "chen", "dana")]
+    others = [ids["users"][name] for name in ("asha", "bharat", "chitra", "deepa")]
     mark_active(db_factory, others + add_people(db_factory, ids["workspaces"]["section_b"], 1, "lab"), TODAY)
     assert units(db_factory, settings)["no_home_unit"]["active_people"] == {"state": "shown", "value": 5}
 
@@ -258,7 +258,7 @@ def test_home_units_are_read_as_they_are_now(db_factory, settings, ids):
     """Pins the accepted residual risk of transfers (console guide, "Transfers")."""
     films = add_people(db_factory, ids["workspaces"]["section_a"], 6, "films")
     division = add_people(db_factory, ids["workspaces"]["division"], 4, "division")
-    mark_active(db_factory, [*films, *division, ids["users"]["chen"]], TODAY - timedelta(days=3))
+    mark_active(db_factory, [*films, *division, ids["users"]["chitra"]], TODAY - timedelta(days=3))
     assert row(units(db_factory, settings), ids, "section_a")["active_people"] == {
         "state": "shown",
         "value": 5,

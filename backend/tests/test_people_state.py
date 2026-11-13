@@ -40,7 +40,7 @@ def test_site_date_uses_site_calendar(settings):
 
 def test_sign_in_observation_is_date_only_and_monotonic(db_factory, ids, settings):
     with db_factory() as db:
-        user = db.get(User, ids["users"]["ben"])
+        user = db.get(User, ids["users"]["bharat"])
         current_revision = user.revision
         people.record_sign_in(db, user, settings, now=datetime(2026, 11, 11, tzinfo=UTC))
         people.record_sign_in(db, user, settings, now=datetime(2026, 11, 10, tzinfo=UTC))
@@ -136,15 +136,15 @@ def test_status_transitions_are_audited(as_user, make_client, db_factory):
 
 def test_legacy_access_toggle_preserves_leave_state(as_user, ids, db_factory):
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         people.set_status(person, "on_leave", leave_sign_in=False)
         db.commit()
     assert (
-        as_user("admin").patch(f"/admin/users/{ids['users']['ben']}", json={"is_active": True}).status_code
+        as_user("admin").patch(f"/admin/users/{ids['users']['bharat']}", json={"is_active": True}).status_code
         == 200
     )
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         assert person.status == "on_leave"
         assert person.is_active
 

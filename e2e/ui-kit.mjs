@@ -104,7 +104,7 @@ try {
     await page.setViewportSize({ width: 1400, height: 1000 });
     const opener = page.getByRole("button", { name: "Open confirmation", exact: true });
     await opener.click();
-    const dialog = page.getByRole("dialog", { name: "Retire Dana Iyer?" });
+    const dialog = page.getByRole("dialog", { name: "Retire Deepa Iyer?" });
     await dialog.waitFor();
     const focusedLabel = await page.evaluate(() => document.activeElement?.getAttribute("aria-describedby"));
     check(Boolean(focusedLabel), `${theme}: focus moves to the reason field in the confirmation`);

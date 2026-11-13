@@ -20,9 +20,9 @@ from tests.unit_admin_support import apply_reviewed, appoint, preview, withdraw
 
 @pytest.fixture
 def division_admin(as_user, ids, db_factory):
-    """Dana administers the Surface Science Division: Thin Films and Catalysis lie below it."""
-    appoint(db_factory, ids, "dana", "division")
-    return as_user("dana")
+    """Deepa administers the Surface Engineering Division: Thin Films and Corrosion lie below it."""
+    appoint(db_factory, ids, "deepa", "division")
+    return as_user("deepa")
 
 
 def names(response, key="people"):
@@ -67,7 +67,7 @@ def test_legacy_account_tools_cannot_create_administrators(division_admin, ids):
     body = {"username": "mallory", "display_name": "Mallory", "is_admin": True}
     assert division_admin.post("/admin/users", json=body).status_code == 403
     assert (
-        division_admin.patch(f"/admin/users/{ids['users']['ben']}", json={"is_admin": True}).status_code
+        division_admin.patch(f"/admin/users/{ids['users']['bharat']}", json={"is_admin": True}).status_code
         == 403
     )
 
@@ -79,7 +79,7 @@ def test_import_and_unit_admin_kinds_are_for_site_administrators(division_admin,
         headers={"Content-Type": "text/csv", "X-CSRF-Token": division_admin.csrf},
     )
     assert upload.status_code == 403
-    request = change(ids, "unit_admin_grant", person_id="ben", unit_id="section_a")
+    request = change(ids, "unit_admin_grant", person_id="bharat", unit_id="section_a")
     assert preview(division_admin, request).status_code == 403
     assert (
         division_admin.post(
@@ -89,26 +89,26 @@ def test_import_and_unit_admin_kinds_are_for_site_administrators(division_admin,
     )
 
 
-@pytest.mark.parametrize("name", ["ben", "eli"])
+@pytest.mark.parametrize("name", ["bharat", "esha"])
 def test_ordinary_members_have_no_console(as_user, ids, name):
     api = as_user(name)
     assert api.get("/admin/console").status_code == 403
     assert api.get("/admin/people").status_code == 403
-    assert preview(api, move(ids, "ben", "section_b")).status_code == 403
+    assert preview(api, move(ids, "bharat", "section_b")).status_code == 403
 
 
 def test_former_unit_administrator_loses_every_screen(division_admin, ids, db_factory):
     assert division_admin.get("/admin/people").status_code == 200
-    withdraw(db_factory, ids, "dana", "division")
+    withdraw(db_factory, ids, "deepa", "division")
     for path in ("/admin/console", "/admin/people", "/admin/org/tree", "/admin/changes/scheduled"):
         assert division_admin.get(path).status_code == 403, path
-    request = move(ids, "ben", "section_b")
+    request = move(ids, "bharat", "section_b")
     assert preview(division_admin, request).status_code == 403
 
 
 def test_deactivated_unit_administrator_is_signed_out(division_admin, ids, db_factory):
     with db_factory() as db:
-        db.get(User, ids["users"]["dana"]).is_active = False
+        db.get(User, ids["users"]["deepa"]).is_active = False
         db.commit()
     assert division_admin.get("/admin/people").status_code == 401
 
@@ -122,36 +122,38 @@ def test_board_only_session_is_refused(division_admin, as_user, make_client, ids
 
 
 def test_directory_lists_only_people_whose_home_is_in_the_branch(division_admin, as_user, ids, db_factory):
-    assert names(division_admin.get("/admin/people")) == ["asha", "ben", "chen", "dana"]
-    appoint(db_factory, ids, "chen", "section_b")
-    assert names(as_user("chen").get("/admin/people")) == ["chen"]
-    response = as_user("chen").get(f"/admin/people?unit_id={ids['workspaces']['section_a']}")
+    assert names(division_admin.get("/admin/people")) == ["asha", "bharat", "chitra", "deepa"]
+    appoint(db_factory, ids, "chitra", "section_b")
+    assert names(as_user("chitra").get("/admin/people")) == ["chitra"]
+    response = as_user("chitra").get(f"/admin/people?unit_id={ids['workspaces']['section_a']}")
     assert response.status_code == 404
-    assert as_user("chen").get("/admin/people?role=admin").json()["people"] == []
+    assert as_user("chitra").get("/admin/people?role=admin").json()["people"] == []
 
 
 def test_parent_of_the_branch_and_siblings_are_invisible_to_a_child_administrator(as_user, ids, db_factory):
     appoint(db_factory, ids, "asha", "section_a")
     asha = as_user("asha")
-    assert names(asha.get("/admin/people")) == ["asha", "ben"]
-    for username in ("dana", "chen", "eli", "admin"):
+    assert names(asha.get("/admin/people")) == ["asha", "bharat"]
+    for username in ("deepa", "chitra", "esha", "admin"):
         for tail in ("", "/access", "/timeline"):
             assert asha.get(f"/admin/people/{ids['users'][username]}{tail}").status_code == 404
     export = asha.get("/admin/people/export.csv")
     assert export.status_code == 200
-    assert "Chen" not in export.text and "Dana" not in export.text and "Asha" in export.text
+    assert "Chitra" not in export.text and "Deepa" not in export.text and "Asha" in export.text
 
 
 def test_profile_access_and_positions_show_only_the_branch(division_admin, ids, db_factory):
-    ben = ids["users"]["ben"]
-    assert division_admin.get(f"/admin/people/{ben}").status_code == 200
-    access = division_admin.get(f"/admin/people/{ben}/access")
+    bharat = ids["users"]["bharat"]
+    assert division_admin.get(f"/admin/people/{bharat}").status_code == 200
+    access = division_admin.get(f"/admin/people/{bharat}/access")
     assert sorted(row["workspace"]["name"] for row in access.json()["memberships"]) == [
-        "Surface Science Division",
+        "Surface Engineering Division",
         "Thin Films Section",
     ]
-    for text in (access.text, division_admin.get(f"/admin/people/{ben}").text):
-        assert "Reading Club" not in text and "Northwind" not in text and "Materials Group" not in text
+    for text in (access.text, division_admin.get(f"/admin/people/{bharat}").text):
+        assert (
+            "Reading Club" not in text and "National Materials" not in text and "Materials Group" not in text
+        )
 
 
 def test_organisation_chart_is_the_branch_as_its_own_tree(as_user, ids, db_factory):
@@ -177,31 +179,31 @@ def test_candidates_only_for_units_of_the_branch(division_admin, ids):
 
 
 def test_unit_administrator_transfers_inside_the_branch(division_admin, ids, db_factory):
-    apply_reviewed(division_admin, move(ids, "ben", "section_b"))
-    assert home(db_factory, ids, "ben") == ids["workspaces"]["section_b"]
+    apply_reviewed(division_admin, move(ids, "bharat", "section_b"))
+    assert home(db_factory, ids, "bharat") == ids["workspaces"]["section_b"]
     with db_factory() as db:
         applied = db.scalars(select(AuditEvent).where(AuditEvent.action == "people.change")).one()
-        assert str(applied.actor_id) == ids["users"]["dana"]
+        assert str(applied.actor_id) == ids["users"]["deepa"]
 
 
 def test_cannot_transfer_across_branches_alone(as_user, ids, db_factory):
     appoint(db_factory, ids, "asha", "section_a")
     asha = as_user("asha")
-    # Out of Thin Films into Catalysis, which only a second appointment would cover.
-    assert preview(asha, move(ids, "ben", "section_b")).status_code == 404
-    assert preview(asha, move(ids, "ben", "division")).status_code == 404
-    assert home(db_factory, ids, "ben") == ids["workspaces"]["section_a"]
+    # Out of Thin Films into Corrosion, which only a second appointment would cover.
+    assert preview(asha, move(ids, "bharat", "section_b")).status_code == 404
+    assert preview(asha, move(ids, "bharat", "division")).status_code == 404
+    assert home(db_factory, ids, "bharat") == ids["workspaces"]["section_a"]
     appoint(db_factory, ids, "asha", "section_b")
-    apply_reviewed(asha, move(ids, "ben", "section_b"))
-    assert home(db_factory, ids, "ben") == ids["workspaces"]["section_b"]
+    apply_reviewed(asha, move(ids, "bharat", "section_b"))
+    assert home(db_factory, ids, "bharat") == ids["workspaces"]["section_b"]
 
 
 def test_sibling_and_parent_only_administrators_cannot_touch_the_others_people(as_user, ids, db_factory):
-    appoint(db_factory, ids, "chen", "section_b")
+    appoint(db_factory, ids, "chitra", "section_b")
     appoint(db_factory, ids, "asha", "section_a")
-    assert preview(as_user("chen"), move(ids, "ben", "section_b")).status_code == 404  # sibling
-    assert preview(as_user("chen"), edit(ids, designation="Lead")).status_code == 404
-    request = change(ids, "edit_person", person_id="dana", fields={"designation": "Head"})
+    assert preview(as_user("chitra"), move(ids, "bharat", "section_b")).status_code == 404  # sibling
+    assert preview(as_user("chitra"), edit(ids, designation="Lead")).status_code == 404
+    request = change(ids, "edit_person", person_id="deepa", fields={"designation": "Head"})
     assert preview(as_user("asha"), request).status_code == 404  # parent's person, child-only admin
     request = change(ids, "suspend", person_id="admin")
     assert preview(as_user("asha"), request).status_code == 404  # a site administrator
@@ -209,7 +211,7 @@ def test_sibling_and_parent_only_administrators_cannot_touch_the_others_people(a
 
 def test_person_with_larger_authority_cannot_be_changed_by_a_smaller_one(as_user, ids, db_factory):
     appoint(db_factory, ids, "asha", "section_a")
-    appoint(db_factory, ids, "ben", "division")  # Ben lives in Thin Films but administers more
+    appoint(db_factory, ids, "bharat", "division")  # Bharat lives in Thin Films but administers more
     response = preview(as_user("asha"), edit(ids, designation="Lead"))
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "outside_your_units"
@@ -241,7 +243,7 @@ def test_adding_a_person_needs_a_unit_of_the_branch(division_admin, ids):
 
 def test_projects_and_groups_beyond_the_branch_block_the_plan_and_stay_unnamed(as_user, ids, db_factory):
     appoint(db_factory, ids, "asha", "section_a")
-    request = change(ids, "retire", person_id="ben", status="left")
+    request = change(ids, "retire", person_id="bharat", status="left")
     response = preview(as_user("asha"), request)
     assert response.status_code == 200
     plan = response.json()
@@ -249,7 +251,7 @@ def test_projects_and_groups_beyond_the_branch_block_the_plan_and_stay_unnamed(a
     assert "Reading Club" not in response.text
     confirmation = reviewed(as_user("asha"), request)
     assert as_user("asha").post("/admin/changes/apply", json=confirmation).status_code == 422
-    assert grants(db_factory, ids["users"]["ben"])
+    assert grants(db_factory, ids["users"]["bharat"])
 
 
 def test_positions_held_outside_the_branch_block_ending_them(as_user, ids, db_factory, settings):
@@ -258,15 +260,15 @@ def test_positions_held_outside_the_branch_block_ending_them(as_user, ids, db_fa
         db.add(
             UnitPosition(
                 workspace_id=ids["workspaces"]["section_b"],
-                user_id=ids["users"]["ben"],
+                user_id=ids["users"]["bharat"],
                 position="deputy",
                 starts_on=site_today(settings) - timedelta(days=1),
             )
         )
         db.commit()
-    plan = preview(as_user("asha"), change(ids, "suspend", person_id="ben")).json()
+    plan = preview(as_user("asha"), change(ids, "suspend", person_id="bharat")).json()
     assert "outside_your_units" in [blocker["code"] for blocker in plan["blockers"]]
-    assert "Catalysis" not in str(plan["steps"])
+    assert "Corrosion" not in str(plan["steps"])
 
 
 def test_review_text_never_names_what_the_actor_cannot_see(ids, db_factory):
@@ -280,19 +282,19 @@ def test_review_text_never_names_what_the_actor_cannot_see(ids, db_factory):
             Step(
                 "workspace",
                 str(division),
-                "Remove Ben from Surface Science Division",
+                "Remove Bharat from Surface Engineering Division",
                 Snapshot({"role": "member"}),
                 Snapshot({"role": None}),
             ),
         ),
-        warnings=(Warning("access_lost", "Ben cannot read Surface Science Division.", str(division)),),
+        warnings=(Warning("access_lost", "Bharat cannot read Surface Engineering Division.", str(division)),),
     )
     with db_factory() as db:
         actor = db.get(User, ids["users"]["asha"])
         reach = Reach(actor, frozenset({section}), {section: division, division: None})
         request = type("Req", (), {"kind": "transfer", "person_id": None})()
         shown = reach.restrict(db, request, plan)
-    assert "Surface Science" not in str(shown.to_dict())
+    assert "Surface Engineering" not in str(shown.to_dict())
     assert [blocker.code for blocker in shown.blockers] == ["outside_your_units"]
 
 
@@ -300,29 +302,29 @@ def test_review_text_never_names_what_the_actor_cannot_see(ids, db_factory):
 
 
 def test_plan_previewed_in_scope_is_refused_after_the_role_is_withdrawn(division_admin, ids, db_factory):
-    confirmation = reviewed(division_admin, move(ids, "ben", "section_b"))
-    withdraw(db_factory, ids, "dana", "division")
+    confirmation = reviewed(division_admin, move(ids, "bharat", "section_b"))
+    withdraw(db_factory, ids, "deepa", "division")
     assert division_admin.post("/admin/changes/apply", json=confirmation).status_code == 403
-    assert home(db_factory, ids, "ben") == ids["workspaces"]["section_a"]
+    assert home(db_factory, ids, "bharat") == ids["workspaces"]["section_a"]
 
 
 def test_plan_previewed_in_scope_is_refused_after_the_scope_narrows(division_admin, ids, db_factory):
-    confirmation = reviewed(division_admin, move(ids, "ben", "section_b"))
-    appoint(db_factory, ids, "dana", "section_b")
-    withdraw(db_factory, ids, "dana", "division")
+    confirmation = reviewed(division_admin, move(ids, "bharat", "section_b"))
+    appoint(db_factory, ids, "deepa", "section_b")
+    withdraw(db_factory, ids, "deepa", "division")
     response = division_admin.post("/admin/changes/apply", json=confirmation)
     assert response.status_code == 404
-    assert home(db_factory, ids, "ben") == ids["workspaces"]["section_a"]
+    assert home(db_factory, ids, "bharat") == ids["workspaces"]["section_a"]
 
 
 def test_bulk_changes_are_held_to_the_branch(division_admin, ids):
     inside = {
         "kind": "transfer",
-        "person_id": ids["users"]["ben"],
+        "person_id": ids["users"]["bharat"],
         "to_unit_id": ids["workspaces"]["section_b"],
         "role": "member",
     }
-    outside = {"kind": "suspend", "person_id": ids["users"]["eli"]}
+    outside = {"kind": "suspend", "person_id": ids["users"]["esha"]}
     assert division_admin.post("/admin/changes/bulk/preview", json={"requests": [inside]}).status_code == 200
     assert (
         division_admin.post("/admin/changes/bulk/preview", json={"requests": [inside, outside]}).status_code
@@ -342,55 +344,55 @@ def test_activation_codes_only_for_people_of_the_branch(division_admin, as_user,
     path = "/admin/changes/activation-code"
     ok = division_admin.post(path, json={"person_id": receipt["person_id"], "reason": "Lost the slip"})
     assert ok.status_code == 200
-    out = division_admin.post(path, json={"person_id": ids["users"]["eli"], "reason": "Lost the slip"})
+    out = division_admin.post(path, json={"person_id": ids["users"]["esha"], "reason": "Lost the slip"})
     assert out.status_code == 404
 
 
 def test_scheduled_changes_list_cancel_and_run_within_current_reach(
     division_admin, as_user, ids, db_factory, settings
 ):
-    appoint(db_factory, ids, "chen", "section_b")
+    appoint(db_factory, ids, "chitra", "section_b")
     day = site_today(settings) + timedelta(days=1)
-    body = {**move(ids, "ben", "section_b"), "effective_on": day.isoformat()}
+    body = {**move(ids, "bharat", "section_b"), "effective_on": day.isoformat()}
     scheduled_id = division_admin.post(
         "/admin/changes/apply", json=reviewed_for(division_admin, body)
     ).json()["id"]
     assert len(division_admin.get("/admin/changes/scheduled").json()["items"]) == 1
-    chen = as_user("chen")
-    assert chen.get("/admin/changes/scheduled").json()["items"] == []
-    assert chen.delete(f"/admin/changes/scheduled/{scheduled_id}?reason=Not%20mine").status_code == 404
+    chitra = as_user("chitra")
+    assert chitra.get("/admin/changes/scheduled").json()["items"] == []
+    assert chitra.delete(f"/admin/changes/scheduled/{scheduled_id}?reason=Not%20mine").status_code == 404
     # The scope is judged again on the day: with the appointment withdrawn nothing is applied.
-    withdraw(db_factory, ids, "dana", "division")
+    withdraw(db_factory, ids, "deepa", "division")
     assert run(db_factory, settings, day) == 0
     with db_factory() as db:
         row = db.get(ScheduledChange, scheduled_id)
         assert row.state == "needs_review" and row.applied_at is None
-    assert home(db_factory, ids, "ben") == ids["workspaces"]["section_a"]
+    assert home(db_factory, ids, "bharat") == ids["workspaces"]["section_a"]
 
 
 def test_scheduled_change_runs_when_scope_still_holds(division_admin, ids, db_factory, settings):
     day = site_today(settings) + timedelta(days=1)
-    body = {**move(ids, "ben", "section_b"), "effective_on": day.isoformat()}
+    body = {**move(ids, "bharat", "section_b"), "effective_on": day.isoformat()}
     assert (
         division_admin.post("/admin/changes/apply", json=reviewed_for(division_admin, body)).status_code
         == 200
     )
     assert run(db_factory, settings, day) == 1
-    assert home(db_factory, ids, "ben") == ids["workspaces"]["section_b"]
+    assert home(db_factory, ids, "bharat") == ids["workspaces"]["section_b"]
 
 
 # --- no content access from the role ------------------------------------------------------------
 
 
 def test_the_role_gives_no_content_access(as_user, ids, db_factory):
-    appoint(db_factory, ids, "chen", "section_a")  # Chen is a member of Catalysis only
-    chen = as_user("chen")
+    appoint(db_factory, ids, "chitra", "section_a")  # Chitra is a member of Corrosion only
+    chitra = as_user("chitra")
     section = ids["workspaces"]["section_a"]
     for path in ("posts", "chat", "board", "members"):
-        assert chen.get(f"/workspaces/{section}/{path}").status_code == 404, path
-    assert chen.get(f"/workspaces/{section}").status_code == 404
+        assert chitra.get(f"/workspaces/{section}/{path}").status_code == 404, path
+    assert chitra.get(f"/workspaces/{section}").status_code == 404
     # Review text and lists carry people and unit names, never message or post text.
-    assert "Reading Club" not in chen.get("/admin/people").text
+    assert "Reading Club" not in chitra.get("/admin/people").text
 
 
 def test_every_request_field_that_names_something_is_checked_or_deliberately_skipped():
@@ -407,16 +409,16 @@ def test_every_request_field_that_names_something_is_checked_or_deliberately_ski
 
 
 def test_policy_scope_matches_the_appointment_now(ids, db_factory):
-    appoint(db_factory, ids, "dana", "division")
+    appoint(db_factory, ids, "deepa", "division")
     with db_factory() as db:
-        dana = db.get(User, ids["users"]["dana"])
-        assert len(policy.people_scope(db, dana)) == 3
+        deepa = db.get(User, ids["users"]["deepa"])
+        assert len(policy.people_scope(db, deepa)) == 3
 
 
 def test_appointments_are_listed_for_site_administrators_only(division_admin, as_user, ids):
     listing = as_user("admin").get("/admin/org/unit-admins")
     assert listing.status_code == 200
     (item,) = listing.json()["items"]
-    assert item["person"]["name"] == "Dana Whitfield" and item["unit"]["name"] == "Surface Science Division"
+    assert item["person"]["name"] == "Deepa Nair" and item["unit"]["name"] == "Surface Engineering Division"
     assert division_admin.get("/admin/org/unit-admins").status_code == 403
-    assert as_user("ben").get("/admin/org/unit-admins").status_code == 403
+    assert as_user("bharat").get("/admin/org/unit-admins").status_code == 403

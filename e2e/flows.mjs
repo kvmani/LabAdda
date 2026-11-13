@@ -64,171 +64,176 @@ async function run(base) {
   const browser = await chromium.launch({ executablePath: process.env.LABADDA_CHROMIUM });
   try {
     // P1: home → division, sibling denied, coherent empty state.
-    const ben = await signIn(browser, base, "ben");
-    await ben.page.getByRole("heading", { level: 1, name: /Thin Films Section/ }).waitFor();
+    const bharat = await signIn(browser, base, "bharat");
+    await bharat.page.getByRole("heading", { level: 1, name: /Thin Films Section/ }).waitFor();
     check(
-      new URL(ben.page.url()).pathname.startsWith(`${base}/w/`),
+      new URL(bharat.page.url()).pathname.startsWith(`${base}/w/`),
       `${tag}: lands in home workspace under base path`,
     );
-    await ben.page.getByRole("link", { name: "Surface Science Division" }).first().click();
-    await ben.page.getByRole("heading", { level: 1, name: /Surface Science Division/ }).waitFor();
+    await bharat.page.getByRole("link", { name: "Surface Engineering Division" }).first().click();
+    await bharat.page.getByRole("heading", { level: 1, name: /Surface Engineering Division/ }).waitFor();
     check(
-      await seen(ben.page.getByText("Inherited member")),
+      await seen(bharat.page.getByText("Inherited member")),
       `${tag}: division shows inherited access label`,
     );
     check(
-      await seen(ben.page.getByText(/No posts yet in Surface Science Division/)),
+      await seen(bharat.page.getByText(/No posts yet in Surface Engineering Division/)),
       `${tag}: coherent empty state`,
     );
-    await ben.page.reload();
-    await ben.page.getByRole("heading", { level: 1, name: /Surface Science Division/ }).waitFor();
+    await bharat.page.reload();
+    await bharat.page.getByRole("heading", { level: 1, name: /Surface Engineering Division/ }).waitFor();
     check(true, `${tag}: deep link survives refresh`);
-    const chen = await signIn(browser, base, "chen");
-    const sectionB = await wsIdByName(chen.page, base, "Catalysis Section");
-    await ben.page.goto(`${origin}${base}/w/${sectionB}/noticeboard`);
-    await ben.page.getByRole("heading", { name: "Workspace not available" }).waitFor();
+    const chitra = await signIn(browser, base, "chitra");
+    const sectionB = await wsIdByName(chitra.page, base, "Corrosion Section");
+    await bharat.page.goto(`${origin}${base}/w/${sectionB}/noticeboard`);
+    await bharat.page.getByRole("heading", { name: "Workspace not available" }).waitFor();
     check(true, `${tag}: sibling section is not available`);
 
     // P2: post with attachment and due time, persists after reload, excluded from sibling.
-    const sectionA = await wsIdByName(ben.page, base, "Thin Films Section");
-    await ben.page.goto(`${origin}${base}/w/${sectionA}/noticeboard`);
-    check(await seen(ben.page.getByText("Post to Thin Films Section")), `${tag}: composer shows destination`);
-    await ben.page.getByLabel("Message").fill("Ellipsometer calibration results attached");
-    await ben.page.locator('input[type="datetime-local"]').first().fill("2031-05-01T10:00");
+    const sectionA = await wsIdByName(bharat.page, base, "Thin Films Section");
+    await bharat.page.goto(`${origin}${base}/w/${sectionA}/noticeboard`);
+    check(
+      await seen(bharat.page.getByText("Post to Thin Films Section")),
+      `${tag}: composer shows destination`,
+    );
+    await bharat.page.getByLabel("Message").fill("Ellipsometer calibration results attached");
+    await bharat.page.locator('input[type="datetime-local"]').first().fill("2031-05-01T10:00");
     const pdf = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
-    await ben.page
+    await bharat.page
       .locator('input[type="file"]')
       .setInputFiles({ name: "calibration.pdf", mimeType: "application/pdf", buffer: pdf });
-    await ben.page.getByText("calibration.pdf").first().waitFor();
-    await ben.page.getByRole("button", { name: "Post", exact: true }).click();
-    await ben.page.getByRole("status").filter({ hasText: "Posted" }).waitFor();
-    await ben.page.reload();
-    await ben.page.locator(".post").filter({ hasText: "Ellipsometer calibration" }).waitFor();
+    await bharat.page.getByText("calibration.pdf").first().waitFor();
+    await bharat.page.getByRole("button", { name: "Post", exact: true }).click();
+    await bharat.page.getByRole("status").filter({ hasText: "Posted" }).waitFor();
+    await bharat.page.reload();
+    await bharat.page.locator(".post").filter({ hasText: "Ellipsometer calibration" }).waitFor();
     check(
-      await seen(ben.page.getByRole("link", { name: /calibration\.pdf/ })),
+      await seen(bharat.page.getByRole("link", { name: /calibration\.pdf/ })),
       `${tag}: attachment listed after reload`,
     );
     check(
-      await seen(ben.page.locator(".secondary").getByText("Ellipsometer calibration")),
+      await seen(bharat.page.locator(".secondary").getByText("Ellipsometer calibration")),
       `${tag}: due item in Upcoming`,
     );
-    const href = await ben.page.getByRole("link", { name: /calibration\.pdf/ }).getAttribute("href");
-    const fileUrl = new URL(href, ben.page.url()).toString();
+    const href = await bharat.page.getByRole("link", { name: /calibration\.pdf/ }).getAttribute("href");
+    const fileUrl = new URL(href, bharat.page.url()).toString();
     check(
       fileUrl.startsWith(`${origin}${base}/api/v1/files/`),
       `${tag}: download stays same-origin under base`,
     );
-    const own = await ben.page.evaluate(async (u) => (await fetch(u)).status, fileUrl);
-    const sibling = await chen.page.evaluate(async (u) => (await fetch(u)).status, fileUrl);
+    const own = await bharat.page.evaluate(async (u) => (await fetch(u)).status, fileUrl);
+    const sibling = await chitra.page.evaluate(async (u) => (await fetch(u)).status, fileUrl);
     check(
       own === 200 && sibling === 404,
       `${tag}: file readable by member (${own}), absent for sibling (${sibling})`,
     );
-    await ben.page.screenshot({ path: join(shots, `${tag}-noticeboard.png`) });
+    await bharat.page.screenshot({ path: join(shots, `${tag}-noticeboard.png`) });
 
     // Collaborative group with a colleague from the sibling section.
-    await ben.page.getByRole("link", { name: "+ New group" }).click();
-    await ben.page.getByLabel("Group name").fill("Cross-section XPS Club");
-    await ben.page.getByLabel("Find colleagues").fill("chen");
-    await ben.page.getByRole("button", { name: /\+ Chen Li/ }).click();
-    await ben.page.getByRole("button", { name: /Create group with 1 colleague/ }).click();
-    await ben.page.getByRole("heading", { level: 1, name: /Cross-section XPS Club/ }).waitFor();
+    await bharat.page.getByRole("link", { name: "+ New group" }).click();
+    await bharat.page.getByLabel("Group name").fill("Cross-section XPS Club");
+    await bharat.page.getByLabel("Find colleagues").fill("chitra");
+    await bharat.page.getByRole("button", { name: /\+ Chitra Iyer/ }).click();
+    await bharat.page.getByRole("button", { name: /Create group with 1 colleague/ }).click();
+    await bharat.page.getByRole("heading", { level: 1, name: /Cross-section XPS Club/ }).waitFor();
     check(
-      await seen(ben.page.getByText("Audience: group members only")),
+      await seen(bharat.page.getByText("Audience: group members only")),
       `${tag}: group composer shows group-only audience`,
     );
-    await chen.page.reload();
-    await chen.page.getByRole("link", { name: "Cross-section XPS Club" }).click();
-    await chen.page.getByRole("heading", { level: 1, name: /Cross-section XPS Club/ }).waitFor();
+    await chitra.page.reload();
+    await chitra.page.getByRole("link", { name: "Cross-section XPS Club" }).click();
+    await chitra.page.getByRole("heading", { level: 1, name: /Cross-section XPS Club/ }).waitFor();
     check(true, `${tag}: invited colleague sees the group`);
-    const groupId = await wsIdByName(ben.page, base, "Cross-section XPS Club");
+    const groupId = await wsIdByName(bharat.page, base, "Cross-section XPS Club");
     // Live chat in the group.
-    await ben.page.goto(`${origin}${base}/w/${groupId}/chat`);
-    await chen.page.goto(`${origin}${base}/w/${groupId}/chat`);
-    await chen.page.getByText("Live", { exact: true }).waitFor();
-    await ben.page.getByText("Live", { exact: true }).waitFor();
-    await chen.page.getByLabel("Message Cross-section XPS Club").fill("Spectra uploaded to the share");
-    await chen.page.getByRole("button", { name: "Send" }).click();
+    await bharat.page.goto(`${origin}${base}/w/${groupId}/chat`);
+    await chitra.page.goto(`${origin}${base}/w/${groupId}/chat`);
+    await chitra.page.getByText("Live", { exact: true }).waitFor();
+    await bharat.page.getByText("Live", { exact: true }).waitFor();
+    await chitra.page.getByLabel("Message Cross-section XPS Club").fill("Spectra uploaded to the share");
+    await chitra.page.getByRole("button", { name: "Send" }).click();
     try {
-      await ben.page
+      await bharat.page
         .locator(".messages")
         .getByText("Spectra uploaded to the share")
         .waitFor({ timeout: 5000 });
     } catch (e) {
-      await ben.page.screenshot({ path: join(shots, `${tag}-chat-fail-ben.png`) });
-      await chen.page.screenshot({ path: join(shots, `${tag}-chat-fail-chen.png`) });
+      await bharat.page.screenshot({ path: join(shots, `${tag}-chat-fail-bharat.png`) });
+      await chitra.page.screenshot({ path: join(shots, `${tag}-chat-fail-chitra.png`) });
       throw e;
     }
     check(true, `${tag}: group chat delivered live`);
-    const dana = await signIn(browser, base, "dana");
-    const danaStatus = await dana.page.evaluate(
+    const deepa = await signIn(browser, base, "deepa");
+    const deepaStatus = await deepa.page.evaluate(
       async ([b, id]) => (await fetch(`${b}/api/v1/workspaces/${id}/posts`)).status,
       [base, groupId],
     );
-    check(danaStatus === 404, `${tag}: division steward cannot read the group (${danaStatus})`);
+    check(deepaStatus === 404, `${tag}: division steward cannot read the group (${deepaStatus})`);
 
     // Whiteboard: draw in one session, converge in another.
-    await ben.page.goto(`${origin}${base}/w/${groupId}/board`);
-    await chen.page.goto(`${origin}${base}/w/${groupId}/board`);
-    await ben.page.getByText("Saved").waitFor();
-    await chen.page.locator(".canvas").waitFor();
-    const box = await ben.page.locator(".canvas").boundingBox();
-    await ben.page.mouse.move(box.x + 100, box.y + 100);
-    await ben.page.mouse.down();
-    for (let i = 1; i <= 10; i++) await ben.page.mouse.move(box.x + 100 + i * 20, box.y + 100 + i * 8);
-    await ben.page.mouse.up();
-    await ben.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
-    await chen.page.waitForFunction(
+    await bharat.page.goto(`${origin}${base}/w/${groupId}/board`);
+    await chitra.page.goto(`${origin}${base}/w/${groupId}/board`);
+    await bharat.page.getByText("Saved").waitFor();
+    await chitra.page.locator(".canvas").waitFor();
+    const box = await bharat.page.locator(".canvas").boundingBox();
+    await bharat.page.mouse.move(box.x + 100, box.y + 100);
+    await bharat.page.mouse.down();
+    for (let i = 1; i <= 10; i++) await bharat.page.mouse.move(box.x + 100 + i * 20, box.y + 100 + i * 8);
+    await bharat.page.mouse.up();
+    await bharat.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    await chitra.page.waitForFunction(
       () => /rev [1-9]/.test(document.querySelector(".toolbar")?.textContent ?? ""),
       null,
       { timeout: 5000 },
     );
     check(true, `${tag}: stroke converged to second session`);
     // Disconnect and reconnect: replay from committed state.
-    await chen.ctx.setOffline(true);
-    await ben.page.mouse.move(box.x + 300, box.y + 300);
-    await ben.page.mouse.down();
-    await ben.page.mouse.move(box.x + 360, box.y + 330);
-    await ben.page.mouse.up();
-    await ben.page.waitForFunction(() => /rev 2/.test(document.querySelector(".toolbar")?.textContent ?? ""));
-    await chen.ctx.setOffline(false);
-    await chen.page.reload();
-    await chen.page.waitForFunction(
+    await chitra.ctx.setOffline(true);
+    await bharat.page.mouse.move(box.x + 300, box.y + 300);
+    await bharat.page.mouse.down();
+    await bharat.page.mouse.move(box.x + 360, box.y + 330);
+    await bharat.page.mouse.up();
+    await bharat.page.waitForFunction(() =>
+      /rev 2/.test(document.querySelector(".toolbar")?.textContent ?? ""),
+    );
+    await chitra.ctx.setOffline(false);
+    await chitra.page.reload();
+    await chitra.page.waitForFunction(
       () => /rev 2/.test(document.querySelector(".toolbar")?.textContent ?? ""),
       null,
       { timeout: 8000 },
     );
     check(true, `${tag}: reconnecting session caught up to revision 2`);
-    await chen.page.screenshot({ path: join(shots, `${tag}-board.png`) });
+    await chitra.page.screenshot({ path: join(shots, `${tag}-board.png`) });
 
     // P3: place an image, then publish a region snapshot from the section board to the parent division.
-    await ben.page.goto(`${origin}${base}/w/${sectionA}/board`);
-    await ben.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    await bharat.page.goto(`${origin}${base}/w/${sectionA}/board`);
+    await bharat.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
     const png = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAHUlEQVR4nGP4z8BAEhrVMKphVMOohlENIxoGAAD4/H8BWrLzvAAAAABJRU5ErkJggg==",
       "base64",
     );
-    await ben.page
+    await bharat.page
       .locator('input[type="file"][aria-label="Image to place on the board"]')
       .setInputFiles({ name: "spectrum.png", mimeType: "image/png", buffer: png });
-    await ben.page.waitForFunction(
+    await bharat.page.waitForFunction(
       () => /rev 1\b/.test(document.querySelector(".toolbar")?.textContent ?? ""),
       null,
       { timeout: 8000 },
     );
-    const sbox = await ben.page.locator(".canvas").boundingBox();
-    await ben.page.mouse.move(sbox.x + 80, sbox.y + 80);
-    await ben.page.mouse.down();
-    await ben.page.mouse.move(sbox.x + 260, sbox.y + 200);
-    await ben.page.mouse.up();
-    await ben.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
-    await ben.page.getByRole("button", { name: "📷 Publish snapshot" }).click();
-    const cbox = await ben.page.locator(".canvas").boundingBox();
-    await ben.page.mouse.move(cbox.x + 20, cbox.y + 20);
-    await ben.page.mouse.down();
-    await ben.page.mouse.move(cbox.x + cbox.width * 0.7, cbox.y + cbox.height * 0.7, { steps: 5 });
-    await ben.page.mouse.up();
-    const dialog = ben.page.getByRole("dialog", { name: "Publish snapshot" });
+    const sbox = await bharat.page.locator(".canvas").boundingBox();
+    await bharat.page.mouse.move(sbox.x + 80, sbox.y + 80);
+    await bharat.page.mouse.down();
+    await bharat.page.mouse.move(sbox.x + 260, sbox.y + 200);
+    await bharat.page.mouse.up();
+    await bharat.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    await bharat.page.getByRole("button", { name: "📷 Publish snapshot" }).click();
+    const cbox = await bharat.page.locator(".canvas").boundingBox();
+    await bharat.page.mouse.move(cbox.x + 20, cbox.y + 20);
+    await bharat.page.mouse.down();
+    await bharat.page.mouse.move(cbox.x + cbox.width * 0.7, cbox.y + cbox.height * 0.7, { steps: 5 });
+    await bharat.page.mouse.up();
+    const dialog = bharat.page.getByRole("dialog", { name: "Publish snapshot" });
     await dialog.waitFor();
     check(
       await dialog
@@ -236,32 +241,32 @@ async function run(base) {
         .evaluate((img) => img.decode().then(() => img.naturalWidth > 0)),
       `${tag}: snapshot preview rendered`,
     );
-    await dialog.getByLabel("Post to").selectOption({ label: "Surface Science Division (parent unit)" });
-    const publishBtn = dialog.getByRole("button", { name: /Publish to Surface Science Division/ });
+    await dialog.getByLabel("Post to").selectOption({ label: "Surface Engineering Division (parent unit)" });
+    const publishBtn = dialog.getByRole("button", { name: /Publish to Surface Engineering Division/ });
     check(await publishBtn.isDisabled(), `${tag}: parent publish blocked until audience confirmed`);
     await dialog.getByRole("checkbox").check();
     await publishBtn.click();
     await dialog.waitFor({ state: "detached" });
-    const divisionId = await wsIdByName(ben.page, base, "Surface Science Division");
-    await chen.page.goto(`${origin}${base}/w/${divisionId}/noticeboard`);
-    await chen.page.getByText(/Board snapshot at revision 2\. Fixed copy/).waitFor();
+    const divisionId = await wsIdByName(bharat.page, base, "Surface Engineering Division");
+    await chitra.page.goto(`${origin}${base}/w/${divisionId}/noticeboard`);
+    await chitra.page.getByText(/Board snapshot at revision 2\. Fixed copy/).waitFor();
     check(
-      (await chen.page.getByText("Thin Films Section").count()) === 0,
+      (await chitra.page.getByText("Thin Films Section").count()) === 0,
       `${tag}: sibling reader sees the copy without the source name`,
     );
-    const snapImg = chen.page.locator(".attachments img").first();
+    const snapImg = chitra.page.locator(".attachments img").first();
     check(
       await snapImg.evaluate((img) => img.decode().then(() => img.naturalWidth > 0)),
       `${tag}: sibling reader loads the published image`,
     );
-    await ben.page.screenshot({ path: join(shots, `${tag}-board-image.png`) });
-    await chen.page.screenshot({ path: join(shots, `${tag}-snapshot-in-division.png`) });
+    await bharat.page.screenshot({ path: join(shots, `${tag}-board-image.png`) });
+    await chitra.page.screenshot({ path: join(shots, `${tag}-snapshot-in-division.png`) });
 
     // P4: board-only touch panel (T11, browser-simulated touch).
-    await ben.page.goto(`${origin}${base}/w/${sectionA}/board`);
-    await ben.page.getByRole("button", { name: "📺 Open on touch panel" }).click();
-    const code = (await ben.page.locator(".pair-code").innerText()).trim();
-    await ben.page.getByRole("button", { name: "Done" }).click();
+    await bharat.page.goto(`${origin}${base}/w/${sectionA}/board`);
+    await bharat.page.getByRole("button", { name: "📺 Open on touch panel" }).click();
+    const code = (await bharat.page.locator(".pair-code").innerText()).trim();
+    await bharat.page.getByRole("button", { name: "Done" }).click();
     const kiosk = await browser.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true });
     const panel = await kiosk.newPage();
     const panelExternal = [];
@@ -273,7 +278,7 @@ async function run(base) {
     await panel.getByRole("button", { name: "Open board" }).click();
     await panel.getByRole("button", { name: "End session" }).waitFor();
     check(
-      await seen(panel.getByText("Drawing as Ben Okafor")),
+      await seen(panel.getByText("Drawing as Bharat Kulkarni")),
       `${tag}: panel opens the chosen board as the pairing user`,
     );
     check(
@@ -283,7 +288,7 @@ async function run(base) {
       `${tag}: panel hides publishing, file picker and task creation`,
     );
     await panel.getByRole("status").filter({ hasText: "Saved" }).waitFor();
-    const revBefore = await ben.page.evaluate(() =>
+    const revBefore = await bharat.page.evaluate(() =>
       Number((document.querySelector(".toolbar")?.textContent ?? "").match(/rev (\d+)/)?.[1] ?? 0),
     );
     const pbox = await panel.locator(".canvas").boundingBox();
@@ -294,7 +299,7 @@ async function run(base) {
       await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [pt(i)] });
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await panel.getByRole("status").filter({ hasText: "Saved" }).waitFor();
-    await ben.page.waitForFunction(
+    await bharat.page.waitForFunction(
       (r) => Number((document.querySelector(".toolbar")?.textContent ?? "").match(/rev (\d+)/)?.[1] ?? 0) > r,
       revBefore,
       { timeout: 8000 },
@@ -334,9 +339,9 @@ async function run(base) {
     );
     check(after === 401, `${tag}: ended panel session is unusable (${after})`);
     // Idle lock (test stack uses a 35 s idle window).
-    await ben.page.getByRole("button", { name: "📺 Open on touch panel" }).click();
-    const code2 = (await ben.page.locator(".pair-code").innerText()).trim();
-    await ben.page.getByRole("button", { name: "Done" }).click();
+    await bharat.page.getByRole("button", { name: "📺 Open on touch panel" }).click();
+    const code2 = (await bharat.page.locator(".pair-code").innerText()).trim();
+    await bharat.page.getByRole("button", { name: "Done" }).click();
     await panel.getByLabel("Panel code").fill(code2);
     await panel.getByRole("button", { name: "Open board" }).click();
     await panel.getByRole("button", { name: "End session" }).waitFor();
@@ -347,11 +352,11 @@ async function run(base) {
     await kiosk.close();
 
     // My Notes stays private.
-    await ben.page.goto(`${origin}${base}/notes`);
-    await ben.page.getByLabel("Title").fill("Order argon cylinders");
-    await ben.page.getByRole("button", { name: "Add note" }).click();
-    await ben.page.getByRole("heading", { name: "Order argon cylinders" }).waitFor();
-    const noteId = await ben.page.evaluate(
+    await bharat.page.goto(`${origin}${base}/notes`);
+    await bharat.page.getByLabel("Title").fill("Order argon cylinders");
+    await bharat.page.getByRole("button", { name: "Add note" }).click();
+    await bharat.page.getByRole("heading", { name: "Order argon cylinders" }).waitFor();
+    const noteId = await bharat.page.evaluate(
       async (b) => (await (await fetch(`${b}/api/v1/notes`)).json()).notes[0].id,
       base,
     );
@@ -362,7 +367,7 @@ async function run(base) {
     );
     check(adminNote === 404, `${tag}: administrator cannot open a personal note (${adminNote})`);
 
-    for (const s of [ben, chen, dana, admin])
+    for (const s of [bharat, chitra, deepa, admin])
       check(s.external.length === 0, `${tag}: no external requests (${s.external.join(", ") || "none"})`);
     // Logging out of this instance leaves the other instance's cookie intact (checked in the next instance run).
     await admin.ctx.close();

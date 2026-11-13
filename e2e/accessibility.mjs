@@ -163,7 +163,7 @@ try {
     await adminCtx.close();
 
     const tablet = await browser.newContext({ colorScheme, viewport: { width: 1024, height: 768 } });
-    const tabletPage = await signIn(tablet, base, "ben");
+    const tabletPage = await signIn(tablet, base, "bharat");
     await tabletPage.goto(origin + base + `/w/${section}/noticeboard`);
     await tabletPage.locator(".post").first().waitFor();
     await audit(tabletPage, `${tag} tablet noticeboard`);
@@ -180,7 +180,7 @@ try {
       hasTouch: true,
       isMobile: true,
     });
-    const mobile = await signIn(phone, base, "ben");
+    const mobile = await signIn(phone, base, "bharat");
     await mobile.goto(origin + base + `/w/${section}/noticeboard`);
     await mobile.locator(".post").first().waitFor();
     await audit(mobile, `${tag} mobile noticeboard`);
@@ -196,7 +196,7 @@ try {
 
     // Touch panel: pairing screen and board view.
     const pairCtx = await browser.newContext({ colorScheme, viewport: { width: 1366, height: 900 } });
-    const pairer = await signIn(pairCtx, base, "ben");
+    const pairer = await signIn(pairCtx, base, "bharat");
     const code = (
       await (
         await pairCtx.request.post(origin + base + "/api/v1/panel/pairings", {

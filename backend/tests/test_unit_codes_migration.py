@@ -21,16 +21,16 @@ def test_codes_backfill_uniquely_and_downgrade_is_guarded(migrated):
     engine = create_engine(migrated)
     try:
         with engine.begin() as db:
-            db.execute(UNIT, {"kind": "org", "name": "Surface Science"})
+            db.execute(UNIT, {"kind": "org", "name": "Structural Studies"})
             db.execute(
                 text(
                     "INSERT INTO workspaces "
                     "(id, kind, name, description, archived, posting_policy, parent_id) "
                     "SELECT gen_random_uuid(), 'org', 'Spectroscopy Services', '', false, 'open', id "
-                    "FROM workspaces WHERE name = 'Surface Science'"
+                    "FROM workspaces WHERE name = 'Structural Studies'"
                 )
             )
-            db.execute(UNIT, {"kind": "project", "name": "Project Aurora"})
+            db.execute(UNIT, {"kind": "project", "name": "Project Tejas"})
         command.upgrade(config, "head")
         with engine.begin() as db:
             rows = db.execute(text("SELECT kind, code FROM workspaces ORDER BY name")).all()
@@ -38,7 +38,7 @@ def test_codes_backfill_uniquely_and_downgrade_is_guarded(migrated):
             assert [code for kind, code in rows if kind == "project"] == [None]
         for bad in ("ss", "S", "SS_1"):
             with pytest.raises(IntegrityError), engine.begin() as db:
-                db.execute(text("UPDATE workspaces SET code = :c WHERE name = 'Project Aurora'"), {"c": bad})
+                db.execute(text("UPDATE workspaces SET code = :c WHERE name = 'Project Tejas'"), {"c": bad})
         with pytest.raises(IntegrityError), engine.begin() as db:
             db.execute(text("UPDATE workspaces SET code = 'SS' WHERE code = 'SS-2'"))
         with engine.begin() as db:

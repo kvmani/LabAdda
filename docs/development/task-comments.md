@@ -32,7 +32,7 @@ Personal discussion stays owner-only, including against administrators.
 Comments are escaped text, not HTML/Markdown execution. Preserve newlines and
 Unicode. Build assets before starting browser flows; do not replace dist while
 browser tests load it. Fresh proxy fixtures are required between scripts that
-revoke Ben or change posting policy. Full backend tests share a destructive test
+revoke Bharat or change posting policy. Full backend tests share a destructive test
 schema, so never run simultaneous pytest sessions against it.
 
 Shared invalidation was independently reviewed; preserve its delivery/revocation

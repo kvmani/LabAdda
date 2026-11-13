@@ -114,11 +114,11 @@ def test_preview_uses_current_database_access(as_user, ids, settings, app, *, ro
     from labadda.models import AuthSession, Membership, Workspace
     from labadda.security import digest, utcnow
 
-    sender_api, receiver_api = as_user("ben"), as_user("asha")
+    sender_api, receiver_api = as_user("bharat"), as_user("asha")
     workspace = uuid.UUID(ids["workspaces"]["section_a"])
     sender = Connection(
         Socket(),
-        uuid.UUID(ids["users"]["ben"]),
+        uuid.UUID(ids["users"]["bharat"]),
         digest(sender_api.client.cookies.get(settings.cookie_name)),
         "Sender",
     )

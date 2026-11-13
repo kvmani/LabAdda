@@ -26,9 +26,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
 ):
     assert shutil.which("pg_dump") and shutil.which("pg_restore"), "PostgreSQL 16 clients required"
     workspace = ids["workspaces"]["section_a"]
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     pdf = b"%PDF-1.4\nSynthetic recovery document\n%%EOF"
-    upload = ben.post(
+    upload = bharat.post(
         "/uploads",
         headers={"Idempotency-Key": "recovery-request-01"},
         files={"file": ("fixture.pdf", pdf, "application/pdf")},
@@ -41,16 +41,16 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
 
     image = BytesIO()
     Image.new("RGB", (12, 9), "blue").save(image, format="PNG")
-    picture = ben.post("/uploads", files={"file": ("recovery.png", image.getvalue(), "image/png")})
+    picture = bharat.post("/uploads", files={"file": ("recovery.png", image.getvalue(), "image/png")})
     assert picture.status_code == 201
     picture_id = picture.json()["id"]
-    preview = ben.get(f"/files/{picture_id}/preview").content
-    post = ben.post(
+    preview = bharat.get(f"/files/{picture_id}/preview").content
+    post = bharat.post(
         f"/workspaces/{workspace}/posts",
         json={"body": "Recovery post", "attachment_ids": [asset["id"], picture_id]},
     )
     assert post.status_code == 201
-    personal_board = ben.put(
+    personal_board = bharat.put(
         "/me/whiteboard",
         json={
             "revision": 0,
@@ -64,16 +64,16 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
             ],
         },
     ).json()
-    note = ben.post("/notes", json={"title": "Private recovery note", "body": "fixture"})
+    note = bharat.post("/notes", json={"title": "Private recovery note", "body": "fixture"})
     assert note.status_code == 201
-    chat_asset = ben.post("/uploads", files={"file": ("chat-handoff.pdf", pdf, "application/pdf")}).json()
-    recovery_chat = ben.post(
+    chat_asset = bharat.post("/uploads", files={"file": ("chat-handoff.pdf", pdf, "application/pdf")}).json()
+    recovery_chat = bharat.post(
         f"/workspaces/{workspace}/chat",
         json={"body": "Recovery chat", "client_id": "recover-chat-01", "attachment_ids": [chat_asset["id"]]},
     )
     assert recovery_chat.status_code == 201
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{workspace}/chat",
             json={
                 "body": "Recovery threaded reply",
@@ -84,33 +84,33 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
         == 201
     )
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{workspace}/board/ops", json=stroke("recover-stroke-01", "recovered-line")
         ).status_code
         == 200
     )
     panel = pair(as_user, make_client, ids)
-    unused_code = ben.post("/panel/pairings", json={"workspace_id": workspace}).json()["code"]
+    unused_code = bharat.post("/panel/pairings", json={"workspace_id": workspace}).json()["code"]
     pending = as_user("admin").post(
         "/admin/users", json={"username": "restore_pending", "display_name": "Pending Fixture"}
     )
     assert pending.status_code == 201
     activation_token = pending.json()["activation_token"]
-    old_cookies = dict(ben.client.cookies)
+    old_cookies = dict(bharat.client.cookies)
     old_panel_cookies = dict(panel.api.client.cookies)
     from labadda.fixtures import fixture_password
 
     granted = as_user("admin").post(
         "/admin/usage-readers",
         json={
-            "user_id": ids["users"]["ben"],
+            "user_id": ids["users"]["bharat"],
             "hours": 24,
             "reason": "Synthetic recovery observer",
             "password": fixture_password(),
         },
     )
     assert granted.status_code == 201
-    assert ben.get("/admin/usage").status_code == 200
+    assert bharat.get("/admin/usage").status_code == 200
     from datetime import timedelta
 
     from labadda.db import session_factory
@@ -120,7 +120,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
     with session_factory(settings.database_url)() as db:
         db.add(
             UploadReservation(
-                user_id=ids["users"]["ben"],
+                user_id=ids["users"]["bharat"],
                 bytes=123,
                 created_at=utcnow(),
                 expires_at=utcnow() + timedelta(minutes=10),
@@ -131,8 +131,10 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
 
     job_id = inventory_jobs.enqueue(session_factory(settings.database_url), "recovery-inventory", {})
     inventory_jobs.claim(session_factory(settings.database_url), job_id)
-    todo = ben.post("/todos/lists", json={"client_id": str(uuid.uuid4()), "title": "Recovery tasks"}).json()
-    todo_task = ben.post(
+    todo = bharat.post(
+        "/todos/lists", json={"client_id": str(uuid.uuid4()), "title": "Recovery tasks"}
+    ).json()
+    todo_task = bharat.post(
         f"/todos/lists/{todo['id']}/tasks",
         json={
             "client_id": str(uuid.uuid4()),
@@ -140,17 +142,17 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
             "checklist": [{"title": "Check replay", "done": True}],
         },
     ).json()
-    assigned_todo = ben.put(
+    assigned_todo = bharat.put(
         f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/assignee",
-        json={"user_id": ids["users"]["ben"], "revision": todo_task["revision"]},
+        json={"user_id": ids["users"]["bharat"], "revision": todo_task["revision"]},
     )
     assert assigned_todo.status_code == 200
-    restored_comment = ben.post(
+    restored_comment = bharat.post(
         f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/comments",
         json={"client_id": str(uuid.uuid4()), "body": "Synthetic recovery discussion α"},
     )
     assert restored_comment.status_code == 201
-    converted = ben.post(
+    converted = bharat.post(
         f"/todos/lists/{todo['id']}/from-conversation",
         json={
             "client_id": str(uuid.uuid4()),
@@ -161,8 +163,8 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
     )
     assert converted.status_code == 201
     source_path = f"/todos/lists/{todo['id']}/tasks/{converted.json()['id']}/source"
-    board_context = ben.get(f"/workspaces/{workspace}/board").json()
-    board_task = ben.post(
+    board_context = bharat.get(f"/workspaces/{workspace}/board").json()
+    board_task = bharat.post(
         f"/todos/lists/{todo['id']}/from-board",
         json={
             "client_id": str(uuid.uuid4()),
@@ -175,7 +177,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
     assert board_task.status_code == 201
     board_source_path = f"/todos/lists/{todo['id']}/tasks/{board_task.json()['id']}/source"
     assert (
-        ben.put(
+        bharat.put(
             "/notification-preferences",
             json={"revision": 0, "mentions": True, "official_notices": True, "reminders": False},
         ).status_code
@@ -188,11 +190,11 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
     from labadda.models import User
 
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
-        people.set_status(db.get(User, ids["users"]["fay"]), "on_leave", leave_sign_in=False)
-        person.employee_no = "NW-100"
+        person = db.get(User, ids["users"]["bharat"])
+        people.set_status(db.get(User, ids["users"]["farhan"]), "on_leave", leave_sign_in=False)
+        person.employee_no = "NM-100"
         person.designation = "Research Officer"
-        person.contact_email = "ben@research.example"
+        person.contact_email = "bharat@research.example"
         person.contact_phone = "214"
         person.joined_on = date(2025, 1, 15)
         person.expected_return_on = date(2026, 12, 1)
@@ -231,12 +233,12 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
             assert db.get(InventoryJob, job_id).lease_until is None
             assert db.get(InventoryAttempt, (job_id, 1)).state == "paused"
         with session_factory(target_url)() as db:
-            person = db.get(User, ids["users"]["ben"])
-            blocked_leave = db.get(User, ids["users"]["fay"])
+            person = db.get(User, ids["users"]["bharat"])
+            blocked_leave = db.get(User, ids["users"]["farhan"])
             assert blocked_leave.status == "on_leave" and not blocked_leave.is_active
-            assert person.employee_no == "NW-100"
+            assert person.employee_no == "NM-100"
             assert person.designation == "Research Officer"
-            assert person.contact_email == "ben@research.example"
+            assert person.contact_email == "bharat@research.example"
             assert person.contact_phone == "214"
             assert person.joined_on == date(2025, 1, 15)
             assert person.expected_return_on == date(2026, 12, 1)
@@ -258,7 +260,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
                 == 422
             )
             api = Api(client, "/api/v1")
-            assert api.login("ben").status_code == 200
+            assert api.login("bharat").status_code == 200
             recovered_tasks = api.get(f"/todos/lists/{todo['id']}/tasks").json()["items"]
             recovered_tasks = [item for item in recovered_tasks if item["id"] == todo_task["id"]]
             assert recovered_tasks[0]["id"] == todo_task["id"]
@@ -277,8 +279,8 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
                 "items"
             ]
             assert recovered_history[-1]["action"] == "created"
-            assert recovered_history[0]["changes"]["assignee"]["after"]["id"] == ids["users"]["ben"]
-            assert recovered_tasks[0]["assignee"]["id"] == ids["users"]["ben"]
+            assert recovered_history[0]["changes"]["assignee"]["after"]["id"] == ids["users"]["bharat"]
+            assert recovered_tasks[0]["assignee"]["id"] == ids["users"]["bharat"]
             recovered_comments = api.get(
                 f"/todos/lists/{todo['id']}/tasks/{todo_task['id']}/comments"
             ).json()["items"]
@@ -298,7 +300,7 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
             assert api.get(f"/workspaces/{workspace}/chat").json()["messages"][0]["body"] == "Recovery chat"
             board = api.get(f"/workspaces/{workspace}/board").json()
             assert any(op["object_id"] == "recovered-line" for op in board["ops"])
-            assert api.login("chen").status_code == 200
+            assert api.login("chitra").status_code == 200
             assert api.get(f"/files/{asset['id']}").status_code == 404
             assert api.get(f"/workspaces/{workspace}/board").status_code == 404
             assert api.login("admin").status_code == 200

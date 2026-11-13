@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 ## What this is for
 
-Use this when a person helps in another unit as well as their own, for example a member of Catalysis who also looks after Thin Films for a month. Their home unit does not change.
+Use this when a person helps in another unit as well as their own, for example a member of Corrosion who also looks after Thin Films for a month. Their home unit does not change.
 
 ## Before you start
 

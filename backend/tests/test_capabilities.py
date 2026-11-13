@@ -21,28 +21,28 @@ def grant(admin, target_id, **overrides):
 
 
 def test_reader_can_read_metadata_but_not_administer_or_read_private_content(as_user, ids):
-    admin, ben = as_user("admin"), as_user("ben")
-    assert not ben.get("/capabilities").json()["usage.read"]
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
-    assert ben.get("/capabilities").json()["usage.read"]
-    assert ben.get("/admin/usage").status_code == 200
-    assert ben.get("/admin/storage-inspections").status_code == 200
-    assert ben.get("/admin/usage-observations").status_code == 200
-    assert ben.get("/admin/policy-drafts").status_code == 403
-    assert ben.get("/admin/users").status_code == 403
-    assert ben.post("/admin/usage-observations", json={}).status_code == 403
+    admin, bharat = as_user("admin"), as_user("bharat")
+    assert not bharat.get("/capabilities").json()["usage.read"]
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
+    assert bharat.get("/capabilities").json()["usage.read"]
+    assert bharat.get("/admin/usage").status_code == 200
+    assert bharat.get("/admin/storage-inspections").status_code == 200
+    assert bharat.get("/admin/usage-observations").status_code == 200
+    assert bharat.get("/admin/policy-drafts").status_code == 403
+    assert bharat.get("/admin/users").status_code == 403
+    assert bharat.post("/admin/usage-observations", json={}).status_code == 403
     private = (
         as_user("asha").post("/notes", json={"title": "Private fixture", "body": "Not for observers"}).json()
     )
-    assert ben.get(f"/notes/{private['id']}").status_code == 404
-    assert ben.get("/admin/usage-readers").status_code == 403
-    assert grant(ben, ids["users"]["chen"]).status_code == 403
+    assert bharat.get(f"/notes/{private['id']}").status_code == 404
+    assert bharat.get("/admin/usage-readers").status_code == 403
+    assert grant(bharat, ids["users"]["chitra"]).status_code == 403
 
 
 def test_password_confirmation_no_grant_or_secret_audit(as_user, ids):
     admin = as_user("admin")
-    assert grant(admin, ids["users"]["ben"], password="incorrect-test-secret").status_code == 403
-    assert not as_user("ben").get("/capabilities").json()["usage.read"]
+    assert grant(admin, ids["users"]["bharat"], password="incorrect-test-secret").status_code == 403
+    assert not as_user("bharat").get("/capabilities").json()["usage.read"]
     audit = admin.get("/admin/audit").json()
     assert "incorrect-test-secret" not in str(audit)
     assert any(
@@ -51,24 +51,24 @@ def test_password_confirmation_no_grant_or_secret_audit(as_user, ids):
 
 
 def test_revoke_and_expiry_remove_access(as_user, ids, db_factory):
-    admin, ben = as_user("admin"), as_user("ben")
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
+    admin, bharat = as_user("admin"), as_user("bharat")
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
     with db_factory() as db:
-        row = db.get(UsageReaderGrant, ids["users"]["ben"])
+        row = db.get(UsageReaderGrant, ids["users"]["bharat"])
         row.expires_at = utcnow() - timedelta(seconds=1)
         db.commit()
-    assert ben.get("/admin/usage").status_code == 403
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
+    assert bharat.get("/admin/usage").status_code == 403
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
     result = admin.post(
         "/admin/usage-readers/revoke",
         json={
-            "user_id": ids["users"]["ben"],
+            "user_id": ids["users"]["bharat"],
             "reason": "Walkthrough complete",
             "password": fixture_password(),
         },
     )
     assert result.status_code == 200
-    assert ben.get("/admin/usage").status_code == 403
+    assert bharat.get("/admin/usage").status_code == 403
     assert any(e["action"] == "usage.reader.revoke" for e in admin.get("/admin/audit").json()["events"])
 
 
@@ -80,10 +80,10 @@ def test_invalid_grants_never_change_role(as_user, ids):
         {"hours": 721},
         {"reason": "   "},
         {"user_id": ids["users"]["admin"]},
-        {"user_id": ids["users"]["fay"]},
+        {"user_id": ids["users"]["farhan"]},
     ):
-        assert grant(admin, ids["users"]["ben"], **fields).status_code == 422
-    assert not as_user("ben").get("/capabilities").json()["identity.admin"]
+        assert grant(admin, ids["users"]["bharat"], **fields).status_code == 422
+    assert not as_user("bharat").get("/capabilities").json()["identity.admin"]
 
 
 def test_grant_and_identity_update_do_not_deadlock(make_client, ids, monkeypatch):
@@ -111,12 +111,12 @@ def test_grant_and_identity_update_do_not_deadlock(make_client, ids, monkeypatch
     monkeypatch.setattr(capabilities, "authenticate_action", intercepted_auth)
     monkeypatch.setattr(audit, "record", intercepted_audit)
     with ThreadPoolExecutor(max_workers=2) as pool:
-        granting = pool.submit(grant, grant_client, ids["users"]["ben"])
+        granting = pool.submit(grant, grant_client, ids["users"]["bharat"])
         assert actor_locked.wait(5)
         updating = pool.submit(
             patch_client.patch,
-            f"/admin/users/{ids['users']['ben']}",
-            json={"display_name": "Ben Fixture Updated"},
+            f"/admin/users/{ids['users']['bharat']}",
+            json={"display_name": "Bharat Fixture Updated"},
         )
         assert granting.result(timeout=10).status_code == 201
         assert updating.result(timeout=10).status_code == 200
@@ -140,10 +140,10 @@ def test_reader_listing_is_active_first_and_reports_truncation(as_user, ids, db_
                 )
             )
         db.commit()
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
     listed = admin.get("/admin/usage-readers").json()
     assert listed["truncated"] and listed["total_count"] == 202
-    assert listed["grants"][0]["user_id"] == ids["users"]["ben"]
+    assert listed["grants"][0]["user_id"] == ids["users"]["bharat"]
 
 
 def test_password_confirmation_also_requires_csrf(as_user, ids):
@@ -151,11 +151,11 @@ def test_password_confirmation_also_requires_csrf(as_user, ids):
     response = admin.client.post(
         admin.url("/admin/usage-readers"),
         json={
-            "user_id": ids["users"]["ben"],
+            "user_id": ids["users"]["bharat"],
             "hours": 24,
             "reason": "Synthetic request",
             "password": fixture_password(),
         },
     )
     assert response.status_code == 403
-    assert not as_user("ben").get("/capabilities").json()["usage.read"]
+    assert not as_user("bharat").get("/capabilities").json()["usage.read"]

@@ -97,7 +97,7 @@ def test_activity_is_written_once_per_person_per_day(as_user, ids, db_factory, s
 
 def test_activity_records_the_site_local_day(db_factory, ids, settings):
     site = replace(settings, timezone="Asia/Kolkata")
-    person = uuid.UUID(ids["users"]["ben"])
+    person = uuid.UUID(ids["users"]["bharat"])
     with db_factory() as db:
         ACTIVITY.record(db, person, site, now=datetime(2026, 11, 11, 18, 0, tzinfo=UTC))
         ACTIVITY.record(db, person, site, now=datetime(2026, 11, 11, 18, 20, tzinfo=UTC))
@@ -113,7 +113,7 @@ def test_panel_sessions_and_failed_sign_ins_record_no_activity(as_user, make_cli
     ACTIVITY.reset()
     assert panel.get(f"/workspaces/{ws(ids)}/board").status_code == 200
     assert make_client().login("asha", "wrong-password-1").status_code == 401
-    assert make_client().login("fay").status_code == 401
+    assert make_client().login("farhan").status_code == 401
     assert make_client().get("/auth/session").status_code == 401
     assert activity(db_factory) == set()
 

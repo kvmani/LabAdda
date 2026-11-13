@@ -46,9 +46,9 @@ def test_invalid_policy_never_saved(as_user, profile):
 
 
 def test_non_admin_denied(as_user):
-    ben = as_user("ben")
-    assert ben.get("/admin/policy-drafts").status_code == 403
-    assert ben.post("/admin/policy-drafts", json=payload()).status_code == 403
+    bharat = as_user("bharat")
+    assert bharat.get("/admin/policy-drafts").status_code == 403
+    assert bharat.post("/admin/policy-drafts", json=payload()).status_code == 403
 
 
 def test_csrf_required(as_user):

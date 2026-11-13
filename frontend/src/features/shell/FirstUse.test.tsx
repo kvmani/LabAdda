@@ -32,8 +32,8 @@ beforeEach(() => {
   session = {
     user: {
       id: "u",
-      username: "ben",
-      display_name: "Ben Okafor",
+      username: "bharat",
+      display_name: "Bharat Kulkarni",
       is_active: true,
       is_admin: false,
       home_workspace_id: "home-1",
@@ -47,7 +47,7 @@ afterEach(cleanup);
 describe("FirstUse", () => {
   it("names the home unit, the three tabs and where help is", () => {
     show();
-    expect(screen.getByRole("heading", { name: "Welcome to LabAdda, Ben Okafor" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Welcome to LabAdda, Bharat Kulkarni" })).toBeTruthy();
     expect(screen.getByText(/Your home unit is Thin Films Section/)).toBeTruthy();
     for (const word of ["Noticeboard", "Whiteboard", "Chat"]) expect(screen.getByText(word)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Help" }).getAttribute("href")).toBe("/help");

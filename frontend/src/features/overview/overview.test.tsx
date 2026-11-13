@@ -117,7 +117,7 @@ it("lists attention entries in the order sent, each linking to its page", async 
           severity: "warning",
           status: null,
           title: "1 unit has no steward or Head",
-          detail: "Catalysis Section.",
+          detail: "Corrosion Section.",
           route: "/admin/org",
           help: null,
           at: null,

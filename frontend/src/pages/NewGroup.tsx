@@ -137,7 +137,7 @@ export function NewGroup() {
               onChange={(e) => setName(e.target.value)}
               required={!conversation}
               maxLength={120}
-              placeholder="e.g. Microscopy Reading Club"
+              placeholder="e.g. Microscopy Journal Club"
             />
             <TextArea
               label="Purpose (optional)"

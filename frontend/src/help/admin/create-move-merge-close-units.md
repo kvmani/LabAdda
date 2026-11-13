@@ -12,7 +12,7 @@ Use this to add a unit, to rename or recode one, or to move a unit with all its 
 
 ## Before you start
 
-You need to be a site administrator. Every unit has a short **Unit code** of 2 to 24 capital letters, digits or dashes, such as SSD-TF, and each code is used once. The top unit cannot be moved, merged, split or closed.
+You need to be a site administrator. Every unit has a short **Unit code** of 2 to 24 capital letters, digits or dashes, such as SED-TF, and each code is used once. The top unit cannot be moved, merged, split or closed.
 
 ## Steps
 

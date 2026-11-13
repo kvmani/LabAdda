@@ -32,8 +32,10 @@ const unit = (id: string, name: string, parent: string | null, code: string, ext
 });
 const TREE: OrgTree = {
   units: [
-    unit("root", "Northwind Research", null, "NR", { head: { id: "h", name: "Dana Whitfield" } }),
-    unit("div", "Surface Science Division", "root", "SSD"),
+    unit("root", "National Materials Research Laboratory", null, "NMRL", {
+      head: { id: "h", name: "Deepa Nair" },
+    }),
+    unit("div", "Surface Engineering Division", "root", "SED"),
     unit("tf", "Thin Films Section", "div", "TFS"),
     unit("old", "Retired Lab", "div", "RL", { archived: true }),
   ],
@@ -41,9 +43,9 @@ const TREE: OrgTree = {
     {
       id: "p",
       kind: "project",
-      name: "Project Aurora",
+      name: "Project Tejas",
       archived: false,
-      stewards: [{ id: "d", name: "Dana Whitfield" }],
+      stewards: [{ id: "d", name: "Deepa Nair" }],
       members: 2,
     },
   ],
@@ -55,15 +57,15 @@ const PLAN: ChangePlan = {
     {
       target_type: "workspace",
       target_id: "tf",
-      summary: "Move Thin Films Section with its sub-units under Northwind Research",
-      before: { parent: "Surface Science Division" },
-      after: { parent: "Northwind Research" },
+      summary: "Move Thin Films Section with its sub-units under National Materials Research Laboratory",
+      before: { parent: "Surface Engineering Division" },
+      after: { parent: "National Materials Research Laboratory" },
     },
   ],
   warnings: [
     {
       code: "access_lost",
-      message: "1 person will no longer be able to read Surface Science Division.",
+      message: "1 person will no longer be able to read Surface Engineering Division.",
       target_id: "div",
       count: 1,
     },
@@ -95,12 +97,12 @@ it("draws the chart with codes, heads and counts, hides closed units, and lists 
   const tree = await screen.findByRole("tree", { name: "Organisation units" });
   const items = within(tree).getAllByRole("treeitem");
   expect(items.map((item) => item.getAttribute("aria-label"))).toEqual([
-    "NR, Northwind Research. Head Dana Whitfield. 1 person",
-    "SSD, Surface Science Division. No head. 1 person",
+    "NMRL, National Materials Research Laboratory. Head Deepa Nair. 1 person",
+    "SED, Surface Engineering Division. No head. 1 person",
     "TFS, Thin Films Section. No head. 1 person",
   ]);
-  expect(screen.getByText("Project Aurora")).toBeTruthy();
-  expect(screen.getByText(/Steward: Dana Whitfield · 2 members/)).toBeTruthy();
+  expect(screen.getByText("Project Tejas")).toBeTruthy();
+  expect(screen.getByText(/Steward: Deepa Nair · 2 members/)).toBeTruthy();
   fireEvent.click(screen.getByLabelText("Show closed units"));
   expect(within(tree).getAllByRole("treeitem")).toHaveLength(4);
 });
@@ -111,10 +113,10 @@ it("moves between units with the keyboard and selects with Enter", async () => {
   const root = (await screen.findAllByRole("treeitem"))[0] as HTMLElement;
   root.focus();
   fireEvent.keyDown(root, { key: "ArrowDown" });
-  const division = screen.getByRole("treeitem", { name: /Surface Science Division/ });
+  const division = screen.getByRole("treeitem", { name: /Surface Engineering Division/ });
   expect(division.getAttribute("tabindex")).toBe("0"); // jsdom cannot focus SVG; the roving stop moved
   fireEvent.keyDown(division, { key: "Enter" });
-  expect(await screen.findByRole("heading", { name: "Surface Science Division" })).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Surface Engineering Division" })).toBeTruthy();
   fireEvent.keyDown(division, { key: " " });
   expect(screen.queryByRole("treeitem", { name: /Thin Films/ })).toBeNull();
   fireEvent.keyDown(division, { key: "ArrowDown" });
@@ -144,7 +146,7 @@ it("offers Move to… from the panel, shows the server's review and applies the 
 it("keeps the top unit from being moved, merged, split or closed", async () => {
   serve();
   open();
-  fireEvent.click(await screen.findByRole("treeitem", { name: /Northwind Research/ }));
+  fireEvent.click(await screen.findByRole("treeitem", { name: /National Materials Research Laboratory/ }));
   await screen.findByRole("button", { name: "Add sub-unit" });
   for (const name of ["Move to…", "Merge into…", "Split off a new unit…", "Close unit"])
     expect(screen.queryByRole("button", { name })).toBeNull();

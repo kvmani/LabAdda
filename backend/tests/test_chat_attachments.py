@@ -30,10 +30,10 @@ def upload(api, png=False):
 
 
 @pytest.mark.parametrize(
-    "scope,reader,outsider", [("section_a", "asha", "chen"), ("reading_club", "chen", "dana")]
+    "scope,reader,outsider", [("section_a", "asha", "chitra"), ("reading_club", "chitra", "deepa")]
 )
 def test_chat_attachment_retry_delivery_and_accounting(as_user, ids, db_factory, scope, *, reader, outsider):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"][scope]
     asset, data = upload(api)
     body = {"client_id": str(uuid.uuid4()), "body": "Reviewed handoff", "attachment_ids": [asset["id"]]}
@@ -64,7 +64,7 @@ def test_chat_attachment_retry_delivery_and_accounting(as_user, ids, db_factory,
 
 
 def test_reply_image_preview_and_attachment_only_message(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     url = f"/workspaces/{ws}/chat"
     root = api.post(url, json={"body": "Root", "client_id": str(uuid.uuid4())}).json()
@@ -74,7 +74,7 @@ def test_reply_image_preview_and_attachment_only_message(as_user, ids):
     )
     assert reply.status_code == 201, reply.text
     assert as_user("asha").get("/files/" + asset["id"] + "/preview").status_code == 200
-    assert as_user("chen").get("/files/" + asset["id"] + "/preview").status_code == 404
+    assert as_user("chitra").get("/files/" + asset["id"] + "/preview").status_code == 404
     assert (
         api.get(url + "/" + root["id"] + "/replies").json()["messages"][0]["attachments"][0]["id"]
         == asset["id"]
@@ -83,7 +83,7 @@ def test_reply_image_preview_and_attachment_only_message(as_user, ids):
 
 
 def test_other_owner_and_cross_destination_reuse_are_denied(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     asset, _ = upload(as_user("asha"))
     ws = ids["workspaces"]["section_a"]
     payload = {"body": "Foreign file", "client_id": str(uuid.uuid4()), "attachment_ids": [asset["id"]]}
@@ -102,7 +102,7 @@ def test_file_binding_rolls_back_with_expired_identity(as_user, ids, db_factory,
     from labadda import identity_locks
     from labadda.api import chat
 
-    api = as_user("ben")
+    api = as_user("bharat")
     asset, _ = upload(api)
     original = chat._mark_read
 
@@ -123,7 +123,7 @@ def test_file_binding_rolls_back_with_expired_identity(as_user, ids, db_factory,
 
 
 def test_attachment_binding_blocks_lossy_downgrade(as_user, ids, settings):
-    api = as_user("ben")
+    api = as_user("bharat")
     asset, _ = upload(api)
     assert (
         api.post(

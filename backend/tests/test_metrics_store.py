@@ -165,7 +165,7 @@ def test_downgrade_refuses_while_metrics_exist(db_factory, ids, restore_head):
     with db_factory() as db:
         assert len(stored(db, "minute")) == 1
         db.execute(MetricSample.__table__.delete())
-        db.add(ActivityDay(user_id=uuid.UUID(ids["users"]["ben"]), day=date(2026, 11, 11)))
+        db.add(ActivityDay(user_id=uuid.UUID(ids["users"]["bharat"]), day=date(2026, 11, 11)))
         db.commit()
     with pytest.raises(RuntimeError, match="Metrics or activity days exist"):
         command.downgrade(alembic_config(restore_head), "0026")

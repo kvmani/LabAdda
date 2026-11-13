@@ -111,12 +111,12 @@ def test_preview_has_no_policy_or_content_side_effect_and_audits_no_bodies(as_us
     from labadda.api import usage
 
     admin = as_user("admin")
-    ben = as_user("ben")
-    uploaded = ben.post(
+    bharat = as_user("bharat")
+    uploaded = bharat.post(
         "/uploads", files={"file": ("private-name.pdf", b"%PDF-1.4\nfixture\n%%EOF", "application/pdf")}
     )
     assert uploaded.status_code == 201
-    before = ben.get("/usage").json()
+    before = bharat.get("/usage").json()
     monkeypatch.setattr(
         usage.os,
         "statvfs",
@@ -128,7 +128,7 @@ def test_preview_has_no_policy_or_content_side_effect_and_audits_no_bodies(as_us
     assert data["filesystem"]["proposed_reserve_bytes"] == 2 * GiB
     assert data["filesystem"]["maximum_growth_above_reserve_bytes"] == 6 * GiB
     assert data["site_asset_budget"]["maximum_possible_headroom_bytes"] == 10 * GiB - uploaded.json()["size"]
-    after = ben.get("/usage").json()
+    after = bharat.get("/usage").json()
     assert after["runtime_limit"] == before["runtime_limit"]
     assert after["measurement"]["tracked_files"] == before["measurement"]["tracked_files"]
     assert admin.get("/admin/policy-drafts").json()["latest_revision"] == 0
@@ -167,13 +167,13 @@ def test_reserve_shortfall_cannot_be_reported_as_available_growth(as_user, monke
 
 def test_capacity_preview_requires_admin_csrf_and_normal_session(as_user, ids, make_client):
     admin = as_user("admin")
-    ben = as_user("ben")
-    assert forecast(ben).status_code == 403
+    bharat = as_user("bharat")
+    assert forecast(bharat).status_code == 403
     assert (
         admin.post(
             "/admin/usage-readers",
             json={
-                "user_id": ids["users"]["ben"],
+                "user_id": ids["users"]["bharat"],
                 "hours": 1,
                 "reason": "Synthetic observer scope",
                 "password": fixture_password(),
@@ -181,7 +181,7 @@ def test_capacity_preview_requires_admin_csrf_and_normal_session(as_user, ids, m
         ).status_code
         == 201
     )
-    assert ben.get("/admin/usage").status_code == 200 and forecast(ben).status_code == 403
+    assert bharat.get("/admin/usage").status_code == 200 and forecast(bharat).status_code == 403
     assert (
         admin.client.post(admin.url("/admin/capacity-forecasts"), json={"profile": profile()}).status_code
         == 403

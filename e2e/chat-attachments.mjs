@@ -17,13 +17,13 @@ const harness = await startHarness({ timezoneId: "Asia/Kolkata" });
 const { check, login } = harness;
 const screenshots = [];
 const pdf = Buffer.from("%PDF-1.4\nSynthetic instrument handoff\n%%EOF");
-const peopleNames = ["asha", "ben", "chen", "mira", "dana"];
+const peopleNames = ["asha", "bharat", "chitra", "mira", "deepa"];
 const ideas = [
   "Asha: retain a witness coupon.",
-  "Ben: sample IDs mapped to run IDs.",
-  "Chen: include GC blanks and three replicates.",
+  "Bharat: sample IDs mapped to run IDs.",
+  "Chitra: include GC blanks and three replicates.",
   "Mira: cap transfer before XPS.",
-  "Dana: review uncertainty at the division gate.",
+  "Deepa: review uncertainty at the division gate.",
 ];
 const stickyColors = ["#fff59d", "#b3e5fc", "#ffccbc", "#c8e6c9", "#fff59d"];
 
@@ -53,20 +53,20 @@ async function signInEveryone(base) {
   return people;
 }
 
-async function startPrivateConversation(ben, base) {
-  const page = ben.page;
+async function startPrivateConversation(bharat, base) {
+  const page = bharat.page;
   await page.goto(origin + base + "/groups/new?conversation=1");
-  await labelled(page, "Group name").fill("Ben and Chen private handoff");
-  await labelled(page, "Find colleagues").fill("chen");
-  await page.getByRole("button", { name: /\+ Chen Li/ }).click();
+  await labelled(page, "Group name").fill("Bharat and Chitra private handoff");
+  await labelled(page, "Find colleagues").fill("chitra");
+  await page.getByRole("button", { name: /\+ Chitra Iyer/ }).click();
   await buttonNamed(page, "Create group with 1 colleague").click();
-  await page.getByRole("heading", { level: 1, name: /Ben and Chen private handoff/ }).waitFor();
+  await page.getByRole("heading", { level: 1, name: /Bharat and Chitra private handoff/ }).waitFor();
   check(page.url().endsWith("/chat"), base + " private conversation opens a two-person group chat");
   return page.url().match(/\/w\/([^/]+)/)[1];
 }
 
-async function checkLostUploadRecovery(ben, base, form) {
-  await loseNextResponse(ben.page, "**/api/v1/uploads");
+async function checkLostUploadRecovery(bharat, base, form) {
+  await loseNextResponse(bharat.page, "**/api/v1/uploads");
   await labelled(form, "Attach files").setInputFiles({
     name: "instrument-handoff.pdf",
     mimeType: "application/pdf",
@@ -78,10 +78,10 @@ async function checkLostUploadRecovery(ben, base, form) {
   check(true, base + " lost upload reply recovers original file through receipt");
 }
 
-async function checkLostSendRecovery(ben, base, form, privateId) {
-  const messageBox = labelled(form, "Message Ben and Chen private handoff");
+async function checkLostSendRecovery(bharat, base, form, privateId) {
+  const messageBox = labelled(form, "Message Bharat and Chitra private handoff");
   await messageBox.fill("Private instrument handoff — check reference drift first.");
-  await loseNextResponse(ben.page, "**/api/v1/workspaces/*/chat", { onlyPost: true });
+  await loseNextResponse(bharat.page, "**/api/v1/workspaces/*/chat", { onlyPost: true });
   await buttonNamed(form, "Send").click();
   await buttonNamed(form, "Retry same message").waitFor();
   check(
@@ -90,7 +90,7 @@ async function checkLostSendRecovery(ben, base, form, privateId) {
   );
   await buttonNamed(form, "Retry same message").click();
   await messageBox.waitFor();
-  const messages = (await call(ben, `/workspaces/${privateId}/chat`)).messages;
+  const messages = (await call(bharat, `/workspaces/${privateId}/chat`)).messages;
   check(
     messages.length === 1 && messages[0].attachments.length === 1,
     base + " lost send reply recovers one message and one binding",
@@ -98,10 +98,10 @@ async function checkLostSendRecovery(ben, base, form, privateId) {
   return messages[0];
 }
 
-async function checkFileAccess(chen, others, base, privateId, file) {
-  await chen.page.goto(origin + base + `/w/${privateId}/chat`);
-  await chen.page.getByRole("link", { name: "instrument-handoff.pdf", exact: true }).waitFor();
-  const download = await chen.ctx.request.get(origin + file.url);
+async function checkFileAccess(chitra, others, base, privateId, file) {
+  await chitra.page.goto(origin + base + `/w/${privateId}/chat`);
+  await chitra.page.getByRole("link", { name: "instrument-handoff.pdf", exact: true }).waitFor();
+  const download = await chitra.ctx.request.get(origin + file.url);
   check(
     Buffer.from(await download.body()).equals(pdf),
     base + " colleague downloads authorized private handoff",
@@ -111,20 +111,20 @@ async function checkFileAccess(chen, others, base, privateId, file) {
     check(response.status() === 404, base + " sibling division colleague/admin cannot retrieve private file");
   }
   await takeScreenshot(
-    chen,
+    chitra,
     base,
     "-private-chat.png",
-    "Private Ben/Chen handoff with an actual validated PDF attachment",
+    "Private Bharat/Chitra handoff with an actual validated PDF attachment",
   );
 }
 
-async function checkThreadAttachment(ben, base, message) {
-  await ben.page
+async function checkThreadAttachment(bharat, base, message) {
+  await bharat.page
     .getByRole("listitem")
-    .filter({ has: ben.page.getByText(message.body, { exact: true }) })
+    .filter({ has: bharat.page.getByText(message.body, { exact: true }) })
     .getByRole("button", { name: "Open thread", exact: true })
     .click();
-  const thread = ben.page.getByRole("region", { name: "Chat thread", exact: true });
+  const thread = bharat.page.getByRole("region", { name: "Chat thread", exact: true });
   await labelled(thread, "Attach files").setInputFiles({
     name: "replicate-plan.pdf",
     mimeType: "application/pdf",
@@ -137,14 +137,14 @@ async function checkThreadAttachment(ben, base, message) {
   check(true, base + " reply shares a validated file inside original thread audience");
 }
 
-async function checkAttachmentLayouts(ben, base) {
+async function checkAttachmentLayouts(bharat, base) {
   for (const width of [1400, 390]) {
-    await ben.page.setViewportSize({ width, height: 1100 });
-    const violations = await axeViolations(ben.page);
+    await bharat.page.setViewportSize({ width, height: 1100 });
+    const violations = await axeViolations(bharat.page);
     check(!violations.length, base + " attachments accessibility " + width + " " + violations);
-    check(await hasNoSideScroll(ben.page), base + " attachments overflow " + width);
+    check(await hasNoSideScroll(bharat.page), base + " attachments overflow " + width);
   }
-  await ben.page.setViewportSize({ width: 1400, height: 1100 });
+  await bharat.page.setViewportSize({ width: 1400, height: 1100 });
 }
 
 async function addIdea(user, groupId, index) {
@@ -161,11 +161,11 @@ async function addIdea(user, groupId, index) {
   });
 }
 
-async function checkFivePersonGroup(ben, people, base) {
+async function checkFivePersonGroup(bharat, people, base) {
   const everyone = Object.values(people);
-  const group = await call(ben, "/groups", {
-    name: "Aurora C4 research discussion",
-    description: "Synthetic collaboration across Thin Films, Catalysis and Surface Science Division.",
+  const group = await call(bharat, "/groups", {
+    name: "Tejas C4 research discussion",
+    description: "Synthetic collaboration across Thin Films, Corrosion and Surface Engineering Division.",
     member_ids: everyone.map((person) => person.session.user.id),
   });
   for (const [index, person] of everyone.entries()) await addIdea(person, group.id, index);
@@ -173,27 +173,27 @@ async function checkFivePersonGroup(ben, people, base) {
     await person.page.goto(origin + base + `/w/${group.id}/board`);
     await buttonNamed(person.page, "Fit").click();
   }
-  await ben.page.getByText(/5 here:/).waitFor();
+  await bharat.page.getByText(/5 here:/).waitFor();
   check(true, base + " five real sessions collaborate across sibling sections and parent division");
   await takeScreenshot(
-    ben,
+    bharat,
     base,
     "-five-person-board.png",
     "Five-person cross-section research plan with shared native stickies",
   );
-  const dana = people.dana;
-  await dana.page.goto(origin + base + `/w/${group.id}/chat`);
-  await dana.page.getByText(ideas[4], { exact: true }).waitFor();
+  const deepa = people.deepa;
+  await deepa.page.goto(origin + base + `/w/${group.id}/chat`);
+  await deepa.page.getByText(ideas[4], { exact: true }).waitFor();
   await takeScreenshot(
-    dana,
+    deepa,
     base,
     "-group-chat.png",
     "Five researchers discuss controls and division review",
   );
 }
 
-async function checkUncertainGroupCreation(ben, base) {
-  const page = ben.page;
+async function checkUncertainGroupCreation(bharat, base) {
+  const page = bharat.page;
   const createButton = buttonNamed(page, "Create group with 1 colleague");
   await page.goto(origin + base + "/groups/new?conversation=1");
   await labelled(page, "Group name").fill("Uncertain conversation review");
@@ -210,15 +210,15 @@ async function checkUncertainGroupCreation(ben, base) {
   check(true, base + " group list reveals committed result for manual recovery");
 }
 
-async function checkRemovedColleague(ben, chen, base, privateId, file) {
-  await chen.page.goto(origin + base + `/w/${privateId}/chat`);
-  await chen.page.getByRole("link", { name: "instrument-handoff.pdf", exact: true }).waitFor();
-  await call(ben, `/groups/${privateId}/members/${chen.session.user.id}`, undefined, "DELETE");
-  await chen.page
+async function checkRemovedColleague(bharat, chitra, base, privateId, file) {
+  await chitra.page.goto(origin + base + `/w/${privateId}/chat`);
+  await chitra.page.getByRole("link", { name: "instrument-handoff.pdf", exact: true }).waitFor();
+  await call(bharat, `/groups/${privateId}/members/${chitra.session.user.id}`, undefined, "DELETE");
+  await chitra.page
     .getByText(/This chat is no longer available\.|Workspace not available/)
     .first()
     .waitFor();
-  const download = await chen.ctx.request.get(origin + file.url);
+  const download = await chitra.ctx.request.get(origin + file.url);
   check(download.status() === 404, base + " removed colleague loses attachment and chat access");
 }
 
@@ -244,28 +244,28 @@ try {
     const admin = await login(base, "admin");
     const created = await activateMira(admin);
     const people = await signInEveryone(base);
-    const { ben, chen } = people;
-    const catalysis = (await call(chen, "/workspaces")).workspaces.find(
-      (workspace) => workspace.name === "Catalysis Section",
+    const { bharat, chitra } = people;
+    const corrosion = (await call(chitra, "/workspaces")).workspaces.find(
+      (workspace) => workspace.name === "Corrosion Section",
     );
     await call(
       admin,
-      `/admin/workspaces/${catalysis.id}/memberships`,
+      `/admin/workspaces/${corrosion.id}/memberships`,
       { user_id: created.user.id, role: "member" },
       "PUT",
     );
-    const privateId = await startPrivateConversation(ben, base);
-    const form = ben.page.getByRole("form", { name: "Send chat message", exact: true });
-    await checkLostUploadRecovery(ben, base, form);
-    const message = await checkLostSendRecovery(ben, base, form, privateId);
+    const privateId = await startPrivateConversation(bharat, base);
+    const form = bharat.page.getByRole("form", { name: "Send chat message", exact: true });
+    await checkLostUploadRecovery(bharat, base, form);
+    const message = await checkLostSendRecovery(bharat, base, form, privateId);
     const file = message.attachments[0];
-    const outsiders = [people.asha, people.mira, people.dana, admin];
-    await checkFileAccess(chen, outsiders, base, privateId, file);
-    await checkThreadAttachment(ben, base, message);
-    await checkAttachmentLayouts(ben, base);
-    await checkFivePersonGroup(ben, people, base);
-    await checkUncertainGroupCreation(ben, base);
-    await checkRemovedColleague(ben, chen, base, privateId, file);
+    const outsiders = [people.asha, people.mira, people.deepa, admin];
+    await checkFileAccess(chitra, outsiders, base, privateId, file);
+    await checkThreadAttachment(bharat, base, message);
+    await checkAttachmentLayouts(bharat, base);
+    await checkFivePersonGroup(bharat, people, base);
+    await checkUncertainGroupCreation(bharat, base);
+    await checkRemovedColleague(bharat, chitra, base, privateId, file);
     check(
       Object.values(people).every((person) => !person.errors.length),
       base + " no browser exceptions",

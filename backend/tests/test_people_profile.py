@@ -21,32 +21,32 @@ def routes(identity):
 def test_profile_and_upward_access_without_admin_or_home_bypass(as_user, ids, db_factory):
     admin = as_user("admin")
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
-        person.employee_no = "NW-100"
-        person.contact_email = "ben@research.example"
+        person = db.get(User, ids["users"]["bharat"])
+        person.employee_no = "NM-100"
+        person.contact_email = "bharat@research.example"
         db.commit()
-    person = admin.get(routes(ids["users"]["ben"])[0]).json()
-    assert person["employee_no"] == "NW-100"
-    assert person["contact_email"] == "ben@research.example"
+    person = admin.get(routes(ids["users"]["bharat"])[0]).json()
+    assert person["employee_no"] == "NM-100"
+    assert person["contact_email"] == "bharat@research.example"
     assert person["joined_on"] is None
     assert person["home_unit"]["name"] == "Thin Films Section"
     assert "password_hash" not in person
-    ben = admin.get(routes(ids["users"]["ben"])[1]).json()["memberships"]
-    targets = {row["workspace"]["id"]: row for row in ben}
+    bharat = admin.get(routes(ids["users"]["bharat"])[1]).json()["memberships"]
+    targets = {row["workspace"]["id"]: row for row in bharat}
     assert str(ids["workspaces"]["section_b"]) not in targets
     assert targets[str(ids["workspaces"]["division"])]["inherited"]
     assert targets[str(ids["workspaces"]["division"])]["role"] == "member"
     assert not targets[str(ids["workspaces"]["section_a"])]["inherited"]
-    dana = admin.get(routes(ids["users"]["dana"])[1]).json()["memberships"]
-    assert str(ids["workspaces"]["section_a"]) not in {row["workspace"]["id"] for row in dana}
+    deepa = admin.get(routes(ids["users"]["deepa"])[1]).json()["memberships"]
+    assert str(ids["workspaces"]["section_a"]) not in {row["workspace"]["id"] for row in deepa}
     assert admin.get(routes(ids["users"]["admin"])[1]).json()["memberships"] == []
-    departed = admin.get(routes(ids["users"]["fay"])[1]).json()["memberships"]
+    departed = admin.get(routes(ids["users"]["farhan"])[1]).json()["memberships"]
     assert departed and all(not row["sign_in_enabled"] for row in departed)
 
 
 def test_access_pages_are_bounded_without_duplicates(as_user, ids):
     admin = as_user("admin")
-    path = routes(ids["users"]["ben"])[1]
+    path = routes(ids["users"]["bharat"])[1]
     cursor = None
     found = []
     while True:
@@ -68,7 +68,7 @@ def test_history_is_plain_date_only_and_drops_unrecognised_detail(as_user, ids, 
             actor=ids["users"]["admin"],
             action="identity.update",
             scope_type="identity",
-            target_id=ids["users"]["ben"],
+            target_id=ids["users"]["bharat"],
             reason="Synthetic staff review",
             private_text=private,
         )
@@ -77,12 +77,12 @@ def test_history_is_plain_date_only_and_drops_unrecognised_detail(as_user, ids, 
             actor=None,
             action="unrecognised",
             scope_type="identity",
-            target_id=ids["users"]["ben"],
+            target_id=ids["users"]["bharat"],
             reason=private,
             private_text=private,
         )
         db.commit()
-    path = routes(ids["users"]["ben"])[2]
+    path = routes(ids["users"]["bharat"])[2]
     response = as_user("admin").get(path, params={"limit": 1})
     assert response.status_code == 200
     first = response.json()
@@ -95,20 +95,20 @@ def test_history_is_plain_date_only_and_drops_unrecognised_detail(as_user, ids, 
     assert following["items"][0]["reason"] == "Synthetic staff review"
 
 
-@pytest.mark.parametrize("name", ["asha", "ben", "chen", "dana", "eli"])
+@pytest.mark.parametrize("name", ["asha", "bharat", "chitra", "deepa", "esha"])
 def test_profile_routes_deny_non_administrators(as_user, ids, name):
-    for path in (*routes(ids["users"]["ben"]), "/admin/people/export.csv"):
+    for path in (*routes(ids["users"]["bharat"]), "/admin/people/export.csv"):
         assert as_user(name).get(path).status_code == 403
 
 
 def test_profile_routes_deny_reader_panel_disabled_and_signed_out(as_user, make_client, ids):
     admin = as_user("admin")
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
     kiosk = pair(as_user, make_client, ids)
     inactive = make_client()
-    assert inactive.login("fay").status_code == 401
-    for path in (*routes(ids["users"]["ben"]), "/admin/people/export.csv"):
-        assert as_user("ben").get(path).status_code == 403
+    assert inactive.login("farhan").status_code == 401
+    for path in (*routes(ids["users"]["bharat"]), "/admin/people/export.csv"):
+        assert as_user("bharat").get(path).status_code == 403
         assert kiosk.get(path).status_code == 401
         assert inactive.get(path).status_code == 401
         assert admin.get(path, headers=PANEL).status_code == 401
@@ -117,7 +117,7 @@ def test_profile_routes_deny_reader_panel_disabled_and_signed_out(as_user, make_
 
 
 def test_no_content_in_any_staff_response(as_user, ids):
-    member = as_user("ben")
+    member = as_user("bharat")
     marker = "Recognisable private collaboration material"
     workspace = ids["workspaces"]["section_a"]
     assert member.post("/notes", json={"title": marker, "body": marker}).status_code == 201
@@ -135,7 +135,7 @@ def test_no_content_in_any_staff_response(as_user, ids):
         ).status_code
         == 201
     )
-    for path in ("/admin/people", *routes(ids["users"]["ben"]), "/admin/people/export.csv"):
+    for path in ("/admin/people", *routes(ids["users"]["bharat"]), "/admin/people/export.csv"):
         response = as_user("admin").get(path)
         assert response.status_code == 200
         assert marker not in response.text

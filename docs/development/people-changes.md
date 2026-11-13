@@ -96,7 +96,7 @@ no content, sanitized failures and authority loss before/after commit.
 `test_changes_add.py` and `test_changes_transfer.py` cover onboarding and T55:
 memberships, socket revocation with delayed404, gained/lost equal to real reads,
 steward notices, guards, stale/concurrent/atomic apply and denial. Browser:
-`e2e/people-changes.mjs` (keyboard add, slip activation, Ben's transfer, axe).
+`e2e/people-changes.mjs` (keyboard add, slip activation, Bharat's transfer, axe).
 
 `test_changes_authority.py`, `test_changes_departure.py` and
 `test_positions_migration.py` cover T56 and scenario steps 1 and 3 (injected-clock expiry,

@@ -39,14 +39,14 @@ async function audit(page) {
 }
 try {
   for (const base of ["", "/labadda-staging"]) {
-    const ben = await login(base, "ben"),
+    const bharat = await login(base, "bharat"),
       asha = await login(base, "asha"),
-      chen = await login(base, "chen"),
+      chitra = await login(base, "chitra"),
       admin = await login(base, "admin");
     const api = origin + base + "/api/v1";
-    const spaces = await (await ben.ctx.request.get(api + "/workspaces")).json();
+    const spaces = await (await bharat.ctx.request.get(api + "/workspaces")).json();
     const section = spaces.workspaces.find((w) => w.name === "Thin Films Section");
-    const division = spaces.workspaces.find((w) => w.name === "Surface Science Division");
+    const division = spaces.workspaces.find((w) => w.name === "Surface Engineering Division");
     const pdf = Buffer.from("%PDF-1.4\nWorkspace colleague handoff\n%%EOF");
     const upload = await asha.ctx.request.post(api + "/uploads", {
       headers: { "X-CSRF-Token": asha.session.csrf_token },
@@ -59,16 +59,18 @@ try {
       data: { body: "Colleague shared fixture", attachment_ids: [asset.id] },
     });
     assert.equal(post.status(), 201);
-    const note = await ben.ctx.request.post(api + "/notes", {
-      headers: { "X-CSRF-Token": ben.session.csrf_token },
+    const note = await bharat.ctx.request.post(api + "/notes", {
+      headers: { "X-CSRF-Token": bharat.session.csrf_token },
       data: { title: "private-note-marker", body: "private-body-marker" },
     });
     assert.equal(note.status(), 201);
-    await ben.page.goto(origin + base + "/w/" + section.id + "/noticeboard");
-    await ben.page.getByRole("tab", { name: "Storage", exact: true }).click();
-    await ben.page.getByRole("heading", { name: "Workspace storage usage" }).waitFor();
-    await ben.page.getByText("Original files retained", { exact: true }).waitFor();
-    const measured = await (await ben.ctx.request.get(api + "/workspaces/" + section.id + "/usage")).json();
+    await bharat.page.goto(origin + base + "/w/" + section.id + "/noticeboard");
+    await bharat.page.getByRole("tab", { name: "Storage", exact: true }).click();
+    await bharat.page.getByRole("heading", { name: "Workspace storage usage" }).waitFor();
+    await bharat.page.getByText("Original files retained", { exact: true }).waitFor();
+    const measured = await (
+      await bharat.ctx.request.get(api + "/workspaces/" + section.id + "/usage")
+    ).json();
     check(
       measured.files.retained_original_bytes === pdf.length && measured.files.retained_files === 1,
       base + ": shared file counts include colleague contributions",
@@ -81,7 +83,7 @@ try {
       !("database" in measured) && !("filesystem" in measured),
       base + ": shared physical overhead excluded",
     );
-    const text = await ben.page.locator("body").innerText();
+    const text = await bharat.page.locator("body").innerText();
     check(
       !text.includes("private-colleague-file") &&
         !text.includes("private-note-marker") &&
@@ -94,61 +96,61 @@ try {
         !measured.complete_for_enforcement,
       base + ": unknown attribution and budget remain explicit",
     );
-    const desktopAudit = await audit(ben.page);
+    const desktopAudit = await audit(bharat.page);
     check(
       desktopAudit.length === 0,
       base + ": desktop workspace usage has no axe findings " + JSON.stringify(desktopAudit),
     );
-    await ben.page.screenshot({
+    await bharat.page.screenshot({
       path: out + (base ? "/workspace-prefix.png" : "/workspace-root.png"),
       fullPage: true,
     });
-    await ben.page.setViewportSize({ width: 390, height: 844 });
+    await bharat.page.setViewportSize({ width: 390, height: 844 });
     check(
-      await ben.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      await bharat.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       base + ": storage tab and counters fit a phone",
     );
-    const mobileAudit = await audit(ben.page);
+    const mobileAudit = await audit(bharat.page);
     check(
       mobileAudit.length === 0,
       base + ": mobile workspace usage has no axe findings " + JSON.stringify(mobileAudit),
     );
-    await ben.page.screenshot({
+    await bharat.page.screenshot({
       path: out + (base ? "/workspace-prefix-mobile.png" : "/workspace-root-mobile.png"),
       fullPage: true,
     });
-    await ben.page.goto(origin + base + "/w/" + division.id + "/usage");
-    await ben.page.getByText("Original files retained", { exact: true }).waitFor();
-    const parent = await (await ben.ctx.request.get(api + "/workspaces/" + division.id + "/usage")).json();
+    await bharat.page.goto(origin + base + "/w/" + division.id + "/usage");
+    await bharat.page.getByText("Original files retained", { exact: true }).waitFor();
+    const parent = await (await bharat.ctx.request.get(api + "/workspaces/" + division.id + "/usage")).json();
     check(
       parent.files.retained_files === 0 && parent.logical_charges.live_logical_bytes === 0,
       base + ": parent totals exclude child workspaces",
     );
     check(
-      (await chen.ctx.request.get(api + "/workspaces/" + section.id + "/usage")).status() === 404 &&
+      (await chitra.ctx.request.get(api + "/workspaces/" + section.id + "/usage")).status() === 404 &&
         (await admin.ctx.request.get(api + "/workspaces/" + section.id + "/usage")).status() === 404,
       base + ": sibling and administrator without grants denied",
     );
-    await ben.page.goto(origin + base + "/w/" + section.id + "/usage");
-    await ben.page.getByText("Original files retained", { exact: true }).waitFor();
+    await bharat.page.goto(origin + base + "/w/" + section.id + "/usage");
+    await bharat.page.getByText("Original files retained", { exact: true }).waitFor();
     const users = await (await admin.ctx.request.get(api + "/admin/users")).json();
-    const benId = users.users.find((u) => u.username === "ben").id;
+    const bharatId = users.users.find((u) => u.username === "bharat").id;
     const revoke = await admin.ctx.request.delete(
-      api + "/admin/workspaces/" + section.id + "/memberships/" + benId,
+      api + "/admin/workspaces/" + section.id + "/memberships/" + bharatId,
       { headers: { "X-CSRF-Token": admin.session.csrf_token } },
     );
     assert.equal(revoke.status(), 200);
-    await ben.page.evaluate(() =>
+    await bharat.page.evaluate(() =>
       [...document.querySelectorAll("button")]
         .find((b) => b.textContent === "Refresh workspace usage")
         ?.click(),
     );
-    await ben.page.waitForFunction(() => !document.body.innerText.includes("Original files retained"));
+    await bharat.page.waitForFunction(() => !document.body.innerText.includes("Original files retained"));
     check(
-      (await ben.ctx.request.get(api + "/workspaces/" + section.id + "/usage")).status() === 404,
+      (await bharat.ctx.request.get(api + "/workspaces/" + section.id + "/usage")).status() === 404,
       base + ": revoked refresh clears counters and is denied",
     );
-    for (const actor of [ben, asha, chen, admin]) await actor.ctx.close();
+    for (const actor of [bharat, asha, chitra, admin]) await actor.ctx.close();
   }
   console.log(`${passed} workspace usage browser checks passed`);
 } finally {

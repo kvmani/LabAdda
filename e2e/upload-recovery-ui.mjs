@@ -24,7 +24,7 @@ try {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(origin + base + "/");
-    await page.getByLabel("Username").fill("ben");
+    await page.getByLabel("Username").fill("bharat");
     await page.getByLabel("Password").fill(process.env.LABADDA_FIXTURE_PASSWORD ?? "fixture-pass-123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.getByRole("button", { name: /^Account menu for / }).waitFor();

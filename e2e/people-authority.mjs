@@ -94,68 +94,70 @@ async function reviewAndApply(page, base, dialog, shot, confirm) {
   await press(dialog.getByRole("button", { name: "Done", exact: true }));
 }
 async function promote(page, base) {
-  const drawer = await openProfile(page, base, "Chen Li");
+  const drawer = await openProfile(page, base, "Chitra Iyer");
   await press(drawer.getByRole("button", { name: "Promote or change role", exact: true }));
-  const dialog = page.getByRole("dialog", { name: "Promote Chen Li", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Promote Chitra Iyer", exact: true });
   await dialog.getByLabel("Designation", { exact: true }).fill("Scientific Officer D");
-  await choose(dialog, "Change the role in", "Catalysis Section (now member)");
+  await choose(dialog, "Change the role in", "Corrosion Section (now member)");
   await choose(dialog, "New role", "Steward");
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
   await dialog
-    .getByText("Set the role of Chen Li in Catalysis Section to steward", { exact: true })
+    .getByText("Set the role of Chitra Iyer in Corrosion Section to steward", { exact: true })
     .waitFor();
   check(
-    (await dialog.innerText()).includes("Chen Li will be able to moderate Catalysis Section"),
+    (await dialog.innerText()).includes("Chitra Iyer will be able to moderate Corrosion Section"),
     base + " promotion says moderation powers change",
   );
-  await reviewAndApply(page, base, dialog, "promote", "Promote Chen Li");
+  await reviewAndApply(page, base, dialog, "promote", "Promote Chitra Iyer");
   await drawer.getByText("Scientific Officer D", { exact: true }).waitFor();
   check(true, base + " profile shows the new designation");
   await page.keyboard.press("Escape");
 }
 async function appointHead(page, base) {
-  const drawer = await openProfile(page, base, "Dana Whitfield");
+  const drawer = await openProfile(page, base, "Deepa Nair");
   await press(drawer.getByRole("button", { name: "Appoint to a position", exact: true }));
-  const dialog = page.getByRole("dialog", { name: "Appoint Dana Whitfield to a position", exact: true });
-  await choose(dialog, /^Unit/, "Surface Science Division");
+  const dialog = page.getByRole("dialog", { name: "Appoint Deepa Nair to a position", exact: true });
+  await choose(dialog, /^Unit/, "Surface Engineering Division");
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
   await dialog
-    .getByText("Appoint Dana Whitfield as Head of Surface Science Division", { exact: true })
+    .getByText("Appoint Deepa Nair as Head of Surface Engineering Division", { exact: true })
     .waitFor();
-  await reviewAndApply(page, base, dialog, "appoint", "Appoint Dana Whitfield");
-  await drawer.getByText("Head of Surface Science Division", { exact: true }).waitFor();
+  await reviewAndApply(page, base, dialog, "appoint", "Appoint Deepa Nair");
+  await drawer.getByText("Head of Surface Engineering Division", { exact: true }).waitFor();
   check(true, base + " profile lists the Head position");
   await page.keyboard.press("Escape");
 }
 async function leave(page, base) {
-  const drawer = await openProfile(page, base, "Ben Okafor");
+  const drawer = await openProfile(page, base, "Bharat Kulkarni");
   await press(drawer.getByRole("button", { name: "Record long leave", exact: true }));
-  const dialog = page.getByRole("dialog", { name: "Record long leave for Ben Okafor", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Record long leave for Bharat Kulkarni", exact: true });
   await dialog.getByLabel(/^Expected return date/).fill(day(90));
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
-  await dialog.getByText("Set the employment status of Ben Okafor to on leave", { exact: true }).waitFor();
+  await dialog
+    .getByText("Set the employment status of Bharat Kulkarni to on leave", { exact: true })
+    .waitFor();
   await reviewAndApply(page, base, dialog, "leave", "Record leave");
   await drawer.getByText("on leave", { exact: true }).waitFor();
   check(true, base + " profile shows on leave");
   await page.keyboard.press("Escape");
 }
 async function retire(page, base) {
-  const drawer = await openProfile(page, base, "Dana Whitfield");
+  const drawer = await openProfile(page, base, "Deepa Nair");
   await press(drawer.getByRole("button", { name: "Retire or leave", exact: true }));
-  const dialog = page.getByRole("dialog", { name: "Retire or leave: Dana Whitfield", exact: true });
-  await dialog.getByLabel(/^Keep Project Aurora/).waitFor();
+  const dialog = page.getByRole("dialog", { name: "Retire or leave: Deepa Nair", exact: true });
+  await dialog.getByLabel(/^Keep Project Tejas/).waitFor();
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
-  await dialog.getByText(/Choose who takes over as Head of Surface Science Division/).waitFor();
+  await dialog.getByText(/Choose who takes over as Head of Surface Engineering Division/).waitFor();
   check(true, base + " retirement is blocked until a successor is chosen");
-  await choose(dialog, "Successor in Surface Science Division", "Asha Rao");
+  await choose(dialog, "Successor in Surface Engineering Division", "Asha Rao");
   await dialog.getByLabel(/^Acting appointment/).check();
   await dialog.getByLabel(/^Acting until/).fill(day(60));
-  await choose(dialog, "New steward of Project Aurora", "Eli Novak");
-  await dialog.getByText(/Appoint Asha Rao as acting Head of Surface Science Division until/).waitFor();
+  await choose(dialog, "New steward of Project Tejas", "Esha Menon");
+  await dialog.getByText(/Appoint Asha Rao as acting Head of Surface Engineering Division until/).waitFor();
   const review = await dialog.innerText();
-  check(review.includes("Set the role of Eli Novak in Project Aurora to steward"), base + " group successor");
+  check(review.includes("Set the role of Esha Menon in Project Tejas to steward"), base + " group successor");
   check(review.includes("end their sign-in and open sessions"), base + " retirement ends sign-in");
-  await reviewAndApply(page, base, dialog, "retire", "Close the account of Dana Whitfield");
+  await reviewAndApply(page, base, dialog, "retire", "Close the account of Deepa Nair");
   await drawer.getByText("retired", { exact: true }).waitFor();
   check(true, base + " profile shows retired");
 }
@@ -170,18 +172,18 @@ try {
     } finally {
       await admin.context.close();
     }
-    const dana = await browser.newContext();
-    const page = await dana.newPage();
+    const deepa = await browser.newContext();
+    const page = await deepa.newPage();
     await page.goto(origin + base + "/");
-    await page.getByLabel("Username", { exact: true }).fill("dana");
+    await page.getByLabel("Username", { exact: true }).fill("deepa");
     await page.getByLabel("Password", { exact: true }).fill("fixture-pass-123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.getByRole("alert").first().waitFor();
     check(
       !(await page.getByRole("button", { name: /^Account menu for / }).count()),
-      base + " retired Dana cannot sign in",
+      base + " retired Deepa cannot sign in",
     );
-    await dana.close();
+    await deepa.close();
   }
   console.log(`${checks} people authority browser checks passed`);
 } finally {

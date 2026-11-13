@@ -134,7 +134,7 @@ export function fitScale(layoutWidth: number, available: number): number {
   return Math.min(1, Math.max(0.2, available / layoutWidth));
 }
 
-/** Unit paths such as "Materials Group / Surface Science Division", for plain-word choices. */
+/** Unit paths such as "Materials Group / Surface Engineering Division", for plain-word choices. */
 export function unitPath(units: Item[], id: string): string {
   const byId = new Map(units.map((unit) => [unit.id, unit]));
   return [id, ...ancestorIds(units, id)]

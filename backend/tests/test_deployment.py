@@ -21,7 +21,7 @@ def test_prefixed_instance_routes_and_cookie_path(settings, ids, tmp_path):
     root = create_app(replace(settings, base_path="", cookie_name="labadda_root", frontend_dist=dist))
     with TestClient(pre) as p, TestClient(root) as r:
         login = p.post(
-            "/labadda-staging/api/v1/auth/login", json={"username": "ben", "password": fixture_password()}
+            "/labadda-staging/api/v1/auth/login", json={"username": "bharat", "password": fixture_password()}
         )
         assert login.status_code == 200
         cookie = login.headers["set-cookie"]
@@ -47,7 +47,7 @@ def test_prefixed_instance_routes_and_cookie_path(settings, ids, tmp_path):
 
 
 def test_api_responses_not_cached(as_user):
-    r = as_user("ben").get("/workspaces")
+    r = as_user("bharat").get("/workspaces")
     assert "no-store" in r.headers["cache-control"]
 
 

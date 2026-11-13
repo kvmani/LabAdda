@@ -49,57 +49,57 @@ async function assignTask(user, record, assigneeId) {
   record.task = await result.json();
 }
 
-async function seedLists(ben, chen, spaces) {
+async function seedLists(bharat, chitra, spaces) {
   const section = spaces.find((workspace) => workspace.name === "Thin Films Section");
-  const division = spaces.find((workspace) => workspace.name === "Surface Science Division");
+  const division = spaces.find((workspace) => workspace.name === "Surface Engineering Division");
   const group = spaces.find((workspace) => workspace.kind === "group");
-  const shared = await createListWithTask(ben, section.id, "Section responsibility");
-  const personal = await createListWithTask(ben, null, "Personal notebook");
-  const divisionRecord = await createListWithTask(ben, division.id, "Division coordination");
-  const team = await createListWithTask(ben, group.id, "Reading club");
-  await assignTask(ben, divisionRecord, chen.session.user.id);
-  await assignTask(ben, team, chen.session.user.id);
+  const shared = await createListWithTask(bharat, section.id, "Section responsibility");
+  const personal = await createListWithTask(bharat, null, "Personal notebook");
+  const divisionRecord = await createListWithTask(bharat, division.id, "Division coordination");
+  const team = await createListWithTask(bharat, group.id, "Reading club");
+  await assignTask(bharat, divisionRecord, chitra.session.user.id);
+  await assignTask(bharat, team, chitra.session.user.id);
   return { section, shared, personal, divisionRecord, team };
 }
 
-async function openSharedList(ben, base, section, shared) {
-  await ben.page.goto(origin + base + `/w/${section.id}/todos`);
-  await buttonNamed(ben.page, shared.list.title).click();
+async function openSharedList(bharat, base, section, shared) {
+  await bharat.page.goto(origin + base + `/w/${section.id}/todos`);
+  await buttonNamed(bharat.page, shared.list.title).click();
 }
 
-async function checkEligiblePickerAndAssign(ben, asha, base, data) {
-  await openSharedList(ben, base, data.section, data.shared);
-  await buttonNamed(ben.page, "Change assignee").click();
-  await assigneeSelect(ben.page).waitFor();
-  const options = await assigneeSelect(ben.page).locator("option").allTextContents();
+async function checkEligiblePickerAndAssign(bharat, asha, base, data) {
+  await openSharedList(bharat, base, data.section, data.shared);
+  await buttonNamed(bharat.page, "Change assignee").click();
+  await assigneeSelect(bharat.page).waitFor();
+  const options = await assigneeSelect(bharat.page).locator("option").allTextContents();
   const hasAsha = options.some((text) => text.includes("Asha"));
-  const hasExcluded = options.some((text) => /Chen|Dana|Administrator|Fay/.test(text));
+  const hasExcluded = options.some((text) => /Chitra|Deepa|Administrator|Farhan/.test(text));
   check(
     options.length === 3 && hasAsha && !hasExcluded,
     base + " eligible picker excludes siblings/parent/admin/inactive",
   );
-  await assigneeSelect(ben.page).selectOption(asha.session.user.id);
-  await buttonNamed(ben.page, "Save assignment").click();
-  await ben.page.getByText("Assignee: Asha Rao", { exact: true }).waitFor();
+  await assigneeSelect(bharat.page).selectOption(asha.session.user.id);
+  await buttonNamed(bharat.page, "Save assignment").click();
+  await bharat.page.getByText("Assignee: Asha Rao", { exact: true }).waitFor();
   check(true, base + " shared assignment persists in task view");
 }
 
-async function checkMyTasksVisibility({ ben, asha, chen, dana, admin }, base, data) {
+async function checkMyTasksVisibility({ bharat, asha, chitra, deepa, admin }, base, data) {
   await asha.page.goto(origin + base + "/my-tasks");
   await headingNamed(asha.page, data.shared.task.title).waitFor();
   check(true, base + " assigned colleague sees My Tasks");
-  await ben.page.goto(origin + base + "/my-tasks");
-  await headingNamed(ben.page, data.personal.task.title).waitFor();
-  const sharedCount = await headingNamed(ben.page, data.shared.task.title).count();
+  await bharat.page.goto(origin + base + "/my-tasks");
+  await headingNamed(bharat.page, data.personal.task.title).waitFor();
+  const sharedCount = await headingNamed(bharat.page, data.shared.task.title).count();
   check(sharedCount === 0, base + " author is not implicitly assigned shared task");
-  for (const outsider of [dana, admin]) {
+  for (const outsider of [deepa, admin]) {
     await outsider.page.goto(origin + base + "/my-tasks");
     await noMatchingTasks(outsider.page).waitFor();
     check(true, base + " parent/admin My Tasks cannot reveal section tasks");
   }
-  await chen.page.goto(origin + base + "/my-tasks");
-  await headingNamed(chen.page, data.team.task.title).waitFor();
-  const divisionCount = await headingNamed(chen.page, data.divisionRecord.task.title).count();
+  await chitra.page.goto(origin + base + "/my-tasks");
+  await headingNamed(chitra.page, data.team.task.title).waitFor();
+  const divisionCount = await headingNamed(chitra.page, data.divisionRecord.task.title).count();
   check(divisionCount === 1, base + " group and ancestor assignments coexist");
 }
 
@@ -117,11 +117,11 @@ async function checkCompletionKeepsAssignment(asha, base, data) {
   check(true, base + " task completion preserves assignment and state filter");
 }
 
-async function checkLostAssignmentReply(ben, base, data) {
-  const page = ben.page;
-  await openSharedList(ben, base, data.section, data.shared);
+async function checkLostAssignmentReply(bharat, base, data) {
+  const page = bharat.page;
+  await openSharedList(bharat, base, data.section, data.shared);
   await buttonNamed(page, "Change assignee").click();
-  await assigneeSelect(page).selectOption(ben.session.user.id);
+  await assigneeSelect(page).selectOption(bharat.session.user.id);
   await loseNextResponse(page, assignmentRoute);
   await buttonNamed(page, "Save assignment").click();
   await buttonNamed(page, "Reload task assignment").waitFor();
@@ -130,17 +130,17 @@ async function checkLostAssignmentReply(ben, base, data) {
     base + " unknown assignment outcome blocks blind retry",
   );
   await buttonNamed(page, "Reload task assignment").click();
-  await page.getByText("Assignee: Ben Okafor", { exact: true }).waitFor();
+  await page.getByText("Assignee: Bharat Kulkarni", { exact: true }).waitFor();
   check(true, base + " committed lost reply resolves through task reload");
 }
 
-async function checkAssignmentConflict(ben, asha, base, data) {
-  const page = ben.page;
+async function checkAssignmentConflict(bharat, asha, base, data) {
+  const page = bharat.page;
   const { list, task } = data.shared;
   await buttonNamed(page, "Change assignee").click();
   await assigneeSelect(page).selectOption(asha.session.user.id);
   const taskPath = `/todos/lists/${list.id}/tasks/${task.id}`;
-  const current = await (await ben.ctx.request.get(ben.api + taskPath)).json();
+  const current = await (await bharat.ctx.request.get(bharat.api + taskPath)).json();
   const { description, due_date, priority, checklist, done, status, revision } = current;
   const changed = await asha.ctx.request.put(asha.api + taskPath, {
     headers: asha.headers,
@@ -167,12 +167,12 @@ async function checkAssignmentConflict(ben, asha, base, data) {
   check(true, base + " conflict reload preserves committed task and assignment");
 }
 
-async function checkRevokedSharedTask({ ben, admin }, base, data) {
-  const page = ben.page;
+async function checkRevokedSharedTask({ bharat, admin }, base, data) {
+  const page = bharat.page;
   await page.goto(origin + base + "/my-tasks");
   await headingNamed(page, "Colleague updated responsibility").waitFor();
   const removed = await admin.ctx.request.delete(
-    admin.api + `/admin/workspaces/${data.section.id}/memberships/${ben.session.user.id}`,
+    admin.api + `/admin/workspaces/${data.section.id}/memberships/${bharat.session.user.id}`,
     { headers: admin.headers },
   );
   check(removed.status() === 200, base + " actual section membership removed");
@@ -182,8 +182,8 @@ async function checkRevokedSharedTask({ ben, admin }, base, data) {
   check(revokedCount === 0, base + " revoked shared task hidden while personal remains");
 }
 
-async function checkDelayedResponseCannotOverrideFilter(ben, base, data) {
-  const page = ben.page;
+async function checkDelayedResponseCannotOverrideFilter(bharat, base, data) {
+  const page = bharat.page;
   const heldList = await holdFirstResponse(page, "**/api/v1/todos/mine");
   await buttonNamed(page, "Refresh My Tasks").click();
   await heldList.captured;
@@ -199,21 +199,21 @@ async function checkDelayedResponseCannotOverrideFilter(ben, base, data) {
   await headingNamed(page, data.personal.task.title).waitFor();
 }
 
-async function checkMyTasksLayouts(ben, base) {
+async function checkMyTasksLayouts(bharat, base) {
   for (const width of [1400, 390]) {
-    await ben.page.setViewportSize({ width, height: 1100 });
-    const violations = await axeViolations(ben.page);
+    await bharat.page.setViewportSize({ width, height: 1100 });
+    const violations = await axeViolations(bharat.page);
     check(violations.length === 0, base + " My Tasks axe " + width + " " + violations.join(","));
-    check(await hasNoSideScroll(ben.page), base + " My Tasks overflow " + width);
-    await ben.page.screenshot({
+    check(await hasNoSideScroll(bharat.page), base + " My Tasks overflow " + width);
+    await bharat.page.screenshot({
       path: outputDir + "/" + (base ? "prefix" : "root") + "-my-tasks-" + width + ".png",
       fullPage: true,
     });
   }
 }
 
-async function checkPersonalPickerAndUnknownWrite(ben, base, data) {
-  const page = ben.page;
+async function checkPersonalPickerAndUnknownWrite(bharat, base, data) {
+  const page = bharat.page;
   await page.goto(origin + base + "/todos");
   await buttonNamed(page, data.personal.list.title).click();
   await buttonNamed(page, "Change assignee").click();
@@ -223,41 +223,41 @@ async function checkPersonalPickerAndUnknownWrite(ben, base, data) {
   const pickerViolations = await axeViolations(page);
   check(pickerViolations.length === 0, base + " mobile assignment picker axe " + pickerViolations.join(","));
   check(await hasNoSideScroll(page), base + " mobile assignment picker no overflow");
-  await assigneeSelect(page).selectOption(ben.session.user.id);
+  await assigneeSelect(page).selectOption(bharat.session.user.id);
   await page.route(assignmentRoute, (route) => route.abort(), { times: 1 });
   await buttonNamed(page, "Save assignment").click();
   await buttonNamed(page, "Reload task assignment").click();
   await buttonNamed(page, "Change assignee").click();
-  await assigneeSelect(page).selectOption(ben.session.user.id);
+  await assigneeSelect(page).selectOption(bharat.session.user.id);
   check(
     await buttonNamed(page, "Save assignment").isEnabled(),
     base + " reload recovers unknown write even when revision did not change",
   );
   await buttonNamed(page, "Save assignment").click();
-  await page.getByText("Assignee: Ben Okafor", { exact: true }).waitFor();
+  await page.getByText("Assignee: Bharat Kulkarni", { exact: true }).waitFor();
 }
 
 try {
   for (const base of bases) {
     const people = {
-      ben: await login(base, "ben"),
+      bharat: await login(base, "bharat"),
       asha: await login(base, "asha"),
-      chen: await login(base, "chen"),
-      dana: await login(base, "dana"),
+      chitra: await login(base, "chitra"),
+      deepa: await login(base, "deepa"),
       admin: await login(base, "admin"),
     };
-    const { ben, asha, chen } = people;
-    const spaces = (await (await ben.ctx.request.get(ben.api + "/workspaces")).json()).workspaces;
-    const data = await seedLists(ben, chen, spaces);
-    await checkEligiblePickerAndAssign(ben, asha, base, data);
+    const { bharat, asha, chitra } = people;
+    const spaces = (await (await bharat.ctx.request.get(bharat.api + "/workspaces")).json()).workspaces;
+    const data = await seedLists(bharat, chitra, spaces);
+    await checkEligiblePickerAndAssign(bharat, asha, base, data);
     await checkMyTasksVisibility(people, base, data);
     await checkCompletionKeepsAssignment(asha, base, data);
-    await checkLostAssignmentReply(ben, base, data);
-    await checkAssignmentConflict(ben, asha, base, data);
+    await checkLostAssignmentReply(bharat, base, data);
+    await checkAssignmentConflict(bharat, asha, base, data);
     await checkRevokedSharedTask(people, base, data);
-    await checkDelayedResponseCannotOverrideFilter(ben, base, data);
-    await checkMyTasksLayouts(ben, base);
-    await checkPersonalPickerAndUnknownWrite(ben, base, data);
+    await checkDelayedResponseCannotOverrideFilter(bharat, base, data);
+    await checkMyTasksLayouts(bharat, base);
+    await checkPersonalPickerAndUnknownWrite(bharat, base, data);
     for (const person of Object.values(people)) await person.ctx.close();
   }
   console.log(`${harness.checks()} assignment browser checks passed`);

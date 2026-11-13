@@ -65,8 +65,8 @@ function forbiddenResponse(message) {
   };
 }
 
-async function checkLostListResponse(ben, base) {
-  const page = ben.page;
+async function checkLostListResponse(bharat, base) {
+  const page = bharat.page;
   await page.goto(origin + base + "/todos");
   await page.getByText("No to-do lists in this scope yet.", { exact: true }).waitFor();
   // Lose a committed list response; explicit same-key retry recovers one list.
@@ -88,15 +88,15 @@ async function checkLostListResponse(ben, base) {
   );
   await page.getByRole("button", { name: "Retry same list creation" }).click();
   await headingNamed(page, "Private experiment checklist").waitFor();
-  const personal = (await fetchJson(ben, "/todos/lists")).items;
+  const personal = (await fetchJson(bharat, "/todos/lists")).items;
   check(personal.length === 1, base + " lost list response creates exactly one list");
   return personal;
 }
 
-async function checkLostTaskResponseAndReload(ben, base, personal) {
-  const page = ben.page;
+async function checkLostTaskResponseAndReload(bharat, base, personal) {
+  const page = bharat.page;
   await createTask(page, "Prepare personal measurements", true);
-  const tasks = (await fetchJson(ben, `/todos/lists/${personal[0].id}/tasks`)).items;
+  const tasks = (await fetchJson(bharat, `/todos/lists/${personal[0].id}/tasks`)).items;
   check(tasks.length === 1, base + " lost task response creates exactly once");
   await page.reload();
   await buttonNamed(page, "Private experiment checklist").click();
@@ -104,8 +104,8 @@ async function checkLostTaskResponseAndReload(ben, base, personal) {
   check(true, base + " Unicode/date/checklist task persists after reload");
 }
 
-async function checkLateSaveCannotRepopulate(ben, base) {
-  const page = ben.page;
+async function checkLateSaveCannotRepopulate(bharat, base) {
+  const page = bharat.page;
   await createList(page, "Personal reading");
   await buttonNamed(page, "Private experiment checklist").click();
   await buttonNamed(page, "New task").click();
@@ -125,12 +125,12 @@ async function checkLateSaveCannotRepopulate(ben, base) {
   check(readingHeadings === 1 && lateHeadings === 0, base + " late save cannot repopulate another list");
 }
 
-async function checkRenameConflict(ben, base) {
-  const page = ben.page;
-  const lists = (await fetchJson(ben, "/todos/lists")).items;
+async function checkRenameConflict(bharat, base) {
+  const page = bharat.page;
+  const lists = (await fetchJson(bharat, "/todos/lists")).items;
   const reading = lists.find((row) => row.title === "Personal reading");
-  await ben.ctx.request.put(ben.api + `/todos/lists/${reading.id}`, {
-    headers: { "X-CSRF-Token": ben.session.csrf_token },
+  await bharat.ctx.request.put(bharat.api + `/todos/lists/${reading.id}`, {
+    headers: { "X-CSRF-Token": bharat.session.csrf_token },
     data: { title: "Personal reading updated", revision: reading.revision },
   });
   await listNameBox(page).fill("Uncommitted list-name draft");
@@ -149,8 +149,8 @@ async function checkRenameConflict(ben, base) {
   return reading;
 }
 
-async function checkDeniedRefreshes(ben, base, reading) {
-  const page = ben.page;
+async function checkDeniedRefreshes(bharat, base, reading) {
+  const page = bharat.page;
   const denyListReads = async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     await route.fulfill(forbiddenResponse("Synthetic access revoked"));
@@ -168,7 +168,7 @@ async function checkDeniedRefreshes(ben, base, reading) {
   await buttonNamed(page, "Personal reading updated").click();
   const denyAllListRequests = (route) => route.fulfill(forbiddenResponse("Synthetic rename revocation"));
   await page.route("**/api/v1/todos/lists", denyAllListRequests);
-  const heldRename = await holdRenameResult(ben, reading);
+  const heldRename = await holdRenameResult(bharat, reading);
   const renameDone = page.waitForResponse(
     (response) =>
       response.request().method() === "PUT" && response.url().endsWith("/todos/lists/" + reading.id),
@@ -189,16 +189,16 @@ async function checkDeniedRefreshes(ben, base, reading) {
 }
 
 /** Performs the rename on the server at once but hands the page its answer only after `release()`. */
-async function holdRenameResult(ben, reading) {
+async function holdRenameResult(bharat, reading) {
   let release;
   let markEntered;
   const gate = new Promise((resolve) => (release = resolve));
   const entered = new Promise((resolve) => (markEntered = resolve));
-  await ben.page.route(
+  await bharat.page.route(
     "**/api/v1/todos/lists/" + reading.id,
     async (route) => {
-      const response = await ben.ctx.request.put(route.request().url(), {
-        headers: { "X-CSRF-Token": ben.session.csrf_token },
+      const response = await bharat.ctx.request.put(route.request().url(), {
+        headers: { "X-CSRF-Token": bharat.session.csrf_token },
         data: route.request().postDataJSON(),
       });
       const body = await response.body();
@@ -211,20 +211,20 @@ async function holdRenameResult(ben, reading) {
   return { entered, release };
 }
 
-async function checkSectionTasks(ben, people, base, section, personal) {
-  const { asha, chen, dana, admin } = people;
-  for (const colleague of [asha, chen, dana, admin]) {
+async function checkSectionTasks(bharat, people, base, section, personal) {
+  const { asha, chitra, deepa, admin } = people;
+  for (const colleague of [asha, chitra, deepa, admin]) {
     check(
       (await statusOf(colleague, `/todos/lists/${personal[0].id}/tasks`)) === 404,
       base + " personal tasks deny colleague/admin",
     );
   }
-  await ben.page.goto(origin + base + `/w/${section.id}/todos`);
-  await createList(ben.page, "Thin Films plan");
-  await createTask(ben.page, "Measure sample α");
-  const list = (await fetchJson(ben, "/todos/lists?workspace_id=" + section.id)).items[0];
-  const task = (await fetchJson(ben, `/todos/lists/${list.id}/tasks`)).items[0];
-  for (const colleague of [chen, dana, admin]) {
+  await bharat.page.goto(origin + base + `/w/${section.id}/todos`);
+  await createList(bharat.page, "Thin Films plan");
+  await createTask(bharat.page, "Measure sample α");
+  const list = (await fetchJson(bharat, "/todos/lists?workspace_id=" + section.id)).items[0];
+  const task = (await fetchJson(bharat, `/todos/lists/${list.id}/tasks`)).items[0];
+  for (const colleague of [chitra, deepa, admin]) {
     check(
       (await statusOf(colleague, `/todos/lists/${list.id}/tasks`)) === 404,
       base + " section tasks deny sibling/parent-only/admin",
@@ -237,9 +237,9 @@ async function checkSectionTasks(ben, people, base, section, personal) {
   return { list, task };
 }
 
-async function checkTwoWriters(ben, asha, base, list, task) {
+async function checkTwoWriters(bharat, asha, base, list, task) {
   // Two writers: preserve local draft on conflict, explicitly load committed data.
-  const page = ben.page;
+  const page = bharat.page;
   await buttonNamed(page, "Edit task: Measure sample α").click();
   await taskTitleBox(page).fill("Local unsaved task draft");
   const { description, due_date, priority, checklist, done, revision } = task;
@@ -274,8 +274,8 @@ async function checkTwoWriters(ben, asha, base, list, task) {
   check(true, base + " explicit conflict reload then completion");
 }
 
-async function checkWorkflowStates(ben, base, list, task) {
-  const page = ben.page;
+async function checkWorkflowStates(bharat, base, list, task) {
+  const page = bharat.page;
   const editButton = buttonNamed(page, "Edit task: Colleague revised measurement");
   await editButton.click();
   await labelled(page, "Task completed").uncheck();
@@ -288,7 +288,7 @@ async function checkWorkflowStates(ben, base, list, task) {
     await saveTaskButton(page).click();
     const stateName = state === "in_progress" ? "In progress" : "Blocked";
     await page.getByText(`${stateName} · high priority · Due 2026-12-01`, { exact: true }).waitFor();
-    const current = await fetchJson(ben, `/todos/lists/${list.id}/tasks/${task.id}`);
+    const current = await fetchJson(bharat, `/todos/lists/${list.id}/tasks/${task.id}`);
     check(current.status === state, base + " workflow " + state + " persists");
   }
   await buttonNamed(page, "View task history").click();
@@ -298,68 +298,71 @@ async function checkWorkflowStates(ben, base, list, task) {
   check(transitions === 1, base + " readable revision history contains state transitions");
 }
 
-async function checkTaskLayouts(ben, base) {
+async function checkTaskLayouts(bharat, base) {
   for (const width of [1400, 390]) {
-    await ben.page.setViewportSize({ width, height: 1100 });
-    const violations = await axeViolations(ben.page);
+    await bharat.page.setViewportSize({ width, height: 1100 });
+    const violations = await axeViolations(bharat.page);
     check(violations.length === 0, base + " tasks axe " + width + " " + violations.join(","));
-    check(await hasNoSideScroll(ben.page), base + " mobile/desktop no overflow " + width);
-    await ben.page.screenshot({
+    check(await hasNoSideScroll(bharat.page), base + " mobile/desktop no overflow " + width);
+    await bharat.page.screenshot({
       path: outputDir + "/" + (base ? "prefix" : "root") + "-" + width + ".png",
       fullPage: true,
     });
   }
 }
 
-async function checkDivisionAndRevocation(ben, people, base, ctx) {
-  const { chen, admin } = people;
+async function checkDivisionAndRevocation(bharat, people, base, ctx) {
+  const { chitra, admin } = people;
   const { section, division, list } = ctx;
-  await ben.page.goto(origin + base + `/w/${division.id}/todos`);
-  await createList(ben.page, "Division research coordination");
-  await createTask(ben.page, "Compare section findings");
-  const divisionList = (await fetchJson(ben, "/todos/lists?workspace_id=" + division.id)).items[0];
+  await bharat.page.goto(origin + base + `/w/${division.id}/todos`);
+  await createList(bharat.page, "Division research coordination");
+  await createTask(bharat.page, "Compare section findings");
+  const divisionList = (await fetchJson(bharat, "/todos/lists?workspace_id=" + division.id)).items[0];
   check(
-    (await statusOf(chen, `/todos/lists/${divisionList.id}/tasks`)) === 200,
+    (await statusOf(chitra, `/todos/lists/${divisionList.id}/tasks`)) === 200,
     base + " sibling colleague can read shared ancestor tasks",
   );
-  await ben.page.goto(origin + base + `/w/${section.id}/todos`);
-  await buttonNamed(ben.page, "Thin Films plan").click();
+  await bharat.page.goto(origin + base + `/w/${section.id}/todos`);
+  await buttonNamed(bharat.page, "Thin Films plan").click();
   const removal = await admin.ctx.request.delete(
-    admin.api + `/admin/workspaces/${section.id}/memberships/${ben.session.user.id}`,
+    admin.api + `/admin/workspaces/${section.id}/memberships/${bharat.session.user.id}`,
     { headers: { "X-CSRF-Token": admin.session.csrf_token } },
   );
   check(removal.status() === 200, base + " actual membership revocation");
-  const refresh = buttonNamed(ben.page, "Refresh tasks");
+  const refresh = buttonNamed(bharat.page, "Refresh tasks");
   if (await refresh.count()) await refresh.click({ timeout: 1000 }).catch(() => {});
-  check((await statusOf(ben, `/todos/lists/${list.id}/tasks`)) === 404, base + " revoked API denies tasks");
-  await ben.page.getByRole("alert").first().waitFor();
-  const leaked = await headingNamed(ben.page, "Colleague revised measurement").count();
+  check(
+    (await statusOf(bharat, `/todos/lists/${list.id}/tasks`)) === 404,
+    base + " revoked API denies tasks",
+  );
+  await bharat.page.getByRole("alert").first().waitFor();
+  const leaked = await headingNamed(bharat.page, "Colleague revised measurement").count();
   check(leaked === 0, base + " revoked refresh clears shared content");
 }
 
 try {
   for (const base of bases) {
     const people = {
-      ben: await login(base, "ben"),
+      bharat: await login(base, "bharat"),
       asha: await login(base, "asha"),
-      chen: await login(base, "chen"),
-      dana: await login(base, "dana"),
+      chitra: await login(base, "chitra"),
+      deepa: await login(base, "deepa"),
       admin: await login(base, "admin"),
     };
-    const { ben, asha } = people;
-    const entries = (await fetchJson(ben, "/workspaces")).workspaces;
+    const { bharat, asha } = people;
+    const entries = (await fetchJson(bharat, "/workspaces")).workspaces;
     const section = entries.find((workspace) => workspace.name === "Thin Films Section");
-    const division = entries.find((workspace) => workspace.name === "Surface Science Division");
-    const personal = await checkLostListResponse(ben, base);
-    await checkLostTaskResponseAndReload(ben, base, personal);
-    await checkLateSaveCannotRepopulate(ben, base);
-    const reading = await checkRenameConflict(ben, base);
-    await checkDeniedRefreshes(ben, base, reading);
-    const { list, task } = await checkSectionTasks(ben, people, base, section, personal);
-    await checkTwoWriters(ben, asha, base, list, task);
-    await checkWorkflowStates(ben, base, list, task);
-    await checkTaskLayouts(ben, base);
-    await checkDivisionAndRevocation(ben, people, base, { section, division, list });
+    const division = entries.find((workspace) => workspace.name === "Surface Engineering Division");
+    const personal = await checkLostListResponse(bharat, base);
+    await checkLostTaskResponseAndReload(bharat, base, personal);
+    await checkLateSaveCannotRepopulate(bharat, base);
+    const reading = await checkRenameConflict(bharat, base);
+    await checkDeniedRefreshes(bharat, base, reading);
+    const { list, task } = await checkSectionTasks(bharat, people, base, section, personal);
+    await checkTwoWriters(bharat, asha, base, list, task);
+    await checkWorkflowStates(bharat, base, list, task);
+    await checkTaskLayouts(bharat, base);
+    await checkDivisionAndRevocation(bharat, people, base, { section, division, list });
     for (const person of Object.values(people)) await person.ctx.close();
   }
   console.log(`${harness.checks()} task browser checks passed`);

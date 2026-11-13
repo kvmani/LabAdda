@@ -57,10 +57,10 @@ def test_health_reports_every_item_with_the_common_shape(as_user, app):
 
 def test_health_access_follows_the_console_rules(as_user, make_client, ids, app):
     assert as_user("admin").get(HEALTH).status_code == 200
-    for username in ("asha", "chen", "ben"):
+    for username in ("asha", "chitra", "bharat"):
         assert as_user(username).get(HEALTH).status_code == 403
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").get(HEALTH).status_code == 200
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").get(HEALTH).status_code == 200
     assert make_client().get(HEALTH).status_code == 401
     assert pair(as_user, make_client, ids).get(HEALTH).status_code == 401
 
@@ -152,8 +152,8 @@ def test_usage_readers_read_events_but_cannot_acknowledge_or_resolve(as_user, id
     sample(app)
     admin = as_user("admin")
     event_id = admin.get(EVENTS).json()["events"][0]["id"]
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
-    reader = as_user("ben")
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
+    reader = as_user("bharat")
     assert len(reader.get(EVENTS).json()["events"]) == 1
     ack = reader.post(f"{EVENTS}/{event_id}/acknowledge", json={"note": "Looking."})
     assert (ack.status_code, ack.json()["error"]["code"]) == (403, "admin_required")
@@ -176,7 +176,7 @@ def test_events_access_for_members_signed_out_and_panel(as_user, make_client, id
 
 def test_deactivated_administrator_is_refused(as_user, make_client):
     client = make_client()
-    assert client.login("fay").status_code == 401
+    assert client.login("farhan").status_code == 401
     assert client.get(EVENTS).status_code == 401
 
 
@@ -230,7 +230,7 @@ def test_invalid_filters_and_cursors_are_refused(as_user):
 
 
 def test_console_responses_contain_no_user_content(as_user, ids, app):
-    member = as_user("ben")
+    member = as_user("bharat")
     secrets = (
         "Synthetic health post body",
         "Synthetic health chat text",

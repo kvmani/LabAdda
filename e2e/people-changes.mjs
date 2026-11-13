@@ -1,4 +1,4 @@
-// P2 reviewed changes: add a person and transfer Ben by keyboard and buttons, at root and prefix.
+// P2 reviewed changes: add a person and transfer Bharat by keyboard and buttons, at root and prefix.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
@@ -66,17 +66,17 @@ async function addPerson(page, base) {
   await dialog.getByText("Step 1 of 4: Details", { exact: true }).waitFor();
   await dialog.getByLabel(/^Full name/).fill("Gita Sen");
   await dialog.getByLabel(/^Username/).fill("gita.sen");
-  await dialog.getByLabel("Employee number", { exact: true }).fill("NW-410");
+  await dialog.getByLabel("Employee number", { exact: true }).fill("NM-410");
   await dialog.getByLabel("Designation", { exact: true }).fill("Scientific Officer C");
   await press(dialog.getByRole("button", { name: "Next", exact: true }));
-  await chooseUnit(dialog, /^Home unit/, "Catalysis Section");
+  await chooseUnit(dialog, /^Home unit/, "Corrosion Section");
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
   await dialog.getByText("Create an invited account for Gita Sen (gita.sen)", { exact: true }).waitFor();
   check(
-    await dialog.getByText("Make Catalysis Section the home unit of Gita Sen, as member").isVisible(),
+    await dialog.getByText("Make Corrosion Section the home unit of Gita Sen, as member").isVisible(),
     base + " add review names the home unit and role",
   );
-  await dialog.getByLabel(/^Reason for this change/).fill("New joiner in Catalysis");
+  await dialog.getByLabel(/^Reason for this change/).fill("New joiner in Corrosion");
   await audit(page, 1400, base + " add review");
   await audit(page, 390, base + " add review");
   await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-add-review.png` });
@@ -126,14 +126,14 @@ async function activate(base, code) {
   await context.close();
 }
 async function transfer(page, base) {
-  await page.goto(origin + base + "/admin/people?q=Ben");
-  await press(page.getByRole("button", { name: "View profile for Ben Okafor", exact: true }));
-  const drawer = page.getByRole("dialog", { name: "Ben Okafor", exact: true });
+  await page.goto(origin + base + "/admin/people?q=Bharat");
+  await press(page.getByRole("button", { name: "View profile for Bharat Kulkarni", exact: true }));
+  const drawer = page.getByRole("dialog", { name: "Bharat Kulkarni", exact: true });
   await press(drawer.getByRole("button", { name: "Transfer to another unit", exact: true }));
-  const dialog = page.getByRole("dialog", { name: "Transfer Ben Okafor", exact: true });
-  await chooseUnit(dialog, /^New home unit/, "Catalysis Section");
+  const dialog = page.getByRole("dialog", { name: "Transfer Bharat Kulkarni", exact: true });
+  await chooseUnit(dialog, /^New home unit/, "Corrosion Section");
   await press(dialog.getByRole("button", { name: "Next", exact: true }));
-  const keepGroup = dialog.getByLabel("Keep Microscopy Reading Club (group, steward)");
+  const keepGroup = dialog.getByLabel("Keep Microscopy Journal Club (group, steward)");
   await keepGroup.waitFor();
   check(await keepGroup.isChecked(), base + " projects and groups are kept by default");
   check(
@@ -141,50 +141,53 @@ async function transfer(page, base) {
     base + " old unit is removed by default",
   );
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
-  await dialog.getByText("Remove Ben Okafor from Thin Films Section", { exact: true }).waitFor();
+  await dialog.getByText("Remove Bharat Kulkarni from Thin Films Section", { exact: true }).waitFor();
   const review = await dialog.innerText();
-  check(review.includes("Ben Okafor will be able to read Catalysis Section."), base + " access gained shown");
   check(
-    review.includes("Ben Okafor will no longer be able to read Thin Films Section."),
+    review.includes("Bharat Kulkarni will be able to read Corrosion Section."),
+    base + " access gained shown",
+  );
+  check(
+    review.includes("Bharat Kulkarni will no longer be able to read Thin Films Section."),
     base + " access lost",
   );
   check(review.includes("Before: Thin Films Section"), base + " review shows the home unit before");
-  await dialog.getByLabel(/^Reason for this change/).fill("Moves to Catalysis");
+  await dialog.getByLabel(/^Reason for this change/).fill("Moves to Corrosion");
   await audit(page, 1400, base + " transfer review");
   await audit(page, 390, base + " transfer review");
   await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-transfer-review.png` });
-  await press(dialog.getByRole("button", { name: "Transfer Ben Okafor", exact: true }));
-  await dialog.getByText(/now has .*Catalysis Section as their home unit/).waitFor();
+  await press(dialog.getByRole("button", { name: "Transfer Bharat Kulkarni", exact: true }));
+  await dialog.getByText(/now has .*Corrosion Section as their home unit/).waitFor();
   check(true, base + " transfer confirmed after commit");
   await press(dialog.getByRole("button", { name: "Done", exact: true }));
-  await drawer.getByText("Catalysis Section", { exact: true }).waitFor();
+  await drawer.getByText("Corrosion Section", { exact: true }).waitFor();
   check(true, base + " profile shows the new home unit");
 }
 async function verifyReads(base) {
-  const ben = await login(base, "ben");
+  const bharat = await login(base, "bharat");
   const admin = await login(base, "admin");
   try {
     const endpoint = origin + base + "/api/v1";
     const units = (await (await admin.context.request.get(endpoint + "/admin/workspaces")).json()).workspaces;
     const id = (name) => units.find((unit) => unit.name === name).id;
-    const old = await ben.context.request.get(endpoint + "/workspaces/" + id("Thin Films Section"));
-    check(old.status() === 404, base + " Ben's later read of Thin Films is the uniform 404");
-    const next = await ben.context.request.get(endpoint + "/workspaces/" + id("Catalysis Section"));
-    check(next.status() === 200, base + " Ben reads Catalysis");
-    const session = await (await ben.context.request.get(endpoint + "/auth/session")).json();
+    const old = await bharat.context.request.get(endpoint + "/workspaces/" + id("Thin Films Section"));
+    check(old.status() === 404, base + " Bharat's later read of Thin Films is the uniform 404");
+    const next = await bharat.context.request.get(endpoint + "/workspaces/" + id("Corrosion Section"));
+    check(next.status() === 200, base + " Bharat reads Corrosion");
+    const session = await (await bharat.context.request.get(endpoint + "/auth/session")).json();
     const request = {
       kind: "transfer",
       person_id: session.user.id,
       to_unit_id: id("Thin Films Section"),
       role: "member",
     };
-    const preview = await ben.context.request.post(endpoint + "/admin/changes/preview", {
+    const preview = await bharat.context.request.post(endpoint + "/admin/changes/preview", {
       headers: { "X-CSRF-Token": session.csrf_token },
       data: { request },
     });
     check(preview.status() === 403, base + " member cannot use the change API");
   } finally {
-    await Promise.all([ben.context.close(), admin.context.close()]);
+    await Promise.all([bharat.context.close(), admin.context.close()]);
   }
 }
 try {

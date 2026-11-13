@@ -29,12 +29,12 @@ class RecordingHub:
             return all(row.ended_at is not None for row in db.scalars(select(UnitPosition)))
 
 
-def acting_chen(db_factory, ids, settings):
-    """Chen is acting Head of Catalysis until today and goes back to member when it ends."""
+def acting_chitra(db_factory, ids, settings):
+    """Chitra is acting Head of Corrosion until today and goes back to member when it ends."""
     with db_factory() as db:
         row = db.scalar(
             select(Membership).where(
-                Membership.user_id == ids["users"]["chen"],
+                Membership.user_id == ids["users"]["chitra"],
                 Membership.workspace_id == ids["workspaces"]["section_b"],
             )
         )
@@ -43,7 +43,7 @@ def acting_chen(db_factory, ids, settings):
     make_head(
         db_factory,
         ids,
-        username="chen",
+        username="chitra",
         unit="section_b",
         acting=True,
         ends_on=site_today(settings),
@@ -65,24 +65,24 @@ def test_expiry_that_leaves_a_unit_without_a_steward_raises_an_attention_item(
 ):
     admin = as_user("admin")
     staff_other_units(db_factory, ids)
-    acting_chen(db_factory, ids, settings)
+    acting_chitra(db_factory, ids, settings)
     assert "people:units-without-steward" not in {
         i["id"] for i in admin.get("/admin/org/attention").json()["items"]
     }
     with db_factory() as db:
         assert positions.expire_due(db, settings, now=utcnow() + timedelta(days=1)) == 1
     items = {i["id"]: i for i in admin.get("/admin/org/attention").json()["items"]}
-    assert "Catalysis Section" in items["people:units-without-steward"]["detail"]
-    assert "Catalysis Section" in items["people:acting-expired"]["detail"]
+    assert "Corrosion Section" in items["people:units-without-steward"]["detail"]
+    assert "Corrosion Section" in items["people:acting-expired"]["detail"]
 
 
 def test_expiry_revalidates_delivery_after_commit(ids, db_factory, settings):
-    acting_chen(db_factory, ids, settings)
+    acting_chitra(db_factory, ids, settings)
     hub = RecordingHub(db_factory)
     with db_factory() as db:
         assert positions.expire_due(db, settings, now=utcnow() + timedelta(days=1), hub=hub) == 1
     assert [(kind, done) for kind, _, done in hub.calls] == [("user", True), ("workspace", True)]
-    assert str(hub.calls[0][1]) == ids["users"]["chen"]
+    assert str(hub.calls[0][1]) == ids["users"]["chitra"]
     assert str(hub.calls[1][1]) == ids["workspaces"]["section_b"]
     with db_factory() as db:
         assert positions.expire_due(db, settings, now=utcnow() + timedelta(days=1), hub=hub) == 0
@@ -111,16 +111,16 @@ def test_retire_locks_the_successor_row_in_the_same_ordered_statement(ids, db_fa
     request = Retire.model_validate(
         {
             "kind": "retire",
-            "person_id": ids["users"]["dana"],
+            "person_id": ids["users"]["deepa"],
             "status": "retired",
             "successors": [
-                {"workspace_id": ids["workspaces"]["project"], "successor_id": ids["users"]["eli"]}
+                {"workspace_id": ids["workspaces"]["project"], "successor_id": ids["users"]["esha"]}
             ],
         }
     )
     [(statement, params)] = locking_statements(db_factory, request)
     assert "ORDER BY users.id" in statement
-    assert ids["users"]["eli"] in params and ids["users"]["dana"] in params
+    assert ids["users"]["esha"] in params and ids["users"]["deepa"] in params
 
 
 def test_leave_locks_the_acting_replacement_row(ids, db_factory):
@@ -128,13 +128,13 @@ def test_leave_locks_the_acting_replacement_row(ids, db_factory):
     request = Leave.model_validate(
         {
             "kind": "leave",
-            "person_id": ids["users"]["dana"],
+            "person_id": ids["users"]["deepa"],
             "expected_return_on": (site_today_plus(30)).isoformat(),
             "acting": [{"position_id": row, "successor_id": ids["users"]["asha"]}],
         }
     )
     [(_statement, params)] = locking_statements(db_factory, request)
-    assert ids["users"]["asha"] in params and ids["users"]["dana"] in params
+    assert ids["users"]["asha"] in params and ids["users"]["deepa"] in params
 
 
 def site_today_plus(days):
@@ -156,16 +156,16 @@ def test_demoting_the_outgoing_head_shows_the_other_position_it_ends(as_user, id
     plan = preview(admin, request)
     summaries = [step["summary"] for step in plan["steps"]]
     assert summaries[:3] == [
-        "End the position of Dana Whitfield as Head of Surface Science Division",
-        "End the position of Dana Whitfield as Deputy of Surface Science Division",
-        "Set the role of Dana Whitfield in Surface Science Division to member",
+        "End the position of Deepa Nair as Head of Surface Engineering Division",
+        "End the position of Deepa Nair as Deputy of Surface Engineering Division",
+        "Set the role of Deepa Nair in Surface Engineering Division to member",
     ]
     apply(admin, request)
     with db_factory() as db:
         ended = list(db.scalars(select(AuditEvent).where(AuditEvent.action == "position.end")))
         assert len(ended) == 2 and all(row.actor_id is not None for row in ended)
-        assert db.scalar(select(User).where(User.username == "dana")) is not None
-    assert [row for row in positions_current(db_factory) if row[0] == ids["users"]["dana"]] == []
+        assert db.scalar(select(User).where(User.username == "deepa")) is not None
+    assert [row for row in positions_current(db_factory) if row[0] == ids["users"]["deepa"]] == []
 
 
 def positions_current(db_factory):

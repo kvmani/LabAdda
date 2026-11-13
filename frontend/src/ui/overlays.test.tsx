@@ -66,8 +66,8 @@ describe("ConfirmDialog", () => {
     return (
       <ConfirmDialog
         open={open}
-        title="Retire Dana Iyer?"
-        consequences={["Dana Iyer can no longer sign in.", "Surface Science Division needs a new Head."]}
+        title="Retire Deepa Iyer?"
+        consequences={["Deepa Iyer can no longer sign in.", "Surface Engineering Division needs a new Head."]}
         confirmLabel="Retire 1 person"
         requireReason
         danger
@@ -83,7 +83,7 @@ describe("ConfirmDialog", () => {
   it("names the consequences and needs a reason before confirming", async () => {
     const onConfirm = vi.fn(() => Promise.resolve());
     render(<Harness onConfirm={onConfirm} />);
-    expect(screen.getByText("Dana Iyer can no longer sign in.")).toBeTruthy();
+    expect(screen.getByText("Deepa Iyer can no longer sign in.")).toBeTruthy();
     const confirm = screen.getByRole("button", { name: "Retire 1 person" });
     expect(confirm).toHaveProperty("disabled", true);
     const reason = screen.getByRole("textbox", { name: "Reason (required)" });
@@ -115,7 +115,7 @@ describe("Menu", () => {
     const retire = vi.fn();
     render(
       <Menu
-        label="Actions for Ben"
+        label="Actions for Bharat"
         items={[
           { label: "Transfer", onSelect: transfer },
           { label: "Promote", onSelect: () => undefined, disabled: true },
@@ -123,11 +123,11 @@ describe("Menu", () => {
         ]}
       />,
     );
-    const trigger = screen.getByRole("button", { name: "Actions for Ben" });
+    const trigger = screen.getByRole("button", { name: "Actions for Bharat" });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     trigger.focus();
     await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menu", { name: "Actions for Ben" })).toBeTruthy();
+    expect(screen.getByRole("menu", { name: "Actions for Bharat" })).toBeTruthy();
     expect(document.activeElement?.textContent).toBe("Transfer");
     await userEvent.keyboard("{ArrowDown}");
     expect(document.activeElement?.textContent).toBe("Retire");

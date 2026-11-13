@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 ## What this is for
 
-Use this when someone is promoted, for example when Chen in Catalysis becomes a Scientific Officer D and takes over as steward of the section. The review says plainly whether the person gains or loses the power to moderate a unit.
+Use this when someone is promoted, for example when Chitra in Corrosion becomes a Scientific Officer D and takes over as steward of the section. The review says plainly whether the person gains or loses the power to moderate a unit.
 
 ## Before you start
 

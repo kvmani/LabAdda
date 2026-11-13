@@ -1,4 +1,4 @@
-// Run against a fresh disposable proxy stack; this removes Ben's section grant.
+// Run against a fresh disposable proxy stack; this removes Bharat's section grant.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -50,13 +50,13 @@ async function send(page, api, csrf, key, extra = "") {
 }
 try {
   for (const base of ["", "/labadda-staging"]) {
-    const ben = await login(base, "ben"),
-      chen = await login(base, "chen"),
+    const bharat = await login(base, "bharat"),
+      chitra = await login(base, "chitra"),
       admin = await login(base, "admin");
     const api = origin + base + "/api/v1",
       key = "browser-lost-reply-01";
-    const before = await (await ben.ctx.request.get(api + "/usage")).json();
-    await ben.page.route(
+    const before = await (await bharat.ctx.request.get(api + "/usage")).json();
+    await bharat.page.route(
       api + "/uploads",
       async (route) => {
         const committed = await route.fetch();
@@ -65,21 +65,21 @@ try {
       },
       { times: 1 },
     );
-    const lost = await send(ben.page, api, ben.session.csrf_token, key);
+    const lost = await send(bharat.page, api, bharat.session.csrf_token, key);
     check(lost.transportFailed, base + ": committed upload response lost in transport");
-    const status = await ben.ctx.request.get(api + "/uploads/requests/" + key);
+    const status = await bharat.ctx.request.get(api + "/uploads/requests/" + key);
     const record = await status.json();
     check(
       status.status() === 200 && record.state === "complete",
       base + ": owner recovers completed receipt",
     );
     check(status.headers()["cache-control"].includes("no-store"), base + ": receipt is not cacheable");
-    const replay = await send(ben.page, api, ben.session.csrf_token, key);
+    const replay = await send(bharat.page, api, bharat.session.csrf_token, key);
     check(
       replay.status === 201 && replay.data.id === record.asset.id,
       base + ": same-key browser retry returns original file",
     );
-    const after = await (await ben.ctx.request.get(api + "/usage")).json();
+    const after = await (await bharat.ctx.request.get(api + "/usage")).json();
     check(
       after.measurement.tracked_files === before.measurement.tracked_files + 1 &&
         after.measurement.tracked_original_bytes ===
@@ -87,13 +87,13 @@ try {
         after.measurement.pending_upload_original_bytes === 0,
       base + ": retry neither duplicates original nor charges twice",
     );
-    const changed = await send(ben.page, api, ben.session.csrf_token, key, "\nchanged");
+    const changed = await send(bharat.page, api, bharat.session.csrf_token, key, "\nchanged");
     check(
       changed.status === 409 && changed.data.error.code === "upload_key_reused",
       base + ": changed content rejected",
     );
     for (const [name, actor] of [
-      ["sibling", chen],
+      ["sibling", chitra],
       ["administrator", admin],
     ]) {
       check(
@@ -101,30 +101,30 @@ try {
         base + ": " + name + " cannot discover another user receipt",
       );
     }
-    const spaces = await (await ben.ctx.request.get(api + "/workspaces")).json();
+    const spaces = await (await bharat.ctx.request.get(api + "/workspaces")).json();
     const section = spaces.workspaces.find((w) => w.name === "Thin Films Section");
     assert.ok(section);
-    const posted = await ben.ctx.request.post(api + "/workspaces/" + section.id + "/posts", {
-      headers: { "X-CSRF-Token": ben.session.csrf_token },
+    const posted = await bharat.ctx.request.post(api + "/workspaces/" + section.id + "/posts", {
+      headers: { "X-CSRF-Token": bharat.session.csrf_token },
       data: { body: "Synthetic receipt browser attachment", attachment_ids: [record.asset.id] },
     });
     assert.equal(posted.status(), 201);
     const users = await (await admin.ctx.request.get(api + "/admin/users")).json();
-    const user = users.users.find((u) => u.username === "ben");
+    const user = users.users.find((u) => u.username === "bharat");
     const revoked = await admin.ctx.request.delete(
       api + "/admin/workspaces/" + section.id + "/memberships/" + user.id,
       { headers: { "X-CSRF-Token": admin.session.csrf_token } },
     );
     assert.equal(revoked.status(), 200);
     check(
-      (await ben.ctx.request.get(api + "/uploads/requests/" + key)).status() === 404,
+      (await bharat.ctx.request.get(api + "/uploads/requests/" + key)).status() === 404,
       base + ": status rechecks revoked content access",
     );
     check(
-      (await send(ben.page, api, ben.session.csrf_token, key)).status === 404,
+      (await send(bharat.page, api, bharat.session.csrf_token, key)).status === 404,
       base + ": replay rechecks revoked content access",
     );
-    for (const actor of [ben, chen, admin]) await actor.ctx.close();
+    for (const actor of [bharat, chitra, admin]) await actor.ctx.close();
   }
   console.log(`${passed} upload receipt browser checks passed`);
 } finally {

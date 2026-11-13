@@ -10,8 +10,8 @@ from labadda.security import utcnow
 def test_login_session_logout(make_client):
     api = make_client()
     assert api.get("/auth/session").status_code == 401
-    r = api.login("ben")
-    assert r.status_code == 200 and r.json()["user"]["username"] == "ben"
+    r = api.login("bharat")
+    assert r.status_code == 200 and r.json()["user"]["username"] == "bharat"
     assert "httponly" in r.headers["set-cookie"].lower()
     assert "samesite=strict" in r.headers["set-cookie"].lower()
     assert api.get("/auth/session").status_code == 200
@@ -20,32 +20,32 @@ def test_login_session_logout(make_client):
 
 
 def test_wrong_password_generic_error(make_client):
-    a = make_client().login("ben", "wrong-password")
+    a = make_client().login("bharat", "wrong-password")
     b = make_client().login("nobody", "wrong-password")
     assert a.status_code == b.status_code == 401
     assert a.json() == b.json()
 
 
 def test_csrf_required_for_unsafe_requests(as_user, ids):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
-    r = ben.client.post(ben.url(f"/workspaces/{ws}/posts"), json={"body": "no token"})
+    r = bharat.client.post(bharat.url(f"/workspaces/{ws}/posts"), json={"body": "no token"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "csrf_failed"
-    r = ben.client.post(
-        ben.url(f"/workspaces/{ws}/posts"), json={"body": "bad"}, headers={"X-CSRF-Token": "x"}
+    r = bharat.client.post(
+        bharat.url(f"/workspaces/{ws}/posts"), json={"body": "bad"}, headers={"X-CSRF-Token": "x"}
     )
     assert r.status_code == 403
 
 
 def test_untrusted_origin_rejected(as_user, ids):
-    ben = as_user("ben")
-    r = ben.post(
+    bharat = as_user("bharat")
+    r = bharat.post(
         f"/workspaces/{ids['workspaces']['section_a']}/posts",
         json={"body": "x"},
         headers={"Origin": "http://evil.example"},
     )
     assert r.status_code == 403 and r.json()["error"]["code"] == "bad_origin"
-    r = ben.post(
+    r = bharat.post(
         f"/workspaces/{ids['workspaces']['section_a']}/posts",
         json={"body": "ok"},
         headers={"Origin": "http://testserver"},
@@ -54,12 +54,12 @@ def test_untrusted_origin_rejected(as_user, ids):
 
 
 def test_idle_and_absolute_expiry(as_user, db_factory):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     with db_factory() as db:
         for s in db.query(AuthSession).all():
             s.last_seen_at = utcnow() - timedelta(hours=5)
         db.commit()
-    assert ben.get("/auth/session").status_code == 401
+    assert bharat.get("/auth/session").status_code == 401
     asha = as_user("asha")
     with db_factory() as db:
         for s in db.query(AuthSession).all():
@@ -69,15 +69,15 @@ def test_idle_and_absolute_expiry(as_user, db_factory):
 
 
 def test_deactivation_revokes_sessions_and_keeps_attribution(as_user, ids):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
-    post = ben.post(f"/workspaces/{ws}/posts", json={"body": "Before I leave"}).json()
+    post = bharat.post(f"/workspaces/{ws}/posts", json={"body": "Before I leave"}).json()
     admin = as_user("admin")
-    assert admin.patch(f"/admin/users/{ids['users']['ben']}", json={"is_active": False}).status_code == 200
-    assert ben.get("/auth/session").status_code == 401
+    assert admin.patch(f"/admin/users/{ids['users']['bharat']}", json={"is_active": False}).status_code == 200
+    assert bharat.get("/auth/session").status_code == 401
     feed = as_user("asha").get(f"/workspaces/{ws}/posts").json()
     assert feed["posts"][0]["id"] == post["id"]
-    assert feed["posts"][0]["author"]["username"] == "ben"
+    assert feed["posts"][0]["author"]["username"] == "bharat"
     assert feed["posts"][0]["author"]["is_active"] is False
 
 
@@ -106,10 +106,10 @@ def test_activation_flow_and_single_use(as_user, make_client):
 
 
 def test_reset_revokes_sessions(as_user, ids):
-    ben = as_user("ben")
-    r = as_user("admin").post(f"/admin/users/{ids['users']['ben']}/reset")
+    bharat = as_user("bharat")
+    r = as_user("admin").post(f"/admin/users/{ids['users']['bharat']}/reset")
     assert r.status_code == 200 and r.json()["reset_token"]
-    assert ben.get("/auth/session").status_code == 401
+    assert bharat.get("/auth/session").status_code == 401
 
 
 def test_last_admin_protected(as_user, ids):
@@ -122,8 +122,8 @@ def test_last_admin_protected(as_user, ids):
 
 def test_last_admin_race(as_user, ids, make_client):
     admin = as_user("admin")
-    assert admin.patch(f"/admin/users/{ids['users']['dana']}", json={"is_admin": True}).status_code == 200
-    dana = make_client("dana")
+    assert admin.patch(f"/admin/users/{ids['users']['deepa']}", json={"is_admin": True}).status_code == 200
+    deepa = make_client("deepa")
     results = []
     barrier = threading.Barrier(2)
 
@@ -132,8 +132,8 @@ def test_last_admin_race(as_user, ids, make_client):
         results.append(api.patch(f"/admin/users/{target}", json={"is_admin": False}).status_code)
 
     threads = [
-        threading.Thread(target=demote, args=(admin, ids["users"]["dana"])),
-        threading.Thread(target=demote, args=(dana, ids["users"]["admin"])),
+        threading.Thread(target=demote, args=(admin, ids["users"]["deepa"])),
+        threading.Thread(target=demote, args=(deepa, ids["users"]["admin"])),
     ]
     for t in threads:
         t.start()
@@ -145,14 +145,14 @@ def test_last_admin_race(as_user, ids, make_client):
         active_admins = [u for u in users.json()["users"] if u["is_admin"] and u["is_active"]]
     else:
         active_admins = [
-            u for u in dana.get("/admin/users").json()["users"] if u["is_admin"] and u["is_active"]
+            u for u in deepa.get("/admin/users").json()["users"] if u["is_admin"] and u["is_active"]
         ]
     assert len(active_admins) == 1
 
 
 def test_login_rate_limit(make_client):
     api = make_client()
-    codes = [api.login("ben", "wrong-password").status_code for _ in range(12)]
+    codes = [api.login("bharat", "wrong-password").status_code for _ in range(12)]
     assert codes[-1] == 429
 
 
@@ -160,7 +160,7 @@ def test_admin_actions_are_audited(as_user, ids):
     admin = as_user("admin")
     admin.put(
         f"/admin/workspaces/{ids['workspaces']['section_b']}/memberships",
-        json={"user_id": ids["users"]["ben"], "reason": "temporary help"},
+        json={"user_id": ids["users"]["bharat"], "reason": "temporary help"},
     )
     events = admin.get("/admin/audit").json()["events"]
     assert any(e["action"] == "membership.set" and e["reason"] == "temporary help" for e in events)

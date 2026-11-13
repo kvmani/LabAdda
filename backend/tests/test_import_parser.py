@@ -15,7 +15,7 @@ def parse(text: str | bytes):
 def test_template_round_trips_and_bom_is_tolerated():
     rows = parse(importer.TEMPLATE)
     assert len(rows) == 1 and rows[0].errors == []
-    assert rows[0].username == "example.person" and rows[0].unit_code == "TFS"
+    assert rows[0].username == "rohan.mehta" and rows[0].unit_code == "TFS"
     assert rows[0].effective_on.isoformat() == "2026-12-01"
     assert parse("﻿" + HEAD + ",gita,Gita Sen,,CS,,,\n")[0].display_name == "Gita Sen"
 

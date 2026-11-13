@@ -46,23 +46,23 @@ def test_populated_backfill_keeps_identity_and_unknown_dates(legacy_database):
     command.upgrade(alembic_config(legacy_database), "head")
     with engine.begin() as db:
         db.execute(
-            text("UPDATE users SET employee_no='NW-100', designation='Researcher' WHERE username='working'")
+            text("UPDATE users SET employee_no='NM-100', designation='Researcher' WHERE username='working'")
         )
     with pytest.raises(RuntimeError, match="Staff records exist"):
         command.downgrade(alembic_config(legacy_database), "0025")
     with engine.connect() as db:
-        assert db.scalar(text("SELECT employee_no FROM users WHERE username='working'")) == "NW-100"
+        assert db.scalar(text("SELECT employee_no FROM users WHERE username='working'")) == "NM-100"
     engine.dispose()
 
 
 def test_staff_constraints_enforce_unique_number_valid_status_and_revision(db_factory, ids):
     with db_factory() as db:
-        db.execute(text("UPDATE users SET employee_no='NW-100' WHERE id=:id"), {"id": ids["users"]["ben"]})
+        db.execute(text("UPDATE users SET employee_no='NM-100' WHERE id=:id"), {"id": ids["users"]["bharat"]})
         db.commit()
         for statement in (
-            "UPDATE users SET employee_no='NW-100' WHERE username='chen'",
-            "UPDATE users SET status='invalid' WHERE username='chen'",
-            "UPDATE users SET revision=0 WHERE username='chen'",
+            "UPDATE users SET employee_no='NM-100' WHERE username='chitra'",
+            "UPDATE users SET status='invalid' WHERE username='chitra'",
+            "UPDATE users SET revision=0 WHERE username='chitra'",
         ):
             with pytest.raises(IntegrityError), db.begin_nested():
                 db.execute(text(statement))
@@ -86,7 +86,7 @@ def test_each_novel_staff_value_blocks_downgrade(db_factory, ids, settings, fiel
     if field.endswith("_on"):
         value = date.fromisoformat(value)
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         setattr(person, field, value)
         if field == "status" and value == "on_leave":
             person.is_active = False
@@ -94,4 +94,4 @@ def test_each_novel_staff_value_blocks_downgrade(db_factory, ids, settings, fiel
     with pytest.raises(RuntimeError, match="Staff records exist"):
         command.downgrade(alembic_config(settings.database_url), "0025")
     with db_factory() as db:
-        assert getattr(db.get(User, ids["users"]["ben"]), field) == value
+        assert getattr(db.get(User, ids["users"]["bharat"]), field) == value

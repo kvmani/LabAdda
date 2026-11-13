@@ -8,38 +8,38 @@ def ws(ids, key="section_a"):
 
 
 def test_chat_send_replay_and_idempotency(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
-    m1 = ben.post(
+    bharat, asha = as_user("bharat"), as_user("asha")
+    m1 = bharat.post(
         f"/workspaces/{ws(ids)}/chat", json={"body": "Furnace is free", "client_id": "msg-00001"}
     ).json()
-    again = ben.post(
+    again = bharat.post(
         f"/workspaces/{ws(ids)}/chat", json={"body": "Furnace is free", "client_id": "msg-00001"}
     ).json()
     assert m1["id"] == again["id"]
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{ws(ids)}/chat", json={"body": "changed", "client_id": "msg-00001"}
         ).status_code
         == 409
     )
     asha.post(f"/workspaces/{ws(ids)}/chat", json={"body": "Thanks", "client_id": "msg-00002"})
-    replay = ben.get(f"/workspaces/{ws(ids)}/chat", params={"after": m1["seq"]}).json()["messages"]
+    replay = bharat.get(f"/workspaces/{ws(ids)}/chat", params={"after": m1["seq"]}).json()["messages"]
     assert [m["body"] for m in replay] == ["Thanks"]
-    names = {w["name"]: w for w in ben.get("/workspaces").json()["workspaces"]}
+    names = {w["name"]: w for w in bharat.get("/workspaces").json()["workspaces"]}
     assert names["Thin Films Section"]["unread_chat"] == 1
-    ben.post(f"/workspaces/{ws(ids)}/chat/read", json={"seq": replay[-1]["seq"]})
-    names = {w["name"]: w for w in ben.get("/workspaces").json()["workspaces"]}
+    bharat.post(f"/workspaces/{ws(ids)}/chat/read", json={"seq": replay[-1]["seq"]})
+    names = {w["name"]: w for w in bharat.get("/workspaces").json()["workspaces"]}
     assert names["Thin Films Section"]["unread_chat"] == 0
-    assert as_user("chen").get(f"/workspaces/{ws(ids)}/chat").status_code == 404
+    assert as_user("chitra").get(f"/workspaces/{ws(ids)}/chat").status_code == 404
 
 
 def test_chat_history_pagination(as_user, ids):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     for i in range(12):
-        ben.post(f"/workspaces/{ws(ids)}/chat", json={"body": f"m{i}", "client_id": f"page-{i:05d}"})
-    last = ben.get(f"/workspaces/{ws(ids)}/chat", params={"limit": 5}).json()
+        bharat.post(f"/workspaces/{ws(ids)}/chat", json={"body": f"m{i}", "client_id": f"page-{i:05d}"})
+    last = bharat.get(f"/workspaces/{ws(ids)}/chat", params={"limit": 5}).json()
     assert [m["body"] for m in last["messages"]] == ["m7", "m8", "m9", "m10", "m11"] and last["has_more"]
-    older = ben.get(
+    older = bharat.get(
         f"/workspaces/{ws(ids)}/chat", params={"limit": 5, "before": last["messages"][0]["seq"]}
     ).json()
     assert older["messages"][-1]["body"] == "m6"
@@ -59,24 +59,24 @@ def stroke(op_id, obj, epoch=1, pts=((0, 0), (10, 10))):
 
 
 def test_board_ops_retry_conflict_and_replay(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     w = ws(ids)
-    r1 = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "s1")).json()
-    retry = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "s1")).json()
+    r1 = bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "s1")).json()
+    retry = bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "s1")).json()
     assert retry["duplicate"] and retry["committed"]["revision"] == r1["committed"]["revision"]
-    changed = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "s1", pts=((5, 5),)))
+    changed = bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "s1", pts=((5, 5),)))
     assert changed.status_code == 409 and changed.json()["error"]["code"] == "op_id_reused"
     # Same op_id from another actor is a different operation.
-    assert asha.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "s2")).status_code == 200
+    assert asha.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "s2")).status_code == 200
     state = asha.get(
         f"/workspaces/{w}/board", params={"epoch": 1, "after": r1["committed"]["revision"]}
     ).json()
     assert [o["object_id"] for o in state["ops"]] == ["s2"] and state["reset"] is False
-    assert as_user("chen").get(f"/workspaces/{w}/board").status_code == 404
-    bad = ben.post(
+    assert as_user("chitra").get(f"/workspaces/{w}/board").status_code == 404
+    bad = bharat.post(
         f"/workspaces/{w}/board/ops",
         json={
-            **stroke("op-ben-x01", "s9"),
+            **stroke("op-bharat-x01", "s9"),
             "payload": {"kind": "stroke", "data": {"points": [], "color": "#1f2933"}},
         },
     )
@@ -84,15 +84,15 @@ def test_board_ops_retry_conflict_and_replay(as_user, ids):
 
 
 def test_undo_is_own_only_and_erase_is_distinct(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     w = ws(ids)
-    ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "ben-stroke"))
+    bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "bharat-stroke"))
     asha.post(f"/workspaces/{w}/board/ops", json=stroke("op-ash-001", "asha-stroke"))
-    # Ben erases Asha's stroke (a distinct mutation).
+    # Bharat erases Asha's stroke (a distinct mutation).
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{w}/board/ops",
-            json={"op_id": "op-ben-002", "epoch": 1, "type": "erase", "object_id": "asha-stroke"},
+            json={"op_id": "op-bharat-002", "epoch": 1, "type": "erase", "object_id": "asha-stroke"},
         ).status_code
         == 200
     )
@@ -101,26 +101,26 @@ def test_undo_is_own_only_and_erase_is_distinct(as_user, ids):
         json={"op_id": "op-ash-002", "epoch": 1, "type": "erase", "object_id": "asha-stroke"},
     )
     assert again.status_code == 409 and again.json()["error"]["code"] == "object_gone"
-    # Asha's undo reverses only Asha's own most recent op (her add), not Ben's erase.
+    # Asha's undo reverses only Asha's own most recent op (her add), not Bharat's erase.
     u = asha.post(
         f"/workspaces/{w}/board/ops", json={"op_id": "op-ash-003", "epoch": 1, "type": "undo"}
     ).json()
     assert u["committed"]["object_id"] == "asha-stroke"
-    # Ben's undo reverses his erase.
-    u2 = ben.post(
-        f"/workspaces/{w}/board/ops", json={"op_id": "op-ben-003", "epoch": 1, "type": "undo"}
+    # Bharat's undo reverses his erase.
+    u2 = bharat.post(
+        f"/workspaces/{w}/board/ops", json={"op_id": "op-bharat-003", "epoch": 1, "type": "undo"}
     ).json()
     assert u2["committed"]["payload"]["target_revision"] == 3
-    assert as_user("dana").get(f"/workspaces/{ids['workspaces']['division']}/board").status_code == 200
+    assert as_user("deepa").get(f"/workspaces/{ids['workspaces']['division']}/board").status_code == 200
 
 
 def test_stale_move_rejected(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     w = ws(ids)
-    rev = ben.post(
+    rev = bharat.post(
         f"/workspaces/{w}/board/ops",
         json={
-            "op_id": "op-ben-001",
+            "op_id": "op-bharat-001",
             "epoch": 1,
             "type": "add",
             "object_id": "note-1",
@@ -142,10 +142,10 @@ def test_stale_move_rejected(as_user, ids):
         ).status_code
         == 200
     )
-    stale = ben.post(
+    stale = bharat.post(
         f"/workspaces/{w}/board/ops",
         json={
-            "op_id": "op-ben-002",
+            "op_id": "op-bharat-002",
             "epoch": 1,
             "type": "move",
             "object_id": "note-1",
@@ -157,28 +157,29 @@ def test_stale_move_rejected(as_user, ids):
 
 
 def test_restore_new_epoch_rejects_old(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     w = ws(ids)
-    first = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-001", "keep")).json()["committed"][
-        "revision"
-    ]
-    ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-002", "drop"))
-    assert ben.post(f"/workspaces/{w}/board/restore", json={"revision": first}).status_code == 403
+    first = bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "keep")).json()[
+        "committed"
+    ]["revision"]
+    bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-002", "drop"))
+    assert bharat.post(f"/workspaces/{w}/board/restore", json={"revision": first}).status_code == 403
     r = asha.post(f"/workspaces/{w}/board/restore", json={"revision": first, "reason": "accidental scribble"})
     assert r.status_code == 200 and r.json()["epoch"] == 2
-    state = ben.get(f"/workspaces/{w}/board").json()
+    state = bharat.get(f"/workspaces/{w}/board").json()
     assert state["epoch"] == 2 and [o["object_id"] for o in state["ops"]] == ["keep"]
-    stale = ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-003", "late", epoch=1))
+    stale = bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-003", "late", epoch=1))
     assert stale.status_code == 409 and stale.json()["error"]["code"] == "stale_epoch"
     # A pre-restore retry of an op committed in epoch 1 still returns its original result.
     assert (
-        ben.post(f"/workspaces/{w}/board/ops", json=stroke("op-ben-002", "drop")).json()["duplicate"] is True
+        bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-002", "drop")).json()["duplicate"]
+        is True
     )
 
 
 def test_parallel_drawing_sequences_without_gaps(as_user, ids):
     w = ws(ids)
-    users = [as_user(u) for u in ("ben", "asha")]
+    users = [as_user(u) for u in ("bharat", "asha")]
     errors = []
 
     def draw(api, tag):

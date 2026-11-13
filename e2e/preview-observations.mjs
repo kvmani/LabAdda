@@ -16,9 +16,9 @@ const tinyPng = Buffer.from(
 
 const fetchJson = async (user, url) => (await user.ctx.request.get(url)).json();
 
-async function uploadPrivateImage(ben, api) {
-  const response = await ben.ctx.request.post(api + "/uploads", {
-    headers: { "X-CSRF-Token": ben.session.csrf_token },
+async function uploadPrivateImage(bharat, api) {
+  const response = await bharat.ctx.request.post(api + "/uploads", {
+    headers: { "X-CSRF-Token": bharat.session.csrf_token },
     multipart: { file: { name: "private-derivative-fixture.png", mimeType: "image/png", buffer: tinyPng } },
   });
   assert.equal(response.status(), 201);
@@ -41,14 +41,14 @@ function checkMeasurements(before, after, previewBytes, base) {
   );
 }
 
-async function checkUserAndAdminViews(ben, admin, base) {
-  await ben.page.goto(origin + base + "/usage");
-  await ben.page.getByText("Previews with recorded measurements", { exact: true }).waitFor();
+async function checkUserAndAdminViews(bharat, admin, base) {
+  await bharat.page.goto(origin + base + "/usage");
+  await bharat.page.getByText("Previews with recorded measurements", { exact: true }).waitFor();
   check(
-    await ben.page.getByText("Previews with unknown measurements", { exact: true }).isVisible(),
+    await bharat.page.getByText("Previews with unknown measurements", { exact: true }).isVisible(),
     base + ": user sees measured and unknown categories",
   );
-  await ben.page.screenshot({
+  await bharat.page.screenshot({
     path: outputDir + (base ? "/user-prefix.png" : "/user-root.png"),
     fullPage: true,
   });
@@ -67,16 +67,16 @@ async function checkUserAndAdminViews(ben, admin, base) {
 
 try {
   for (const base of bases) {
-    const ben = await login(base, "ben");
+    const bharat = await login(base, "bharat");
     const admin = await login(base, "admin");
     const api = origin + base + "/api/v1";
-    const before = await fetchJson(ben, api + "/usage");
-    const asset = await uploadPrivateImage(ben, api);
-    const preview = await (await ben.ctx.request.get(origin + asset.preview_url)).body();
-    const after = await fetchJson(ben, api + "/usage");
+    const before = await fetchJson(bharat, api + "/usage");
+    const asset = await uploadPrivateImage(bharat, api);
+    const preview = await (await bharat.ctx.request.get(origin + asset.preview_url)).body();
+    const after = await fetchJson(bharat, api + "/usage");
     checkMeasurements(before, after, preview.length, base);
-    await checkUserAndAdminViews(ben, admin, base);
-    await ben.ctx.close();
+    await checkUserAndAdminViews(bharat, admin, base);
+    await bharat.ctx.close();
     await admin.ctx.close();
   }
   console.log(`${harness.checks()} preview observation browser checks passed`);

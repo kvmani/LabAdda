@@ -13,7 +13,7 @@ if (
 )
   throw Error("Use an explicitly synthetic local instance");
 mkdirSync(out, { recursive: true });
-const names = ["asha", "ben", "mira", "chen", "dana"];
+const names = ["asha", "bharat", "mira", "chitra", "deepa"];
 const objects = JSON.parse(
   readFileSync(new URL("../fixtures/research-day/board-objects.json", import.meta.url)),
 );
@@ -90,11 +90,11 @@ try {
     const session = await (await ctx.request.get(origin + "/api/v1/auth/session")).json();
     actors[name] = { name, ctx, page, csrf: session.csrf_token, id: session.user.id };
   }
-  const { ben, asha, mira, chen, dana } = actors;
-  const spaces = (await call(ben, "/workspaces")).workspaces;
-  const group = spaces.find((w) => w.name === "Aurora - interface study");
+  const { bharat, asha, mira, chitra, deepa } = actors;
+  const spaces = (await call(bharat, "/workspaces")).workspaces;
+  const group = spaces.find((w) => w.name === "Tejas - coating trials");
   assert.ok(group, "Existing research-day group is required; no reset is performed");
-  const board = await call(ben, `/workspaces/${group.id}/board`);
+  const board = await call(bharat, `/workspaces/${group.id}/board`);
   check(board.revision >= 663, "Existing handwritten research plan preserved");
   for (const a of Object.values(actors)) await go(a, group.id, "board");
   // Each participant contributes a fresh native ink mark without replacing old work.
@@ -126,7 +126,7 @@ try {
       "Project idea: compare 20, 40 and 60 nm films to test whether interface vacancies drive the catalytic change. I will keep an uncoated witness for every batch.",
     ],
     [
-      "chen",
+      "chitra",
       "Let us add a blank and reference between batches. My GC task is blocked until the reference drift is checked; three replicates will help separate noise from an interface effect.",
     ],
     [
@@ -134,11 +134,11 @@ try {
       "I can take the XPS surface checks. Please log transfer time and keep an inert cap: air exposure could mimic the vacancy signal.",
     ],
     [
-      "ben",
+      "bharat",
       "I have mapped sample IDs to runs and assigned the followups. The shared board records the plan; my private scratchpad keeps the checks I want to finish before the review.",
     ],
     [
-      "dana",
+      "deepa",
       "Decision gate: agree controls first, then compare uncertainty across the two sections. Bring only the reviewed interpretation to the division meeting.",
     ],
   ];
@@ -159,14 +159,14 @@ try {
       "board-" + name + ".png",
       actors[name].name + ": five-person project whiteboard with native handwritten plan and stickies",
     );
-  await go(chen, group.id, "chat");
-  await chen.page.getByText(conversation.at(-1)[1], { exact: true }).waitFor();
+  await go(chitra, group.id, "chat");
+  await chitra.page.getByText(conversation.at(-1)[1], { exact: true }).waitFor();
   await photo(
-    chen,
+    chitra,
     "shared-discussion.png",
     "Shared project chat: five roles, controls, uncertainty and a division decision gate",
   );
-  const shared = await list(ben, group.id, "Aurora idea sprint · review 2026-11-10");
+  const shared = await list(bharat, group.id, "Tejas idea sprint · review 2026-11-10");
   const specs = [
     {
       title: "Prepare 20 / 40 / 60 nm film series",
@@ -194,7 +194,7 @@ try {
         { title: "Confirm instrument slot", done: true },
         { title: "Resolve reference drift", done: false },
       ],
-      owner: "chen",
+      owner: "chitra",
     },
     {
       title: "Measure XPS surface state after capped transfer",
@@ -216,7 +216,7 @@ try {
       status: "todo",
       done: false,
       checklist: [{ title: "Collect section summaries", done: false }],
-      owner: "dana",
+      owner: "deepa",
     },
     {
       title: "Reconcile sample-to-run mapping",
@@ -226,11 +226,11 @@ try {
       status: "done",
       done: true,
       checklist: [{ title: "Match all sample and run IDs", done: true }],
-      owner: "ben",
+      owner: "bharat",
     },
   ];
   const work = [];
-  for (const spec of specs) work.push(await task(ben, shared, spec));
+  for (const spec of specs) work.push(await task(bharat, shared, spec));
   const first = work[0];
   for (const [i, name] of names.entries()) {
     const text = [
@@ -247,31 +247,31 @@ try {
         body: text,
       });
   }
-  await go(ben, group.id, "todos");
-  await ben.page.getByRole("button", { name: shared.title, exact: true }).click();
-  await ben.page.getByRole("heading", { name: specs[0].title, exact: true }).waitFor();
+  await go(bharat, group.id, "todos");
+  await bharat.page.getByRole("button", { name: shared.title, exact: true }).click();
+  await bharat.page.getByRole("heading", { name: specs[0].title, exact: true }).waitFor();
   await photo(
-    ben,
+    bharat,
     "shared-tasks.png",
     "Shared sprint: five named assignees, due dates, priorities, checklists and workflow states",
     true,
   );
-  const card = ben.page
+  const card = bharat.page
     .locator(".todo-task-list > li")
-    .filter({ has: ben.page.getByRole("heading", { name: first.title, exact: true }) });
+    .filter({ has: bharat.page.getByRole("heading", { name: first.title, exact: true }) });
   await card.getByRole("button", { name: "View comments", exact: true }).click();
   await card
     .getByText("Preparation controls are on the board. I will retain a witness coupon.", { exact: true })
     .waitFor();
   await card.scrollIntoViewIfNeeded();
   await photo(
-    ben,
+    bharat,
     "task-discussion.png",
     "Task discussion: all five researchers contribute to the preparation decision",
     true,
   );
-  const personal = await list(ben, null, "Private planning · Aurora review");
-  await task(ben, personal, {
+  const personal = await list(bharat, null, "Private planning · Tejas review");
+  await task(bharat, personal, {
     title: "Check reference drift before sharing a conclusion",
     description:
       "Repeat the 40 nm reference and note the uncertainty. This is a private followup, not a group conclusion.",
@@ -284,7 +284,7 @@ try {
       { title: "Repeat measurement", done: false },
     ],
   });
-  await task(ben, personal, {
+  await task(bharat, personal, {
     title: "Prepare questions for Mira",
     description: "Ask about transfer-time sensitivity and an independent surface control.",
     due_date: "2026-11-13",
@@ -293,43 +293,48 @@ try {
     done: false,
     checklist: [],
   });
-  await ben.page.goto(origin + "/todos");
-  await ben.page.getByRole("button", { name: personal.title, exact: true }).click();
-  await ben.page
+  await bharat.page.goto(origin + "/todos");
+  await bharat.page.getByRole("button", { name: personal.title, exact: true }).click();
+  await bharat.page
     .getByRole("heading", { name: "Check reference drift before sharing a conclusion", exact: true })
     .waitFor();
-  await photo(ben, "personal-todos.png", "Ben: private planning lists and personal followups", true);
-  await ben.page.goto(origin + "/my-tasks");
-  await ben.page.getByRole("heading", { name: "My Tasks", exact: true }).waitFor();
-  await ben.page.getByRole("heading", { name: "Reconcile sample-to-run mapping", exact: true }).waitFor();
-  await photo(ben, "my-tasks.png", "Ben: personal work and assigned shared work in My Tasks", true);
-  const notes = await call(ben, "/notes");
+  await photo(bharat, "personal-todos.png", "Bharat: private planning lists and personal followups", true);
+  await bharat.page.goto(origin + "/my-tasks");
+  await bharat.page.getByRole("heading", { name: "My Tasks", exact: true }).waitFor();
+  await bharat.page.getByRole("heading", { name: "Reconcile sample-to-run mapping", exact: true }).waitFor();
+  await photo(bharat, "my-tasks.png", "Bharat: personal work and assigned shared work in My Tasks", true);
+  const notes = await call(bharat, "/notes");
   let note = notes.notes.find((n) => n.title === "Private idea — before group review");
   if (!note)
-    note = await call(ben, "/notes", {
+    note = await call(bharat, "/notes", {
       title: "Private idea — before group review",
       body: "Hypothesis to check: is the apparent vacancy effect actually reference drift?\n\nBefore the meeting:\n• Repeat the 40 nm reference.\n• Ask Mira about capped transfer.\n• Keep uncertainty separate from the draft conclusion.",
     });
-  await ben.page.goto(origin + "/notes");
-  await ben.page.getByRole("heading", { name: note.title, exact: true }).waitFor();
-  await photo(ben, "personal-notes.png", "Ben: dedicated My Notes, owner-only text and reminders", true);
-  let scratch = (await call(ben, "/workspaces")).workspaces.find(
-    (w) => w.name === "Ben - private idea scratchpad (review)",
+  await bharat.page.goto(origin + "/notes");
+  await bharat.page.getByRole("heading", { name: note.title, exact: true }).waitFor();
+  await photo(
+    bharat,
+    "personal-notes.png",
+    "Bharat: dedicated My Notes, owner-only text and reminders",
+    true,
+  );
+  let scratch = (await call(bharat, "/workspaces")).workspaces.find(
+    (w) => w.name === "Bharat - private idea scratchpad (review)",
   );
   if (!scratch)
-    scratch = await call(ben, "/groups", {
-      name: "Ben - private idea scratchpad (review)",
+    scratch = await call(bharat, "/groups", {
+      name: "Bharat - private idea scratchpad (review)",
       description: "Synthetic owner-only scratchpad. No colleagues invited.",
       member_ids: [],
     });
-  const scratchBoard = await call(ben, `/workspaces/${scratch.id}/board`);
+  const scratchBoard = await call(bharat, `/workspaces/${scratch.id}/board`);
   let ink = 0;
   for (const [i, source] of [objects[1], objects[0], objects[2]].entries()) {
     const x = 50 + i * 230,
       y = 60,
       dx = x - source.data.x,
       dy = y - source.data.y;
-    await call(ben, `/workspaces/${scratch.id}/board/ops`, {
+    await call(bharat, `/workspaces/${scratch.id}/board/ops`, {
       epoch: scratchBoard.epoch,
       type: "add",
       op_id: "review-private-sticky-" + i,
@@ -352,7 +357,7 @@ try {
         ),
     );
     for (const [j, stroke] of strokes.entries()) {
-      await call(ben, `/workspaces/${scratch.id}/board/ops`, {
+      await call(bharat, `/workspaces/${scratch.id}/board/ops`, {
         epoch: scratchBoard.epoch,
         type: "add",
         op_id: `review-private-ink-${i}-${j}`,
@@ -365,15 +370,15 @@ try {
       ink++;
     }
   }
-  await go(ben, scratch.id, "board");
-  await ben.page.getByRole("button", { name: "Fit", exact: true }).click();
-  await ben.page.getByText("Saved", { exact: true }).waitFor();
+  await go(bharat, scratch.id, "board");
+  await bharat.page.getByRole("button", { name: "Fit", exact: true }).click();
+  await bharat.page.getByText("Saved", { exact: true }).waitFor();
   await photo(
-    ben,
+    bharat,
     "personal-stickies.png",
-    "Ben: personal handwritten stickies in an owner-only group board (not a dedicated personal-board feature)",
+    "Bharat: personal handwritten stickies in an owner-only group board (not a dedicated personal-board feature)",
   );
-  for (const a of [asha, mira, chen, dana]) {
+  for (const a of [asha, mira, chitra, deepa]) {
     assert.equal((await a.ctx.request.get(origin + `/api/v1/notes/${note.id}`)).status(), 404);
     assert.equal(
       (await a.ctx.request.get(origin + `/api/v1/todos/lists/${personal.id}/tasks`)).status(),
@@ -388,7 +393,7 @@ try {
     s.replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   writeFileSync(
     out + "/index.html",
-    `<!doctype html><meta charset="utf-8"><title>LabAdda collaboration review</title><style>body{font:16px system-ui;background:#edf1f5;color:#173042;margin:24px auto;max-width:1500px;padding:0 16px}article{background:white;padding:20px;margin:28px 0;border-radius:12px}img{width:100%;height:auto}h1,h2{line-height:1.3}</style><h1>LabAdda — five-person project review</h1><p>Fresh screenshots of the running app. Synthetic research scenario: Asha and Ben (Thin Films), Chen and Mira (Catalysis), Dana (division). All five collaborate in the Aurora group. Private stickies use an owner-only group; dedicated My Notes and personal to-do lists are private features. Task/comment changes currently use refresh, not live task events.</p>${shots.map((s) => `<article><h2>${escape(s.caption)}</h2><a href="${s.file}"><img loading="lazy" src="${s.file}" alt="${escape(s.caption)}"></a></article>`).join("")}`,
+    `<!doctype html><meta charset="utf-8"><title>LabAdda collaboration review</title><style>body{font:16px system-ui;background:#edf1f5;color:#173042;margin:24px auto;max-width:1500px;padding:0 16px}article{background:white;padding:20px;margin:28px 0;border-radius:12px}img{width:100%;height:auto}h1,h2{line-height:1.3}</style><h1>LabAdda — five-person project review</h1><p>Fresh screenshots of the running app. Synthetic research scenario: Asha and Bharat (Thin Films), Chitra and Mira (Corrosion), Deepa (division). All five collaborate in the Tejas group. Private stickies use an owner-only group; dedicated My Notes and personal to-do lists are private features. Task/comment changes currently use refresh, not live task events.</p>${shots.map((s) => `<article><h2>${escape(s.caption)}</h2><a href="${s.file}"><img loading="lazy" src="${s.file}" alt="${escape(s.caption)}"></a></article>`).join("")}`,
   );
   writeFileSync(
     out + "/report.json",

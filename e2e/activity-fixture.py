@@ -13,9 +13,9 @@ from labadda.metrics.registry import Sample
 from labadda.models import ActivityDay, UsageReaderGrant, User, Workspace
 from labadda.people import site_date
 
-# Six active people in Thin Films (shown); four in the division and Chen in Catalysis are
+# Six active people in Thin Films (shown); four in the division and Chitra in Corrosion are
 # left out together, so the page shows one suppressed unit beside a published one.
-GROUPS = (("Thin Films Section", "films", 6), ("Surface Science Division", "division", 4))
+GROUPS = (("Thin Films Section", "films", 6), ("Surface Engineering Division", "division", 4))
 
 
 def _people(db, unit_name: str, prefix: str, count: int) -> list[User]:
@@ -65,17 +65,17 @@ def prepare() -> None:
     today = site_date(settings, now=now)
     with session_factory(settings.database_url)() as db:
         active = [person for unit, prefix, count in GROUPS for person in _people(db, unit, prefix, count)]
-        chen = db.scalar(select(User).where(User.username == "chen"))
+        chitra = db.scalar(select(User).where(User.username == "chitra"))
         admin = db.scalar(select(User).where(User.username == "admin"))
-        dana = db.scalar(select(User).where(User.username == "dana"))
-        assert chen is not None and admin is not None and dana is not None
-        for person in [*active, chen]:
+        deepa = db.scalar(select(User).where(User.username == "deepa"))
+        assert chitra is not None and admin is not None and deepa is not None
+        for person in [*active, chitra]:
             db.execute(insert(ActivityDay).values(user_id=person.id, day=today).on_conflict_do_nothing())
         upsert(db, "hour", _samples(now))
-        if db.get(UsageReaderGrant, dana.id) is None:
+        if db.get(UsageReaderGrant, deepa.id) is None:
             db.add(
                 UsageReaderGrant(
-                    user_id=dana.id,
+                    user_id=deepa.id,
                     granted_by=admin.id,
                     reason="Synthetic browser check",
                     expires_at=now + timedelta(hours=4),

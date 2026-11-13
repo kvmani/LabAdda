@@ -78,7 +78,7 @@ describe("tree helpers", () => {
   });
 
   it("matches names and codes ignoring case, and nothing for a blank search", () => {
-    const named = [unit("t", null, "Thin Films Section"), unit("c", null, "Catalysis")];
+    const named = [unit("t", null, "Thin Films Section"), unit("c", null, "Corrosion")];
     expect(matchUnits(named, "  thin ").map((item) => item.id)).toEqual(["t"]);
     expect(matchUnits(named, "C").map((item) => item.id)).toEqual(["t", "c"]);
     expect(matchUnits(named, " ")).toEqual([]);

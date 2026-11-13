@@ -94,23 +94,23 @@ async function reviewAndApply(page, base, dialog, shot, confirm) {
   await press(dialog.getByRole("button", { name: "Done", exact: true }));
 }
 async function appoint(page, base) {
-  const drawer = await openProfile(page, base, "Dana Whitfield");
+  const drawer = await openProfile(page, base, "Deepa Nair");
   await press(drawer.getByRole("button", { name: "Make unit administrator", exact: true }));
-  const dialog = page.getByRole("dialog", { name: "Make Dana Whitfield a unit administrator", exact: true });
-  await choose(dialog, /^Unit to administer/, "Surface Science Division");
+  const dialog = page.getByRole("dialog", { name: "Make Deepa Nair a unit administrator", exact: true });
+  await choose(dialog, /^Unit to administer/, "Surface Engineering Division");
   await press(dialog.getByRole("button", { name: "Review change", exact: true }));
   await dialog
-    .getByText("Make Dana Whitfield a unit administrator of Surface Science Division", { exact: true })
+    .getByText("Make Deepa Nair a unit administrator of Surface Engineering Division", { exact: true })
     .waitFor();
   await reviewAndApply(page, base, dialog, "appoint", "Appoint unit administrator");
   await page.keyboard.press("Escape");
   await page.goto(origin + base + "/admin/org");
-  await page.getByText(/Dana Whitfield administers Surface Science Division/).waitFor();
+  await page.getByText(/Deepa Nair administers Surface Engineering Division/).waitFor();
   check(true, base + " the appointment is listed on Organisation");
 }
 async function work(base) {
-  const dana = await login(base, "dana");
-  const page = dana.page;
+  const deepa = await login(base, "deepa");
+  const page = deepa.page;
   try {
     await page.getByRole("link", { name: "Administration" }).waitFor();
     await page.goto(origin + base + "/admin");
@@ -118,10 +118,10 @@ async function work(base) {
     const nav = page.getByRole("navigation", { name: "Administration" });
     const links = (await nav.getByRole("link").allInnerTexts()).map((text) => text.trim());
     check(links.join(",") === "People,Organisation", base + " navigation shows only People and Organisation");
-    await page.getByRole("button", { name: "View profile for Ben Okafor", exact: true }).waitFor();
+    await page.getByRole("button", { name: "View profile for Bharat Kulkarni", exact: true }).waitFor();
     const listed = await page.getByRole("button", { name: /^View profile for / }).allInnerTexts();
     check(
-      !listed.some((text) => /Eli Novak|Site Administrator/.test(text)),
+      !listed.some((text) => /Esha Menon|Site Administrator/.test(text)),
       base + " people outside the branch are not listed",
     );
     check(
@@ -132,38 +132,38 @@ async function work(base) {
     await audit(page, 1400, `${base} unit administrator people`);
     await audit(page, 390, `${base} unit administrator people`);
     await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-people.png` });
-    const drawer = await openProfile(page, base, "Ben Okafor");
+    const drawer = await openProfile(page, base, "Bharat Kulkarni");
     check(
       (await drawer.getByRole("button", { name: "Make unit administrator" }).count()) === 0,
       base + " a unit administrator cannot appoint",
     );
     await press(drawer.getByRole("button", { name: "Transfer to another unit", exact: true }));
-    const dialog = page.getByRole("dialog", { name: /^Transfer Ben Okafor/ });
-    await chooseUnit(dialog, /^New home unit/, "Catalysis Section");
+    const dialog = page.getByRole("dialog", { name: /^Transfer Bharat Kulkarni/ });
+    await chooseUnit(dialog, /^New home unit/, "Corrosion Section");
     await press(dialog.getByRole("button", { name: "Next", exact: true }));
     await press(dialog.getByRole("button", { name: "Review change", exact: true }));
-    await reviewAndApply(page, base, dialog, "transfer", "Transfer Ben Okafor");
-    await drawer.getByText("Catalysis Section", { exact: true }).first().waitFor();
+    await reviewAndApply(page, base, dialog, "transfer", "Transfer Bharat Kulkarni");
+    await drawer.getByText("Corrosion Section", { exact: true }).first().waitFor();
     check(true, base + " transfer inside the branch applied");
     await page.keyboard.press("Escape");
     await page.goto(origin + base + "/admin/org");
-    await page.getByRole("treeitem", { name: /Surface Science Division/ }).waitFor();
+    await page.getByRole("treeitem", { name: /Surface Engineering Division/ }).waitFor();
     check(
-      (await page.getByRole("treeitem", { name: /Northwind Research/ }).count()) === 0,
+      (await page.getByRole("treeitem", { name: /National Materials Research Laboratory/ }).count()) === 0,
       base + " the chart starts at the administered unit",
     );
     await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-org.png` });
   } finally {
-    await dana.context.close();
+    await deepa.context.close();
   }
 }
 async function withdraw(page, base) {
   await page.goto(origin + base + "/admin/org");
   await press(
-    page.getByRole("button", { name: "Withdraw Dana Whitfield from Surface Science Division", exact: true }),
+    page.getByRole("button", { name: "Withdraw Deepa Nair from Surface Engineering Division", exact: true }),
   );
   const dialog = page.getByRole("dialog", {
-    name: "Withdraw Dana Whitfield as unit administrator of Surface Science Division",
+    name: "Withdraw Deepa Nair as unit administrator of Surface Engineering Division",
     exact: true,
   });
   await reviewAndApply(page, base, dialog, "withdraw", "Withdraw appointment");
@@ -178,20 +178,20 @@ try {
     } finally {
       await admin.context.close();
     }
-    const dana = await login(base, "dana");
+    const deepa = await login(base, "deepa");
     try {
-      await dana.page.goto(origin + base + "/admin/people");
-      await dana.page
+      await deepa.page.goto(origin + base + "/admin/people");
+      await deepa.page
         .getByText("Go to your home workspace")
         .waitFor({ timeout: 10000 })
         .catch(() => {});
       check(
-        !(await dana.page.getByRole("link", { name: "Administration" }).count()) &&
-          !dana.page.url().includes("/admin/people"),
+        !(await deepa.page.getByRole("link", { name: "Administration" }).count()) &&
+          !deepa.page.url().includes("/admin/people"),
         base + " after withdrawal the administration pages are gone",
       );
     } finally {
-      await dana.context.close();
+      await deepa.context.close();
     }
   }
   console.log(`${checks} unit administrator browser checks passed`);

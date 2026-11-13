@@ -6,7 +6,7 @@ import { TopBar } from "./TopBar";
 
 vi.mock("../../session", () => ({
   useSession: () => ({
-    session: { user: { display_name: "Ben Okafor", is_admin: false } },
+    session: { user: { display_name: "Bharat Kulkarni", is_admin: false } },
     signOut: vi.fn(),
   }),
 }));
@@ -27,7 +27,7 @@ function show() {
       />
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Account menu for Ben Okafor" }));
+  fireEvent.click(screen.getByRole("button", { name: "Account menu for Bharat Kulkarni" }));
 }
 
 beforeEach(() => {
@@ -49,7 +49,7 @@ describe("account menu theme choice", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Theme: Dark" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(window.localStorage.getItem("labadda.theme")).toBe("dark");
-    fireEvent.click(screen.getByRole("button", { name: "Account menu for Ben Okafor" }));
+    fireEvent.click(screen.getByRole("button", { name: "Account menu for Bharat Kulkarni" }));
     expect(screen.getByRole("menuitem", { name: "Theme: Dark (selected)" })).toBeTruthy();
     fireEvent.click(screen.getByRole("menuitem", { name: "Theme: Follow the system" }));
     expect(document.documentElement.dataset.theme).toBeUndefined();

@@ -24,7 +24,7 @@ def edit_fields(task, **changes):
 
 
 def test_workflow_history_and_old_client_compatibility(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     path = f"/todos/lists/{row['id']}/tasks"
     body = task_body()
@@ -52,23 +52,23 @@ def test_workflow_history_and_old_client_compatibility(as_user):
 
 
 def test_history_is_scoped_like_content(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     path = f"/todos/lists/{row['id']}/tasks"
     task = api.post(path, json=task_body()).json()
     history = path + "/" + task["id"] + "/history"
     assert api.get(history, headers={"X-LabAdda-Panel": "1"}).status_code == 401
-    for name in ["admin", "asha", "chen", "dana"]:
+    for name in ["admin", "asha", "chitra", "deepa"]:
         assert as_user(name).get(history).status_code == 404
     shared = new_list(api, ids["workspaces"]["section_a"])
     path = f"/todos/lists/{shared['id']}/tasks"
     task = api.post(path, json=task_body()).json()
     assert as_user("asha").get(path + "/" + task["id"] + "/history").status_code == 200
-    assert as_user("dana").get(path + "/" + task["id"] + "/history").status_code == 404
+    assert as_user("deepa").get(path + "/" + task["id"] + "/history").status_code == 404
     assert api.get(f"/todos/lists/{row['id']}/tasks/{task['id']}/history").status_code == 404
     assert (
         as_user("admin")
-        .delete(f"/admin/workspaces/{ids['workspaces']['section_a']}/memberships/{ids['users']['ben']}")
+        .delete(f"/admin/workspaces/{ids['workspaces']['section_a']}/memberships/{ids['users']['bharat']}")
         .status_code
         == 200
     )
@@ -77,7 +77,7 @@ def test_history_is_scoped_like_content(as_user, ids):
 
 @pytest.mark.parametrize("state,done", [("blocked", True), ("done", False), ("unknown", False)])
 def test_invalid_workflow_cannot_change_task_or_history(as_user, state, done):
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     path = f"/todos/lists/{row['id']}/tasks"
     task = api.post(path, json=task_body()).json()
@@ -90,7 +90,7 @@ def test_invalid_workflow_cannot_change_task_or_history(as_user, state, done):
 def test_history_failure_rolls_back_task_change(as_user, monkeypatch):
     from labadda import task_history
 
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     path = f"/todos/lists/{row['id']}/tasks"
     task = api.post(path, json=task_body()).json()
@@ -105,7 +105,7 @@ def test_history_failure_rolls_back_task_change(as_user, monkeypatch):
 
 
 def test_migration_preserves_c1_request_replay_and_records_baseline(as_user, settings, db_factory):
-    api = as_user("ben")
+    api = as_user("bharat")
     row = new_list(api)
     cfg = alembic_config(settings.database_url)
     downgrade_legacy(cfg, "0017")

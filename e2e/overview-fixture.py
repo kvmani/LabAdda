@@ -86,9 +86,9 @@ def prepare(mode: str) -> None:
     now = datetime.now(UTC)
     with session_factory(settings.database_url)() as db:
         steward = db.scalar(select(User).where(User.username == STEWARD))
-        dana = db.scalar(select(User).where(User.username == "dana"))
+        deepa = db.scalar(select(User).where(User.username == "deepa"))
         admin = db.scalar(select(User).where(User.username == "admin"))
-        assert steward is not None and dana is not None and admin is not None
+        assert steward is not None and deepa is not None and admin is not None
         db.execute(delete(OpsEvent))
         db.execute(
             delete(MetricSample).where(
@@ -99,10 +99,10 @@ def prepare(mode: str) -> None:
         if mode in {"clean", "problems"}:
             upsert(db, "hour", _latency(now))
             upsert(db, "minute", _gauges(now))
-            if db.get(UsageReaderGrant, dana.id) is None:
+            if db.get(UsageReaderGrant, deepa.id) is None:
                 db.add(
                     UsageReaderGrant(
-                        user_id=dana.id,
+                        user_id=deepa.id,
                         granted_by=admin.id,
                         reason="Synthetic browser check",
                         expires_at=now + timedelta(hours=4),
@@ -112,7 +112,7 @@ def prepare(mode: str) -> None:
             _staff_every_unit(db, steward)
         elif mode == "problems":
             _staff_every_unit(db, steward)
-            _remove_steward(db, "Catalysis Section")
+            _remove_steward(db, "Corrosion Section")
             db.add(
                 OpsEvent(
                     code="scheduler.late",

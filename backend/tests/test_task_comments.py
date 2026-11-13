@@ -17,12 +17,12 @@ def body(text="Observe sample α", key=None):
 
 
 def test_comment_create_replay_binding_and_task_revision(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, created, path = task(api)
     payload = body()
     one = api.post(path + "/comments", json=payload)
     assert one.status_code == 201, one.text
-    assert one.json()["sequence"] == 1 and one.json()["author"]["display_name"] == "Ben Okafor"
+    assert one.json()["sequence"] == 1 and one.json()["author"]["display_name"] == "Bharat Kulkarni"
     assert api.post(path + "/comments", json=payload).json()["id"] == one.json()["id"]
     assert api.post(path + "/comments", json={**payload, "body": "changed"}).status_code == 409
     _, _, other = task(api)
@@ -32,10 +32,10 @@ def test_comment_create_replay_binding_and_task_revision(as_user):
 
 
 def test_personal_comments_are_owner_only(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api)
     api.post(path + "/comments", json=body())
-    for name in ["asha", "chen", "dana", "admin"]:
+    for name in ["asha", "chitra", "deepa", "admin"]:
         assert as_user(name).get(path + "/comments").status_code == 404
         assert as_user(name).post(path + "/comments", json=body()).status_code == 404
 
@@ -43,10 +43,10 @@ def test_personal_comments_are_owner_only(as_user):
 @pytest.mark.parametrize(
     "author,scope,reader,outsider",
     [
-        ("ben", "section_a", "asha", "chen"),
-        ("ben", "division", "chen", "eli"),
-        ("ben", "reading_club", "chen", "dana"),
-        ("eli", "project", "dana", "ben"),
+        ("bharat", "section_a", "asha", "chitra"),
+        ("bharat", "division", "chitra", "esha"),
+        ("bharat", "reading_club", "chitra", "deepa"),
+        ("esha", "project", "deepa", "bharat"),
     ],
 )
 def test_shared_comments_follow_actual_source_policy(as_user, ids, author, scope, *, reader, outsider):
@@ -60,7 +60,7 @@ def test_shared_comments_follow_actual_source_policy(as_user, ids, author, scope
 
 
 def test_read_only_archive_and_revoked_access(as_user, ids, db_factory):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     _, _, path = task(api, ws)
     payload = body()
@@ -77,14 +77,14 @@ def test_read_only_archive_and_revoked_access(as_user, ids, db_factory):
         db.commit()
     assert as_user("asha").post(path + "/comments", json=body()).status_code == 403
     assert (
-        as_user("admin").delete(f"/admin/workspaces/{ws}/memberships/{ids['users']['ben']}").status_code
+        as_user("admin").delete(f"/admin/workspaces/{ws}/memberships/{ids['users']['bharat']}").status_code
         == 200
     )
     assert api.get(path + "/comments").status_code == 404
 
 
 def test_parallel_writers_sequence_and_page_bounds(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     other = as_user("asha")
     _, _, path = task(api, ids["workspaces"]["section_a"])
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -104,13 +104,13 @@ def test_parallel_writers_sequence_and_page_bounds(as_user, ids):
 
 @pytest.mark.parametrize("text", [" ", "x" * 4001])
 def test_comment_validation(as_user, text):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api)
     assert api.post(path + "/comments", json=body(text)).status_code == 422
 
 
 def test_panel_csrf_and_wrong_task_parent(as_user):
-    api = as_user("ben")
+    api = as_user("bharat")
     _row, created, path = task(api)
     other, _, _ = task(api)
     assert api.get(path + "/comments", headers={"X-LabAdda-Panel": "1"}).status_code == 401
@@ -122,7 +122,7 @@ def test_panel_csrf_and_wrong_task_parent(as_user):
 def test_read_rechecks_grants_after_serialization(as_user, ids, db_factory, monkeypatch):
     from labadda.api import task_comments
 
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api, ids["workspaces"]["section_a"])
     api.post(path + "/comments", json=body())
     serialize = task_comments._json
@@ -130,7 +130,7 @@ def test_read_rechecks_grants_after_serialization(as_user, ids, db_factory, monk
     def revoke(row):
         result = serialize(row)
         with db_factory() as db:
-            db.execute(delete(Membership).where(Membership.user_id == ids["users"]["ben"]))
+            db.execute(delete(Membership).where(Membership.user_id == ids["users"]["bharat"]))
             db.commit()
         return result
 
@@ -139,7 +139,7 @@ def test_read_rechecks_grants_after_serialization(as_user, ids, db_factory, monk
 
 
 def test_capacity_replay_at_limit(as_user, db_factory):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _created, path = task(api)
     payload = body()
     saved = api.post(path + "/comments", json=payload).json()
@@ -156,7 +156,7 @@ def test_expiry_before_commit_does_not_append(as_user, monkeypatch, db_factory):
     from labadda import identity_locks
     from labadda.api import task_comments
 
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api)
     authorize = task_comments._task
 
@@ -173,7 +173,7 @@ def test_expiry_before_commit_does_not_append(as_user, monkeypatch, db_factory):
 
 
 def test_comment_history_protected_by_downgrade(as_user, settings):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api)
     api.post(path + "/comments", json=body())
     with pytest.raises(RuntimeError, match="Task comments exist"):

@@ -13,41 +13,41 @@ def readable_names(as_user, username):
 
 
 def test_upward_visibility_for_section_member(as_user):
-    names = readable_names(as_user, "ben")
+    names = readable_names(as_user, "bharat")
     assert set(names) == {
         "Thin Films Section",
-        "Surface Science Division",
+        "Surface Engineering Division",
         "Materials Group",
-        "Northwind Research",
-        "Microscopy Reading Club",
+        "National Materials Research Laboratory",
+        "Microscopy Journal Club",
     }
     assert names["Thin Films Section"]["role"] == "member"
-    assert names["Surface Science Division"]["inherited"] is True
-    assert names["Surface Science Division"]["can_moderate"] is False
+    assert names["Surface Engineering Division"]["inherited"] is True
+    assert names["Surface Engineering Division"]["can_moderate"] is False
 
 
 def test_division_steward_does_not_see_sections(as_user):
-    names = readable_names(as_user, "dana")
-    assert "Thin Films Section" not in names and "Catalysis Section" not in names
-    assert names["Surface Science Division"]["can_moderate"] is True
+    names = readable_names(as_user, "deepa")
+    assert "Thin Films Section" not in names and "Corrosion Section" not in names
+    assert names["Surface Engineering Division"]["can_moderate"] is True
     assert names["Materials Group"]["can_moderate"] is False  # steward authority stays direct
 
 
 def test_sibling_isolation(as_user, ids):
-    chen = as_user("chen")
-    assert chen.get(f"/workspaces/{ids['workspaces']['section_a']}").status_code == 404
-    assert chen.get(f"/workspaces/{ids['workspaces']['section_a']}/posts").status_code == 404
+    chitra = as_user("chitra")
+    assert chitra.get(f"/workspaces/{ids['workspaces']['section_a']}").status_code == 404
+    assert chitra.get(f"/workspaces/{ids['workspaces']['section_a']}/posts").status_code == 404
     # Unknown ID looks identical to an out-of-scope one.
-    unknown = chen.get("/workspaces/00000000-0000-0000-0000-000000000000/posts")
-    hidden = chen.get(f"/workspaces/{ids['workspaces']['section_a']}/posts")
+    unknown = chitra.get("/workspaces/00000000-0000-0000-0000-000000000000/posts")
+    hidden = chitra.get(f"/workspaces/{ids['workspaces']['section_a']}/posts")
     assert unknown.status_code == hidden.status_code == 404
     assert unknown.json() == hidden.json()
 
 
 def test_project_is_independent(as_user, ids):
-    names = readable_names(as_user, "eli")
-    assert set(names) == {"Project Aurora"}
-    assert as_user("ben").get(f"/workspaces/{ids['workspaces']['project']}").status_code == 404
+    names = readable_names(as_user, "esha")
+    assert set(names) == {"Project Tejas"}
+    assert as_user("bharat").get(f"/workspaces/{ids['workspaces']['project']}").status_code == 404
 
 
 def test_admin_without_grant_has_no_content(as_user, ids):
@@ -59,18 +59,18 @@ def test_admin_without_grant_has_no_content(as_user, ids):
 
 
 def test_disabled_account_cannot_sign_in(make_client):
-    r = make_client().login("fay")
+    r = make_client().login("farhan")
     assert r.status_code == 401
 
 
 def test_non_admin_cannot_administer(as_user):
-    assert as_user("dana").get("/admin/users").status_code == 403
+    assert as_user("deepa").get("/admin/users").status_code == 403
 
 
 def test_policy_resolve_inactive_user_gets_nothing(db_factory, ids):
     with db_factory() as db:
-        fay = db.get(User, __import__("uuid").UUID(ids["users"]["fay"]))
-        assert policy.readable_workspace_ids(db, fay) == {}
+        farhan = db.get(User, __import__("uuid").UUID(ids["users"]["farhan"]))
+        assert policy.readable_workspace_ids(db, farhan) == {}
 
 
 def test_eligible_readers_include_descendants(db_factory, ids):
@@ -81,8 +81,8 @@ def test_eligible_readers_include_descendants(db_factory, ids):
     with db_factory() as db:
         division = db.get(Workspace, uuid.UUID(ids["workspaces"]["division"]))
         readers = policy.eligible_reader_ids(db, division)
-        expected = {uuid.UUID(ids["users"][u]) for u in ("asha", "ben", "chen", "dana")}
-        assert readers == expected  # fay is disabled; eli is project-only
+        expected = {uuid.UUID(ids["users"][u]) for u in ("asha", "bharat", "chitra", "deepa")}
+        assert readers == expected  # farhan is disabled; esha is project-only
 
 
 @pytest.mark.parametrize("key,expected", [("section_a", 200), ("division", 200), ("section_b", 404)])
@@ -94,22 +94,22 @@ def test_archive_keeps_reads_blocks_writes(as_user, ids):
     admin = as_user("admin")
     ws = ids["workspaces"]["section_a"]
     assert admin.patch(f"/admin/workspaces/{ws}", json={"archived": True}).status_code == 200
-    ben = as_user("ben")
-    assert ben.get(f"/workspaces/{ws}/posts").status_code == 200
-    r = ben.post(f"/workspaces/{ws}/posts", json={"body": "hello"})
+    bharat = as_user("bharat")
+    assert bharat.get(f"/workspaces/{ws}/posts").status_code == 200
+    r = bharat.post(f"/workspaces/{ws}/posts", json={"body": "hello"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "workspace_archived"
 
 
 def test_transfer_moves_access(as_user, ids):
     admin = as_user("admin")
-    ben_id = ids["users"]["ben"]
+    bharat_id = ids["users"]["bharat"]
     a, b = ids["workspaces"]["section_a"], ids["workspaces"]["section_b"]
-    assert admin.delete(f"/admin/workspaces/{a}/memberships/{ben_id}").status_code == 200
-    assert admin.put(f"/admin/workspaces/{b}/memberships", json={"user_id": ben_id}).status_code == 200
-    ben = as_user("ben")
-    assert ben.get(f"/workspaces/{a}/posts").status_code == 404
-    assert ben.get(f"/workspaces/{b}/posts").status_code == 200
-    home = ben.get("/workspaces").json()["home_workspace_id"]
+    assert admin.delete(f"/admin/workspaces/{a}/memberships/{bharat_id}").status_code == 200
+    assert admin.put(f"/admin/workspaces/{b}/memberships", json={"user_id": bharat_id}).status_code == 200
+    bharat = as_user("bharat")
+    assert bharat.get(f"/workspaces/{a}/posts").status_code == 404
+    assert bharat.get(f"/workspaces/{b}/posts").status_code == 200
+    home = bharat.get("/workspaces").json()["home_workspace_id"]
     assert home in (b, ids["workspaces"]["reading_club"])  # lost home falls back to a direct grant
 
 
@@ -120,7 +120,7 @@ def test_tree_cycle_rejected_and_grants_intact(as_user, ids):
     assert r.status_code == 422 and r.json()["error"]["code"] == "cycle"
     second_root = admin.post("/admin/workspaces", json={"name": "Another Root", "kind": "org"})
     assert second_root.status_code == 422
-    assert as_user("ben").get(f"/workspaces/{sec}/posts").status_code == 200
+    assert as_user("bharat").get(f"/workspaces/{sec}/posts").status_code == 200
 
 
 def test_db_trigger_rejects_cycle(db_factory, ids):
@@ -143,8 +143,8 @@ def test_admin_can_move_unit(as_user, ids):
     assert (
         admin.patch(f"/admin/workspaces/{sec_b}", json={"move": True, "parent_id": group}).status_code == 200
     )
-    names = readable_names(as_user, "chen")
-    assert "Surface Science Division" not in names and "Materials Group" in names
+    names = readable_names(as_user, "chitra")
+    assert "Surface Engineering Division" not in names and "Materials Group" in names
 
 
 def test_workspace_list_omits_grant_revoked_mid_request(as_user, ids, monkeypatch):
@@ -158,8 +158,8 @@ def test_workspace_list_omits_grant_revoked_mid_request(as_user, ids, monkeypatc
         return None if str(workspace_id) == revoked else real(db, user, workspace_id)
 
     monkeypatch.setattr(ws_api.policy, "resolve", resolve_after_revoke)
-    r = as_user("ben").get("/workspaces")
+    r = as_user("bharat").get("/workspaces")
     assert r.status_code == 200
     body = r.json()
     assert revoked not in {w["id"] for w in body["workspaces"]}
-    assert "Surface Science Division" in {w["name"] for w in body["workspaces"]}
+    assert "Surface Engineering Division" in {w["name"] for w in body["workspaces"]}

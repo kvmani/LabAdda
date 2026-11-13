@@ -18,7 +18,7 @@ from tests.test_panel import PANEL, pair
 
 def edit(ids, **fields):
     """Build a fictional, explicitly selected staff change."""
-    return {"request": {"kind": "edit_person", "person_id": str(ids["users"]["ben"]), "fields": fields}}
+    return {"request": {"kind": "edit_person", "person_id": str(ids["users"]["bharat"]), "fields": fields}}
 
 
 def reviewed(admin, request):
@@ -37,11 +37,11 @@ def reviewed(admin, request):
 def test_preview_and_apply_change_only_selected_staff_fields(as_user, ids, db_factory):
     admin = as_user("admin")
     request = edit(
-        ids, display_name="  Ben O. Okafor  ", designation="Research Officer E", contact_phone="214"
+        ids, display_name="  Bharat O. Kulkarni  ", designation="Research Officer E", contact_phone="214"
     )
     confirmation = reviewed(admin, request)
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         before = (
             person.display_name,
             person.revision,
@@ -49,25 +49,25 @@ def test_preview_and_apply_change_only_selected_staff_fields(as_user, ids, db_fa
             person.is_active,
             person.home_workspace_id,
         )
-        assert before[0] == "Ben Okafor"
+        assert before[0] == "Bharat Kulkarni"
         assert db.scalar(select(func.count()).where(AuditEvent.action == "people.change")) == 0
     response = admin.post("/admin/changes/apply", json=confirmation)
     assert response.status_code == 200, response.text
     assert response.json()["revision"] == before[1] + 1
-    profile = admin.get(f"/admin/people/{ids['users']['ben']}").json()
-    assert profile["display_name"] == "Ben O. Okafor"
+    profile = admin.get(f"/admin/people/{ids['users']['bharat']}").json()
+    assert profile["display_name"] == "Bharat O. Kulkarni"
     assert profile["designation"] == "Research Officer E"
     assert profile["contact_phone"] == "214"
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         assert (person.status, person.is_active, person.home_workspace_id) == before[2:]
         records = db.scalars(select(AuditEvent).where(AuditEvent.action.like("people.change%"))).all()
         assert len(records) == 2
         assert all(record.reason == "Annual staff review" for record in records)
         assert all(str(record.actor_id) == ids["users"]["admin"] for record in records)
         step = next(record for record in records if record.action == "people.change_step")
-        assert step.detail["before"]["display_name"] == "Ben Okafor"
-        assert step.detail["after"]["display_name"] == "Ben O. Okafor"
+        assert step.detail["before"]["display_name"] == "Bharat Kulkarni"
+        assert step.detail["after"]["display_name"] == "Bharat O. Kulkarni"
         assert step.detail["plan_digest"] == confirmation["digest"]
     assert admin.post("/admin/changes/apply", json=confirmation).status_code == 409
 
@@ -76,14 +76,14 @@ def test_stale_review_or_revision_writes_nothing(as_user, ids, db_factory):
     admin = as_user("admin")
     confirmation = reviewed(admin, edit(ids, designation="Research Officer E"))
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
+        person = db.get(User, ids["users"]["bharat"])
         person.revision += 1
         db.commit()
     response = admin.post("/admin/changes/apply", json=confirmation)
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "plan_stale"
     with db_factory() as db:
-        assert db.get(User, ids["users"]["ben"]).designation is None
+        assert db.get(User, ids["users"]["bharat"]).designation is None
         assert db.scalar(select(AuditEvent.id).where(AuditEvent.action == "people.change")) is None
 
 
@@ -99,11 +99,11 @@ def test_confirmed_digest_cannot_authorize_different_fields_or_revisions(as_user
 def test_duplicate_employee_and_unchanged_records_are_blocked(as_user, ids, db_factory):
     admin = as_user("admin")
     with db_factory() as db:
-        db.get(User, ids["users"]["chen"]).employee_no = "NW-200"
+        db.get(User, ids["users"]["chitra"]).employee_no = "NM-200"
         db.commit()
     for request, code in [
-        (edit(ids, employee_no="NW-200"), "duplicate_employee"),
-        (edit(ids, display_name="Ben Okafor"), "no_changes"),
+        (edit(ids, employee_no="NM-200"), "duplicate_employee"),
+        (edit(ids, display_name="Bharat Kulkarni"), "no_changes"),
     ]:
         confirmation = reviewed(admin, request)
         plan = admin.post("/admin/changes/preview", json=request).json()
@@ -115,17 +115,17 @@ def test_duplicate_employee_and_unchanged_records_are_blocked(as_user, ids, db_f
 
 def test_last_audit_step_failure_rolls_back_entire_edit(as_user, ids, db_factory):
     admin = as_user("admin")
-    confirmation = reviewed(admin, edit(ids, display_name="Ben O. Okafor"))
+    confirmation = reviewed(admin, edit(ids, display_name="Bharat O. Kulkarni"))
     with db_factory() as db:
-        revision = db.get(User, ids["users"]["ben"]).revision
+        revision = db.get(User, ids["users"]["bharat"]).revision
     with (
         patch.object(audit, "record_step", side_effect=RuntimeError("Synthetic final-step failure")),
         pytest.raises(RuntimeError, match="Synthetic final-step failure"),
     ):
         admin.post("/admin/changes/apply", json=confirmation)
     with db_factory() as db:
-        person = db.get(User, ids["users"]["ben"])
-        assert person.display_name == "Ben Okafor"
+        person = db.get(User, ids["users"]["bharat"])
+        assert person.display_name == "Bharat Kulkarni"
         assert person.revision == revision
         assert db.scalar(select(AuditEvent.id).where(AuditEvent.action == "people.change")) is None
 
@@ -147,7 +147,7 @@ def test_two_concurrent_confirmations_apply_once(as_user, ids, db_factory):
         assert db.scalar(select(func.count()).where(AuditEvent.action == "people.change")) == 1
 
 
-@pytest.mark.parametrize("username", ["asha", "ben", "chen", "dana", "eli"])
+@pytest.mark.parametrize("username", ["asha", "bharat", "chitra", "deepa", "esha"])
 def test_members_cannot_preview_or_apply(username, as_user, ids):
     member = as_user(username)
     request = edit(ids, designation="Research Officer E")
@@ -157,11 +157,13 @@ def test_members_cannot_preview_or_apply(username, as_user, ids):
 
 def test_reader_signed_out_disabled_and_panels_are_denied(as_user, ids, make_client):
     admin = as_user("admin")
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").post("/admin/changes/preview", json=edit(ids, designation="E")).status_code == 403
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
+    assert (
+        as_user("bharat").post("/admin/changes/preview", json=edit(ids, designation="E")).status_code == 403
+    )
     signed_out = make_client()
     assert signed_out.post("/admin/changes/preview", json=edit(ids, designation="E")).status_code == 401
-    assert signed_out.login("fay").status_code == 401
+    assert signed_out.login("farhan").status_code == 401
     panel = pair(as_user, make_client, ids)
     assert panel.post("/admin/changes/preview", json=edit(ids, designation="E")).status_code == 401
     assert (
@@ -192,9 +194,9 @@ def test_staff_field_bounds_and_whitelist(as_user, ids, fields):
 
 def test_private_content_is_absent_and_optional_fields_can_be_cleared(as_user, ids, db_factory):
     marker = "Recognisable private project material"
-    assert as_user("ben").post("/notes", json={"title": marker, "body": marker}).status_code == 201
+    assert as_user("bharat").post("/notes", json={"title": marker, "body": marker}).status_code == 201
     with db_factory() as db:
-        db.get(User, ids["users"]["ben"]).contact_email = "ben@research.example"
+        db.get(User, ids["users"]["bharat"]).contact_email = "bharat@research.example"
         db.commit()
     admin = as_user("admin")
     request = edit(ids, contact_email="  ")
@@ -204,7 +206,7 @@ def test_private_content_is_absent_and_optional_fields_can_be_cleared(as_user, i
     confirmation = reviewed(admin, request)
     assert admin.post("/admin/changes/apply", json=confirmation).status_code == 200
     with db_factory() as db:
-        assert db.get(User, ids["users"]["ben"]).contact_email is None
+        assert db.get(User, ids["users"]["bharat"]).contact_email is None
 
 
 def test_authority_loss_before_lock_blocks_write(as_user, ids, db_factory):
@@ -221,7 +223,7 @@ def test_authority_loss_before_lock_blocks_write(as_user, ids, db_factory):
     with patch.object(service, "authorize", side_effect=revoke_before_lock):
         assert admin.post("/admin/changes/apply", json=confirmation).status_code == 403
     with db_factory() as db:
-        assert db.get(User, ids["users"]["ben"]).designation is None
+        assert db.get(User, ids["users"]["bharat"]).designation is None
 
 
 def test_database_failure_is_sanitized(as_user, ids):
@@ -238,7 +240,7 @@ def test_receipt_is_returned_even_if_authority_disappears_after_commit(as_user, 
 
     def demote_after_commit(person_id):
         with db_factory() as writer:
-            person = writer.get(User, ids["users"]["ben"])
+            person = writer.get(User, ids["users"]["bharat"])
             assert str(person.id) == str(person_id)
             assert person.designation == "Research Officer E"
             writer.get(User, ids["users"]["admin"]).is_admin = False
@@ -247,21 +249,21 @@ def test_receipt_is_returned_even_if_authority_disappears_after_commit(as_user, 
     with patch.object(app.state.hub, "revalidate_user", side_effect=demote_after_commit):
         response = admin.post("/admin/changes/apply", json=confirmation)
     assert response.status_code == 200
-    assert response.json()["person_id"] == ids["users"]["ben"]
+    assert response.json()["person_id"] == ids["users"]["bharat"]
     with db_factory() as db:
-        assert db.get(User, ids["users"]["ben"]).designation == "Research Officer E"
+        assert db.get(User, ids["users"]["bharat"]).designation == "Research Officer E"
         assert db.scalar(select(func.count()).where(AuditEvent.action == "people.change")) == 1
-    assert admin.get(f"/admin/people/{ids['users']['ben']}").status_code == 403
+    assert admin.get(f"/admin/people/{ids['users']['bharat']}").status_code == 403
 
 
 def test_preview_never_writes_staff_or_audit_even_with_multiple_reads(as_user, ids, db_factory):
     admin = as_user("admin")
     request = edit(ids, designation="Research Officer E")
-    before = admin.get(f"/admin/people/{ids['users']['ben']}").json()
+    before = admin.get(f"/admin/people/{ids['users']['bharat']}").json()
     first = admin.post("/admin/changes/preview", json=request).json()
     second = admin.post("/admin/changes/preview", json=request).json()
     assert first == second
-    assert admin.get(f"/admin/people/{ids['users']['ben']}").json() == before
+    assert admin.get(f"/admin/people/{ids['users']['bharat']}").json() == before
     with db_factory() as db:
         assert db.scalar(select(AuditEvent.id).where(AuditEvent.action.like("people.change%"))) is None
 

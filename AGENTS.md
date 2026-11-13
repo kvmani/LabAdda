@@ -24,8 +24,7 @@ report it in your handoff instead of quietly changing the contract.
 4. Before writing code, write down (in your working notes or reply) the files you will touch,
    the tests you will add, and the acceptance checks from the card. If you cannot list them,
    you have not read enough.
-5. Follow the step-by-step protocol in
-   [docs/development/agent-workflow.md](docs/development/agent-workflow.md).
+5. Follow [docs/development/agent-workflow.md](docs/development/agent-workflow.md).
 
 Do not read `docs/history/` or `docs/evidence/` unless a card sends you there. They are records
 of finished work, not instructions.
@@ -63,8 +62,9 @@ of finished work, not instructions.
 - No runtime request leaves the server: no CDN, web font, telemetry, external image or API.
   Every asset is bundled. New dependencies must be locked, licensed for free use, and added only
   when the card allows it.
-- Only fictional fixture data in source, tests, logs, screenshots and documents. Never commit
-  real names, hostnames, addresses, credentials or tokens.
+- Only fictional fixture data (source, tests, logs, screenshots, documents): Indian personal names
+  and national-research-laboratory units, groups and projects, e.g. "Surface Engineering Division",
+  "Project Tejas" (docs/development/fixture-names.md). Never commit real names, hosts or secrets.
 
 **Honesty**
 

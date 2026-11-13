@@ -83,9 +83,9 @@ describe("Stepper", () => {
 
 type Person = { id: string; name: string; staff: number };
 const people: Person[] = [
-  { id: "1", name: "Chen", staff: 30 },
+  { id: "1", name: "Chitra", staff: 30 },
   { id: "2", name: "asha", staff: 4 },
-  { id: "3", name: "Ben", staff: 12 },
+  { id: "3", name: "Bharat", staff: 12 },
 ];
 const columns: Column<Person>[] = [
   { key: "name", header: "Name", render: (row) => row.name, sortValue: (row) => row.name },
@@ -112,15 +112,15 @@ describe("DataTable", () => {
     expect(nameHeader.getAttribute("aria-sort")).toBe("none");
     expect(screen.getByRole("columnheader", { name: "ID" }).getAttribute("aria-sort")).toBeNull();
     await userEvent.click(within(nameHeader).getByRole("button", { name: "Name" }));
-    expect(names()).toEqual(["asha", "Ben", "Chen"]);
+    expect(names()).toEqual(["asha", "Bharat", "Chitra"]);
     expect(nameHeader.getAttribute("aria-sort")).toBe("ascending");
     expect(screen.getByRole("status").textContent).toBe("Sorted by Name, ascending");
     within(nameHeader).getByRole("button", { name: "Name" }).focus();
     await userEvent.keyboard("{Enter}");
-    expect(names()).toEqual(["Chen", "Ben", "asha"]);
+    expect(names()).toEqual(["Chitra", "Bharat", "asha"]);
     expect(screen.getByRole("status").textContent).toBe("Sorted by Name, descending");
     await userEvent.click(screen.getByRole("button", { name: "Staff" }));
-    expect(names()).toEqual(["asha", "Ben", "Chen"]);
+    expect(names()).toEqual(["asha", "Bharat", "Chitra"]);
   });
 
   it("shows loading and empty states instead of the table", () => {
@@ -149,10 +149,10 @@ const org: TreeNode[] = [
     children: [
       {
         id: "division",
-        label: "Surface Science Division",
+        label: "Surface Engineering Division",
         children: [
           { id: "a", label: "Thin Films" },
-          { id: "b", label: "Catalysis" },
+          { id: "b", label: "Corrosion" },
         ],
       },
       { id: "admin", label: "Administration" },
@@ -177,7 +177,7 @@ describe("TreeView", () => {
     expect(root.getAttribute("aria-expanded")).toBe("true");
     root.focus();
     await userEvent.keyboard("{ArrowDown}");
-    const division = screen.getByRole("treeitem", { name: "Surface Science Division" });
+    const division = screen.getByRole("treeitem", { name: "Surface Engineering Division" });
     expect(document.activeElement).toBe(division);
     expect(division.getAttribute("aria-expanded")).toBe("false");
     await userEvent.keyboard("{ArrowRight}");

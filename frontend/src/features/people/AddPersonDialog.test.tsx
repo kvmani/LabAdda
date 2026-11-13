@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 const UNITS = [
-  { id: "u1", name: "Catalysis Section", kind: "org", parent_id: null, archived: false },
+  { id: "u1", name: "Corrosion Section", kind: "org", parent_id: null, archived: false },
   { id: "u2", name: "Closed Section", kind: "org", parent_id: null, archived: true },
 ];
 const PLAN: ChangePlan = {

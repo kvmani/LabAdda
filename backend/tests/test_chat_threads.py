@@ -18,7 +18,7 @@ def post(api, ws, body="Research root", parent=None, key=None):
 
 
 def test_reply_stream_retry_and_bounded_thread(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     root = post(api, ws).json()
     key = str(uuid.uuid4())
@@ -40,11 +40,11 @@ def test_reply_stream_retry_and_bounded_thread(as_user, ids):
 
 @pytest.mark.parametrize(
     "scope,allowed,denied",
-    [("section_a", "asha", "chen"), ("division", "chen", "eli"), ("reading_club", "chen", "dana")],
+    [("section_a", "asha", "chitra"), ("division", "chitra", "esha"), ("reading_club", "chitra", "deepa")],
 )
 def test_thread_scope_and_parent_spoofing(as_user, ids, scope, allowed, denied):
     ws = ids["workspaces"][scope]
-    api = as_user("ben")
+    api = as_user("bharat")
     root = post(api, ws).json()
     path = f"/workspaces/{ws}/chat/{root['id']}/replies"
     assert post(as_user(allowed), ws, "Accepted", root["id"]).status_code == 201
@@ -60,7 +60,7 @@ def test_replay_after_revocation_and_expiry_before_commit(as_user, ids, db_facto
     from labadda import identity_locks
     from labadda.api import chat
 
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     root = post(api, ws).json()
     original = chat._root
@@ -78,7 +78,7 @@ def test_replay_after_revocation_and_expiry_before_commit(as_user, ids, db_facto
 
 
 def test_thread_downgrade_guard(as_user, ids, settings):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     root = post(api, ws).json()
     assert post(api, ws, "Kept reply", root["id"]).status_code == 201
@@ -92,20 +92,20 @@ def test_two_authors_cannot_commit_higher_sequence_first(as_user, ids, db_factor
 
     from labadda.api import chat
 
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     ws = ids["workspaces"]["section_a"]
     entered, release = Event(), Event()
     original = chat._mark_read
 
     def pause(db, user, workspace, seq):
         original(db, user, workspace, seq)
-        if str(user) == ids["users"]["ben"]:
+        if str(user) == ids["users"]["bharat"]:
             entered.set()
             assert release.wait(1.5)
 
     monkeypatch.setattr(chat, "_mark_read", pause)
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(post, ben, ws, "First committed")
+        first = pool.submit(post, bharat, ws, "First committed")
         assert entered.wait(1)
         second = pool.submit(post, asha, ws, "Second committed")
         try:
@@ -117,5 +117,5 @@ def test_two_authors_cannot_commit_higher_sequence_first(as_user, ids, db_factor
         finally:
             release.set()
         assert first.result(timeout=3).status_code == 201 and second.result(timeout=3).status_code == 201
-    messages = ben.get(f"/workspaces/{ws}/chat").json()["messages"]
+    messages = bharat.get(f"/workspaces/{ws}/chat").json()["messages"]
     assert [m["body"] for m in messages] == ["First committed", "Second committed"]

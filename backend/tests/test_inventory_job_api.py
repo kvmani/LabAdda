@@ -17,7 +17,7 @@ def delegate(db_factory, ids):
     with db_factory() as db:
         db.add(
             UsageReaderGrant(
-                user_id=ids["users"]["ben"],
+                user_id=ids["users"]["bharat"],
                 granted_by=ids["users"]["admin"],
                 reason="Synthetic operational observer",
                 expires_at=utcnow() + timedelta(hours=1),
@@ -31,7 +31,7 @@ def test_admin_and_observer_receive_sanitized_history(db_factory, ids, as_user, 
     job_id = jobs.enqueue(db_factory, "private-request-label", {})
     result = jobs.run(db_factory, settings.asset_dir, job_id)
     delegate(db_factory, ids)
-    for name in ["admin", "ben"]:
+    for name in ["admin", "bharat"]:
         api = as_user(name)
         response = api.get("/admin/inventory-jobs")
         assert response.status_code == 200
@@ -49,7 +49,7 @@ def test_admin_and_observer_receive_sanitized_history(db_factory, ids, as_user, 
 def test_normal_nonobserver_and_anonymous_denied(db_factory, ids, as_user, make_client):
     job_id = jobs.enqueue(db_factory, "permission-key", {})
     for path in ["/admin/inventory-jobs", f"/admin/inventory-jobs/{job_id}"]:
-        assert as_user("ben").get(path).status_code == 403
+        assert as_user("bharat").get(path).status_code == 403
         assert make_client().get(path).status_code == 401
 
 
@@ -104,7 +104,7 @@ def test_authority_loss_during_measurement_denies_response(
 
     job_id = jobs.enqueue(db_factory, "revocation-key", {})
     delegate(db_factory, ids)
-    username = "admin" if loss == "admin" else "ben"
+    username = "admin" if loss == "admin" else "bharat"
     api = as_user(username)
     original = api_jobs.describe
 
@@ -120,7 +120,7 @@ def test_authority_loss_during_measurement_denies_response(
 
                 db.execute(
                     update(AuthSession)
-                    .where(AuthSession.user_id == ids["users"]["ben"])
+                    .where(AuthSession.user_id == ids["users"]["bharat"])
                     .values(revoked_at=utcnow())
                 )
             db.commit()

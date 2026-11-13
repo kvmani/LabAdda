@@ -27,7 +27,7 @@ def image_upload(api):
 
 
 def test_upload_records_actual_preview_bytes_and_scoped_usage(as_user, db_factory, settings):
-    uploaded = image_upload(as_user("ben"))
+    uploaded = image_upload(as_user("bharat"))
     with db_factory() as db:
         row = db.get(Asset, uploaded["id"])
         from labadda.storage import AssetStore
@@ -35,24 +35,26 @@ def test_upload_records_actual_preview_bytes_and_scoped_usage(as_user, db_factor
         preview = AssetStore(settings.asset_dir).path(row.storage_key, preview=True).read_bytes()
         assert row.preview_size == len(preview) > 0
         assert row.preview_sha256 == hashlib.sha256(preview).hexdigest()
-    own = as_user("ben").get("/usage").json()["measurement"]
+    own = as_user("bharat").get("/usage").json()["measurement"]
     assert own["tracked_preview_bytes"] == len(preview)
     assert own["unknown_preview_files"] == 0
     assert own["complete_for_enforcement"] is False
     assert "private-preview" not in str(own)
-    assert as_user("chen").get("/usage").json()["measurement"]["tracked_preview_bytes"] == 0
+    assert as_user("chitra").get("/usage").json()["measurement"]["tracked_preview_bytes"] == 0
     site = as_user("admin").get("/admin/usage").json()["assets"]
     assert site["tracked_preview_bytes"] == len(preview)
 
 
 def test_generated_snapshot_also_records_expected_preview(as_user, ids, db_factory, settings):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     w = ids["workspaces"]["section_a"]
     assert (
-        ben.post(f"/workspaces/{w}/board/ops", json=stroke("preview-stroke-01", "fixture-line")).status_code
+        bharat.post(
+            f"/workspaces/{w}/board/ops", json=stroke("preview-stroke-01", "fixture-line")
+        ).status_code
         == 200
     )
-    assert publish(ben, w, w, 1).status_code == 201
+    assert publish(bharat, w, w, 1).status_code == 201
     with db_factory() as db:
         row = db.scalar(select(Asset))
         assert row.preview_size > 0 and len(row.preview_sha256) == 64
@@ -62,7 +64,7 @@ def test_generated_snapshot_also_records_expected_preview(as_user, ids, db_facto
 
 
 def test_legacy_preview_is_not_blessed_or_counted_as_known(as_user, db_factory, settings):
-    image_upload(as_user("ben"))
+    image_upload(as_user("bharat"))
     with db_factory() as db:
         row = db.scalar(select(Asset))
         row.preview_size = row.preview_sha256 = None
@@ -72,7 +74,7 @@ def test_legacy_preview_is_not_blessed_or_counted_as_known(as_user, db_factory, 
     assert result["summary"]["verified_previews"] == 0
     assert result["summary"]["readable_preview_bytes"] > 0
     assert result["summary"]["preview_integrity"] == "unverified"
-    measured = as_user("ben").get("/usage").json()["measurement"]
+    measured = as_user("bharat").get("/usage").json()["measurement"]
     assert measured["tracked_preview_bytes"] == 0 and measured["unknown_preview_files"] == 1
     with db_factory() as db:
         row = db.scalar(select(Asset))
@@ -85,7 +87,7 @@ def test_legacy_preview_is_not_blessed_or_counted_as_known(as_user, db_factory, 
 def test_corrupt_previews_report_class_and_fail_restore_validation(
     as_user, db_factory, settings, mutation, code
 ):
-    image_upload(as_user("ben"))
+    image_upload(as_user("bharat"))
     from labadda.storage import AssetStore
 
     store = AssetStore(settings.asset_dir)
@@ -117,7 +119,7 @@ def test_corrupt_previews_report_class_and_fail_restore_validation(
 
 
 def test_inspection_budget_cannot_claim_preview_verification(as_user, db_factory, settings):
-    image_upload(as_user("ben"))
+    image_upload(as_user("bharat"))
     result = inspect_storage(db_factory, settings.asset_dir, max_files=1)
     assert result["status"] == "partial"
     assert result["summary"]["preview_integrity"] == "unverified"
@@ -128,7 +130,7 @@ def test_inspection_budget_cannot_claim_preview_verification(as_user, db_factory
     "size,digest", [(None, "a" * 64), (1, None), (-1, "a" * 64), (0, "a" * 64), (10, "short")]
 )
 def test_expected_preview_metadata_cannot_be_half_known_or_invalid(as_user, db_factory, size, digest):
-    image_upload(as_user("ben"))
+    image_upload(as_user("bharat"))
     with db_factory() as db:
         row = db.scalar(select(Asset))
         row.preview_size, row.preview_sha256 = size, digest
@@ -137,6 +139,6 @@ def test_expected_preview_metadata_cannot_be_half_known_or_invalid(as_user, db_f
 
 
 def test_known_measurements_block_destructive_downgrade(as_user, settings):
-    image_upload(as_user("ben"))
+    image_upload(as_user("bharat"))
     with pytest.raises(RuntimeError, match="discard integrity evidence"):
         downgrade_legacy(alembic_config(settings.database_url), "0012")

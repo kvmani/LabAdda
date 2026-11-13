@@ -59,7 +59,7 @@ def generate():
     rng = random.Random(8128)
     ops = []
 
-    def stroke(points, actor="ben", color="#1565c0", width=2):
+    def stroke(points, actor="bharat", color="#1565c0", width=2):
         ops.append(
             {
                 "actor": actor,
@@ -72,7 +72,7 @@ def generate():
             }
         )
 
-    def hand(text, x, y, scale=2, actor="ben", color="#1f2933"):  # noqa: PLR0917 — drawing helper, many positional call sites
+    def hand(text, x, y, scale=2, actor="bharat", color="#1f2933"):  # noqa: PLR0917 — drawing helper, many positional call sites
         for i, c in enumerate(text):
             if c == " ":
                 continue
@@ -96,16 +96,16 @@ def generate():
             [(x + 2, y), (x + w, y + 2), (x + w - 1, y + h), (x, y + h - 2), (x + 2, y)], actor, color, 2.4
         )
 
-    def arrow(x, y, xx, yy, actor="ben"):
+    def arrow(x, y, xx, yy, actor="bharat"):
         stroke([(x, y), (xx, yy)], actor)
         stroke([(xx - 9, yy - 6), (xx, yy), (xx - 9, yy + 7)], actor)
 
-    hand("AURORA / CATALYST INTERFACE STUDY", 36, 24, 2.6, "dana")
-    hand("QUESTION: DOES OXYGEN VACANCY DENSITY CONTROL SELECTIVITY?", 36, 66, 1.65, "dana")
+    hand("TEJAS / CATALYST INTERFACE STUDY", 36, 24, 2.6, "deepa")
+    hand("QUESTION: DOES OXYGEN VACANCY DENSITY CONTROL SELECTIVITY?", 36, 66, 1.65, "deepa")
     boxes = [
-        (40, "PREPARE FILMS", "ASHA + BEN", "asha", "#1565c0"),
+        (40, "PREPARE FILMS", "ASHA + BHARAT", "asha", "#1565c0"),
         (360, "SURFACE CHECK", "MIRA / XPS", "mira", "#6a1b9a"),
-        (680, "REACTION TEST", "CHEN / GC", "chen", "#2e7d32"),
+        (680, "REACTION TEST", "CHITRA / GC", "chitra", "#2e7d32"),
     ]
     for x, title, owner, actor, color in boxes:
         box(x, 140, 260, 115, actor, color)
@@ -115,18 +115,18 @@ def generate():
     arrow(622, 193, 673, 193)
     hand("20 / 40 / 60 NM", 48, 277, 1.8, "asha")
     hand("BLANK + REFERENCE", 363, 277, 1.65, "mira")
-    hand("3 REPEATS / BATCH", 683, 277, 1.7, "chen")
-    stroke([(810, 306), (810, 352), (168, 352), (168, 309)], "dana", "#c62828")
-    hand("IF DRIFT > 5: RECALIBRATE BEFORE NEXT BATCH", 220, 365, 1.65, "dana", "#c62828")
-    box(46, 418, 894, 115, "ben", "#1565c0")
-    hand("DECISION GATE / FRIDAY REVIEW", 65, 436, 2, "dana")
-    hand("BEN: PAIR FILM IDS WITH GC RUN IDS BEFORE FITTING.", 65, 478, 1.85, "ben")
+    hand("3 REPEATS / BATCH", 683, 277, 1.7, "chitra")
+    stroke([(810, 306), (810, 352), (168, 352), (168, 309)], "deepa", "#c62828")
+    hand("IF DRIFT > 5: RECALIBRATE BEFORE NEXT BATCH", 220, 365, 1.65, "deepa", "#c62828")
+    box(46, 418, 894, 115, "bharat", "#1565c0")
+    hand("DECISION GATE / FRIDAY REVIEW", 65, 436, 2, "deepa")
+    hand("BHARAT: PAIR FILM IDS WITH GC RUN IDS BEFORE FITTING.", 65, 478, 1.85, "bharat")
     notes = [
         ("asha", 45, "ASHA / PREP", "KEEP A BLANK", "EACH BATCH", "#fff59d"),
-        ("ben", 233, "BEN / CHECK", "REPEAT 40 NM", "DRIFT FIRST", "#b3e5fc"),
+        ("bharat", 233, "BHARAT / CHECK", "REPEAT 40 NM", "DRIFT FIRST", "#b3e5fc"),
         ("mira", 421, "MIRA / XPS", "NO AIR BREAK", "LOG TRANSFER", "#c8e6c9"),
-        ("chen", 609, "CHEN / GC", "3 REPEATS", "ADD CONTROL", "#ffccbc"),
-        ("dana", 797, "DANA / NEXT", "REVIEW FRIDAY", "SHARE SUMMARY", "#fff59d"),
+        ("chitra", 609, "CHITRA / GC", "3 REPEATS", "ADD CONTROL", "#ffccbc"),
+        ("deepa", 797, "DEEPA / NEXT", "REVIEW FRIDAY", "SHARE SUMMARY", "#fff59d"),
     ]
     papers = []
     for actor, x, title, l1, l2, color in notes:
@@ -151,7 +151,7 @@ def generate():
     ]
     svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 730" width="1000" '
-        'height="730"><title>Fictional Aurora research plan with five handwritten sticky '
+        'height="730"><title>Fictional Tejas research plan with five handwritten sticky '
         'notes</title><rect width="1000" height="730" fill="#fff"/>'
         + "".join(papers + polylines)
         + "</svg>\n"

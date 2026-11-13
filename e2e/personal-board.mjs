@@ -140,7 +140,7 @@ try {
     check(mobileViolations.length === 0, `${tag}: phone accessibility ${JSON.stringify(mobileViolations)}`);
     await owner.page.setViewportSize({ width: 1440, height: 1000 });
 
-    for (const username of ["ben", "admin"]) {
+    for (const username of ["bharat", "admin"]) {
       const other = await login(base, username);
       const result = await other.context.request.get(origin + base + "/api/v1/me/whiteboard");
       check(

@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 ## What this is for
 
-Use this when a person retires or leaves the organisation, for example when Dana, Head of the Surface Science Division, retires. The review lists every workspace where they are the last steward and says who takes over before anything changes.
+Use this when a person retires or leaves the organisation, for example when Deepa, Head of the Surface Engineering Division, retires. The review lists every workspace where they are the last steward and says who takes over before anything changes.
 
 ## Before you start
 

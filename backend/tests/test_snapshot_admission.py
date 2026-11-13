@@ -16,16 +16,16 @@ from tests.test_chat_board import stroke
 
 def test_snapshot_cannot_bypass_a_tiny_original_quota(settings, ids, db_factory):
     with TestClient(create_app(replace(settings, user_quota_bytes=1))) as client:
-        ben = Api(client, settings.api_prefix)
-        assert ben.login("ben").status_code == 200
+        bharat = Api(client, settings.api_prefix)
+        assert bharat.login("bharat").status_code == 200
         w = ids["workspaces"]["section_a"]
         assert (
-            ben.post(
+            bharat.post(
                 f"/workspaces/{w}/board/ops", json=stroke("snapshot-quota-stroke", "fixture-line")
             ).status_code
             == 200
         )
-        refused = publish(ben, w, w, 1)
+        refused = publish(bharat, w, w, 1)
         assert refused.status_code == 422 and refused.json()["error"]["code"] == "quota_exceeded"
     with db_factory() as db:
         assert db.scalar(select(func.count()).select_from(Asset)) == 0
@@ -33,10 +33,10 @@ def test_snapshot_cannot_bypass_a_tiny_original_quota(settings, ids, db_factory)
 
 
 def test_pending_upload_capacity_is_respected_by_snapshot(as_user, settings, ids, db_factory):
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     w = ids["workspaces"]["section_a"]
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{w}/board/ops", json=stroke("snapshot-pending-stroke", "fixture-line")
         ).status_code
         == 200
@@ -44,24 +44,24 @@ def test_pending_upload_capacity_is_respected_by_snapshot(as_user, settings, ids
     with db_factory() as db:
         db.add(
             UploadReservation(
-                user_id=ids["users"]["ben"],
+                user_id=ids["users"]["bharat"],
                 bytes=settings.user_quota_bytes,
                 created_at=utcnow(),
                 expires_at=utcnow() + timedelta(minutes=10),
             )
         )
         db.commit()
-    refused = publish(ben, w, w, 1)
+    refused = publish(bharat, w, w, 1)
     assert refused.status_code == 422 and refused.json()["error"]["code"] == "quota_exceeded"
 
 
 def test_snapshot_lost_commit_reply_preserves_published_bytes(as_user, ids, app, db_factory, monkeypatch):
     from sqlalchemy.orm import Session
 
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     w = ids["workspaces"]["section_a"]
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{w}/board/ops", json=stroke("snapshot-commit-stroke", "fixture-line")
         ).status_code
         == 200
@@ -75,22 +75,22 @@ def test_snapshot_lost_commit_reply_preserves_published_bytes(as_user, ids, app,
             raise RuntimeError("synthetic lost snapshot commit reply")
 
     monkeypatch.setattr(Session, "commit", commit_then_fail)
-    response = publish(ben, w, w, 1)
+    response = publish(bharat, w, w, 1)
     assert response.status_code == 201
     with db_factory() as db:
         asset = db.scalar(select(Asset).where(Asset.post_id == response.json()["post_id"]))
         assert asset is not None
         assert app.state.assets.path(asset.storage_key).is_file()
-    assert publish(ben, w, w, 1).json()["duplicate"]
+    assert publish(bharat, w, w, 1).json()["duplicate"]
 
 
 def test_snapshot_unknown_commit_retains_unconfirmed_files(as_user, ids, app, db_factory, monkeypatch):
     from sqlalchemy.orm import Session
 
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     w = ids["workspaces"]["section_a"]
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{w}/board/ops", json=stroke("snapshot-unknown-stroke", "fixture-line")
         ).status_code
         == 200
@@ -103,7 +103,7 @@ def test_snapshot_unknown_commit_retains_unconfirmed_files(as_user, ids, app, db
         original(db)
 
     monkeypatch.setattr(Session, "commit", fail)
-    response = publish(ben, w, w, 1)
+    response = publish(bharat, w, w, 1)
     assert response.status_code == 503 and response.json()["error"]["code"] == "snapshot_commit_unknown"
     assert list(app.state.settings.asset_dir.rglob("*.bin"))
     with db_factory() as db:
@@ -115,10 +115,10 @@ def test_expiry_during_snapshot_storage_prevents_publish(as_user, ids, app, db_f
 
     from labadda import security
 
-    ben = as_user("ben")
+    bharat = as_user("bharat")
     w = ids["workspaces"]["section_a"]
     assert (
-        ben.post(
+        bharat.post(
             f"/workspaces/{w}/board/ops", json=stroke("snapshot-expiry-stroke", "fixture-line")
         ).status_code
         == 200
@@ -132,7 +132,7 @@ def test_expiry_during_snapshot_storage_prevents_publish(as_user, ids, app, db_f
         return stored
 
     monkeypatch.setattr(app.state.assets, "save", expire)
-    assert publish(ben, w, w, 1).status_code == 401
+    assert publish(bharat, w, w, 1).status_code == 401
     with db_factory() as db:
         assert db.scalar(select(func.count()).select_from(Post)) == 0
         assert db.scalar(select(func.count()).select_from(Asset)) == 0

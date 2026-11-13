@@ -1,4 +1,4 @@
-// C3 conversion: disposable proxy fixtures only. Revokes Ben's source grant last.
+// C3 conversion: disposable proxy fixtures only. Revokes Bharat's source grant last.
 import assert from "node:assert/strict";
 import {
   bases,
@@ -39,18 +39,18 @@ async function openTaskList(user, base, workspaceId, list) {
   await buttonNamed(user.page, list.title).click();
 }
 
-async function checkPrivateConversion(ben, chen, base, section, lists) {
-  const form = await openPostForm(ben, base, section.id, original);
+async function checkPrivateConversion(bharat, chitra, base, section, lists) {
+  const form = await openPostForm(bharat, base, section.id, original);
   check(
     (await labelled(form, "Task description").inputValue()) === original,
     base + " post text starts an editable reviewed copy",
   );
   await labelled(form, "Task destination").selectOption("personal");
   await labelled(form, "Destination list").selectOption(lists.private.id);
-  await checkLayouts(ben, base, "conversion form");
+  await checkLayouts(bharat, base, "conversion form");
   await labelled(form, "Task title").fill("Private control check");
   await labelled(form, "Task description").fill("Only my reviewed followup.");
-  await loseNextResponse(ben.page, "**/api/v1/todos/lists/*/from-conversation");
+  await loseNextResponse(bharat.page, "**/api/v1/todos/lists/*/from-conversation");
   await saveButton(form).click();
   await buttonNamed(form, "Retry same task copy").waitFor();
   check(
@@ -59,30 +59,30 @@ async function checkPrivateConversion(ben, chen, base, section, lists) {
     base + " lost reply freezes original text and audience",
   );
   await buttonNamed(form, "Retry same task copy").click();
-  await ben.page.getByText(savedNotice, { exact: true }).waitFor();
-  const personal = (await call(ben, `/todos/lists/${lists.private.id}/tasks`)).items;
+  await bharat.page.getByText(savedNotice, { exact: true }).waitFor();
+  const personal = (await call(bharat, `/todos/lists/${lists.private.id}/tasks`)).items;
   check(
     personal.length === 1 &&
       personal[0].description === "Only my reviewed followup." &&
       personal[0].has_source,
     base + " retry creates exactly one reviewed task and reference",
   );
-  await openTaskList(ben, base, null, lists.private);
-  await buttonNamed(ben.page, "View source reference").click();
-  await ben.page
+  await openTaskList(bharat, base, null, lists.private);
+  await buttonNamed(bharat.page, "View source reference").click();
+  await bharat.page
     .getByRole("region", { name: "Task source reference" })
     .getByText(original, { exact: true })
     .waitFor();
-  await checkLayouts(ben, base, "protected source view");
-  const executed = await ben.page.locator("script").filter({ hasText: "window.fixtureExecuted" }).count();
+  await checkLayouts(bharat, base, "protected source view");
+  const executed = await bharat.page.locator("script").filter({ hasText: "window.fixtureExecuted" }).count();
   check(executed === 0, base + " source text is rendered without HTML execution");
   const sourceUrl = `/todos/lists/${lists.private.id}/tasks/${personal[0].id}/source`;
-  check((await statusOf(chen, sourceUrl)) === 404, base + " personal reference is owner-only");
+  check((await statusOf(chitra, sourceUrl)) === 404, base + " personal reference is owner-only");
 }
 
-async function checkSameWorkspaceConversion(ben, base, section, lists) {
+async function checkSameWorkspaceConversion(bharat, base, section, lists) {
   // Same-source shared task needs no broader-audience checkbox.
-  const form = await openPostForm(ben, base, section.id, original);
+  const form = await openPostForm(bharat, base, section.id, original);
   await labelled(form, "Destination list").selectOption(lists.shared.id);
   await labelled(form, "Task title").fill("Section control check");
   check(
@@ -90,20 +90,20 @@ async function checkSameWorkspaceConversion(ben, base, section, lists) {
     base + " same workspace audience is shown without a broader-copy confirmation",
   );
   await saveButton(form).click();
-  await ben.page.getByText(savedNotice, { exact: true }).waitFor();
+  await bharat.page.getByText(savedNotice, { exact: true }).waitFor();
 }
 
-async function checkDivisionConversion(ben, chen, base, ctx) {
+async function checkDivisionConversion(bharat, chitra, base, ctx) {
   // Chat-to-division requires an explicit audience choice and confirmation.
   const { section, division, lists, chatText } = ctx;
-  await call(ben, `/workspaces/${section.id}/chat`, { body: chatText, client_id: crypto.randomUUID() });
-  await ben.page.goto(origin + base + `/w/${section.id}/chat`);
-  await ben.page
+  await call(bharat, `/workspaces/${section.id}/chat`, { body: chatText, client_id: crypto.randomUUID() });
+  await bharat.page.goto(origin + base + `/w/${section.id}/chat`);
+  await bharat.page
     .getByRole("listitem")
-    .filter({ has: ben.page.getByText(chatText, { exact: true }) })
+    .filter({ has: bharat.page.getByText(chatText, { exact: true }) })
     .getByRole("button", { name: "Create task", exact: true })
     .click();
-  const form = ben.page.getByRole("form", { name: "Create task from conversation", exact: true });
+  const form = bharat.page.getByRole("form", { name: "Create task from conversation", exact: true });
   await labelled(form, "Task destination").selectOption(division.id);
   await labelled(form, "Destination list").selectOption(lists.division.id);
   check(await saveButton(form).isDisabled(), base + " different audience cannot save without confirmation");
@@ -119,31 +119,31 @@ async function checkDivisionConversion(ben, chen, base, ctx) {
   await labelled(form, "Task title").fill("Reviewed division control action");
   await labelled(form, "Task description").fill("Reviewed controls for the common division.");
   await saveButton(form).click();
-  await ben.page.getByText(savedNotice, { exact: true }).waitFor();
-  const converted = (await call(ben, `/todos/lists/${lists.division.id}/tasks`)).items[0];
+  await bharat.page.getByText(savedNotice, { exact: true }).waitFor();
+  const converted = (await call(bharat, `/todos/lists/${lists.division.id}/tasks`)).items[0];
   const sourcePath = `/todos/lists/${lists.division.id}/tasks/${converted.id}/source`;
-  await openTaskList(chen, base, division.id, lists.division);
-  await buttonNamed(chen.page, "View source reference").click();
-  await chen.page.getByText(sourceUnavailable, { exact: true }).waitFor();
-  const reviewedVisible = await chen.page
+  await openTaskList(chitra, base, division.id, lists.division);
+  await buttonNamed(chitra.page, "View source reference").click();
+  await chitra.page.getByText(sourceUnavailable, { exact: true }).waitFor();
+  const reviewedVisible = await chitra.page
     .getByText("Reviewed controls for the common division.", { exact: true })
     .isVisible();
-  const bodyCount = await chen.page.getByText(chatText, { exact: true }).count();
+  const bodyCount = await chitra.page.getByText(chatText, { exact: true }).count();
   check(
     reviewedVisible && bodyCount === 0,
     base + " sibling sees reviewed division task without protected source body",
   );
   check(
-    (await statusOf(chen, sourcePath)) === 404,
+    (await statusOf(chitra, sourcePath)) === 404,
     base + " direct source lookup does not grant sibling access",
   );
   return sourcePath;
 }
 
-async function checkPagingClearsChoice(ben, base, section) {
+async function checkPagingClearsChoice(bharat, base, section) {
   // Real pagination must not submit a previous page's hidden selected list.
-  for (let index = 0; index < 25; index++) await createList(ben, null, "Private paged " + index);
-  const form = await openPostForm(ben, base, section.id, original);
+  for (let index = 0; index < 25; index++) await createList(bharat, null, "Private paged " + index);
+  const form = await openPostForm(bharat, base, section.id, original);
   await labelled(form, "Task destination").selectOption("personal");
   await labelled(form, "Destination list").selectOption({ index: 1 });
   await buttonNamed(form, "More destination lists").click();
@@ -153,11 +153,11 @@ async function checkPagingClearsChoice(ben, base, section) {
   );
 }
 
-async function checkSourceOnlyRevocation(ben, admin, base, ctx, sourcePath) {
+async function checkSourceOnlyRevocation(bharat, admin, base, ctx, sourcePath) {
   // Hold a successful first source lookup, revoke only source access, then release.
   const { section, division, lists, chatText } = ctx;
-  const page = ben.page;
-  await openTaskList(ben, base, division.id, lists.division);
+  const page = bharat.page;
+  await openTaskList(bharat, base, division.id, lists.division);
   const heldSource = await holdFirstResponse(page, "**/api/v1" + sourcePath);
   await buttonNamed(page, "View source reference").click();
   await heldSource.captured;
@@ -165,11 +165,11 @@ async function checkSourceOnlyRevocation(ben, admin, base, ctx, sourcePath) {
   await call(
     admin,
     `/admin/workspaces/${division.id}/memberships`,
-    { user_id: ben.session.user.id, role: "member" },
+    { user_id: bharat.session.user.id, role: "member" },
     "PUT",
   );
   const removal = await admin.ctx.request.delete(
-    admin.api + `/admin/workspaces/${section.id}/memberships/${ben.session.user.id}`,
+    admin.api + `/admin/workspaces/${section.id}/memberships/${bharat.session.user.id}`,
     { headers: admin.headers },
   );
   assert.equal(removal.status(), 200);
@@ -191,7 +191,7 @@ async function checkSourceOnlyRevocation(ben, admin, base, ctx, sourcePath) {
     !leaked && textCount === 0,
     base + " delayed source response cannot restore text after source-only revocation",
   );
-  const remaining = (await call(ben, `/todos/lists/${lists.division.id}/tasks`)).items;
+  const remaining = (await call(bharat, `/todos/lists/${lists.division.id}/tasks`)).items;
   check(remaining.length === 1, base + " reviewed destination task survives source revocation");
 }
 
@@ -206,31 +206,31 @@ async function saveFailureScreenshots() {
 
 try {
   for (const base of bases) {
-    const ben = await login(base, "ben");
-    const chen = await login(base, "chen");
+    const bharat = await login(base, "bharat");
+    const chitra = await login(base, "chitra");
     const admin = await login(base, "admin");
-    const spaces = (await call(ben, "/workspaces")).workspaces;
+    const spaces = (await call(bharat, "/workspaces")).workspaces;
     const section = spaces.find((workspace) => workspace.name === "Thin Films Section");
-    const division = spaces.find((workspace) => workspace.name === "Surface Science Division");
+    const division = spaces.find((workspace) => workspace.name === "Surface Engineering Division");
     const lists = {
-      private: await createList(ben, null, "Personal followups"),
-      shared: await createList(ben, section.id, "Section actions"),
-      division: await createList(ben, division.id, "Division actions"),
+      private: await createList(bharat, null, "Personal followups"),
+      shared: await createList(bharat, section.id, "Section actions"),
+      division: await createList(bharat, division.id, "Division actions"),
     };
-    await call(ben, `/workspaces/${section.id}/posts`, { body: original, client_id: crypto.randomUUID() });
+    await call(bharat, `/workspaces/${section.id}/posts`, { body: original, client_id: crypto.randomUUID() });
     const ctx = {
       section,
       division,
       lists,
       chatText: "Repeat three GC controls before the division review.",
     };
-    await checkPrivateConversion(ben, chen, base, section, lists);
-    await checkSameWorkspaceConversion(ben, base, section, lists);
-    const sourcePath = await checkDivisionConversion(ben, chen, base, ctx);
-    await checkPagingClearsChoice(ben, base, section);
-    await checkSourceOnlyRevocation(ben, admin, base, ctx, sourcePath);
-    check(ben.errors.length === 0 && chen.errors.length === 0, base + " no browser exceptions");
-    await Promise.all([ben.ctx.close(), chen.ctx.close(), admin.ctx.close()]);
+    await checkPrivateConversion(bharat, chitra, base, section, lists);
+    await checkSameWorkspaceConversion(bharat, base, section, lists);
+    const sourcePath = await checkDivisionConversion(bharat, chitra, base, ctx);
+    await checkPagingClearsChoice(bharat, base, section);
+    await checkSourceOnlyRevocation(bharat, admin, base, ctx, sourcePath);
+    check(bharat.errors.length === 0 && chitra.errors.length === 0, base + " no browser exceptions");
+    await Promise.all([bharat.ctx.close(), chitra.ctx.close(), admin.ctx.close()]);
   }
   console.log(`${harness.checks()} conversion browser checks passed`);
 } catch (error) {

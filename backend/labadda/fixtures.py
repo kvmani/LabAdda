@@ -13,35 +13,41 @@ from .security import hash_password, utcnow
 
 TREE = [
     # key, name, parent key, code (the initials of the name, as a migrated unit would get)
-    ("root", "Northwind Research", None, "NR"),
+    ("root", "National Materials Research Laboratory", None, "NMRL"),
     ("group", "Materials Group", "root", "MG"),
-    ("division", "Surface Science Division", "group", "SSD"),
+    ("division", "Surface Engineering Division", "group", "SED"),
     ("section_a", "Thin Films Section", "division", "TFS"),
-    ("section_b", "Catalysis Section", "division", "CS"),
+    ("section_b", "Corrosion Section", "division", "CS"),
 ]
 USERS = [
     # username, display name, is_admin, is_active
     ("admin", "Site Administrator", True, True),
     ("asha", "Asha Rao", False, True),
-    ("ben", "Ben Okafor", False, True),
-    ("chen", "Chen Li", False, True),
-    ("dana", "Dana Whitfield", False, True),
-    ("eli", "Eli Novak", False, True),
-    ("fay", "Fay Moreau", False, False),
+    ("bharat", "Bharat Kulkarni", False, True),
+    ("chitra", "Chitra Iyer", False, True),
+    ("deepa", "Deepa Nair", False, True),
+    ("esha", "Esha Menon", False, True),
+    ("farhan", "Farhan Qureshi", False, False),
 ]
 GRANTS = [
     ("asha", "section_a", "steward"),
-    ("ben", "section_a", "member"),
-    ("chen", "section_b", "member"),
-    ("dana", "division", "steward"),
-    ("eli", "project", "member"),
-    ("dana", "project", "steward"),
-    ("fay", "section_a", "member"),
+    ("bharat", "section_a", "member"),
+    ("chitra", "section_b", "member"),
+    ("deepa", "division", "steward"),
+    ("esha", "project", "member"),
+    ("deepa", "project", "steward"),
+    ("farhan", "section_a", "member"),
     # A user-created collaborative group spanning two sibling sections.
-    ("ben", "reading_club", "steward"),
-    ("chen", "reading_club", "member"),
+    ("bharat", "reading_club", "steward"),
+    ("chitra", "reading_club", "member"),
 ]
-HOMES = {"asha": "section_a", "ben": "section_a", "chen": "section_b", "dana": "division", "eli": "project"}
+HOMES = {
+    "asha": "section_a",
+    "bharat": "section_a",
+    "chitra": "section_b",
+    "deepa": "division",
+    "esha": "project",
+}
 
 
 def fixture_password() -> str:
@@ -103,7 +109,7 @@ def seed(db: Session) -> dict[str, object]:
         db.add(w)
         db.flush()
         ws[key] = w
-    ws["project"] = Workspace(kind="project", name="Project Aurora", description="Invite-only pilot project")
+    ws["project"] = Workspace(kind="project", name="Project Tejas", description="Invite-only pilot project")
     db.add(ws["project"])
     users: dict[str, User] = {}
     for username, display, is_admin, active in USERS:
@@ -123,9 +129,9 @@ def seed(db: Session) -> dict[str, object]:
     db.flush()
     ws["reading_club"] = Workspace(
         kind="group",
-        name="Microscopy Reading Club",
-        created_by=users["ben"].id,
-        description="Colleagues from Thin Films and Catalysis reading papers together",
+        name="Microscopy Journal Club",
+        created_by=users["bharat"].id,
+        description="Colleagues from Thin Films and Corrosion reading papers together",
     )
     db.add(ws["reading_club"])
     db.flush()

@@ -89,13 +89,13 @@ async function checkAdministrator(admin, base) {
     check((await page.getByText(title, { exact: true }).count()) > 0, `${label} shows ${title}`);
   }
   const units = page.getByRole("table", { name: "All units" });
-  const catalysis = units.getByRole("row").filter({ hasText: "Catalysis Section" });
-  check((await catalysis.innerText()).includes("Fewer than 5"), label + " small unit is suppressed");
+  const corrosion = units.getByRole("row").filter({ hasText: "Corrosion Section" });
+  check((await corrosion.innerText()).includes("Fewer than 5"), label + " small unit is suppressed");
   const films = units.getByRole("row").filter({ hasText: "Thin Films Section" });
   check(/\b5\b/.test(await films.innerText()), label + " published unit is rounded");
   const text = await page.locator("main").innerText();
   check(
-    !text.includes("Project Aurora") && !text.includes("Microscopy Reading Club"),
+    !text.includes("Project Tejas") && !text.includes("Microscopy Journal Club"),
     label + " names no project or group",
   );
   check(text.includes("Projects") && text.includes("Groups"), label + " shows project and group totals");
@@ -150,9 +150,9 @@ for (const base of ["", "/labadda-staging"]) {
   seed(base);
   const admin = await login(base, "admin");
   await checkAdministrator(admin, base);
-  const reader = await login(base, "dana");
+  const reader = await login(base, "deepa");
   await checkReader(reader, base);
-  const member = await login(base, "ben");
+  const member = await login(base, "bharat");
   await checkMember(member, base);
   for (const session of [admin, reader, member]) await session.context.close();
 }

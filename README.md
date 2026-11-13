@@ -71,11 +71,11 @@ Fixture accounts all use the development-only password `fixture-pass-123` (overr
 | --- | --- |
 | `admin` | Org administrator with no content grant |
 | `asha` | Steward, Thin Films Section (Section A) |
-| `ben` | Member, Section A; steward of the *Microscopy Reading Club* group |
-| `chen` | Member, Catalysis Section (Section B); member of the reading club group |
-| `dana` | Steward, Surface Science Division; steward of Project Aurora |
-| `eli` | Project Aurora guest only |
-| `fay` | Disabled account in Section A |
+| `bharat` | Member, Section A; steward of the *Microscopy Journal Club* group |
+| `chitra` | Member, Corrosion Section (Section B); member of the reading club group |
+| `deepa` | Steward, Surface Engineering Division; steward of Project Tejas |
+| `esha` | Project Tejas guest only |
+| `farhan` | Disabled account in Section A |
 
 For a prefixed instance, set `LABADDA_BASE_PATH=/labadda-staging` and a distinct `LABADDA_COOKIE_NAME`. All settings are listed in [deploy/labadda.env.example](deploy/labadda.env.example).
 

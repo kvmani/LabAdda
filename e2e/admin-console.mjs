@@ -188,7 +188,7 @@ async function checkReader(admin, member, base) {
   const endpoint = origin + base + "/api/v1";
   const session = await (await admin.context.request.get(endpoint + "/auth/session")).json();
   const users = await (await admin.context.request.get(endpoint + "/admin/users")).json();
-  const user = users.users.find((person) => person.username === "ben");
+  const user = users.users.find((person) => person.username === "bharat");
   const response = await admin.context.request.post(endpoint + "/admin/usage-readers", {
     headers: { "X-CSRF-Token": session.csrf_token },
     data: {
@@ -229,7 +229,7 @@ async function checkReader(admin, member, base) {
 try {
   for (const base of ["", "/labadda-staging"]) {
     const admin = await login(base, "admin");
-    const member = await login(base, "ben");
+    const member = await login(base, "bharat");
     await member.page.goto(origin + base + "/admin/people");
     await member.page.waitForURL((url) => !url.pathname.includes("/admin"));
     check(true, base + " ordinary member redirected home");

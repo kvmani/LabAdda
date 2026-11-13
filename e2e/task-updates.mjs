@@ -37,8 +37,8 @@ async function openList(user, base, workspaceId, list) {
 }
 
 /** Opens the panels whose unsent drafts the later steps must not lose. */
-async function openDraftsOnCard(ben) {
-  const page = ben.page;
+async function openDraftsOnCard(bharat) {
+  const page = bharat.page;
   await buttonNamed(page, "View comments").click();
   const discussion = page.getByRole("region", { name: "Task comments", exact: true });
   await discussion.getByText("No comments yet.", { exact: true }).waitFor();
@@ -47,13 +47,13 @@ async function openDraftsOnCard(ben) {
   await taskTitleBox(page).fill("Unsent editor draft");
   const assignment = page.getByRole("region", { name: "Task assignment", exact: true });
   await buttonNamed(assignment, "Change assignee").click();
-  await assignment.getByLabel("Assignee", { exact: true }).selectOption(ben.session.user.id);
+  await assignment.getByLabel("Assignee", { exact: true }).selectOption(bharat.session.user.id);
   return { discussion, assignment };
 }
 
-async function checkDraftsSurviveCatchUp(ben, shared, panels, base) {
+async function checkDraftsSurviveCatchUp(bharat, shared, panels, base) {
   const { discussion, assignment } = panels;
-  const page = ben.page;
+  const page = bharat.page;
   await shared.waitFor();
   check(
     (await taskTitleBox(page).inputValue()) === "Unsent editor draft",
@@ -68,7 +68,7 @@ async function checkDraftsSurviveCatchUp(ben, shared, panels, base) {
   const choice = await assignment.getByLabel("Assignee", { exact: true }).inputValue();
   const saveDisabled = await buttonNamed(assignment, "Save assignment").isDisabled();
   check(
-    choice === ben.session.user.id && saveDisabled,
+    choice === bharat.session.user.id && saveDisabled,
     base + " changed revision preserves choice and requires assignment review",
   );
   if (outputDir && base === "") {
@@ -91,7 +91,7 @@ async function checkDraftsSurviveCatchUp(ben, shared, panels, base) {
   await buttonNamed(page, "Close editor").click();
 }
 
-async function checkDiscussionCatchUp(ben, asha, discussion, detail, base) {
+async function checkDiscussionCatchUp(bharat, asha, discussion, detail, base) {
   await call(asha, detail + "/comments", {
     client_id: crypto.randomUUID(),
     body: "Controls agreed by colleague",
@@ -107,20 +107,20 @@ async function checkDiscussionCatchUp(ben, asha, discussion, detail, base) {
   );
 }
 
-async function checkNewerSignalStaysPending(ben, asha, shared, detail, task, base) {
+async function checkNewerSignalStaysPending(bharat, asha, shared, detail, task, base) {
   // A hint while the HTTP snapshot is in flight cannot be acknowledged by that older response.
-  const page = ben.page;
+  const page = bharat.page;
   const heldSnapshot = await holdFirstResponse(page, "**/api/v1" + detail);
   await shared.click();
   await heldSnapshot.captured;
-  const beforeHint = frameMark(ben);
+  const beforeHint = frameMark(bharat);
   const updated = await call(
     asha,
     detail,
     { ...taskFields(task), title: "Second reviewed experiment" },
     "PUT",
   );
-  await waitForFrame(ben, (frame) => frame.type === "tasks.changed", beforeHint);
+  await waitForFrame(bharat, (frame) => frame.type === "tasks.changed", beforeHint);
   heldSnapshot.release();
   await page.waitForFunction(() =>
     [...document.querySelectorAll("button")].some(
@@ -135,13 +135,13 @@ async function checkNewerSignalStaysPending(ben, asha, shared, detail, task, bas
   return updated;
 }
 
-async function checkFailedCatchUp(ben, asha, shared, discussion, detail, base) {
+async function checkFailedCatchUp(bharat, asha, shared, discussion, detail, base) {
   // A failed authorized read leaves the hint pending and the draft available.
   await call(asha, detail + "/comments", { client_id: crypto.randomUUID(), body: "Check reference drift" });
   await shared.waitFor();
-  await ben.page.route("**/api/v1" + detail, (route) => route.abort(), { times: 1 });
+  await bharat.page.route("**/api/v1" + detail, (route) => route.abort(), { times: 1 });
   await shared.click();
-  await ben.page.getByRole("alert").waitFor();
+  await bharat.page.getByRole("alert").waitFor();
   check(
     (await shared.isVisible()) &&
       (await commentBox(discussion).inputValue()) === "Unsent uncertainty question",
@@ -149,21 +149,21 @@ async function checkFailedCatchUp(ben, asha, shared, discussion, detail, base) {
   );
 }
 
-async function checkReconnectCatchUp(ben, asha, shared, discussion, detail, task, base) {
+async function checkReconnectCatchUp(bharat, asha, shared, discussion, detail, task, base) {
   // Reconnect catches a change made while the browser transport is offline.
-  const beforeClose = frameMark(ben);
-  await ben.page.evaluate(() => window.__sockets.at(-1).close());
+  const beforeClose = frameMark(bharat);
+  await bharat.page.evaluate(() => window.__sockets.at(-1).close());
   const updated = await call(
     asha,
     detail,
     { ...taskFields(task), title: "Offline reviewed experiment" },
     "PUT",
   );
-  await waitForFrame(ben, (frame) => frame.type === "subscribed", beforeClose);
-  await ben.page.getByText("Live", { exact: true }).waitFor();
+  await waitForFrame(bharat, (frame) => frame.type === "subscribed", beforeClose);
+  await bharat.page.getByText("Live", { exact: true }).waitFor();
   await shared.waitFor();
   await shared.click();
-  await headingNamed(ben.page, "Offline reviewed experiment").waitFor();
+  await headingNamed(bharat.page, "Offline reviewed experiment").waitFor();
   check(
     (await commentBox(discussion).inputValue()) === "Unsent uncertainty question",
     base + " reconnect catch-up preserves draft",
@@ -171,22 +171,22 @@ async function checkReconnectCatchUp(ben, asha, shared, discussion, detail, task
   return updated;
 }
 
-function checkHintScope(ben, chen, section, base) {
-  const scopedToSection = hintsOf(ben).every(
+function checkHintScope(bharat, chitra, section, base) {
+  const scopedToSection = hintsOf(bharat).every(
     (frame) =>
       Object.keys(frame).sort().join(",") === "type,workspace_id" && frame.workspace_id === section.id,
   );
   check(scopedToSection, base + " received hints contain only actual workspace scope");
-  const chenHints = hintsOf(chen).filter((frame) => frame.workspace_id === section.id);
-  check(chenHints.length === 0, base + " sibling subscriber receives no section hints");
+  const chitraHints = hintsOf(chitra).filter((frame) => frame.workspace_id === section.id);
+  check(chitraHints.length === 0, base + " sibling subscriber receives no section hints");
 }
 
-async function checkMyTasksCatchesAssignment(ben, asha, detail, task, base) {
+async function checkMyTasksCatchesAssignment(bharat, asha, detail, task, base) {
   // Assignment changes notify My Tasks without exposing assignment metadata in events.
-  const page = ben.page;
+  const page = bharat.page;
   await page.goto(origin + base + "/my-tasks");
   await buttonNamed(page, "Refresh My Tasks").click();
-  await call(asha, detail + "/assignee", { revision: task.revision, user_id: ben.session.user.id }, "PUT");
+  await call(asha, detail + "/assignee", { revision: task.revision, user_id: bharat.session.user.id }, "PUT");
   await page
     .getByText("Shared assignments may have changed. Refresh My Tasks to check current work.", {
       exact: true,
@@ -197,9 +197,9 @@ async function checkMyTasksCatchesAssignment(ben, asha, detail, task, base) {
   check(true, base + " My Tasks catches new shared responsibility");
 }
 
-async function checkSecondPageCatchUp(ben, asha, shared, section, list, detail, base) {
+async function checkSecondPageCatchUp(bharat, asha, shared, section, list, detail, base) {
   // More than one task page: updating visible cards must not jump to page one.
-  const page = ben.page;
+  const page = bharat.page;
   const path = `/todos/lists/${list.id}/tasks`;
   for (let index = 0; index < 26; index++) {
     await call(asha, path, { client_id: crypto.randomUUID(), title: "Paged experiment " + index });
@@ -231,23 +231,23 @@ async function checkSecondPageCatchUp(ben, asha, shared, section, list, detail, 
   );
 }
 
-async function checkRevocation(ben, admin, section, base) {
+async function checkRevocation(bharat, admin, section, base) {
   await admin.ctx.request.delete(
-    admin.api + `/admin/workspaces/${section.id}/memberships/${ben.session.user.id}`,
+    admin.api + `/admin/workspaces/${section.id}/memberships/${bharat.session.user.id}`,
     { headers: admin.headers },
   );
-  await commentBox(ben.page).waitFor({ state: "hidden" });
-  const cards = await ben.page.locator(".todo-task-list > li").count();
+  await commentBox(bharat.page).waitFor({ state: "hidden" });
+  const cards = await bharat.page.locator(".todo-task-list > li").count();
   check(cards === 0, base + " revocation clears shared cards and composers");
 }
 
 try {
   for (const base of bases) {
-    const ben = await login(base, "ben", { trackSockets: true });
+    const bharat = await login(base, "bharat", { trackSockets: true });
     const asha = await login(base, "asha");
-    const chen = await login(base, "chen", { trackSockets: true });
+    const chitra = await login(base, "chitra", { trackSockets: true });
     const admin = await login(base, "admin");
-    const spaces = (await call(ben, "/workspaces")).workspaces;
+    const spaces = (await call(bharat, "/workspaces")).workspaces;
     const section = spaces.find((workspace) => workspace.name === "Thin Films Section");
     const list = await call(asha, "/todos/lists", {
       client_id: crypto.randomUUID(),
@@ -257,27 +257,27 @@ try {
     const path = `/todos/lists/${list.id}/tasks`;
     let task = await call(asha, path, { client_id: crypto.randomUUID(), title: "Plan experiment" });
     const detail = path + "/" + task.id;
-    await openList(ben, base, section.id, list);
-    const shared = buttonNamed(ben.page, "Check shared updates");
+    await openList(bharat, base, section.id, list);
+    const shared = buttonNamed(bharat.page, "Check shared updates");
     await shared.waitFor();
     await shared.click();
     await shared.waitFor({ state: "hidden" });
-    const panels = await openDraftsOnCard(ben);
+    const panels = await openDraftsOnCard(bharat);
     task = await call(asha, detail, { ...taskFields(task), title: "Reviewed experiment" }, "PUT");
-    await checkDraftsSurviveCatchUp(ben, shared, panels, base);
-    await checkDiscussionCatchUp(ben, asha, panels.discussion, detail, base);
-    task = await checkNewerSignalStaysPending(ben, asha, shared, detail, task, base);
-    await checkFailedCatchUp(ben, asha, shared, panels.discussion, detail, base);
-    task = await checkReconnectCatchUp(ben, asha, shared, panels.discussion, detail, task, base);
-    checkHintScope(ben, chen, section, base);
-    await checkMyTasksCatchesAssignment(ben, asha, detail, task, base);
-    await checkSecondPageCatchUp(ben, asha, shared, section, list, detail, base);
-    await checkRevocation(ben, admin, section, base);
+    await checkDraftsSurviveCatchUp(bharat, shared, panels, base);
+    await checkDiscussionCatchUp(bharat, asha, panels.discussion, detail, base);
+    task = await checkNewerSignalStaysPending(bharat, asha, shared, detail, task, base);
+    await checkFailedCatchUp(bharat, asha, shared, panels.discussion, detail, base);
+    task = await checkReconnectCatchUp(bharat, asha, shared, panels.discussion, detail, task, base);
+    checkHintScope(bharat, chitra, section, base);
+    await checkMyTasksCatchesAssignment(bharat, asha, detail, task, base);
+    await checkSecondPageCatchUp(bharat, asha, shared, section, list, detail, base);
+    await checkRevocation(bharat, admin, section, base);
     check(
-      ben.errors.length === 0 && asha.errors.length === 0 && chen.errors.length === 0,
+      bharat.errors.length === 0 && asha.errors.length === 0 && chitra.errors.length === 0,
       base + " no browser exceptions",
     );
-    await Promise.all([ben.ctx.close(), asha.ctx.close(), chen.ctx.close(), admin.ctx.close()]);
+    await Promise.all([bharat.ctx.close(), asha.ctx.close(), chitra.ctx.close(), admin.ctx.close()]);
   }
   console.log(`${harness.checks()} task update browser checks passed`);
 } finally {

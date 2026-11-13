@@ -37,7 +37,7 @@ import httpx
 import websockets
 from soak import PASSWORD, login, metric, pct
 
-DEFAULT_WORKSPACES = ("Thin Films Section", "Catalysis Section")
+DEFAULT_WORKSPACES = ("Thin Films Section", "Corrosion Section")
 
 
 @dataclass

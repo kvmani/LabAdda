@@ -18,10 +18,10 @@ Rules for the whole track:
 Use this fictional story for tests, browser checks and help screenshots. Extend
 `backend/labadda/fixtures.py` only as far as each package needs.
 
-*Surface Science Division* (Head: Dana) has sections *Thin Films* (steward Asha; members Ben,
-Fay-disabled) and *Catalysis* (member Chen). In one month: (1) Dana retires; Asha is made
-**acting Head** of the division for 60 days; (2) Ben transfers from Thin Films to Catalysis with
-a 7-day handover; (3) Chen is promoted and becomes steward of Catalysis; (4) twelve new joiners
+*Surface Engineering Division* (Head: Deepa) has sections *Thin Films* (steward Asha; members Bharat,
+Farhan-disabled) and *Corrosion* (member Chitra). In one month: (1) Deepa retires; Asha is made
+**acting Head** of the division for 60 days; (2) Bharat transfers from Thin Films to Corrosion with
+a 7-day handover; (3) Chitra is promoted and becomes steward of Corrosion; (4) twelve new joiners
 arrive by spreadsheet; (5) a new section *Sensors* is split from Thin Films; (6) later, Thin
 Films is merged into Sensors.
 
@@ -79,7 +79,7 @@ the people list and profile.
 
 **Acceptance.** Tests: stale digest → 409 and nothing written; concurrent apply of two plans on
 the same person → one succeeds, one 409; every blocker and warning; atomicity (inject a failure
-in the last step and assert no row changed); audit parent + steps; after transfer Ben's socket
+in the last step and assert no row changed); audit parent + steps; after transfer Bharat's socket
 subscription to Thin Films is revoked and a delayed fetch returns 404; stewards notified,
 administrator response contains counts only. Browser suite plays scenario step 2 by buttons and
 keyboard only.

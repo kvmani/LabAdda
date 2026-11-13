@@ -34,7 +34,7 @@ def prepare(api, workspace, target_workspace=None):
 
 @pytest.mark.parametrize("destination", [None, "section_a", "division"])
 def test_scope_confirmation_replay_and_protected_context(as_user, ids, db_factory, destination):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     dest = ids["workspaces"][destination] if destination else None
     target, url, body = prepare(api, ws, dest)
@@ -55,14 +55,16 @@ def test_scope_confirmation_replay_and_protected_context(as_user, ids, db_factor
     assert api.post(url, json=body).json()["id"] == task["id"]  # lost reply after later ink
     assert api.post(url, json={**body, "client_id": str(uuid.uuid4())}).status_code == 409
     if destination == "division":
-        assert as_user("chen").get(path).status_code == 200
-        response = as_user("chen").get(path + "/source")
+        assert as_user("chitra").get(path).status_code == 200
+        response = as_user("chitra").get(path + "/source")
         assert response.status_code == 404 and ws not in response.text
-        assert ws not in str(as_user("chen").get(path + "/history").json())
+        assert ws not in str(as_user("chitra").get(path + "/history").json())
     with db_factory() as db:
         assert len(db.scalars(select(TodoSource)).all()) == 1
         db.execute(
-            delete(Membership).where(Membership.user_id == ids["users"]["ben"], Membership.workspace_id == ws)
+            delete(Membership).where(
+                Membership.user_id == ids["users"]["bharat"], Membership.workspace_id == ws
+            )
         )
         db.commit()
     assert api.post(url, json=body).status_code == 404
@@ -91,11 +93,11 @@ def test_restore_and_purge_preserve_recorded_context_and_copy(as_user, ids, db_f
 
 
 def test_source_reader_and_destination_writer_and_panel(as_user, ids, make_client, db_factory):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     _target, url, body = prepare(api, ws)
     assert api.client.post(api.url(url), json=body).status_code == 403
-    for name in ["chen", "dana", "admin"]:
+    for name in ["chitra", "deepa", "admin"]:
         own = new_list(as_user(name))
         assert as_user(name).post(f"/todos/lists/{own['id']}/from-board", json=body).status_code == 404
     assert pair(as_user, make_client, ids).post(url, json=body).status_code == 401
@@ -109,7 +111,7 @@ def test_source_reader_and_destination_writer_and_panel(as_user, ids, make_clien
 
 @pytest.mark.parametrize("shared", [False, True])
 def test_waiting_reference_rechecks_locked_board_context(as_user, ids, db_factory, shared):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     _, url, body = prepare(api, ws, ws if shared else None)
     with db_factory() as writer, ThreadPoolExecutor(max_workers=1) as pool:
@@ -142,7 +144,7 @@ def test_waiting_reference_rechecks_locked_board_context(as_user, ids, db_factor
 
 
 def test_rollback_and_populated_downgrade_guard(as_user, ids, settings, db_factory, monkeypatch):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, url, body = prepare(api, ids["workspaces"]["section_a"])
     with monkeypatch.context() as patch:
 
@@ -167,7 +169,7 @@ def test_source_view_final_grant_recheck_and_expiry_before_commit(as_user, ids, 
     from labadda import identity_locks
     from labadda.api import task_board_conversion
 
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     target, url, body = prepare(api, ws)
     with monkeypatch.context() as patch:
@@ -190,7 +192,7 @@ def test_source_view_final_grant_recheck_and_expiry_before_commit(as_user, ids, 
         calls += 1
         if calls == 1:
             with db_factory() as db:
-                db.execute(delete(Membership).where(Membership.user_id == ids["users"]["ben"]))
+                db.execute(delete(Membership).where(Membership.user_id == ids["users"]["bharat"]))
                 db.commit()
         return board
 
@@ -204,7 +206,7 @@ def test_source_purged_during_final_identity_refresh_is_uniformly_missing(
 ):
     from labadda.api import task_board_conversion
 
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     target, url, body = prepare(api, ws)
     row = api.post(url, json=body).json()
@@ -225,13 +227,13 @@ def test_source_purged_during_final_identity_refresh_is_uniformly_missing(
 
 
 def test_context_lookup_is_bounded_private_and_requires_existing_board(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     ws = ids["workspaces"]["section_a"]
     _, _, body = prepare(api, ws)
     assert api.get("/todos/board-context/" + ws).json() == {
         "epoch": body["source_epoch"],
         "revision": body["source_revision"],
     }
-    for name in ["chen", "dana", "admin"]:
+    for name in ["chitra", "deepa", "admin"]:
         assert as_user(name).get("/todos/board-context/" + ws).status_code == 404
     assert api.get("/todos/board-context/" + ws, headers={"X-LabAdda-Panel": "1"}).status_code == 401

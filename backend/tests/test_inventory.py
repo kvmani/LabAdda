@@ -11,7 +11,7 @@ from labadda.models import Asset, StorageInspection
 
 
 def test_inventory_classification_and_private_receipt(as_user, settings, db_factory):
-    api = as_user("ben")
+    api = as_user("bharat")
     payload = b"%PDF-1.4\nfixture\n%%EOF"
     assert (
         api.post("/uploads", files={"file": ("private-title.pdf", payload, "application/pdf")}).status_code
@@ -88,7 +88,7 @@ def test_entry_budget_counts_directories_and_never_claims_completion(settings, d
 
 
 def test_reference_budget_stops_before_classifying_files(as_user, settings, db_factory):
-    api = as_user("ben")
+    api = as_user("bharat")
     for _ in range(2):
         assert (
             api.post("/uploads", files={"file": ("a.pdf", b"%PDF-1.4\na", "application/pdf")}).status_code

@@ -164,7 +164,7 @@ async function checkProblems(page, base, tag) {
   check(/Urgent/.test(entries[0]) && /scheduled task has not run/.test(entries[0]), label + " event first");
   check(/Unavailable/.test(entries[1]) && /Backups/.test(entries[1]), label + " stale backup second");
   check(
-    /Warning/.test(entries[2]) && /Catalysis Section/.test(entries[2]),
+    /Warning/.test(entries[2]) && /Corrosion Section/.test(entries[2]),
     label + " unit without steward last",
   );
   await page.screenshot({ path: `${output}/overview-problems-${tag}.png`, fullPage: true });
@@ -234,8 +234,8 @@ try {
   ]) {
     rmSync(instance(base) + "/status/backup-status.json", { force: true });
     const admin = await login(base, "admin");
-    const reader = await login(base, "dana");
-    const member = await login(base, "ben");
+    const reader = await login(base, "deepa");
+    const member = await login(base, "bharat");
     try {
       await checkClean(admin.page, base, tag);
       await checkProblems(admin.page, base, tag);

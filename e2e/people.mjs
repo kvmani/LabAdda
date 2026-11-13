@@ -73,7 +73,7 @@ async function directory(page, base) {
   await page.getByRole("button", { name: "First people page", exact: true }).waitFor();
   check(new URL(page.url()).searchParams.has("cursor"), base + " directory pages by URL cursor");
   await page.getByRole("button", { name: "First people page", exact: true }).click();
-  await filter(page, "NW-100", "Ben Okafor");
+  await filter(page, "NM-100", "Bharat Kulkarni");
   check(!new URL(page.url()).searchParams.has("cursor"), base + " new search resets pagination");
   check(
     await page.getByRole("searchbox").evaluate((input) => input === document.activeElement),
@@ -83,11 +83,11 @@ async function directory(page, base) {
   await page.getByText("No people match these filters", { exact: true }).waitFor();
   check(true, base + " status filter has useful empty state");
   await page.getByLabel("Employment status", { exact: true }).selectOption("active");
-  await page.getByRole("button", { name: "View profile for Ben Okafor", exact: true }).waitFor();
+  await page.getByRole("button", { name: "View profile for Bharat Kulkarni", exact: true }).waitFor();
   await page.getByLabel("Sort people by").selectOption("employee_no");
   await page.getByLabel("Descending order", { exact: true }).check();
   await page.reload();
-  await page.getByRole("button", { name: "View profile for Ben Okafor", exact: true }).waitFor();
+  await page.getByRole("button", { name: "View profile for Bharat Kulkarni", exact: true }).waitFor();
   check(
     await page.getByLabel("Descending order", { exact: true }).isChecked(),
     base + " refresh preserves filters and order",
@@ -101,11 +101,11 @@ async function directory(page, base) {
   await page.setViewportSize({ width: 1400, height: 1100 });
 }
 async function profile(page, base) {
-  const opener = page.getByRole("button", { name: "View profile for Ben Okafor", exact: true });
+  const opener = page.getByRole("button", { name: "View profile for Bharat Kulkarni", exact: true });
   await opener.focus();
   await page.keyboard.press("Enter");
-  const dialog = page.getByRole("dialog", { name: "Ben Okafor", exact: true });
-  await dialog.getByText("ben@research.example", { exact: true }).waitFor();
+  const dialog = page.getByRole("dialog", { name: "Bharat Kulkarni", exact: true });
+  await dialog.getByText("bharat@research.example", { exact: true }).waitFor();
   check(
     await dialog.getByText("3 Jul 2023", { exact: true }).isVisible(),
     base + " date stays in site calendar",
@@ -141,16 +141,16 @@ async function profile(page, base) {
     await opener.evaluate((button) => button === document.activeElement),
     base + " closing returns focus to selected person",
   );
-  check(new URL(page.url()).searchParams.get("q") === "NW-100", base + " profile preserves list filters");
+  check(new URL(page.url()).searchParams.get("q") === "NM-100", base + " profile preserves list filters");
 }
 async function report(page, base) {
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export matching people", exact: true }).click();
   const file = await download;
   const csv = readFileSync(await file.path(), "utf8");
-  check(csv.includes("NW-100") && !csv.includes("Chen Li"), base + " CSV uses all matching filters");
+  check(csv.includes("NM-100") && !csv.includes("Chitra Iyer"), base + " CSV uses all matching filters");
   check(
-    !csv.includes("ben@research.example") &&
+    !csv.includes("bharat@research.example") &&
       !csv.includes("contact_email") &&
       !csv.includes("PRIVATE-AUDIT-DETAIL"),
     base + " CSV excludes contacts and private detail",
@@ -184,20 +184,20 @@ async function hold(page, pattern) {
 }
 async function races(admin, reviewer, base) {
   const { page } = admin;
-  await page.goto(origin + base + "/admin/people?q=Chen");
-  await page.getByRole("button", { name: "View profile for Chen Li", exact: true }).waitFor();
-  const delayed = await hold(page, "**/api/v1/admin/people?q=Ben");
-  await page.getByRole("searchbox").fill("Ben");
+  await page.goto(origin + base + "/admin/people?q=Chitra");
+  await page.getByRole("button", { name: "View profile for Chitra Iyer", exact: true }).waitFor();
+  const delayed = await hold(page, "**/api/v1/admin/people?q=Bharat");
+  await page.getByRole("searchbox").fill("Bharat");
   await delayed.waiting;
-  await filter(page, "Chen", "Chen Li");
+  await filter(page, "Chitra", "Chitra Iyer");
   delayed.release();
   await delayed.completion;
   check(
-    (await page.getByRole("button", { name: "View profile for Ben Okafor", exact: true }).count()) === 0,
+    (await page.getByRole("button", { name: "View profile for Bharat Kulkarni", exact: true }).count()) === 0,
     base + " late directory response cannot replace current filter",
   );
-  const pending = await hold(page, "**/api/v1/admin/people?q=Ben");
-  await page.getByRole("searchbox").fill("Ben");
+  const pending = await hold(page, "**/api/v1/admin/people?q=Bharat");
+  await page.getByRole("searchbox").fill("Bharat");
   await pending.waiting;
   const endpoint = origin + base + "/api/v1";
   const session = await (await reviewer.context.request.get(endpoint + "/auth/session")).json();
@@ -228,7 +228,7 @@ try {
     seed(base);
     const admin = await login(base, "admin");
     const reviewer = await login(base, "reviewadmin");
-    const member = await login(base, "ben");
+    const member = await login(base, "bharat");
     try {
       await directory(admin.page, base);
       await profile(admin.page, base);

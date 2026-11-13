@@ -15,7 +15,7 @@ from tests.test_todos import task_body
 def test_mutations_publish_only_after_commit_and_replays_stay_quiet(
     as_user, ids, app, db_factory, monkeypatch
 ):
-    api = as_user("ben")
+    api = as_user("bharat")
     workspace = ids["workspaces"]["section_a"]
     observed = []
 
@@ -67,21 +67,22 @@ def test_mutations_publish_only_after_commit_and_replays_stay_quiet(
     assert api.post(detail + "/comments", json=comment).status_code == 201
     assert len(observed) == 6
     assert api.put(detail, json=edit).status_code == 409
-    assert as_user("chen").post(detail + "/comments", json=comment).status_code == 404
+    assert as_user("chitra").post(detail + "/comments", json=comment).status_code == 404
     assert len(observed) == 6
 
 
 def test_personal_mutations_never_enter_workspace_channels(as_user, app, monkeypatch, ids):
     events = []
     monkeypatch.setattr(app.state.hub, "publish", lambda *args: events.append(args))
-    api = as_user("ben")
+    api = as_user("bharat")
     row, _created, path = task(api)
     api.put("/todos/lists/" + row["id"], json={"revision": 1, "title": "Private rename"})
     fields = task_body()
     fields.pop("client_id")
     assert api.put(path, json={**fields, "revision": 1}).status_code == 200
     assert (
-        api.put(path + "/assignee", json={"revision": 2, "user_id": ids["users"]["ben"]}).status_code == 200
+        api.put(path + "/assignee", json={"revision": 2, "user_id": ids["users"]["bharat"]}).status_code
+        == 200
     )
     assert (
         api.post(path + "/comments", json={"client_id": str(uuid.uuid4()), "body": "Private"}).status_code
@@ -91,7 +92,7 @@ def test_personal_mutations_never_enter_workspace_channels(as_user, app, monkeyp
 
 
 def test_commit_failure_emits_nothing(as_user, ids, app, db_factory, monkeypatch):
-    api = as_user("ben")
+    api = as_user("bharat")
     events = []
     monkeypatch.setattr(app.state.hub, "publish", lambda *args: events.append(args))
     with monkeypatch.context() as patch:
@@ -116,14 +117,14 @@ def test_commit_failure_emits_nothing(as_user, ids, app, db_factory, monkeypatch
 
 def test_delivery_rechecks_grants_and_reconnect_reads_durable_state(as_user, ids, settings, app, db_factory):
     workspace = ids["workspaces"]["section_a"]
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     _row, _created, path = task(asha, workspace)
-    with shared_loop_sockets(app, settings, [ben, asha], workspace) as (ben_ws, asha_ws):
+    with shared_loop_sockets(app, settings, [bharat, asha], workspace) as (bharat_ws, asha_ws):
         # Bypass explicit socket revocation: delivery itself must enforce the new grant.
         with db_factory() as db:
             db.execute(
                 delete(Membership).where(
-                    Membership.user_id == ids["users"]["ben"], Membership.workspace_id == workspace
+                    Membership.user_id == ids["users"]["bharat"], Membership.workspace_id == workspace
                 )
             )
             db.commit()
@@ -133,9 +134,9 @@ def test_delivery_rechecks_grants_and_reconnect_reads_durable_state(as_user, ids
             ).status_code
             == 201
         )
-        assert recv_until(ben_ws, "revoked")["workspace_id"] == workspace
+        assert recv_until(bharat_ws, "revoked")["workspace_id"] == workspace
         assert recv_until(asha_ws, "tasks.changed") == {"type": "tasks.changed", "workspace_id": workspace}
-        assert ben.get(path + "/comments").status_code == 404
+        assert bharat.get(path + "/comments").status_code == 404
     # No socket is open during this write. HTTP catch-up still returns committed state.
     assert (
         asha.post(

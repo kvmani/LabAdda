@@ -41,8 +41,8 @@ async function audit(page, width, label) {
 }
 const FILE =
   "employee_no,username,display_name,designation,unit_code,role,status,effective_on\n" +
-  "NW-701,imp.one,Imani One,Research Officer,CS,member,,2026-12-01\n" +
-  "NW-702,imp.two,Ira Two,,TFS,steward,,\n" +
+  "NM-701,imp.one,Imani One,Research Officer,CS,member,,2026-12-01\n" +
+  "NM-702,imp.two,Ira Two,,TFS,steward,,\n" +
   ",imp.bad,Bad Row,,NOPE,,,\n";
 
 async function importList(page, base) {
@@ -109,17 +109,17 @@ async function bulkSuspend(page, base) {
   check(true, base + " bulk suspension applied");
 }
 async function denied(base) {
-  const ben = await login(base, "ben");
+  const bharat = await login(base, "bharat");
   try {
     const endpoint = origin + base + "/api/v1";
-    const session = await (await ben.context.request.get(endpoint + "/auth/session")).json();
-    const post = await ben.context.request.post(endpoint + "/admin/changes/import/preview", {
+    const session = await (await bharat.context.request.get(endpoint + "/auth/session")).json();
+    const post = await bharat.context.request.post(endpoint + "/admin/changes/import/preview", {
       headers: { "X-CSRF-Token": session.csrf_token, "Content-Type": "text/csv" },
       data: FILE,
     });
     check(post.status() === 403, base + " member cannot use the import API");
   } finally {
-    await ben.context.close();
+    await bharat.context.close();
   }
 }
 try {

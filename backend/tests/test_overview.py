@@ -99,7 +99,7 @@ def test_stale_backup_unit_without_steward_and_open_event_in_severity_order(
         steward = db.scalar(
             select(Membership).where(
                 Membership.workspace_id
-                == db.scalar(select(Workspace.id).where(Workspace.name == "Catalysis Section")),
+                == db.scalar(select(Workspace.id).where(Workspace.name == "Corrosion Section")),
                 Membership.role == "steward",
             )
         )
@@ -126,7 +126,7 @@ def test_stale_backup_unit_without_steward_and_open_event_in_severity_order(
     routes = [e["route"] for e in body["attention"]]
     assert routes[1:] == ["/admin/backups", "/admin/org"]
     assert routes[0].startswith("/admin/events?state=open&event=")
-    assert "Catalysis Section" in body["attention"][2]["detail"]
+    assert "Corrosion Section" in body["attention"][2]["detail"]
     assert body["overall"] == "unavailable"
     assert tiles(body)["open_events"]["by_severity"]["critical"] == 1
 
@@ -188,16 +188,16 @@ def test_enough_people_are_sent_like_the_activity_page(as_user, app, db_factory)
 
 def test_access_follows_the_console_rules(as_user, make_client, ids):
     assert as_user("admin").get(OVERVIEW).status_code == 200
-    for username in ("asha", "chen", "ben"):
+    for username in ("asha", "chitra", "bharat"):
         assert as_user(username).get(OVERVIEW).status_code == 403
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").get(OVERVIEW).status_code == 200
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").get(OVERVIEW).status_code == 200
     assert make_client().get(OVERVIEW).status_code == 401
     assert pair(as_user, make_client, ids).get(OVERVIEW).status_code == 401
 
 
 def test_overview_contains_no_user_content(as_user, ids, app, db_factory, status_dir):
-    member = as_user("ben")
+    member = as_user("bharat")
     secrets = (
         "Synthetic overview post body",
         "Synthetic overview chat text",
@@ -214,8 +214,8 @@ def test_overview_contains_no_user_content(as_user, ids, app, db_factory, status
     bs.write_status(status_dir, receipt(60))
     seed_gauges(db_factory)
     admin = as_user("admin")
-    assert grant(admin, ids["users"]["chen"]).status_code == 201
-    bodies = [admin.get(OVERVIEW).text, as_user("chen").get(OVERVIEW).text]
+    assert grant(admin, ids["users"]["chitra"]).status_code == 201
+    bodies = [admin.get(OVERVIEW).text, as_user("chitra").get(OVERVIEW).text]
     for secret in secrets:
         assert not any(secret in body for body in bodies)
     assert not any(str(status_dir) in body for body in bodies)

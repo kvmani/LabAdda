@@ -25,7 +25,7 @@ const ITEM = {
   note: "Something this change depends on was changed after it was scheduled.",
   reason: "Moves with the new term",
   subject_id: "p1",
-  steps: ["Move Ben Okafor to Catalysis Section"],
+  steps: ["Move Bharat Kulkarni to Corrosion Section"],
   created_by: "Site Administrator",
   created_at: "2026-11-01T10:00:00Z",
 };
@@ -44,7 +44,7 @@ it("lists a change needing review with its reason and cancels it with a reason",
   render(<ScheduledChanges onDenied={vi.fn()} />);
   expect(await screen.findByText(/Needs review/)).toBeTruthy();
   expect(screen.getByText(/changed after it was scheduled/)).toBeTruthy();
-  expect(screen.getByText("Move Ben Okafor to Catalysis Section")).toBeTruthy();
+  expect(screen.getByText("Move Bharat Kulkarni to Corrosion Section")).toBeTruthy();
   vi.mocked(api).mockResolvedValueOnce({ cancelled: true }).mockResolvedValueOnce({ items: [] });
   fireEvent.click(screen.getByRole("button", { name: "Dismiss this change" }));
   fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Plans changed" } });
@@ -72,7 +72,7 @@ it("lists attention items with a link to the fix", async () => {
         id: "people:no-home-unit",
         severity: "warning",
         title: "1 person has no home unit",
-        detail: "Ben Okafor. Transfer them.",
+        detail: "Bharat Kulkarni. Transfer them.",
         route: "/admin/people",
       },
     ],

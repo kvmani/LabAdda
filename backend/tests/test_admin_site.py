@@ -84,10 +84,10 @@ def test_missing_file_or_folder_is_unknown(as_user, status_dir, app):
 
 
 def test_backups_visible_to_usage_readers_but_not_members(as_user, ids):
-    assert as_user("ben").get("/admin/backups/status").status_code == 403
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").get("/admin/backups/status").status_code == 200
-    assert as_user("ben").get("/admin/settings").status_code == 403
+    assert as_user("bharat").get("/admin/backups/status").status_code == 403
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").get("/admin/backups/status").status_code == 200
+    assert as_user("bharat").get("/admin/settings").status_code == 403
 
 
 def test_settings_show_no_secret_path_or_host(as_user, app, tmp_path):
@@ -130,13 +130,13 @@ def banner_body(**changes):
 
 
 def test_banner_is_audited_escaped_and_time_bounded(as_user, db_factory):
-    admin, ben = as_user("admin"), as_user("ben")
-    assert ben.get("/site/banner").json() == {"banner": None}
+    admin, bharat = as_user("admin"), as_user("bharat")
+    assert bharat.get("/site/banner").json() == {"banner": None}
     markup = "<script>alert(1)</script> back at 6"
     saved = admin.put("/admin/settings/banner", banner_body(message=markup))
     assert saved.status_code == 200
     assert saved.json()["banner"]["revision"] == 1
-    shown = ben.get("/site/banner").json()["banner"]
+    shown = bharat.get("/site/banner").json()["banner"]
     assert shown["message"] == markup and shown["level"] == "warning" and "revision" not in shown
     assert admin.get("/admin/settings").json()["banner"]["message"] == markup
     with db_factory() as db:
@@ -149,13 +149,13 @@ def test_banner_is_audited_escaped_and_time_bounded(as_user, db_factory):
         row.starts_at = utcnow() + timedelta(hours=1)
         row.ends_at = utcnow() + timedelta(hours=3)
         db.commit()
-    assert ben.get("/site/banner").json() == {"banner": None}
+    assert bharat.get("/site/banner").json() == {"banner": None}
     with db_factory() as db:
         row = db.get(SiteBanner, 1)
         row.starts_at = utcnow() - timedelta(hours=3)
         row.ends_at = utcnow() - timedelta(hours=1)
         db.commit()
-    assert ben.get("/site/banner").json() == {"banner": None}
+    assert bharat.get("/site/banner").json() == {"banner": None}
 
 
 def test_banner_validation_and_concurrency(as_user, db_factory):
@@ -180,9 +180,9 @@ def test_banner_validation_and_concurrency(as_user, db_factory):
 
 
 def test_banner_writes_need_an_administrator(as_user, ids):
-    assert as_user("ben").put("/admin/settings/banner", banner_body()).status_code == 403
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").put("/admin/settings/banner", banner_body()).status_code == 403
+    assert as_user("bharat").put("/admin/settings/banner", banner_body()).status_code == 403
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").put("/admin/settings/banner", banner_body()).status_code == 403
 
 
 def test_banner_needs_a_person_session(as_user, make_client, ids):

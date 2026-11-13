@@ -28,7 +28,7 @@ def test_unauthenticated_socket_rejected(make_client, settings):
 def test_bad_origin_rejected(as_user, settings):
     with (
         pytest.raises(WebSocketDisconnect),
-        as_user("ben").client.websocket_connect(
+        as_user("bharat").client.websocket_connect(
             ws_url(settings), headers={"origin": "http://evil.example"}
         ) as c,
     ):
@@ -36,9 +36,9 @@ def test_bad_origin_rejected(as_user, settings):
 
 
 def test_subscribe_scope_and_live_chat(as_user, ids, settings):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     a = ids["workspaces"]["section_a"]
-    with ben.client.websocket_connect(ws_url(settings)) as conn:
+    with bharat.client.websocket_connect(ws_url(settings)) as conn:
         assert conn.receive_json()["type"] == "hello"
         conn.send_json({"type": "subscribe", "workspace_id": ids["workspaces"]["section_b"]})
         assert conn.receive_json()["type"] == "subscribe_failed"
@@ -50,13 +50,13 @@ def test_subscribe_scope_and_live_chat(as_user, ids, settings):
 
 
 def test_membership_removal_revokes_subscription(as_user, ids, settings):
-    ben, asha = as_user("ben"), as_user("asha")
+    bharat, asha = as_user("bharat"), as_user("asha")
     a = ids["workspaces"]["section_a"]
-    with ben.client.websocket_connect(ws_url(settings)) as conn:
+    with bharat.client.websocket_connect(ws_url(settings)) as conn:
         conn.receive_json()
         conn.send_json({"type": "subscribe", "workspace_id": a})
         recv_until(conn, "subscribed")
-        as_user("admin").delete(f"/admin/workspaces/{a}/memberships/{ids['users']['ben']}")
+        as_user("admin").delete(f"/admin/workspaces/{a}/memberships/{ids['users']['bharat']}")
         assert recv_until(conn, "revoked")["workspace_id"] == a
         asha.post(f"/workspaces/{a}/chat", json={"body": "after removal", "client_id": "live-0002"})
         conn.send_json({"type": "ping"})
@@ -68,19 +68,19 @@ def test_membership_removal_revokes_subscription(as_user, ids, settings):
 
 
 def test_deactivation_ends_socket(as_user, ids, settings):
-    ben = as_user("ben")
-    with ben.client.websocket_connect(ws_url(settings)) as conn:
+    bharat = as_user("bharat")
+    with bharat.client.websocket_connect(ws_url(settings)) as conn:
         conn.receive_json()
         conn.send_json({"type": "subscribe", "workspace_id": ids["workspaces"]["section_a"]})
         recv_until(conn, "subscribed")
-        as_user("admin").patch(f"/admin/users/{ids['users']['ben']}", json={"is_active": False})
+        as_user("admin").patch(f"/admin/users/{ids['users']['bharat']}", json={"is_active": False})
         assert recv_until(conn, "session_ended")
 
 
 def test_board_preview_relay(as_user, ids, settings):
     a = ids["workspaces"]["section_a"]
     with (
-        as_user("ben").client.websocket_connect(ws_url(settings)) as b,
+        as_user("bharat").client.websocket_connect(ws_url(settings)) as b,
         as_user("asha").client.websocket_connect(ws_url(settings)) as s,
     ):
         for c in (b, s):
@@ -113,7 +113,7 @@ def shared_loop_sockets(app, settings, apis, workspace_id):
 def test_fanout_is_ordered_and_complete_for_every_subscriber(as_user, ids, settings, app):
     """A burst of events reaches every subscriber, in commit order, through one batched recheck."""
     a = ids["workspaces"]["section_a"]
-    with shared_loop_sockets(app, settings, [as_user("ben"), as_user("asha")], a) as socks:
+    with shared_loop_sockets(app, settings, [as_user("bharat"), as_user("asha")], a) as socks:
         for i in range(60):
             app.state.hub.publish(
                 a,
@@ -130,7 +130,7 @@ def test_fanout_is_ordered_and_complete_for_every_subscriber(as_user, ids, setti
 
 def test_batched_recheck_drops_only_the_revoked_subscriber(as_user, ids, settings, app):
     a = ids["workspaces"]["section_a"]
-    with shared_loop_sockets(app, settings, [as_user("ben"), as_user("asha")], a) as (ben_ws, asha_ws):
+    with shared_loop_sockets(app, settings, [as_user("bharat"), as_user("asha")], a) as (bharat_ws, asha_ws):
         # Remove access directly in the database, bypassing the hub's revalidation signal:
         # the per-delivery recheck alone must stop delivery.
         from sqlalchemy import text
@@ -138,17 +138,17 @@ def test_batched_recheck_drops_only_the_revoked_subscriber(as_user, ids, setting
         with app.state.session_factory() as db:
             db.execute(
                 text("delete from memberships where user_id = :u and workspace_id = :w"),
-                {"u": ids["users"]["ben"], "w": a},
+                {"u": ids["users"]["bharat"], "w": a},
             )
             db.commit()
         app.state.hub.publish(
             a, {"type": "chat.message", "message": {"workspace_id": a, "client_id": "after"}}
         )
-        assert recv_until(ben_ws, "revoked")["workspace_id"] == a
+        assert recv_until(bharat_ws, "revoked")["workspace_id"] == a
         assert recv_until(asha_ws, "chat.message")["message"]["client_id"] == "after"
-        ben_ws.send_json({"type": "ping"})
+        bharat_ws.send_json({"type": "ping"})
         for _ in range(5):
-            msg = ben_ws.receive_json()
+            msg = bharat_ws.receive_json()
             assert msg["type"] != "chat.message"
             if msg["type"] == "pong":
                 break
@@ -161,13 +161,13 @@ def test_stalled_client_is_closed_without_blocking_others(as_user, ids, settings
 
     a = ids["workspaces"]["section_a"]
     monkeypatch.setattr(realtime, "SEND_TIMEOUT_SECONDS", 0.2)
-    with shared_loop_sockets(app, settings, [as_user("ben"), as_user("asha")], a) as (_ben_ws, asha_ws):
+    with shared_loop_sockets(app, settings, [as_user("bharat"), as_user("asha")], a) as (_bharat_ws, asha_ws):
         hub = app.state.hub
-        ben_conn = next(c for c in hub.connections if str(c.user_id) == ids["users"]["ben"])
+        bharat_conn = next(c for c in hub.connections if str(c.user_id) == ids["users"]["bharat"])
         original = hub._send
 
         async def stalled(conn, payload, **kwargs):
-            if conn is ben_conn and payload.get("type") == "chat.message":
+            if conn is bharat_conn and payload.get("type") == "chat.message":
                 await asyncio.sleep(5)  # simulates a client whose socket buffer never drains
             await original(conn, payload, **kwargs)
 
@@ -181,9 +181,9 @@ def test_stalled_client_is_closed_without_blocking_others(as_user, ids, settings
         assert recv_until(asha_ws, "chat.message")["message"]["client_id"] == "two"
         assert time.monotonic() - started < 3  # not held for the stalled client's 5 s
         deadline = time.monotonic() + 3
-        while ben_conn in hub.connections and time.monotonic() < deadline:
+        while bharat_conn in hub.connections and time.monotonic() < deadline:
             time.sleep(0.05)
-        assert ben_conn not in hub.connections  # the stalled client was closed, not waited on
+        assert bharat_conn not in hub.connections  # the stalled client was closed, not waited on
 
 
 def test_revocation_during_batch_stops_remaining_content(settings, monkeypatch):
@@ -357,20 +357,22 @@ def test_auth_revocation_closes_existing_socket(as_user, ids, settings, app, act
     from labadda.credentials import issue_credential
     from labadda.models import User
 
-    ben = as_user("ben")
-    with shared_loop_sockets(app, settings, [ben], ids["workspaces"]["section_a"]) as (sock,):
+    bharat = as_user("bharat")
+    with shared_loop_sockets(app, settings, [bharat], ids["workspaces"]["section_a"]) as (sock,):
         if action == "activate":
             with app.state.session_factory() as db:
-                user = db.get(User, ids["users"]["ben"])
+                user = db.get(User, ids["users"]["bharat"])
                 token, _credential = issue_credential(db, user, "reset", None, settings)
                 db.commit()
-            response = ben.post("/auth/activate", json={"token": token, "password": "new-fixture-pass-123"})
+            response = bharat.post(
+                "/auth/activate", json={"token": token, "password": "new-fixture-pass-123"}
+            )
         elif action == "password":
-            response = ben.post(
+            response = bharat.post(
                 "/auth/password",
                 json={"current_password": "fixture-pass-123", "new_password": "new-fixture-pass-123"},
             )
         else:
-            response = ben.post("/auth/logout")
+            response = bharat.post("/auth/logout")
         assert response.status_code == 200
         assert recv_until(sock, "session_ended")["reason"] == "session_ended"

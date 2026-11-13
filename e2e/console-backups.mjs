@@ -174,7 +174,7 @@ async function checkMember(member, base) {
 
 for (const base of ["", "/labadda-staging"]) {
   const admin = await login(base, "admin");
-  const member = await login(base, "ben");
+  const member = await login(base, "bharat");
   await checkBackups(admin, base);
   await checkSettings(admin, member, base);
   await checkMember(member, base);

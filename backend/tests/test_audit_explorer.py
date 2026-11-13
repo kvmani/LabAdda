@@ -29,44 +29,44 @@ def events(client, query=""):
 
 
 def test_filters_combine(as_user, ids, db_factory):
-    admin, asha, ben = ids["users"]["admin"], ids["users"]["asha"], ids["users"]["ben"]
+    admin, asha, bharat = ids["users"]["admin"], ids["users"]["asha"], ids["users"]["bharat"]
     unit = ids["workspaces"]["section_a"]
     day = datetime(2026, 3, 10, 12, tzinfo=UTC)
     seed(
         db_factory,
         [
             {"actor_id": admin, "action": "membership.set", "scope_type": "workspace",
-             "scope_id": str(unit), "target_id": str(ben), "reason": "Joined the lab", "created_at": day},
+             "scope_id": str(unit), "target_id": str(bharat), "reason": "Joined the lab", "created_at": day},
             {"actor_id": admin, "action": "membership.remove", "scope_type": "workspace",
              "scope_id": str(unit), "target_id": str(asha), "reason": "100% moved", "created_at": day},
             {"actor_id": asha, "action": "auth.login", "scope_type": "identity", "outcome": "denied",
              "target_id": str(asha), "created_at": day + timedelta(days=2)},
             {"actor_id": admin, "action": "identity.update", "scope_type": "identity",
-             "target_id": str(ben), "created_at": day - timedelta(days=30)},
+             "target_id": str(bharat), "created_at": day - timedelta(days=30)},
         ],
     )  # fmt: skip
     client = as_user("admin")
     actions = lambda q: {e["action"] for e in events(client, q)["events"]}  # noqa: E731
     assert actions("group=access&start=2026-03-10&end=2026-03-10") == {"membership.set", "membership.remove"}
-    assert actions(f"group=access&person_id={ben}") == {"membership.set"}
+    assert actions(f"group=access&person_id={bharat}") == {"membership.set"}
     assert actions(f"unit_id={unit}&q=joined") == {"membership.set"}
     assert actions("q=100%25") == {"membership.remove"}
     assert actions("q=%25") == {"membership.remove"}  # a literal percent, not a wildcard
     assert actions(f"actor_id={asha}&outcome=denied") == {"auth.login"}
     assert actions(f"actor_id={asha}&outcome=success") == set()
     assert actions("group=sign_in&start=2026-03-11") == {"auth.login"}
-    assert actions(f"person_id={ben}&end=2026-03-01") == {"identity.update"}
+    assert actions(f"person_id={bharat}&end=2026-03-01") == {"identity.update"}
     assert client.get("/admin/audit?group=nonsense").status_code == 422
     assert client.get("/admin/audit?start=2026-03-12&end=2026-03-10").status_code == 422
 
 
 def test_events_carry_sentence_and_before_after(as_user, ids, db_factory):
-    admin, ben = ids["users"]["admin"], ids["users"]["ben"]
+    admin, bharat = ids["users"]["admin"], ids["users"]["bharat"]
     with db_factory() as db:
         db.add(
             AuditEvent(
                 actor_id=admin, action="membership.set", scope_type="workspace",
-                scope_id=str(ids["workspaces"]["section_a"]), target_id=str(ben),
+                scope_id=str(ids["workspaces"]["section_a"]), target_id=str(bharat),
                 detail={"before": "reader", "after": "member", "contact_email": "x@y.example"},
             )
         )  # fmt: skip
@@ -173,9 +173,9 @@ def test_export_cap_refuses_without_partial_file_or_record(as_user, ids, db_fact
 @pytest.mark.parametrize("path", ["/admin/audit", "/admin/audit/export.csv"])
 def test_only_current_administrators(as_user, make_client, ids, db_factory, path):
     admin = as_user("admin")
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").get(path).status_code == 403  # usage reader
-    assert as_user("chen").get(path).status_code == 403  # plain member
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").get(path).status_code == 403  # usage reader
+    assert as_user("chitra").get(path).status_code == 403  # plain member
     assert make_client().get(path).status_code == 401
     panel = pair(as_user, make_client, ids)
     assert panel.get(path).status_code == 401
@@ -184,7 +184,7 @@ def test_only_current_administrators(as_user, make_client, ids, db_factory, path
 
 
 def test_no_private_content_in_explorer_or_export(as_user, ids):
-    member = as_user("ben")
+    member = as_user("bharat")
     secrets = ("Synthetic note title zq", "Synthetic post body zq", "synthetic-file-zq.pdf")
     assert member.post("/notes", json={"title": secrets[0], "body": secrets[0]}).status_code == 201
     workspace = ids["workspaces"]["section_a"]

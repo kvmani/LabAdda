@@ -20,7 +20,7 @@ You need to be a site administrator. Have the person's full name, a username for
 2. Type the **Full name** and the **Username**. Fill in the optional fields you have. Leave **Start date** empty for today. Choose **Next**.
 3. Choose the **Home unit** and the **Role in the home unit**: Member, or Steward if they will look after the unit. Choose **Review change**.
 4. Read **What will happen**. If **Problems to fix first** appears, choose **Back** and correct the details. Read **Things to check**: a very similar name may mean the person already has an account.
-5. Type the **Reason for this change**, for example "New joiner in Catalysis", then choose **Add person**.
+5. Type the **Reason for this change**, for example "New joiner in Corrosion", then choose **Add person**.
 6. The **LabAdda activation slip** appears. Choose **Print activation slip**, or copy the code by hand, then choose **Done**.
 
 ## What happens next

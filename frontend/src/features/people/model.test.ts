@@ -3,9 +3,9 @@ import { calendarDate, peopleUrl, positionLabel, unitOptions } from "./model";
 
 describe("staff screen boundaries", () => {
   it("keeps profile state out of list queries and page cursors out of reports", () => {
-    const params = new URLSearchParams("q=Ben&cursor=page2&person=staff-id&view=access&untrusted=value");
-    expect(peopleUrl(params)).toBe("/admin/people?q=Ben&cursor=page2");
-    expect(peopleUrl(params, true)).toBe("/admin/people/export.csv?q=Ben");
+    const params = new URLSearchParams("q=Bharat&cursor=page2&person=staff-id&view=access&untrusted=value");
+    expect(peopleUrl(params)).toBe("/admin/people?q=Bharat&cursor=page2");
+    expect(peopleUrl(params, true)).toBe("/admin/people/export.csv?q=Bharat");
   });
 
   it("keeps site calendar dates unchanged and handles missing or invalid dates", () => {
@@ -34,14 +34,14 @@ describe("staff screen boundaries", () => {
   it("names positions with their unit and end date only", () => {
     const base = {
       id: "p",
-      workspace: { id: "w", name: "Surface Science Division" },
+      workspace: { id: "w", name: "Surface Engineering Division" },
       starts_on: "2026-11-12",
     };
     expect(positionLabel({ ...base, position: "head", acting: true, ends_on: "2027-01-11" })).toBe(
-      "Acting Head of Surface Science Division until 11 Jan 2027",
+      "Acting Head of Surface Engineering Division until 11 Jan 2027",
     );
     expect(positionLabel({ ...base, position: "charge", acting: false, ends_on: null })).toBe(
-      "Additional charge in Surface Science Division",
+      "Additional charge in Surface Engineering Division",
     );
   });
 });

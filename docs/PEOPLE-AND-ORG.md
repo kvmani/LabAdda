@@ -153,7 +153,7 @@ person's last placement from history as a starting point to review.
 
 ## Organisation changes
 
-**PO-19.** Every unit has a display name and a short unique **code** (e.g. `SSD-TF`) used in
+**PO-19.** Every unit has a display name and a short unique **code** (e.g. `SED-TF`) used in
 imports and shown on the chart. Supported changes, each with preview and audit:
 
 | Change | Plan must show |

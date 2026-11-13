@@ -60,26 +60,26 @@ def test_units_without_steward(as_user, ids, db_factory):
         )
         db.commit()
     item = entries(admin)["people:units-without-steward"]
-    assert "Catalysis Section" in item["detail"] and item["route"] == "/admin/org"
+    assert "Corrosion Section" in item["detail"] and item["route"] == "/admin/org"
 
 
 def test_people_without_a_home_unit(as_user, ids, db_factory):
     admin = as_user("admin")
     assert "people:no-home-unit" not in entries(admin)
-    update(db_factory, User, ids["users"]["ben"], home_workspace_id=None)
-    assert "Ben Okafor" in entries(admin)["people:no-home-unit"]["detail"]
-    update(db_factory, User, ids["users"]["ben"], home_workspace_id=ids["workspaces"]["section_a"])
+    update(db_factory, User, ids["users"]["bharat"], home_workspace_id=None)
+    assert "Bharat Kulkarni" in entries(admin)["people:no-home-unit"]["detail"]
+    update(db_factory, User, ids["users"]["bharat"], home_workspace_id=ids["workspaces"]["section_a"])
     assert "people:no-home-unit" not in entries(admin)
 
 
 def test_activation_codes_pending_more_than_14_days(as_user, ids, db_factory):
     admin = as_user("admin")
-    ben = ids["users"]["ben"]
-    update(db_factory, User, ben, status="invited")
+    bharat = ids["users"]["bharat"]
+    update(db_factory, User, bharat, status="invited")
     with db_factory() as db:
         db.add(
             CredentialToken(
-                user_id=uuid_of(ben),
+                user_id=uuid_of(bharat),
                 token_hash="a" * 64,
                 purpose="activation",
                 expires_at=NOW + timedelta(days=1),
@@ -91,7 +91,7 @@ def test_activation_codes_pending_more_than_14_days(as_user, ids, db_factory):
     with db_factory() as db:
         db.add(
             CredentialToken(
-                user_id=uuid_of(ben),
+                user_id=uuid_of(bharat),
                 token_hash="b" * 64,
                 purpose="activation",
                 expires_at=NOW + timedelta(days=1),
@@ -124,23 +124,23 @@ def test_expired_acting_appointment_with_nobody_in_the_position(as_user, ids, db
     with db_factory() as db:
         positions.expire_due(db, settings, now=utcnow() + timedelta(days=1))
     assert "Thin Films Section" in entries(admin)["people:acting-expired"]["detail"]
-    make_head(db_factory, ids, username="dana", unit="section_a")
+    make_head(db_factory, ids, username="deepa", unit="section_a")
     assert "people:acting-expired" not in entries(admin)
     assert row
 
 
 def test_overdue_returns_from_leave(as_user, ids, db_factory, settings):
     admin = as_user("admin")
-    ben = ids["users"]["ben"]
+    bharat = ids["users"]["bharat"]
     update(
         db_factory,
         User,
-        ben,
+        bharat,
         status="on_leave",
         expected_return_on=site_today(settings) - timedelta(days=1),
     )
-    assert "Ben Okafor" in entries(admin)["people:overdue-leave"]["detail"]
-    update(db_factory, User, ben, expected_return_on=site_today(settings) + timedelta(days=9))
+    assert "Bharat Kulkarni" in entries(admin)["people:overdue-leave"]["detail"]
+    update(db_factory, User, bharat, expected_return_on=site_today(settings) + timedelta(days=9))
     assert "people:overdue-leave" not in entries(admin)
 
 
@@ -169,23 +169,23 @@ def test_scheduled_changes_needing_review(as_user, ids, db_factory, settings):
 def test_groups_and_projects_whose_only_steward_is_inactive(as_user, ids, db_factory):
     admin = as_user("admin")
     assert "people:groups-without-steward" not in entries(admin)
-    update(db_factory, User, ids["users"]["dana"], is_active=False)
-    assert "Project Aurora" in entries(admin)["people:groups-without-steward"]["detail"]
-    update(db_factory, User, ids["users"]["dana"], is_active=True)
+    update(db_factory, User, ids["users"]["deepa"], is_active=False)
+    assert "Project Tejas" in entries(admin)["people:groups-without-steward"]["detail"]
+    update(db_factory, User, ids["users"]["deepa"], is_active=True)
     assert "people:groups-without-steward" not in entries(admin)
 
 
 def test_accounts_never_signed_in_after_90_days(as_user, ids, db_factory, settings):
     admin = as_user("admin")
-    eli = ids["users"]["eli"]
-    update(db_factory, User, eli, created_at=NOW - timedelta(days=100), last_seen_on=None)
-    assert "Eli Novak" in entries(admin)["people:never-signed-in"]["detail"]
-    update(db_factory, User, eli, last_seen_on=site_today(settings))
+    esha = ids["users"]["esha"]
+    update(db_factory, User, esha, created_at=NOW - timedelta(days=100), last_seen_on=None)
+    assert "Esha Menon" in entries(admin)["people:never-signed-in"]["detail"]
+    update(db_factory, User, esha, last_seen_on=site_today(settings))
     assert "people:never-signed-in" not in entries(admin)
 
 
 def test_attention_endpoint_is_for_administrators_only(as_user, ids, make_client):
-    assert as_user("ben").get("/admin/org/attention").status_code == 403
+    assert as_user("bharat").get("/admin/org/attention").status_code == 403
     assert make_client().get("/admin/org/attention").status_code == 401
     assert pair(as_user, make_client, ids).get("/admin/org/attention").status_code == 401
 
@@ -196,6 +196,6 @@ def test_overview_carries_the_same_people_items(as_user, ids):
 
 
 def test_entries_hold_names_and_counts_only(as_user, ids, db_factory):
-    update(db_factory, User, ids["users"]["ben"], home_workspace_id=None)
+    update(db_factory, User, ids["users"]["bharat"], home_workspace_id=None)
     text = as_user("admin").get("/admin/org/attention").text
     assert "Recognisable" not in text

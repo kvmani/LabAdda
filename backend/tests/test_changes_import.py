@@ -35,11 +35,11 @@ def bulk(api, requests, reason="Autumn joiners"):
 
 FILE = (
     HEAD
-    + "NW-501,gita.sen,Gita Sen,Scientific Officer,CS,steward,,2026-12-01\n"
+    + "NM-501,gita.sen,Gita Sen,Scientific Officer,CS,steward,,2026-12-01\n"
     + ",hari.rao,Hari Rao,,TFS,,,\n"
-    + ",ben,Ben Okafor,Senior Research Officer,CS,member,,\n"
-    + ",chen,Chen Li,,,,suspended,\n"
-    + ",eli,Eli Novak,,,,,\n"
+    + ",bharat,Bharat Kulkarni,Senior Research Officer,CS,member,,\n"
+    + ",chitra,Chitra Iyer,,,,suspended,\n"
+    + ",esha,Esha Menon,,,,,\n"
     + ",bad user,Nobody,,,,,\n"
     + ",ghost,Ghost Person,,ZZZ,,,\n"
 )
@@ -55,7 +55,7 @@ def test_report_groups_rows_and_lists_absent_people_without_changing_them(as_use
     assert by_line[5]["group"] == "change" and by_line[5]["requests"][0]["kind"] == "suspend"
     assert by_line[7]["group"] == "errors" and by_line[7]["requests"] == []
     assert "No open unit has the code ZZZ" in by_line[8]["errors"][0]
-    assert {a["username"] for a in data["absent"]} == {"admin", "asha", "dana"}
+    assert {a["username"] for a in data["absent"]} == {"admin", "asha", "deepa"}
     assert data["absent_total"] == 3
     assert data["digest"] == report(admin, FILE)["digest"]
     with db_factory() as db:
@@ -73,14 +73,14 @@ def test_apply_commits_every_selected_row_once_and_audits_each_step(as_user, ids
     assert all(len(a["activation"]["code"]) >= 10 for a in receipt["added"])
     with db_factory() as db:
         gita = db.scalar(select(User).where(User.username == "gita.sen"))
-        assert gita.status == "invited" and gita.employee_no == "NW-501"
+        assert gita.status == "invited" and gita.employee_no == "NM-501"
         assert gita.joined_on.isoformat() == "2026-12-01"
         role = db.scalar(select(Membership.role).where(Membership.user_id == gita.id))
         assert role == "steward"
-        ben = db.scalar(select(User).where(User.username == "ben"))
-        assert str(ben.home_workspace_id) == ids["workspaces"]["section_b"]
-        assert ben.designation == "Senior Research Officer"
-        assert db.scalar(select(User.status).where(User.username == "chen")) == "suspended"
+        bharat = db.scalar(select(User).where(User.username == "bharat"))
+        assert str(bharat.home_workspace_id) == ids["workspaces"]["section_b"]
+        assert bharat.designation == "Senior Research Officer"
+        assert db.scalar(select(User.status).where(User.username == "chitra")) == "suspended"
         assert db.scalar(select(User.status).where(User.username == "asha")) == "active"
         changes = db.scalars(select(AuditEvent).where(AuditEvent.action == "people.change")).all()
         assert len(changes) == 5
@@ -95,14 +95,14 @@ def test_one_bad_request_applies_nothing(as_user, db_factory):
     request = bulk(admin, good)
     clash = {
         "kind": "add_person",
-        "username": "ben",
-        "display_name": "Second Ben",
+        "username": "bharat",
+        "display_name": "Second Bharat",
         "role": "member",
         "home_unit_id": good[0]["home_unit_id"],
     }
     plan = admin.post("/admin/changes/bulk/preview", json={"requests": [*good, clash]}).json()
     assert [b["code"] for b in plan["blockers"]] == ["username_taken"]
-    assert plan["blockers"][0]["message"].startswith("Second Ben: ")
+    assert plan["blockers"][0]["message"].startswith("Second Bharat: ")
     blocked = {
         "requests": [*good, clash],
         "digest": plan["digest"],
@@ -128,7 +128,7 @@ def test_a_change_made_after_review_makes_the_plan_stale(as_user, ids):
     edit = {
         "request": {
             "kind": "edit_person",
-            "person_id": ids["users"]["ben"],
+            "person_id": ids["users"]["bharat"],
             "fields": {"designation": "Someone else"},
         }
     }
@@ -162,12 +162,12 @@ def test_template_downloads(as_user):
     assert response.status_code == 200 and response.text.startswith("﻿employee_no,username")
 
 
-@pytest.mark.parametrize("who", ["ben", "asha", "dana"])
+@pytest.mark.parametrize("who", ["bharat", "asha", "deepa"])
 def test_non_administrators_are_forbidden_everywhere(as_user, ids, who):
     api = as_user(who)
     assert upload(api, FILE).status_code == 403
     assert api.get("/admin/changes/import/template").status_code == 403
-    one = {"kind": "suspend", "person_id": ids["users"]["eli"]}
+    one = {"kind": "suspend", "person_id": ids["users"]["esha"]}
     assert api.post("/admin/changes/bulk/preview", json={"requests": [one]}).status_code == 403
     body = {"requests": [one], "digest": "0" * 64, "revisions": {}, "reason": "Because"}
     assert api.post("/admin/changes/bulk/apply", json=body).status_code == 403
@@ -185,10 +185,10 @@ def test_signed_out_and_board_only_sessions_are_refused(as_user, make_client, id
 
 def test_requests_cannot_name_other_kinds_or_repeat_a_person(as_user, ids):
     admin = as_user("admin")
-    eli = ids["users"]["eli"]
-    retire = {"kind": "retire", "person_id": eli, "status": "retired"}
+    esha = ids["users"]["esha"]
+    retire = {"kind": "retire", "person_id": esha, "status": "retired"}
     assert admin.post("/admin/changes/bulk/preview", json={"requests": [retire]}).status_code == 422
-    twice = [{"kind": "suspend", "person_id": eli}] * 2
+    twice = [{"kind": "suspend", "person_id": esha}] * 2
     assert admin.post("/admin/changes/bulk/preview", json={"requests": twice}).status_code == 422
     assert admin.post("/admin/changes/bulk/preview", json={"requests": []}).status_code == 422
 
@@ -198,7 +198,7 @@ def test_ordinary_staff_edits_do_not_change_and_unselected_rows_stay_untouched(a
     data = report(admin, FILE)
     assert admin.post("/admin/changes/bulk/apply", json=bulk(admin, selected(data, 3))).status_code == 200
     with db_factory() as db:
-        assert db.scalar(select(User.status).where(User.username == "chen")) == "active"
+        assert db.scalar(select(User.status).where(User.username == "chitra")) == "active"
         assert db.scalar(select(User.id).where(User.username == "gita.sen")) is None
         assert db.scalar(select(User.id).where(User.username == "hari.rao")) is not None
 
@@ -208,7 +208,7 @@ def test_changes_that_together_leave_a_unit_without_a_steward_are_blocked(as_use
     with db_factory() as db:
         db.execute(
             update(Membership)
-            .where(Membership.user_id == uuid.UUID(ids["users"]["ben"]))
+            .where(Membership.user_id == uuid.UUID(ids["users"]["bharat"]))
             .where(Membership.workspace_id == uuid.UUID(ids["workspaces"]["section_a"]))
             .values(role="steward")
         )
@@ -217,14 +217,14 @@ def test_changes_that_together_leave_a_unit_without_a_steward_are_blocked(as_use
     section_b = ids["workspaces"]["section_b"]
     requests = [
         {"kind": "transfer", "person_id": ids["users"][who], "to_unit_id": section_b, "role": "member"}
-        for who in ("asha", "ben")
+        for who in ("asha", "bharat")
     ]
     plan = admin.post("/admin/changes/bulk/preview", json={"requests": requests}).json()
     body = {"requests": requests, "digest": plan["digest"], "revisions": plan["revisions"], "reason": "Move"}
     response = admin.post("/admin/changes/bulk/apply", json=body)
     assert response.status_code == 422 and response.json()["error"]["code"] == "plan_blocked"
     with db_factory() as db:
-        homes = set(db.scalars(select(User.home_workspace_id).where(User.username.in_(["asha", "ben"]))))
+        homes = set(db.scalars(select(User.home_workspace_id).where(User.username.in_(["asha", "bharat"]))))
         assert homes == {uuid.UUID(ids["workspaces"]["section_a"])}
 
 
@@ -232,7 +232,7 @@ def _two_stewards(ids, db_factory):
     with db_factory() as db:
         db.execute(
             update(Membership)
-            .where(Membership.user_id == uuid.UUID(ids["users"]["ben"]))
+            .where(Membership.user_id == uuid.UUID(ids["users"]["bharat"]))
             .where(Membership.workspace_id == uuid.UUID(ids["workspaces"]["section_a"]))
             .values(role="steward")
         )
@@ -240,7 +240,7 @@ def _two_stewards(ids, db_factory):
     section_b = ids["workspaces"]["section_b"]
     return [
         {"kind": "transfer", "person_id": ids["users"][who], "to_unit_id": section_b, "role": "member"}
-        for who in ("asha", "ben")
+        for who in ("asha", "bharat")
     ]
 
 
@@ -265,7 +265,7 @@ def test_preview_shows_the_joint_blocker_and_leaves_the_database_unchanged(as_us
     before = _counts(db_factory)
     plan = admin.post("/admin/changes/bulk/preview", json={"requests": [*requests, added]}).json()
     assert plan["blockers"]
-    assert any(b["message"].startswith("Ben") for b in plan["blockers"])
+    assert any(b["message"].startswith("Bharat") for b in plan["blockers"])
     assert _counts(db_factory) == before
     # The apply-time digest is unchanged by the sequential look-ahead.
     single = admin.post("/admin/changes/bulk/preview", json={"requests": requests[:1]}).json()

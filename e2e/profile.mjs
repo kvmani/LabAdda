@@ -96,8 +96,8 @@ async function run(base, name) {
   for (const part of [first, second, third]) await part.ctx.close();
 }
 try {
-  await run("", "eli");
-  await run("/labadda-staging", "eli");
+  await run("", "esha");
+  await run("/labadda-staging", "esha");
   console.log(`profile: ${harness.checks()} checks passed`);
 } finally {
   await harness.close();

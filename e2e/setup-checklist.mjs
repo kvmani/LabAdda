@@ -123,7 +123,7 @@ async function checkMember(member, base) {
 
 for (const base of ["", "/labadda-staging"]) {
   const admin = await login(base, "admin");
-  const member = await login(base, "ben");
+  const member = await login(base, "bharat");
   await checkChecklist(admin, base);
   await checkMember(member, base);
   await admin.context.close();

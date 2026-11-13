@@ -45,11 +45,11 @@ def test_second_administrator_follows_active_administrators(as_user, db_factory)
     admin = as_user("admin")
     assert states(admin)["second_admin"] == "not_done"
     with db_factory() as db:
-        db.execute(update(User).where(User.username == "ben").values(is_admin=True))
+        db.execute(update(User).where(User.username == "bharat").values(is_admin=True))
         db.commit()
     assert states(admin)["second_admin"] == "done"
     with db_factory() as db:
-        db.execute(update(User).where(User.username == "ben").values(is_active=False))
+        db.execute(update(User).where(User.username == "bharat").values(is_active=False))
         db.commit()
     assert states(admin)["second_admin"] == "not_done"
 
@@ -119,10 +119,10 @@ def test_test_restore_is_unknown_until_one_is_recorded(as_user, monkeypatch):
 
 def test_access_follows_the_console_rules(as_user, make_client, ids):
     assert as_user("admin").get(CHECKLIST).status_code == 200
-    for username in ("asha", "chen", "ben"):
+    for username in ("asha", "chitra", "bharat"):
         assert as_user(username).get(CHECKLIST).status_code == 403
-    assert grant(as_user("admin"), ids["users"]["ben"]).status_code == 201
-    assert as_user("ben").get(CHECKLIST).status_code == 403
+    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
+    assert as_user("bharat").get(CHECKLIST).status_code == 403
     assert make_client().get(CHECKLIST).status_code == 401
     assert pair(as_user, make_client, ids).get(CHECKLIST).status_code == 401
 
@@ -136,7 +136,7 @@ def test_deactivated_administrator_is_refused(as_user, db_factory):
 
 
 def test_checklist_contains_no_user_content(as_user, ids, status_dir):
-    member = as_user("ben")
+    member = as_user("bharat")
     secrets = (
         "Synthetic checklist post body",
         "Synthetic checklist chat text",

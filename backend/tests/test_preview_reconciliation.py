@@ -11,7 +11,7 @@ from tests.test_preview_integrity import image_upload
 
 
 def legacy(as_user, db_factory, settings):
-    uploaded = image_upload(as_user("ben"))
+    uploaded = image_upload(as_user("bharat"))
     from labadda.storage import AssetStore
 
     store = AssetStore(settings.asset_dir)
@@ -52,7 +52,7 @@ def test_dry_run_and_reviewed_application_only_fill_verified_metadata(as_user, d
     receipt = as_user("admin").get("/admin/storage-inspections").json()
     assert "private-preview" not in str(receipt)
     assert hashlib.sha256(before[preview]).hexdigest() not in str(receipt)
-    assert as_user("chen").get("/admin/storage-inspections").status_code == 403
+    assert as_user("chitra").get("/admin/storage-inspections").status_code == 403
 
 
 @pytest.mark.parametrize(
@@ -287,7 +287,7 @@ def test_regeneration_enforces_pixel_ceiling_before_decode(as_user, app, monkeyp
     stream = BytesIO()
     storage.Image.new("RGB", (21, 20), "blue").save(stream, format="PNG")
     with pytest.warns(storage.Image.DecompressionBombWarning):
-        result = as_user("ben").post(
+        result = as_user("bharat").post(
             "/uploads", files={"file": ("oversized.png", stream.getvalue(), "image/png")}
         )
     assert result.status_code == 422 and result.json()["error"]["code"] == "image_too_large"

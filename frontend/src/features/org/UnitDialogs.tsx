@@ -16,7 +16,7 @@ export type UnitDialogProps = {
   onDone: () => void;
 };
 
-const CODE_HINT = "2 to 24 capital letters, digits or dashes, for example SSD-TF. Each code is used once.";
+const CODE_HINT = "2 to 24 capital letters, digits or dashes, for example SED-TF. Each code is used once.";
 
 function openOptions(units: OrgUnit[], leave: Set<string>): SelectOption[] {
   return units

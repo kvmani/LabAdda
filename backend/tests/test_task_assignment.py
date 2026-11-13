@@ -19,31 +19,34 @@ def task(api, workspace=None):
 
 
 def test_shared_assignment_history_and_mine(as_user, ids):
-    ben = as_user("ben")
-    _row, created, path = task(ben, ids["workspaces"]["section_a"])
-    response = ben.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 1})
+    bharat = as_user("bharat")
+    _row, created, path = task(bharat, ids["workspaces"]["section_a"])
+    response = bharat.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 1})
     assert response.status_code == 200, response.text
     assigned = response.json()
     assert assigned["assignee"]["display_name"] == "Asha Rao" and assigned["revision"] == 2
     assert as_user("asha").get("/todos/mine").json()["items"][0]["id"] == created["id"]
-    assert ben.get("/todos/mine").json()["items"] == []
-    history = ben.get(path + "/history").json()["items"][0]
+    assert bharat.get("/todos/mine").json()["items"] == []
+    history = bharat.get(path + "/history").json()["items"][0]
     assert history["changes"]["assignee"]["after"]["id"] == ids["users"]["asha"]
     assert history["changes"]["assignee"]["after"]["display_name"] == "Asha Rao"
     assert (
-        ben.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 1}).status_code == 409
+        bharat.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 1}).status_code
+        == 409
     )
     assert (
-        ben.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 2}).json()["revision"]
+        bharat.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 2}).json()[
+            "revision"
+        ]
         == 2
     )
-    assert ben.put(path + "/assignee", json={"user_id": None, "revision": 2}).json()["revision"] == 3
+    assert bharat.put(path + "/assignee", json={"user_id": None, "revision": 2}).json()["revision"] == 3
     assert as_user("asha").get("/todos/mine").json()["items"] == []
 
 
-@pytest.mark.parametrize("name", ["chen", "dana", "admin", "fay"])
+@pytest.mark.parametrize("name", ["chitra", "deepa", "admin", "farhan"])
 def test_sibling_parent_admin_disabled_cannot_be_assigned(as_user, ids, name):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api, ids["workspaces"]["section_a"])
     response = api.put(path + "/assignee", json={"user_id": ids["users"][name], "revision": 1})
     assert response.status_code == 422
@@ -51,60 +54,63 @@ def test_sibling_parent_admin_disabled_cannot_be_assigned(as_user, ids, name):
 
 
 def test_personal_is_owner_only_and_mine_includes_unassigned_personal(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     row, created, path = task(api)
     assert [r["id"] for r in api.get("/todos/mine").json()["items"]] == [created["id"]]
     assert (
         api.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 1}).status_code == 422
     )
     assert (
-        api.put(path + "/assignee", json={"user_id": ids["users"]["ben"], "revision": 1}).status_code == 200
+        api.put(path + "/assignee", json={"user_id": ids["users"]["bharat"], "revision": 1}).status_code
+        == 200
     )
     assert as_user("admin").get("/todos/mine").json()["items"] == []
-    assert api.get(f"/todos/lists/{row['id']}/assignees").json()["items"][0]["id"] == ids["users"]["ben"]
+    assert api.get(f"/todos/lists/{row['id']}/assignees").json()["items"][0]["id"] == ids["users"]["bharat"]
 
 
 def test_upward_and_direct_group_project_eligibility(as_user, ids):
-    ben = as_user("ben")
-    _, _, path = task(ben, ids["workspaces"]["division"])
+    bharat = as_user("bharat")
+    _, _, path = task(bharat, ids["workspaces"]["division"])
     assert (
-        ben.put(path + "/assignee", json={"user_id": ids["users"]["chen"], "revision": 1}).status_code == 200
+        bharat.put(path + "/assignee", json={"user_id": ids["users"]["chitra"], "revision": 1}).status_code
+        == 200
     )
-    _, _, path = task(ben, ids["workspaces"]["reading_club"])
+    _, _, path = task(bharat, ids["workspaces"]["reading_club"])
     assert (
-        ben.put(path + "/assignee", json={"user_id": ids["users"]["chen"], "revision": 1}).status_code == 200
+        bharat.put(path + "/assignee", json={"user_id": ids["users"]["chitra"], "revision": 1}).status_code
+        == 200
     )
-    _, _, path = task(as_user("eli"), ids["workspaces"]["project"])
+    _, _, path = task(as_user("esha"), ids["workspaces"]["project"])
     assert (
-        as_user("eli")
-        .put(path + "/assignee", json={"user_id": ids["users"]["dana"], "revision": 1})
+        as_user("esha")
+        .put(path + "/assignee", json={"user_id": ids["users"]["deepa"], "revision": 1})
         .status_code
         == 200
     )
-    assert len(as_user("chen").get("/todos/mine").json()["items"]) == 2
+    assert len(as_user("chitra").get("/todos/mine").json()["items"]) == 2
 
 
 def test_revocation_hides_mine_without_rewriting_assignment(as_user, ids):
-    ben = as_user("ben")
-    _, _created, path = task(ben, ids["workspaces"]["section_a"])
-    ben.put(path + "/assignee", json={"user_id": ids["users"]["ben"], "revision": 1})
-    assert len(ben.get("/todos/mine").json()["items"]) == 1
+    bharat = as_user("bharat")
+    _, _created, path = task(bharat, ids["workspaces"]["section_a"])
+    bharat.put(path + "/assignee", json={"user_id": ids["users"]["bharat"], "revision": 1})
+    assert len(bharat.get("/todos/mine").json()["items"]) == 1
     as_user("admin").delete(
-        f"/admin/workspaces/{ids['workspaces']['section_a']}/memberships/{ids['users']['ben']}"
+        f"/admin/workspaces/{ids['workspaces']['section_a']}/memberships/{ids['users']['bharat']}"
     )
-    assert ben.get("/todos/mine").json()["items"] == []
-    assert ben.get(path).status_code == 404
-    assert as_user("asha").get(path).json()["assignee"]["id"] == ids["users"]["ben"]
+    assert bharat.get("/todos/mine").json()["items"] == []
+    assert bharat.get(path).status_code == 404
+    assert as_user("asha").get(path).json()["assignee"]["id"] == ids["users"]["bharat"]
 
 
 def test_directory_and_mine_filter_pages(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     row, _, _path = task(api, ids["workspaces"]["division"])
     directory = f"/todos/lists/{row['id']}/assignees"
     first = api.get(directory + "?limit=1").json()
     second = api.get(directory + "?limit=1&after=" + first["next_cursor"]).json()
     assert first["items"][0]["id"] != second["items"][0]["id"]
-    assert api.get(directory + "?q=Ben").json()["items"][0]["id"] == ids["users"]["ben"]
+    assert api.get(directory + "?q=Bharat").json()["items"][0]["id"] == ids["users"]["bharat"]
     assert api.get(directory + "?q=%25").json()["items"] == []
     for _i in range(3):
         task(api)
@@ -117,13 +123,13 @@ def test_directory_and_mine_filter_pages(as_user, ids):
 
 
 def test_panel_csrf_and_nonmember_denied(as_user, ids):
-    api = as_user("ben")
+    api = as_user("bharat")
     row, _, path = task(api, ids["workspaces"]["section_a"])
     for url in ["/todos/mine", f"/todos/lists/{row['id']}/assignees"]:
         assert api.get(url, headers={"X-LabAdda-Panel": "1"}).status_code == 401
     assert (
-        as_user("chen")
-        .put(path + "/assignee", json={"user_id": ids["users"]["chen"], "revision": 1})
+        as_user("chitra")
+        .put(path + "/assignee", json={"user_id": ids["users"]["chitra"], "revision": 1})
         .status_code
         == 404
     )
@@ -135,15 +141,15 @@ def test_panel_csrf_and_nonmember_denied(as_user, ids):
 def test_mine_rechecks_grants_after_serialization(as_user, ids, db_factory, monkeypatch):
     from labadda.api import task_assignment
 
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api, ids["workspaces"]["section_a"])
-    api.put(path + "/assignee", json={"user_id": ids["users"]["ben"], "revision": 1})
+    api.put(path + "/assignee", json={"user_id": ids["users"]["bharat"], "revision": 1})
     serialize = task_assignment._task_json
 
     def revoke(row):
         result = serialize(row)
         with db_factory() as db:
-            db.execute(delete(Membership).where(Membership.user_id == ids["users"]["ben"]))
+            db.execute(delete(Membership).where(Membership.user_id == ids["users"]["bharat"]))
             db.commit()
         return result
 
@@ -153,19 +159,19 @@ def test_mine_rechecks_grants_after_serialization(as_user, ids, db_factory, monk
 
 
 def test_reciprocal_assignments_use_consistent_identity_order(as_user, ids):
-    ben, asha = as_user("ben"), as_user("asha")
-    _, _, one = task(ben, ids["workspaces"]["section_a"])
+    bharat, asha = as_user("bharat"), as_user("asha")
+    _, _, one = task(bharat, ids["workspaces"]["section_a"])
     _, _, two = task(asha, ids["workspaces"]["section_a"])
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
             pool.submit(api.put, path + "/assignee", json={"user_id": ids["users"][target], "revision": 1})
-            for api, path, target in [(ben, one, "asha"), (asha, two, "ben")]
+            for api, path, target in [(bharat, one, "asha"), (asha, two, "bharat")]
         ]
         assert [r.result(timeout=5).status_code for r in futures] == [200, 200]
 
 
 def test_inactive_assignee_and_queued_authority_change(as_user, ids, db_factory):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api, ids["workspaces"]["section_a"])
     api.put(path + "/assignee", json={"user_id": ids["users"]["asha"], "revision": 1})
     with db_factory() as db:
@@ -179,9 +185,9 @@ def test_inactive_assignee_and_queued_authority_change(as_user, ids, db_factory)
 
 
 def test_migration_protects_current_and_past_assignments(as_user, ids, settings):
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api)
-    api.put(path + "/assignee", json={"user_id": ids["users"]["ben"], "revision": 1})
+    api.put(path + "/assignee", json={"user_id": ids["users"]["bharat"], "revision": 1})
     api.put(path + "/assignee", json={"user_id": None, "revision": 2})
     with pytest.raises(RuntimeError, match="Task assignments exist"):
         downgrade_legacy(alembic_config(settings.database_url), "0018")
@@ -192,7 +198,7 @@ def test_target_deactivation_while_assignment_waits_rejects_stale_eligibility(as
 
     from sqlalchemy import select, text
 
-    api = as_user("ben")
+    api = as_user("bharat")
     _, _, path = task(api, ids["workspaces"]["section_a"])
     with db_factory() as writer, ThreadPoolExecutor(max_workers=1) as pool:
         target = writer.scalar(select(User).where(User.id == ids["users"]["asha"]).with_for_update())

@@ -47,7 +47,7 @@ are documented in the API contract; physical database totals include all tables.
 
 Run focused backend tests first, then scripts/verify.sh (enable real recovery as
 documented in TESTING). Run e2e/todos.mjs against fresh disposable proxy fixtures;
-it revokes Ben's section grant, so reset before subsequent member-dependent flows.
+it revokes Bharat's section grant, so reset before subsequent member-dependent flows.
 Check root/prefix, mobile, recovery, lost replies, conflicts and stale callbacks.
 Record actual results in the roadmap; never turn planned C2 features into shipped
 claims. Update this guide, API/requirements when changed, and relevant tests in the

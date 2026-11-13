@@ -116,12 +116,12 @@ try {
     );
     await admin.page.setViewportSize({ width: 1400, height: 1100 });
     await admin.page.goto(origin + base + "/admin/settings");
-    await admin.page.getByLabel("Operational reader account").selectOption({ label: "ben" });
+    await admin.page.getByLabel("Operational reader account").selectOption({ label: "bharat" });
     await admin.page.getByLabel("Access change reason").fill("Synthetic inventory job walkthrough");
     await admin.page.getByLabel("Confirm administrator password").fill(password);
     await admin.page.getByRole("button", { name: "Grant operational read access" }).click();
     await admin.page.getByText("Time-limited operational read access granted.", { exact: true }).waitFor();
-    const observer = await login(base, "ben");
+    const observer = await login(base, "bharat");
     await observer.page.goto(origin + base + "/operations");
     const observed = observer.page.getByRole("region", { name: "Inventory jobs", exact: true });
     await observed

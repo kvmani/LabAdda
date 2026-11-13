@@ -14,7 +14,7 @@ from tests.test_panel import PANEL, pair
 
 
 def test_admin_and_reader_console_responses_exclude_content(as_user, ids, db_factory):
-    member = as_user("ben")
+    member = as_user("bharat")
     secrets = (
         "Synthetic private note title",
         "Synthetic private post body",
@@ -37,7 +37,7 @@ def test_admin_and_reader_console_responses_exclude_content(as_user, ids, db_fac
         == 201
     )
     admin = as_user("admin")
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
     job = inventory_jobs.enqueue(db_factory, "synthetic-console-check", {})
     shared_paths = (
         "/admin/console",
@@ -70,15 +70,15 @@ def test_admin_and_reader_console_responses_exclude_content(as_user, ids, db_fac
     assert admin.get(f"/workspaces/{workspace}/posts").status_code == 404
 
 
-@pytest.mark.parametrize("name", ["asha", "ben", "chen", "dana", "eli"])
+@pytest.mark.parametrize("name", ["asha", "bharat", "chitra", "deepa", "esha"])
 def test_members_do_not_receive_console_authority(as_user, name):
     assert as_user(name).get("/admin/console").status_code == 403
 
 
 def test_usage_reader_navigation_never_grants_administration(as_user, ids):
     admin = as_user("admin")
-    reader = as_user("ben")
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
+    reader = as_user("bharat")
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
     assert reader.get("/admin/console").json() == {
         "sections": list(policy.READER_SECTIONS),
         "read_only": True,
@@ -98,11 +98,11 @@ def test_usage_reader_navigation_never_grants_administration(as_user, ids):
 
 def test_expired_or_revoked_reader_loses_console(as_user, ids, db_factory):
     admin = as_user("admin")
-    reader = as_user("ben")
-    assert grant(admin, ids["users"]["ben"]).status_code == 201
+    reader = as_user("bharat")
+    assert grant(admin, ids["users"]["bharat"]).status_code == 201
     assert reader.get("/admin/console").status_code == 200
     with db_factory() as db:
-        delegation = db.get(UsageReaderGrant, ids["users"]["ben"])
+        delegation = db.get(UsageReaderGrant, ids["users"]["bharat"])
         delegation.expires_at = utcnow() - timedelta(seconds=1)
         db.commit()
     assert reader.get("/admin/console").status_code == 403
@@ -112,7 +112,7 @@ def test_expired_or_revoked_reader_loses_console(as_user, ids, db_factory):
 def test_signed_out_deactivated_and_panel_sessions_cannot_open_console(as_user, make_client, ids):
     client = make_client()
     assert client.get("/admin/console").status_code == 401
-    assert client.login("fay").status_code == 401
+    assert client.login("farhan").status_code == 401
     assert client.get("/admin/console").status_code == 401
     kiosk = pair(as_user, make_client, ids)
     assert kiosk.get("/admin/console").status_code == 401

@@ -32,7 +32,7 @@ class Panel:
         )
 
 
-def pair(as_user, make_client, ids, user="ben", key="section_a"):
+def pair(as_user, make_client, ids, user="bharat", key="section_a"):
     code = as_user(user).post("/panel/pairings", json={"workspace_id": ws(ids, key)})
     assert code.status_code == 201, code.text
     kiosk = make_client()
@@ -52,10 +52,10 @@ def stroke(op_id, obj):
 
 
 def test_pairing_requires_access_and_is_single_use(as_user, make_client, ids):
-    assert as_user("chen").post("/panel/pairings", json={"workspace_id": ws(ids)}).status_code == 404
+    assert as_user("chitra").post("/panel/pairings", json={"workspace_id": ws(ids)}).status_code == 404
     assert as_user("admin").post("/panel/pairings", json={"workspace_id": ws(ids)}).status_code == 404
     assert make_client().post("/panel/pairings", json={"workspace_id": ws(ids)}).status_code == 401
-    code = as_user("ben").post("/panel/pairings", json={"workspace_id": ws(ids)}).json()["code"]
+    code = as_user("bharat").post("/panel/pairings", json={"workspace_id": ws(ids)}).json()["code"]
     k1, k2 = make_client(), make_client()
     assert (
         k1.client.post(k1.url("/panel/claim"), json={"code": code.lower().replace("-", " ")}).status_code
@@ -66,7 +66,7 @@ def test_pairing_requires_access_and_is_single_use(as_user, make_client, ids):
 
 
 def test_expired_code_and_rate_limit(as_user, make_client, ids, db_factory):
-    code = as_user("ben").post("/panel/pairings", json={"workspace_id": ws(ids)}).json()["code"]
+    code = as_user("bharat").post("/panel/pairings", json={"workspace_id": ws(ids)}).json()["code"]
     with db_factory() as db:
         for p in db.query(PanelPairing).all():
             p.expires_at = utcnow() - timedelta(seconds=1)
@@ -89,7 +89,7 @@ def test_panel_uses_its_board_only(as_user, make_client, ids):
     op = panel.post(f"/workspaces/{ws(ids)}/board/ops", json=stroke("op-panel-01", "p1"))
     assert op.status_code == 200
     # Attribution and own-undo belong to the person who paired the panel.
-    assert op.json()["committed"]["actor_id"] == ids["users"]["ben"]
+    assert op.json()["committed"]["actor_id"] == ids["users"]["bharat"]
     assert (
         panel.post(
             f"/workspaces/{ws(ids)}/board/ops", json={"op_id": "op-panel-u1", "epoch": 1, "type": "undo"}
@@ -145,20 +145,20 @@ def test_panel_cookie_reaches_nothing_else(as_user, make_client, ids, method, pa
 def test_panel_images_only_from_its_board(as_user, make_client, ids):
     from .test_files import PDF, png_bytes
 
-    ben = as_user("ben")
-    board_img = ben.post("/uploads", files={"file": ("a.png", png_bytes(), "image/png")}).json()["id"]
-    ben.post(
+    bharat = as_user("bharat")
+    board_img = bharat.post("/uploads", files={"file": ("a.png", png_bytes(), "image/png")}).json()["id"]
+    bharat.post(
         f"/workspaces/{ws(ids)}/board/ops",
         json={
-            "op_id": "op-ben-img1",
+            "op_id": "op-bharat-img1",
             "epoch": 1,
             "type": "add",
             "object_id": "img",
             "payload": {"kind": "image", "data": {"x": 0, "y": 0, "w": 10, "h": 10, "asset_id": board_img}},
         },
     )
-    post_file = ben.post("/uploads", files={"file": ("a.pdf", PDF, "application/pdf")}).json()["id"]
-    ben.post(f"/workspaces/{ws(ids)}/posts", json={"body": "file", "attachment_ids": [post_file]})
+    post_file = bharat.post("/uploads", files={"file": ("a.pdf", PDF, "application/pdf")}).json()["id"]
+    bharat.post(f"/workspaces/{ws(ids)}/posts", json={"body": "file", "attachment_ids": [post_file]})
     panel = pair(as_user, make_client, ids)
     assert panel.get(f"/files/{board_img}/preview").status_code == 200
     assert panel.get(f"/files/{post_file}").status_code == 404
@@ -210,12 +210,12 @@ def test_end_and_lock_are_audited(as_user, make_client, ids):
     actions = [e["action"] for e in events]
     assert {"panel.pairing_created", "panel.start", "panel.lock", "panel.end"} <= set(actions)
     # Desktop session of the same user is unaffected.
-    assert as_user("ben").get("/auth/session").status_code == 200
+    assert as_user("bharat").get("/auth/session").status_code == 200
 
 
 def test_access_changes_apply_to_panel(as_user, make_client, ids):
     panel = pair(as_user, make_client, ids)
-    as_user("admin").delete(f"/admin/workspaces/{ws(ids)}/memberships/{ids['users']['ben']}")
+    as_user("admin").delete(f"/admin/workspaces/{ws(ids)}/memberships/{ids['users']['bharat']}")
     assert panel.get(f"/workspaces/{ws(ids)}/board").status_code == 404
     panel2 = pair(as_user, make_client, ids, user="asha")
     as_user("admin").patch(f"/admin/users/{ids['users']['asha']}", json={"is_active": False})

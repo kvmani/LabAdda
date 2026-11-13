@@ -76,46 +76,46 @@ function sql(db, statement) {
 try {
   for (const [base, db] of INSTANCES) {
     const tag = base || "root";
-    const ben = await signIn(base, "ben");
-    const workspaces = await (await ben.ctx.request.get(origin + base + "/api/v1/workspaces")).json();
+    const bharat = await signIn(base, "bharat");
+    const workspaces = await (await bharat.ctx.request.get(origin + base + "/api/v1/workspaces")).json();
     const section = workspaces.workspaces.find((w) => w.name === "Thin Films Section").id;
-    await ben.page.goto(origin + base + `/w/${section}/noticeboard`);
-    await ben.page.getByLabel("Message").fill(TEXT);
-    await ben.page.getByRole("button", { name: "Post", exact: true }).click();
-    await ben.page.getByRole("status").filter({ hasText: "Posted" }).waitFor();
-    await ben.page.goto(origin + base + `/w/${section}/board`);
-    await ben.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
-    const box = await ben.page.locator(".canvas").boundingBox();
-    await ben.page.mouse.move(box.x + 120, box.y + 120);
-    await ben.page.mouse.down();
-    for (let i = 1; i <= 6; i++) await ben.page.mouse.move(box.x + 120 + i * 20, box.y + 120 + i * 9);
-    await ben.page.mouse.up();
-    await ben.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    await bharat.page.goto(origin + base + `/w/${section}/noticeboard`);
+    await bharat.page.getByLabel("Message").fill(TEXT);
+    await bharat.page.getByRole("button", { name: "Post", exact: true }).click();
+    await bharat.page.getByRole("status").filter({ hasText: "Posted" }).waitFor();
+    await bharat.page.goto(origin + base + `/w/${section}/board`);
+    await bharat.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+    const box = await bharat.page.locator(".canvas").boundingBox();
+    await bharat.page.mouse.move(box.x + 120, box.y + 120);
+    await bharat.page.mouse.down();
+    for (let i = 1; i <= 6; i++) await bharat.page.mouse.move(box.x + 120 + i * 20, box.y + 120 + i * 9);
+    await bharat.page.mouse.up();
+    await bharat.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
 
-    await ben.page.goto(origin + base + "/usage");
-    await chargeRow(ben.page, "Posts and replies").waitFor();
+    await bharat.page.goto(origin + base + "/usage");
+    await chargeRow(bharat.page, "Posts and replies").waitFor();
     check(
-      (await liveCell(ben.page, "Posts and replies")) === "26 B · 1 item",
+      (await liveCell(bharat.page, "Posts and replies")) === "26 B · 1 item",
       `${tag}: a 16-character post is charged as its 26 UTF-8 bytes`,
     );
     check(
-      /· 1 item$/.test(await liveCell(ben.page, "Whiteboard objects")),
+      /· 1 item$/.test(await liveCell(bharat.page, "Whiteboard objects")),
       `${tag}: the drawn stroke is charged to its author`,
     );
     check(
-      (await ben.page.getByText(/lower bound/).count()) === 0,
+      (await bharat.page.getByText(/lower bound/).count()) === 0,
       `${tag}: new boards report complete charges`,
     );
-    await ben.page.screenshot({ path: `${out}/${tag.replace("/", "")}-user-usage.png`, fullPage: true });
+    await bharat.page.screenshot({ path: `${out}/${tag.replace("/", "")}-user-usage.png`, fullPage: true });
 
-    const chen = await signIn(base, "chen");
-    await chen.page.goto(origin + base + "/usage");
-    await chargeRow(chen.page, "Posts and replies").waitFor();
+    const chitra = await signIn(base, "chitra");
+    await chitra.page.goto(origin + base + "/usage");
+    await chargeRow(chitra.page, "Posts and replies").waitFor();
     check(
-      (await liveCell(chen.page, "Posts and replies")) === "0 B · 0 items",
+      (await liveCell(chitra.page, "Posts and replies")) === "0 B · 0 items",
       `${tag}: another user sees only their own charges`,
     );
-    check((await chen.page.content()).includes(TEXT) === false, `${tag}: usage pages never show content`);
+    check((await chitra.page.content()).includes(TEXT) === false, `${tag}: usage pages never show content`);
 
     // Simulate a board whose history predates the ledger.
     sql(
@@ -161,12 +161,12 @@ try {
       path: `${out}/${tag.replace("/", "")}-admin-reconciled.png`,
       fullPage: true,
     });
-    await ben.page.reload();
-    await chargeRow(ben.page, "Whiteboard objects")
+    await bharat.page.reload();
+    await chargeRow(bharat.page, "Whiteboard objects")
       .getByText(/· 1 item/)
       .waitFor();
     check(true, `${tag}: the author's board charge is restored by reconciliation`);
-    for (const s of [ben, chen, admin]) await s.ctx.close();
+    for (const s of [bharat, chitra, admin]) await s.ctx.close();
   }
   console.log(`${checks} content-charge browser checks passed. Screenshots: ${out}`);
 } finally {

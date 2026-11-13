@@ -49,17 +49,17 @@ def rows(db_factory):
 def test_schedule_stores_the_change_and_applies_nothing(as_user, ids, db_factory, settings):
     admin = as_user("admin")
     day = day_after(settings, 3)
-    before = grants(db_factory, ids["users"]["ben"])
+    before = grants(db_factory, ids["users"]["bharat"])
     response = schedule_request(admin, move(ids), day)
     assert response.status_code == 200, response.text
     assert response.json()["scheduled"] is True
-    assert grants(db_factory, ids["users"]["ben"]) == before
+    assert grants(db_factory, ids["users"]["bharat"]) == before
     [row] = rows(db_factory)
     assert (row.state, row.kind, row.effective_on) == ("pending", "transfer", day)
-    assert str(row.subject_id) == ids["users"]["ben"]
+    assert str(row.subject_id) == ids["users"]["bharat"]
     listing = admin.get("/admin/changes/scheduled").json()["items"]
     assert [(item["id"], item["state"]) for item in listing] == [(str(row.id), "pending")]
-    assert admin.get(f"/admin/changes/scheduled?person_id={ids['users']['chen']}").json()["items"] == []
+    assert admin.get(f"/admin/changes/scheduled?person_id={ids['users']['chitra']}").json()["items"] == []
     with db_factory() as db:
         audit = db.scalar(select(AuditEvent).where(AuditEvent.action == "people.schedule"))
         assert audit.reason == "Moves with the new term" and audit.detail["effective_on"] == day.isoformat()
@@ -76,7 +76,7 @@ def test_schedule_refuses_today_the_past_and_the_far_future(offset, as_user, ids
 
 def test_activation_code_changes_cannot_be_scheduled(as_user, ids, settings):
     admin = as_user("admin")
-    request = change(ids, "reinstate", person_id="fay")
+    request = change(ids, "reinstate", person_id="farhan")
     body = {**request, "effective_on": day_after(settings).isoformat()}
     response = admin.post("/admin/changes/preview", json=body)
     assert "not_schedulable" in response.text
@@ -85,7 +85,7 @@ def test_activation_code_changes_cannot_be_scheduled(as_user, ids, settings):
 def test_stale_review_is_not_scheduled(as_user, ids, db_factory, settings):
     admin = as_user("admin")
     body = reviewed_for(admin, {**move(ids), "effective_on": day_after(settings).isoformat()})
-    edit = change(ids, "edit_person", person_id="ben", fields={"designation": "Technician"})
+    edit = change(ids, "edit_person", person_id="bharat", fields={"designation": "Technician"})
     assert admin.post("/admin/changes/apply", json=reviewed(admin, edit)).status_code == 200
     response = admin.post("/admin/changes/apply", json=body)
     assert response.status_code == 409
@@ -97,11 +97,11 @@ def test_runs_on_the_day_and_is_idempotent(as_user, ids, db_factory, settings):
     day = day_after(settings, 2)
     assert schedule_request(admin, move(ids), day).status_code == 200
     assert run(db_factory, settings, day - timedelta(days=1), hour=23) == 0
-    assert grants(db_factory, ids["users"]["ben"]).get(ids["workspaces"]["section_b"]) is None
+    assert grants(db_factory, ids["users"]["bharat"]).get(ids["workspaces"]["section_b"]) is None
     assert run(db_factory, settings, day) == 1
     assert run(db_factory, settings, day) == 0
     assert run(db_factory, settings, day, hour=5) == 0
-    assert grants(db_factory, ids["users"]["ben"])[ids["workspaces"]["section_b"]] == "member"
+    assert grants(db_factory, ids["users"]["bharat"])[ids["workspaces"]["section_b"]] == "member"
     [row] = rows(db_factory)
     assert row.state == "applied" and row.applied_at is not None
     assert admin.get("/admin/changes/scheduled").json()["items"] == []
@@ -118,11 +118,11 @@ def test_a_conflicting_change_in_between_needs_review_and_applies_nothing(as_use
     admin = as_user("admin")
     day = day_after(settings)
     assert schedule_request(admin, move(ids), day).status_code == 200
-    edit = change(ids, "edit_person", person_id="ben", fields={"designation": "Technician"})
+    edit = change(ids, "edit_person", person_id="bharat", fields={"designation": "Technician"})
     assert admin.post("/admin/changes/apply", json=reviewed(admin, edit)).status_code == 200
-    before = grants(db_factory, ids["users"]["ben"])
+    before = grants(db_factory, ids["users"]["bharat"])
     assert run(db_factory, settings, day) == 0
-    assert grants(db_factory, ids["users"]["ben"]) == before
+    assert grants(db_factory, ids["users"]["bharat"]) == before
     [row] = rows(db_factory)
     assert row.state == "needs_review" and "changed after it was scheduled" in row.note
     assert run(db_factory, settings, day) == 0
@@ -135,7 +135,7 @@ def test_a_plan_that_became_blocked_gives_its_plain_reason(as_user, ids, db_fact
     day = day_after(settings)
     assert schedule_request(admin, move(ids), day).status_code == 200
     with db_factory() as db:
-        db.get(User, ids["users"]["ben"]).status = "retired"
+        db.get(User, ids["users"]["bharat"]).status = "retired"
         db.commit()
     assert run(db_factory, settings, day) == 0
     [row] = rows(db_factory)
@@ -175,15 +175,15 @@ def test_cancel_withdraws_and_is_final(as_user, ids, db_factory, settings):
 def test_a_unit_change_can_be_scheduled(as_user, ids, db_factory, settings):
     admin = as_user("admin")
     day = day_after(settings)
-    request = change(ids, "unit_rename", unit_id="section_a", name="Catalysis and Energy")
+    request = change(ids, "unit_rename", unit_id="section_a", name="Corrosion and Energy")
     response = schedule_request(admin, request, day)
     assert response.status_code == 200, response.text
     assert run(db_factory, settings, day) == 1
     admin_tree = admin.get("/admin/org/tree").text
-    assert "Catalysis and Energy" in admin_tree
+    assert "Corrosion and Energy" in admin_tree
 
 
-@pytest.mark.parametrize("username", ["asha", "ben", "dana"])
+@pytest.mark.parametrize("username", ["asha", "bharat", "deepa"])
 def test_members_cannot_use_scheduled_changes(username, as_user, ids, settings):
     member = as_user(username)
     body = {**move(ids), "effective_on": day_after(settings).isoformat()}
@@ -205,15 +205,15 @@ def test_signed_out_and_panel_sessions_are_refused(as_user, ids, make_client):
 def test_a_scheduled_suspension_ends_sessions_and_sockets_when_it_runs(as_user, ids, db_factory, settings):
     from unittest.mock import MagicMock
 
-    admin, ben = as_user("admin"), as_user("ben")
+    admin, bharat = as_user("admin"), as_user("bharat")
     day = day_after(settings)
-    assert schedule_request(admin, change(ids, "suspend", person_id="ben"), day).status_code == 200
-    assert ben.get("/auth/session").status_code == 200
+    assert schedule_request(admin, change(ids, "suspend", person_id="bharat"), day).status_code == 200
+    assert bharat.get("/auth/session").status_code == 200
     hub = MagicMock()
     with db_factory() as db:
         assert scheduled.run_due(db, settings, hub, now=start_of(day, settings)) == 1
-    hub.revalidate_user.assert_any_call(uuid.UUID(ids["users"]["ben"]))
-    assert ben.get("/auth/session").status_code == 401
+    hub.revalidate_user.assert_any_call(uuid.UUID(ids["users"]["bharat"]))
+    assert bharat.get("/auth/session").status_code == 401
 
 
 def test_one_unreviewable_change_does_not_stop_the_others(as_user, ids, db_factory, settings):

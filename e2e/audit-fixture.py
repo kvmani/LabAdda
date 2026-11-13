@@ -18,9 +18,9 @@ def prepare() -> None:
     assert url.database in {"labadda_e2e_root", "labadda_e2e_prefix"}
     with session_factory(settings.database_url)() as db:
         admin = db.scalar(select(User).where(User.username == "admin"))
-        ben = db.scalar(select(User).where(User.username == "ben"))
+        bharat = db.scalar(select(User).where(User.username == "bharat"))
         unit = db.scalar(select(Workspace).where(Workspace.kind == "org", Workspace.parent_id.is_not(None)))
-        assert admin is not None and ben is not None and unit is not None
+        assert admin is not None and bharat is not None and unit is not None
         if db.scalar(select(AuditEvent.id).where(AuditEvent.reason == "Browser check start")) is not None:
             return
         start = datetime(2026, 1, 5, 9, tzinfo=UTC)
@@ -30,9 +30,9 @@ def prepare() -> None:
                     actor_id=admin.id,
                     action="identity.update",
                     scope_type="identity",
-                    target_id=str(ben.id),
+                    target_id=str(bharat.id),
                     reason="Browser check start" if index == 0 else f"Browser check {index:03}",
-                    detail={"display_name": f"Ben {index:03}"},
+                    detail={"display_name": f"Bharat {index:03}"},
                     created_at=start + timedelta(minutes=index),
                 )
             )
@@ -43,7 +43,7 @@ def prepare() -> None:
                 action="membership.set",
                 scope_type="workspace",
                 scope_id=str(unit.id),
-                target_id=str(ben.id),
+                target_id=str(bharat.id),
                 reason="Role review",
                 detail={"before": "member", "after": "steward"},
                 created_at=stamp,
@@ -54,17 +54,17 @@ def prepare() -> None:
                 actor_id=admin.id,
                 action="identity.update",
                 scope_type="identity",
-                target_id=str(ben.id),
+                target_id=str(bharat.id),
                 reason="=HYPERLINK(1)",
                 created_at=stamp + timedelta(minutes=1),
             )
         )
         db.add(
             AuditEvent(
-                actor_id=ben.id,
+                actor_id=bharat.id,
                 action="auth.login",
                 scope_type="identity",
-                target_id=str(ben.id),
+                target_id=str(bharat.id),
                 outcome="denied",
                 created_at=stamp + timedelta(minutes=2),
             )

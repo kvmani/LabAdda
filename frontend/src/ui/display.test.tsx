@@ -86,8 +86,8 @@ describe("StatusPill and Tag", () => {
 describe("Avatar", () => {
   it("shows up to two initials and is hidden from screen readers", () => {
     expect(initials("Asha Rao")).toBe("AR");
-    expect(initials("ben")).toBe("B");
-    expect(initials("  Chen  Li  Wei ")).toBe("CW");
+    expect(initials("bharat")).toBe("B");
+    expect(initials("  Chitra  Iyer  Rao ")).toBe("CR");
     expect(initials("")).toBe("?");
     const { container } = render(<Avatar id="u1" name="Asha Rao" />);
     expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");

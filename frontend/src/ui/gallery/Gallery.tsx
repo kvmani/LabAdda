@@ -54,8 +54,8 @@ import "./gallery.css";
 type Person = { id: string; name: string; unit: string; staff: number };
 const PEOPLE: Person[] = [
   { id: "p1", name: "Asha Rao", unit: "Thin Films", staff: 6 },
-  { id: "p2", name: "Ben Okafor", unit: "Thin Films", staff: 6 },
-  { id: "p3", name: "Chen Li", unit: "Catalysis", staff: 9 },
+  { id: "p2", name: "Bharat Kulkarni", unit: "Thin Films", staff: 6 },
+  { id: "p3", name: "Chitra Iyer", unit: "Corrosion", staff: 9 },
 ];
 const COLUMNS: Column<Person>[] = [
   { key: "name", header: "Name", render: (row) => row.name, sortValue: (row) => row.name },
@@ -76,11 +76,11 @@ const ORG: TreeNode[] = [
     children: [
       {
         id: "division",
-        label: "Surface Science Division",
+        label: "Surface Engineering Division",
         detail: "24 people",
         children: [
           { id: "thin", label: "Thin Films Section", detail: "6 people" },
-          { id: "cat", label: "Catalysis Section", detail: "9 people" },
+          { id: "cat", label: "Corrosion Section", detail: "9 people" },
         ],
       },
       { id: "admin", label: "Administration", detail: "8 people" },
@@ -115,7 +115,7 @@ function Overlays() {
       <Button onClick={() => setConfirm(true)}>Open confirmation</Button>
       <Button onClick={() => setDrawer(true)}>Open drawer</Button>
       <Menu
-        label="Actions for Ben Okafor"
+        label="Actions for Bharat Kulkarni"
         items={[
           { label: "Transfer", icon: "unit", onSelect: () => undefined },
           { label: "Promote", icon: "arrow-up", onSelect: () => undefined, disabled: true },
@@ -147,10 +147,10 @@ function Overlays() {
       </Dialog>
       <ConfirmDialog
         open={confirm}
-        title="Retire Dana Iyer?"
+        title="Retire Deepa Iyer?"
         consequences={[
-          "Dana Iyer can no longer sign in from 30 November 2026.",
-          "Surface Science Division will have no Head. Choose an acting Head first.",
+          "Deepa Iyer can no longer sign in from 30 November 2026.",
+          "Surface Engineering Division will have no Head. Choose an acting Head first.",
           "3 open shared tasks stay assigned; their stewards are told to reassign them.",
         ]}
         confirmLabel="Retire 1 person"

@@ -118,14 +118,20 @@ def change_status(
 4. If the table holds user data, extend `backend/tests/test_recovery_integration.py` so backup
    and restore are proven to preserve it.
 
+### Fixture data
+
+All fixture, seed, e2e, help and documentation examples use Indian personal names and Indian
+national-research-laboratory units, groups and projects. The accounts and units are listed in
+[fixture-names.md](fixture-names.md); `scripts/check_docs.py` fails if a retired name returns.
+
 ### Recipe: test a feature
 
 Use the fixtures in `backend/tests/conftest.py`: `as_user("asha")` returns a signed-in client;
 `ids` holds fixture workspace and user IDs. Every feature test file covers:
 
 - the success path, reloaded from the server, not just the response of the write;
-- **the denial matrix**: `chen` (sibling section), `dana` (parent division only, for child
-  content), `admin` (no content grant), `eli` (project guest), `fay` (deactivated), a signed-out
+- **the denial matrix**: `chitra` (sibling section), `deepa` (parent division only, for child
+  content), `admin` (no content grant), `esha` (project guest), `farhan` (deactivated), a signed-out
   client, and a panel session (`headers={"X-LabAdda-Panel": "1"}`) — each must get 401, 403 or
   the uniform 404 as the contract says;
 - validation bounds (too long, wrong type, unknown field);
