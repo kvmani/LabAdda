@@ -134,14 +134,26 @@ function observeSockets(ctx, page) {
 
 function trackApiRequests(page, state) {
   const isApi = (request) => request.url().includes("/api/v1/");
+  const pending = new Set();
+  const sync = () => {
+    state.inFlight = pending.size;
+  };
   page.on("request", (request) => {
-    if (isApi(request)) state.inFlight += 1;
+    if (isApi(request)) pending.add(request);
+    sync();
   });
   const finished = (request) => {
-    if (isApi(request)) state.inFlight -= 1;
+    pending.delete(request);
+    sync();
   };
   page.on("requestfinished", finished);
   page.on("requestfailed", finished);
+  // A page load abandons the old document's requests without reporting them as finished or failed.
+  page.on("framenavigated", (frame) => {
+    if (frame !== page.mainFrame()) return;
+    pending.clear();
+    sync();
+  });
 }
 
 /**
