@@ -34,7 +34,7 @@ async function audit(page, width, label) {
       await window.axe.run(document, {
         runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
       })
-    ).violations.map((item) => item.id),
+    ).violations.map((item) => item.id + "@" + item.nodes.map((node) => node.target.join(" ")).join(";")),
   );
   check(violations.length === 0, `${label} accessibility ${width}: ${violations}`);
   check(

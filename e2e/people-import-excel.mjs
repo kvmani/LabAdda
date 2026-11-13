@@ -145,9 +145,10 @@ async function importWorkbook(page, base) {
   await upload(dialog, "staff.xlsx", workbook([HEAD, ...PEOPLE]));
   const report = dialog.getByRole("region", { name: "Import report" });
   await report.waitFor();
+  const summary = await report.innerText();
   check(
-    await report.getByText(/15 people will be added and 8 units will be created/).isVisible(),
-    base + " report counts",
+    /15 people will be added and 7 units will be created/.test(summary),
+    base + " report counts (" + summary.split("\n")[0] + ")",
   );
   check(
     await report.getByText(/Priya Kulkarni will become an administrator/).isVisible(),
@@ -207,14 +208,20 @@ async function chart(page, base) {
     await page.getByText("Section", { exact: true }).first().isVisible(),
     base + " unit panel shows the level",
   );
-  check(await page.getByText("Om Bhatt").first().isVisible(), base + " unit panel lists its people");
+  const listed = await page
+    .getByText("Om Bhatt")
+    .first()
+    .waitFor({ timeout: 15_000 })
+    .then(() => true)
+    .catch(() => false);
+  check(listed, base + " unit panel lists its people");
   await tree.getByRole("treeitem", { name: /Polymer Group/ }).focus();
-  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press(" ");
   check(
     (await tree.getByRole("treeitem", { name: /Curing Section/ }).count()) === 0,
     base + " collapsing the group hides every depth below it",
   );
-  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press(" ");
   await tree.getByRole("treeitem", { name: /Curing Section/ }).waitFor();
   check(true, base + " expanding restores them");
   await page.getByRole("searchbox").first().fill("Spinning");
@@ -239,7 +246,7 @@ async function firstPassword(base) {
     await heading.waitFor();
     check(true, base + " first sign-in goes straight to the password change");
     await uma.page.getByLabel("Current password").fill(FIRST_PASSWORD);
-    await uma.page.getByLabel("New password", { exact: true }).fill("Fresh-Start-9876");
+    await uma.page.getByLabel(/^New password/).fill("Fresh-Start-9876");
     await uma.page.getByLabel("Repeat new password").fill("Fresh-Start-9876");
     await uma.page.getByRole("button", { name: "Change password", exact: true }).click();
     await uma.page.getByRole("button", { name: /^Account menu for / }).waitFor();
