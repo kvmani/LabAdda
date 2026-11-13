@@ -29,6 +29,7 @@ The repository holds a runnable application (FastAPI + PostgreSQL backend, React
 | [TESTING.md](TESTING.md) | Test matrix and release evidence |
 | [REVIEW.md](REVIEW.md) | Independent review procedure and release decisions |
 | [Operator quickstart](docs/OPERATOR-QUICKSTART.md) | Install, first administrator, `labadda doctor`, backup, upgrade in five steps |
+| [Pilot runbook](docs/PILOT-RUNBOOK.md) | What to prepare, install, daily check, backup, upgrade, rollback and known limits for the pilot |
 | [Intranet deployment design](docs/DEPLOYMENT.md) | Runtime, offline release, staging, recovery, and site decisions |
 | [API contract](docs/API.md) | Endpoints, error codes, idempotency and socket messages |
 | [Data lifecycle requirements](docs/DATA-LIFECYCLE.md) | Future quotas, retention, user archives and safe re-import |

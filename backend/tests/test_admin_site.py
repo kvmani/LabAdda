@@ -111,6 +111,9 @@ def test_settings_show_no_secret_path_or_host(as_user, app, tmp_path):
         for item in group["items"]:
             assert item["changed_by"] == "Changed by the operator in the site configuration file."
             assert item["explanation"] and item["label"]
+    items = {item["key"]: item for group in body["groups"] for item in group["items"]}
+    assert items["bulk_change_seconds"]["value"] == 60
+    assert items["bulk_change_seconds"]["unit"] == "seconds"
 
 
 def banner_body(**changes):

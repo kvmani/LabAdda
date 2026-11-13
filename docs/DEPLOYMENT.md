@@ -36,3 +36,7 @@ Use the [operations implementation guide](development/operations.md) for the typ
 site renderer, hardened system service, maintenance gate and bounded readiness
 probes. Rendering is a review step, not site activation. Existing user-service and
 proxy templates remain alternatives; choose one coherent layout rather than mixing them.
+
+## Pilot
+
+The order of work, daily checks, upgrade, rollback and known limits for the supervised pilot are in the [pilot runbook](PILOT-RUNBOOK.md).

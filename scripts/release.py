@@ -159,6 +159,7 @@ def build(root: Path, output: Path, release_id: str) -> Path:
                 "scripts/site_state.py",
                 "docs/COMMISSIONING.md",
                 "docs/OPERATOR-QUICKSTART.md",
+                "docs/PILOT-RUNBOOK.md",
                 "docs/development/operations.md",
                 "docs/DEPLOYMENT.md",
                 "docs/RELEASES.md",

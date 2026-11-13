@@ -156,6 +156,19 @@ GROUPS = (
         ),
     ),
     Group(
+        "staff_changes",
+        "Staff changes",
+        "How long a bulk staff change or an import review may take.",
+        (
+            Row(
+                "bulk_change_seconds",
+                "Longest bulk staff change",
+                "seconds",
+                "A bulk change or import review that runs longer is stopped, and nothing is saved.",
+            ),
+        ),
+    ),
+    Group(
         "history",
         "Usage history",
         "How long figures behind the console charts are kept.",
