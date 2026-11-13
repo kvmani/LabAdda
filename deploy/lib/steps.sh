@@ -125,6 +125,10 @@ step_tls() {
     # The server's own probes must trust this certificate too (see operations.py probe).
     printf '%s\n' "$crt" | write_file 0644 root:root "$ETC_DIR/$SITE.probe-ca"
     LABADDA_PROBE_CA_FILE=$crt; export LABADDA_PROBE_CA_FILE
+    # On a real server also trust it system-wide so the doctor's secure-connection check passes.
+    if [[ -z $PREFIX ]] && ! ((DRY_RUN)); then
+      install -m 0644 "$crt" /usr/local/share/ca-certificates/labadda-pilot.crt && update-ca-certificates >/dev/null
+    fi
   fi
 }
 

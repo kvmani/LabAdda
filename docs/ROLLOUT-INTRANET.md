@@ -167,5 +167,7 @@ uploaded files, backups and settings. Running `install.sh` again brings the site
 The kit builder, `install.sh` (dry run and real), status, a second install run, backup with copy, test restore,
 upgrade and uninstall were rehearsed end to end on a scratch Ubuntu 24.04 machine with a real nginx and PostgreSQL
 (`scripts/rehearse-rollout.sh`). Not rehearsed there, so watch them on the real server: real systemd (enable at boot,
-timer firing), your real certificate in browsers, installing the operating-system packages on a blank server, and
-the firewall. See the [pilot runbook](PILOT-RUNBOOK.md) for acceptance limits.
+timer firing), your real certificate in browsers, installing the operating-system packages on a blank server, the
+firewall, and the failure branches of `upgrade.sh` (automatic rollback, site left closed). With a certificate from your
+own authority, give `--ca-file` to `install.sh` (or trust the authority on the server), otherwise the doctor reports
+"certificate is not trusted" and scheduled backups cannot confirm the secure address. See the [pilot runbook](PILOT-RUNBOOK.md) for acceptance limits.
