@@ -160,8 +160,10 @@ async function hold(page, pattern) {
   let entered;
   let release;
   let finished;
-  const waiting = new Promise((resolve) => {
+  // A request that never arrives must fail the suite, not stall the whole browser run.
+  const waiting = new Promise((resolve, reject) => {
     entered = resolve;
+    setTimeout(() => reject(new Error("held request never arrived: " + pattern)), 30_000);
   });
   const gate = new Promise((resolve) => {
     release = resolve;
