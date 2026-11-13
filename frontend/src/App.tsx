@@ -4,7 +4,7 @@ import { AdminBoundary } from "./features/admin/AdminBoundary";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Shell } from "./features/shell/Shell";
 import { useSession } from "./session";
-import { WorkspaceProvider, useWorkspaces } from "./workspaces";
+import { WorkspaceProvider } from "./workspaces";
 import { Activate, Login } from "./pages/Login";
 import { WorkspaceView } from "./pages/WorkspaceView";
 import { MyTasks } from "./pages/MyTasks";
@@ -18,34 +18,12 @@ import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
 import { HelpBoundary } from "./features/help/HelpBoundary";
 
+import { Home, Landing } from "./features/home/Home";
 import { clearBoardDraft } from "./features/personal-board/draft";
 import { PersonalBoard } from "./features/personal-board/PersonalBoard";
 
 const Admin = lazy(() => import("./pages/Admin"));
 const Help = lazy(() => import("./pages/Help"));
-
-function Home() {
-  const { homeId, workspaces, loading } = useWorkspaces();
-  if (loading) return <Skeleton label="Loading workspaces…" lines={3} />;
-  const target = homeId ?? workspaces[0]?.id;
-  if (target) return <Navigate to={`/w/${target}/noticeboard`} replace />;
-  return (
-    <>
-      <PageHeader title="No workspaces yet" />
-      <EmptyState
-        title="You are not a member of any workspace"
-        action={
-          <Link className="ui-button ui-button--primary ui-button--md" to="/groups/new">
-            <span>Create a group</span>
-          </Link>
-        }
-      >
-        Ask an administrator to add you, or start a collaborative group with colleagues. You can also open{" "}
-        <Link to="/notes">My Notes</Link>.
-      </EmptyState>
-    </>
-  );
-}
 
 export function App() {
   const { session, loading } = useSession();
@@ -57,6 +35,7 @@ export function App() {
   if (!session) {
     return (
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/activate" element={<Activate />} />
         <Route path="*" element={<Login next={location.pathname + location.search} />} />
       </Routes>

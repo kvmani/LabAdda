@@ -2,7 +2,9 @@
 
 Developer/agent entry point: [documentation map](docs/README.md).
 
-LabAdda is a browser-based collaboration workspace for research teams on an air-gapped office intranet. Sign in once, switch between your team and its parent units, and use each workspace's noticeboard, live whiteboard, and group chat. My Notes gives each user a separate personal space.
+LabAdda is a browser-based collaboration workspace for research teams on an air-gapped office intranet. Sign in once, switch between your team and its parent units, and use each workspace's noticeboard, live whiteboard, and group chat. My Notes gives each user a separate personal space. **My Whiteboard** adds owner-only drawing
+and colored sticky notes, separate from team boards. The branded home page links to personal
+tools and current team spaces. See [the private-board guide](docs/development/personal-whiteboard.md).
 
 Users can also create **collaborative groups** with chosen colleagues from any unit. A group has the same noticeboard, whiteboard and chat as a section, without hierarchy.
 

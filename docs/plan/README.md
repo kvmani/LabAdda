@@ -38,7 +38,7 @@ remaining effort, and are estimates — the package table below is the precise r
 | Code uniformity and quality gates | 7 % | 82 % | Rest of the readable rewrite (Q3), module splits (Q4) |
 | **Overall toward v1.0** | 100 % | **≈ 91 %** | |
 
-The delivered foundation includes 36 migrations and 218 frontend unit tests; the full backend
+The delivered foundation includes 37 migrations and 220 frontend unit tests; the full backend
 suite and `scripts/verify.sh` pass on main. Browser checks run at root and under the prefix
 (`scripts/e2e-all.sh`). Thirty-client TLS workload rehearsals and offline release, install,
 backup, restore and upgrade are verified locally; see [the pilot runbook](../PILOT-RUNBOOK.md).
@@ -46,6 +46,12 @@ backup, restore and upgrade are verified locally; see [the pilot runbook](../PIL
 The [13 November pilot review](../PILOT-REVIEW.md) records two corrected high-priority
 findings and a conditional 76/100 small-pilot readiness judgement. Site acceptance remains
 owner work; the score does not change package completion or authorise real-data activation.
+
+## Owner-requested additions
+
+Approved branding, a public/signed-in home and an owner-private drawing/sticky-note board are
+implemented and verified as an explicit owner request. See the [feature guide](../development/personal-whiteboard.md).
+Existing package order and site acceptance gates are unchanged.
 
 ## Order of work
 

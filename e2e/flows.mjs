@@ -42,6 +42,9 @@ async function signIn(browser, base, username) {
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("button", { name: /^Account menu for / }).waitFor();
+  const home = await ctx.request.get(`${origin}${base}/api/v1/auth/session`);
+  const homeId = (await home.json()).user.home_workspace_id;
+  if (homeId) await page.goto(`${origin}${base}/w/${homeId}/noticeboard`);
   return { ctx, page, external };
 }
 

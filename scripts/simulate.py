@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILES = {
     "quick": ("chat-attachments", "alert-preferences"),
     "full": (
+        "personal-board",
         "admin-console",
         "people",
         "flows",
@@ -259,7 +260,10 @@ def main(argv=None):
         try:
             report = execute(args.profile, args.out.absolute())
         except OSError:
-            print("Cannot create exclusive output directory; choose a new private path.", file=sys.stderr)
+            print(
+                "Cannot create exclusive output directory; choose a new private path.",
+                file=sys.stderr,
+            )
             return 1
         finally:
             signal.signal(signal.SIGTERM, previous_handler)
