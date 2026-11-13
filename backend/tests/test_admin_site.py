@@ -1,17 +1,13 @@
-"""A7 Backups page, read-only settings and the site notice banner."""
+"""A7 Backups page and read-only settings (broadcasts: test_broadcast.py)."""
 
 from dataclasses import replace
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import select
 
-from labadda import audit_catalog
 from labadda import backup_status as bs
-from labadda.models import AuditEvent, SiteBanner
 from labadda.security import utcnow
 from tests.test_capabilities import grant
-from tests.test_panel import PANEL, pair
 
 
 @pytest.fixture
@@ -114,102 +110,3 @@ def test_settings_show_no_secret_path_or_host(as_user, app, tmp_path):
     items = {item["key"]: item for group in body["groups"] for item in group["items"]}
     assert items["bulk_change_seconds"]["value"] == 60
     assert items["bulk_change_seconds"]["unit"] == "seconds"
-
-
-def banner_body(**changes):
-    now = utcnow()
-    body = {
-        "message": "Planned maintenance on Friday evening.",
-        "level": "warning",
-        "starts_at": (now - timedelta(minutes=1)).isoformat(),
-        "ends_at": (now + timedelta(hours=2)).isoformat(),
-        "expected_revision": 0,
-    }
-    body.update(changes)
-    return body
-
-
-def test_banner_is_audited_escaped_and_time_bounded(as_user, db_factory):
-    admin, bharat = as_user("admin"), as_user("bharat")
-    assert bharat.get("/site/banner").json() == {"banner": None}
-    markup = "<script>alert(1)</script> back at 6"
-    saved = admin.put("/admin/settings/banner", banner_body(message=markup))
-    assert saved.status_code == 200
-    assert saved.json()["banner"]["revision"] == 1
-    shown = bharat.get("/site/banner").json()["banner"]
-    assert shown["message"] == markup and shown["level"] == "warning" and "revision" not in shown
-    assert admin.get("/admin/settings").json()["banner"]["message"] == markup
-    with db_factory() as db:
-        events = list(db.scalars(select(AuditEvent).where(AuditEvent.action == "site.banner_set")))
-        assert len(events) == 1 and events[0].detail["message_length"] == str(len(markup))
-        assert markup not in str(events[0].detail)
-        assert events[0].actor_id is not None
-        assert audit_catalog.entry("site.banner_set") is not audit_catalog.UNKNOWN
-        row = db.get(SiteBanner, 1)
-        row.starts_at = utcnow() + timedelta(hours=1)
-        row.ends_at = utcnow() + timedelta(hours=3)
-        db.commit()
-    assert bharat.get("/site/banner").json() == {"banner": None}
-    with db_factory() as db:
-        row = db.get(SiteBanner, 1)
-        row.starts_at = utcnow() - timedelta(hours=3)
-        row.ends_at = utcnow() - timedelta(hours=1)
-        db.commit()
-    assert bharat.get("/site/banner").json() == {"banner": None}
-
-
-def test_banner_validation_and_concurrency(as_user, db_factory):
-    admin = as_user("admin")
-    assert admin.put("/admin/settings/banner", banner_body(message="x" * 281)).status_code == 422
-    assert admin.put("/admin/settings/banner", banner_body(message="two\x00lines")).status_code == 422
-    assert admin.put("/admin/settings/banner", banner_body(level="alert")).status_code == 422
-    assert admin.put("/admin/settings/banner", banner_body(level=None)).status_code == 422
-    past = (utcnow() - timedelta(hours=1)).isoformat()
-    assert admin.put("/admin/settings/banner", banner_body(ends_at=past)).status_code == 422
-    naive = "2030-01-01T00:00:00"
-    assert admin.put("/admin/settings/banner", banner_body(ends_at=naive)).status_code == 422
-    assert admin.put("/admin/settings/banner", banner_body(message="x" * 280)).status_code == 200
-    stale = admin.put("/admin/settings/banner", banner_body(expected_revision=0))
-    assert stale.status_code == 409 and stale.json()["error"]["code"] == "banner_changed"
-    cleared = admin.put("/admin/settings/banner", banner_body(message="", expected_revision=1))
-    assert cleared.status_code == 200 and cleared.json() == {"banner": None}
-    with db_factory() as db:
-        assert db.get(SiteBanner, 1) is None
-        actions = set(db.scalars(select(AuditEvent.action).where(AuditEvent.action.like("site.%"))))
-    assert actions == {"site.banner_set", "site.banner_clear"}
-
-
-def test_banner_writes_need_an_administrator(as_user, ids):
-    assert as_user("bharat").put("/admin/settings/banner", banner_body()).status_code == 403
-    assert grant(as_user("admin"), ids["users"]["bharat"]).status_code == 201
-    assert as_user("bharat").put("/admin/settings/banner", banner_body()).status_code == 403
-
-
-def test_banner_needs_a_person_session(as_user, make_client, ids):
-    anonymous = make_client()
-    assert anonymous.get("/site/banner").status_code == 401
-    panel = pair(as_user, make_client, ids)
-    assert panel.api.client.get(panel.api.url("/site/banner"), headers=PANEL).status_code == 401
-
-
-def test_banner_downgrade_refuses_to_discard_a_notice(as_user, settings):
-    import importlib.util
-    from pathlib import Path
-
-    from alembic.migration import MigrationContext
-    from alembic.operations import Operations
-    from sqlalchemy import create_engine
-
-    import labadda
-
-    path = Path(labadda.__file__).parents[1] / "migrations" / "versions" / "0029_site_banner.py"
-    spec = importlib.util.spec_from_file_location("banner_migration", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    assert as_user("admin").put("/admin/settings/banner", banner_body()).status_code == 200
-    engine = create_engine(settings.database_url)
-    with engine.connect() as connection:
-        context = MigrationContext.configure(connection)
-        with Operations.context(context), pytest.raises(RuntimeError, match="discard"):
-            module.downgrade()
-    engine.dispose()

@@ -163,6 +163,7 @@ CONSOLE_SECTIONS = (
     "backups",
     "audit",
     "events",
+    "broadcast",
     "settings",
     "help",
 )

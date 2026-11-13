@@ -362,13 +362,14 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0911, PLR0912, PLR09
         )
         return 0
     if args.cmd == "create-admin":
-        from sqlalchemy import select
+        from sqlalchemy import func, select
 
-        from . import audit, people
+        from . import audit, broadcast, people
         from .credentials import issue_credential
         from .models import User
 
         with session_factory(settings.database_url)() as db:
+            first_run = db.scalar(select(func.count()).select_from(User)) == 0
             username = args.username.strip().lower()
             if db.scalar(select(User).where(User.username == username)):
                 print("That username already exists.", file=sys.stderr)
@@ -390,6 +391,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0911, PLR0912, PLR09
                 is_admin=True,
             )
             db.commit()
+            if first_run and settings.environment == "pilot":
+                broadcast.seed_pilot_notice(db)
             print(f"Activation token for {username} (expires {cred.expires_at.isoformat()}):")
             print(token)
             print("Open <base>/activate and enter this token. Do not store it in logs.")

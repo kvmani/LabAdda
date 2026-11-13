@@ -893,22 +893,30 @@ class ActivityDay(Base):
     __table_args__ = (Index("ix_activity_days_day", "day"),)
 
 
-class SiteBanner(Base):
-    """The one site notice shown to every signed-in user between two times (AD-11)."""
+class SiteBroadcast(Base):
+    """A site-wide announcement shown to every signed-in user (AD-11).
 
-    __tablename__ = "site_banner"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    message: Mapped[str] = mapped_column(String(280), nullable=False)
+    Site configuration written by administrators, not user content, so it may be deleted.
+    """
+
+    __tablename__ = "site_broadcasts"
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
+    message: Mapped[str] = mapped_column(String(300), nullable=False)
     level: Mapped[str] = mapped_column(String(8), nullable=False)
-    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     __table_args__ = (
-        CheckConstraint("id = 1", name="ck_site_banner_single"),
-        CheckConstraint("level in ('info','warning')", name="ck_site_banner_level"),
-        CheckConstraint("ends_at > starts_at", name="ck_site_banner_window"),
-        CheckConstraint("revision > 0", name="ck_site_banner_revision"),
+        CheckConstraint("level in ('info','warning')", name="ck_site_broadcasts_level"),
+        CheckConstraint(
+            "starts_at is null or ends_at is null or ends_at > starts_at", name="ck_site_broadcasts_window"
+        ),
+        CheckConstraint("revision > 0", name="ck_site_broadcasts_revision"),
+        Index("ix_site_broadcasts_position", "position"),
     )
 
 
