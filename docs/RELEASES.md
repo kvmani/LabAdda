@@ -2,6 +2,14 @@
 
 The release tooling implements P4 step 2. Backups/restores, TLS and physical-panel acceptance, dependency scanning and independent pilot approval remain separate gates. Never activate a pilot merely because an archive installs.
 
+## Dependency age gate
+
+Every pinned dependency version (all of `backend/requirements.lock` and every package in `frontend/package-lock.json`) must be at least 30 days old, so the office mirrors for Python, Ubuntu and npm already carry it. `scripts/release.py build` runs `scripts/check_dependency_age.py` first and stops, listing each young or undated version; `--skip-age-check` exists for rehearsals only and must not be used for a release. Point the check at a mirror with `--pypi-url` and `--npm-url` (the mirror must serve the PyPI JSON API and npm registry metadata). To fix a failure re-pin per [standards](development/standards.md#5-dependencies-and-tools), run `scripts/verify.sh`, and commit lock and pin files together.
+
+## Mirror-mode bundle and offline kit
+
+`scripts/make-release-bundle.sh OUT` (version from `backend/labadda/__init__.py`) makes the small default bundle: release archive without wheels, scripts, guide, manifest. The server installs the exact pins from its Python mirror (`--index-url`, `--no-deps`, then `pip check`; the public index is refused) and operating system packages with apt from its configured mirror. `--offline-kit` (or `scripts/make-offline-kit.sh`) also carries the wheelhouse and `.deb` files for a server with no mirror. See the [rollout checklist](ROLLOUT-INTRANET.md).
+
 ## Connected build and transfer
 
 Use a clean committed checkout on **Ubuntu 24.04 x86-64, Python 3.12 and Node 22**, with the locked dependencies installed as in README. Run `scripts/verify.sh` first. Build with:

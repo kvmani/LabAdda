@@ -12,11 +12,11 @@ addresses or activation codes into tickets or chat.
 
 ## 1. Before the pilot
 
-The scripted path, which does sections 1 to 4 of this runbook for you from an offline kit, is the [intranet rollout checklist](ROLLOUT-INTRANET.md); use this runbook for the reasoning and the manual commands behind it.
+The scripted path, which does sections 1 to 4 of this runbook for you from a small bundle using the office apt and Python mirrors (an offline kit is the fallback), is the [intranet rollout checklist](ROLLOUT-INTRANET.md); use this runbook for the reasoning and the manual commands behind it.
 
 | Need | Detail |
 | --- | --- |
-| Server | One Ubuntu **24.04 LTS** x86-64 virtual machine with Python 3.12, PostgreSQL 16 (with its `pg_dump` and `pg_restore` clients) and nginx, all from your internal mirror. A release built on any other system is refused. |
+| Server | One Ubuntu **24.04 LTS** x86-64 virtual machine with Python 3.12, PostgreSQL 16 (with its `pg_dump` and `pg_restore` clients) and nginx, all from your internal mirror. Python packages come from your internal Python mirror, at the exact pinned versions (each at least 30 days old). A release built on any other system is refused. |
 | Size | Suggested start, not measured on your site: 4 processors, 8 GB memory, 100 GB disk. The release is about 35 MB and one installed copy about 205 MB; plan room for several releases, uploaded files and seven local backups. The health screen warns when free disk drops below 5 GiB. |
 | Certificate | A certificate and key from your internal authority for the address people will type, trusted by the office browsers. Put them where `deploy/site.example.json` points. Renewal: the in-app operator help "Renewing the certificate". |
 | Time zone | An IANA name such as `Europe/London`. Set it in `LABADDA_TIMEZONE`. Days, reports and schedules follow it; the setup checklist stays "not done" until it is chosen. |

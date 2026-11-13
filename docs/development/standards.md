@@ -225,6 +225,11 @@ check that a user without the right role cannot reach the screen. Register the s
 
 - Python dependencies are pinned in `backend/pyproject.toml` and `backend/requirements.lock`;
   Node dependencies in `package.json` with exact versions and the lock file. Update both.
+- **Dependency age policy.** Every pinned version, transitive ones included, must have been released at
+  least 30 days ago so the office package mirrors have it. Run `python3.12 scripts/check_dependency_age.py`
+  after any change to a lock; it lists each younger version. Re-pin to the newest version that is at least
+  30 days old and compatible (for npm: `npm install --package-lock-only --before=<date 30 days ago>` in a
+  scratch copy), then run `scripts/verify.sh`. The release build runs the same check and stops on failure.
 - A new dependency needs: a named reason in the card, a permissive open-source licence, no
   network access at runtime, and an entry in the release licence inventory (`scripts/release.py`).
 - Formatting and linting gates (Ruff, ESLint, Prettier) arrive with packages Q1 and Q2. Once a

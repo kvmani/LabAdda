@@ -61,7 +61,7 @@ of finished work, not instructions.
 
 - No runtime request leaves the server: no CDN, web font, telemetry, external image or API.
   Every asset is bundled. Sole exception (owner-approved): feedback e-mail to the operator-named intranet relay.
-  New dependencies must be locked, licensed for free use, and added only when the card allows it.
+  New dependencies: locked, free licence, card allows it, every pinned version >= 30 days old (`check_dependency_age.py`).
 - Only fictional fixture data (source, tests, logs, screenshots, documents): Indian personal names
   and national-research-laboratory units, groups and projects, e.g. "Surface Engineering Division",
   "Project Tejas" (docs/development/fixture-names.md). Never commit real names, hosts or secrets.
