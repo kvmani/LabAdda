@@ -37,7 +37,8 @@ prep() {
     inspection-view) node_suite governance "$ORIGIN" "$OUT/prep" >/dev/null && both cli_run inspect-storage ;;
     preview-reconciliation-view) both cli_run reconcile-previews --max-assets 100 ;;
     storage-inventory)
-      for n in root staging; do : >"$RUN/$n/assets/private-fixture-label.bin"; done
+      # An unreferenced candidate must sit in the shard folder named by its first two characters.
+      for n in root staging; do mkdir -p "$RUN/$n/assets/pr"; : >"$RUN/$n/assets/pr/private-fixture-label-0000.bin"; done
       both cli_run inventory-storage ;;
     collaboration-review) node_suite research-day "$ORIGIN" "$OUT/prep" --synthetic-instance >/dev/null ;;
     inventory-jobs) both jobs_fixture ;;
