@@ -16,6 +16,9 @@
 .shell-notice {
   grid-column: 1 / -1;
 }
+.shell-footer {
+  grid-column: 1 / -1;
+}
 .shell-skip-link {
   position: absolute;
   top: calc(-1 * var(--space-7));

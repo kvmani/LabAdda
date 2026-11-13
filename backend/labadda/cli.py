@@ -13,6 +13,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
+from . import build_info
 from .config import load_settings
 from .db import session_factory
 
@@ -40,14 +41,20 @@ def run_doctor(args: argparse.Namespace) -> int:
     host = doctor.live_host(environ, port=args.port)
     results = doctor.run_checks(host)
     if args.json:
-        print(json.dumps(doctor.as_report(results, host.now()), indent=2))
+        print(
+            json.dumps({**doctor.as_report(results, host.now()), "build": build_info.build_info()}, indent=2)
+        )
     else:
+        print(f"LabAdda {build_info.build_info()['summary']}\n")
         print(doctor.format_report(results))
     return 0 if doctor.passed(results) else 1
 
 
 def main(argv: list[str] | None = None) -> int:  # noqa: PLR0911, PLR0912, PLR0915 — one flat dispatch over every subcommand; splitting would hide the command table
     parser = argparse.ArgumentParser(prog="labadda")
+    parser.add_argument(
+        "--version", action="version", version=f"LabAdda {build_info.build_info()['summary']}"
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("migrate", help="apply schema migrations to head")
     seed = sub.add_parser("seed", help="load the fictional fixture (development/test only)")

@@ -7,6 +7,7 @@ import { useSession } from "../../session";
 import { Banner, HelpEntryContext } from "../../ui";
 import { useWorkspaces } from "../../workspaces";
 import { HelpLink } from "../help/HelpLink";
+import { BuildFooter } from "./BuildFooter";
 import { FirstUse } from "./FirstUse";
 import { RailNav } from "./RailNav";
 import { TopBar } from "./TopBar";
@@ -115,6 +116,9 @@ export function Shell({ children }: { children: ReactNode }) {
           <FirstUse />
           {children}
         </main>
+        <div className="shell-footer">
+          <BuildFooter />
+        </div>
       </div>
     </HelpEntryContext.Provider>
   );

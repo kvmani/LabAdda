@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 from sqlalchemy.orm import Session
 
 from .. import banner as banners
+from .. import build_info
 from ..backup_report import backup_report
 from ..config import Settings
 from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, require_console
@@ -63,6 +64,12 @@ def put_banner(
         expected_revision=body.expected_revision,
     )
     return {"banner": banners.banner_json(row)}
+
+
+@router.get("/site/version")
+def site_version():
+    """Public: which software this is (no user data), for support and the version footer."""
+    return build_info.build_info()
 
 
 @router.get("/site/banner")

@@ -57,6 +57,7 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | | `GET/PUT /admin/workspaces/{id}/memberships`, `DELETE .../memberships/{user}` | Audited with optional reason. |
 | | `GET /admin/audit` | Audit explorer (A2, below). |
 | Ops | `GET <base>/healthz`, `GET <base>/readyz` | Readiness fails on DB or schema-head mismatch. |
+| | `GET /site/version` | Public, no user data. `{version, version_label, commit, date, summary}`: `0.0.1-beta`, `0.0.1 beta`, short commit or null when unknown, commit date or null, and the one-line summary that `labadda --version`, `labadda doctor` and the settings page show. |
 
 ## Socket messages
 

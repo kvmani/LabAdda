@@ -1,0 +1,18 @@
+.build-footer {
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.build-footer p {
+  margin: 0;
+}
+.build-footer--page {
+  color: var(--text-muted);
+  border-top: 1px solid var(--line);
+  background: var(--surface-page);
+}
+.build-footer--inverse {
+  color: var(--board-white);
+}

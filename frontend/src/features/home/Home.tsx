@@ -4,6 +4,7 @@ import { useSession } from "../../session";
 import { useWorkspaces } from "../../workspaces";
 import { Skeleton } from "../../ui";
 import { Login } from "../../pages/Login";
+import { BuildFooter } from "../shell/BuildFooter";
 import { Brand } from "./Brand";
 import "./home.css";
 
@@ -60,7 +61,10 @@ export function Landing() {
         </article>
       </section>
       <Login next="/" embedded />
-      <footer>People, ideas and lab work.</footer>
+      <footer>
+        <p>People, ideas and lab work.</p>
+        <BuildFooter tone="inverse" />
+      </footer>
     </main>
   );
 }

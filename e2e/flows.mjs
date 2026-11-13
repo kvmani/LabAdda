@@ -70,6 +70,16 @@ async function run(base) {
       new URL(bharat.page.url()).pathname.startsWith(`${base}/w/`),
       `${tag}: lands in home workspace under base path`,
     );
+    const buildLine = await bharat.page.getByTestId("build-line").textContent();
+    check(
+      /^Version 0\.0\.1 beta · commit ([0-9a-f]{7}|unknown)( · \d{4}-\d{2}-\d{2})?$/.test(buildLine ?? ""),
+      `${tag}: shell footer names version, commit and date`,
+    );
+    check(
+      (await bharat.page.getByTestId("build-credit").textContent()) ===
+        "Software conceived and developed by Dr. K. V. Mani Krishna, Materials Group.",
+      `${tag}: shell footer carries the credit line`,
+    );
     await bharat.page.getByRole("link", { name: "Surface Engineering Division" }).first().click();
     await bharat.page.getByRole("heading", { level: 1, name: /Surface Engineering Division/ }).waitFor();
     check(

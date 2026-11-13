@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from . import build_info
 from .config import Settings
 
 CHANGED_BY = "Changed by the operator in the site configuration file."
@@ -245,4 +246,14 @@ def settings_groups(settings: Settings) -> list[dict]:
             "changed_by": CHANGED_BY,
         }
     )
+    groups[0]["items"][:0] = [
+        {
+            "key": "software_version",
+            "label": "Software version",
+            "value": build_info.build_info()["summary"],
+            "unit": "",
+            "explanation": "The release this server runs; quote it when asking for support.",
+            "changed_by": CHANGED_BY,
+        }
+    ]
     return groups

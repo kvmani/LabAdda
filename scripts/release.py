@@ -125,6 +125,14 @@ def frontend_inventory(root: Path, stage: Path) -> list[dict]:
     return result
 
 
+def source_version(root: Path) -> str:
+    """The one source of truth for the software version: backend/labadda/__init__.py."""
+    found = re.search(r'^__version__ = "([^"]+)"$', (root / "backend/labadda/__init__.py").read_text(), re.M)
+    if not found:
+        raise ReleaseError("Cannot read the software version")
+    return found.group(1)
+
+
 def build(root: Path, output: Path, release_id: str) -> Path:
     if not RELEASE_ID.fullmatch(release_id):
         raise ReleaseError("Invalid release ID")
@@ -134,6 +142,10 @@ def build(root: Path, output: Path, release_id: str) -> Path:
     if status:
         raise ReleaseError("Build from a clean committed checkout")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    commit_date = subprocess.check_output(
+        ["git", "log", "-1", "--format=%cs", commit], cwd=root, text=True
+    ).strip()
+    version = source_version(root)
     output.mkdir(parents=True, exist_ok=True)
     archive_path = output / f"labadda-{release_id}.tar.gz"
     if archive_path.exists() or archive_path.with_suffix(".gz.sha256").exists():
@@ -172,8 +184,18 @@ def build(root: Path, output: Path, release_id: str) -> Path:
                 target = stage / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, target)
+        # The air-gapped install has no .git: the build identity travels inside the bundle.
+        (stage / "backend/labadda/build_info.json").write_text(
+            json.dumps({"commit": commit[:7], "date": commit_date}, sort_keys=True) + "\n"
+        )
         run("npm", "ci", cwd=root / "frontend")
-        run("npm", "run", "build", cwd=root / "frontend")
+        run(
+            "npm",
+            "run",
+            "build",
+            cwd=root / "frontend",
+            env={**os.environ, "LABADDA_BUILD_COMMIT": commit, "LABADDA_BUILD_DATE": commit_date},
+        )
         shutil.copytree(root / "frontend/dist", stage / "frontend/dist")
         wheels = stage / "wheelhouse"
         wheels.mkdir()
@@ -198,7 +220,9 @@ def build(root: Path, output: Path, release_id: str) -> Path:
         manifest = {
             "format": FORMAT,
             "release": release_id,
+            "version": version,
             "commit": commit,
+            "commit_date": commit_date,
             "platform": host_platform(),
             "schema": subprocess.check_output(
                 [

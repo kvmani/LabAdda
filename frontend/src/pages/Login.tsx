@@ -1,3 +1,4 @@
+import { BuildFooter } from "../features/shell/BuildFooter";
 import { Brand } from "../features/home/Brand";
 import "../features/home/home.css";
 import { errorMessage } from "../api";
@@ -76,6 +77,7 @@ export function Login({ next, embedded = false }: { next: string; embedded?: boo
           </p>
         </form>
       </Card>
+      {!embedded && <BuildFooter />}
     </Container>
   );
 }
@@ -136,6 +138,7 @@ export function Activate() {
           </p>
         </form>
       </Card>
+      <BuildFooter />
     </main>
   );
 }
