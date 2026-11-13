@@ -57,6 +57,7 @@ def settings(migrated, tmp_path):
         asset_dir=tmp_path / "assets",
         base_path=os.environ.get("LABADDA_TEST_BASE_PATH", ""),
         instance="test",
+        email_domain="domain.in",
         frontend_dist=None,
     )
 

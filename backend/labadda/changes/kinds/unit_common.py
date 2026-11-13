@@ -182,18 +182,20 @@ def set_home(person: User, unit_id: uuid.UUID, step: Step) -> Action:
     return Action(step, run)
 
 
-def create_action(name: str, code: str, parent: Workspace, box: dict) -> Action:
+def create_action(name: str, code: str, parent: Workspace, box: dict, level: str | None = None) -> Action:
     """Create a unit; later steps of the same plan reach it through ``box``."""
 
     def run(db: Session, actor: User, reason: str) -> None:
-        unit = Workspace(kind="org", name=name, code=code, parent_id=parent.id, created_by=actor.id)
+        unit = Workspace(
+            kind="org", name=name, code=code, level=level, parent_id=parent.id, created_by=actor.id
+        )
         db.add(unit)
         db.flush()
         box["unit"] = unit
 
     before = Snapshot({"name": None, "code": None, "parent": None, "archived": None})
     after = Snapshot({"name": name, "code": code, "parent": parent.name, "archived": False})
-    summary = f"Create the unit {name} ({code}) under {parent.name}"
+    summary = f"Create the {level or 'unit'} {name} ({code}) under {parent.name}"
     return Action(Step("workspace", "new:unit", summary, before, after), run)
 
 

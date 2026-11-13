@@ -18,19 +18,29 @@ export type Person = {
   revision: number;
   is_admin: boolean;
   sign_in_enabled: boolean;
-  home_unit: { id: string; name: string } | null;
+  home_unit: { id: string; name: string; level?: UnitLevel } | null;
   last_seen_on: string | null;
   positions: HeldPosition[];
 };
 export type StaffRecord = Person & {
   contact_email: string | null;
   contact_phone: string | null;
+  extension: string | null;
+  residence_phone: string | null;
   status_effective_on: string | null;
   expected_return_on: string | null;
   joined_on: string | null;
 };
 export type Directory = { people: Person[]; next_cursor: string | null };
-export type Unit = { id: string; name: string; kind: string; parent_id: string | null; archived?: boolean };
+export type UnitLevel = "group" | "division" | "section" | null;
+export type Unit = {
+  id: string;
+  name: string;
+  kind: string;
+  parent_id: string | null;
+  archived?: boolean;
+  level?: UnitLevel;
+};
 export type AccessPage = {
   memberships: {
     workspace: { id: string; name: string; kind: string; archived: boolean };

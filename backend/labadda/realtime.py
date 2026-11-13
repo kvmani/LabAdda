@@ -106,7 +106,13 @@ class Hub:
         with self.factory() as db:
             sess = db.get(AuthSession, conn.session_id)
             user = db.get(User, conn.user_id)
-            if sess is None or user is None or not user.is_active or not session_valid(sess, self.settings):
+            if (
+                sess is None
+                or user is None
+                or not user.is_active
+                or user.must_change_password
+                or not session_valid(sess, self.settings)
+            ):
                 return False, set(), set()
             readable, writable = set(), set()
             for ws_id in workspace_ids:
@@ -322,7 +328,7 @@ class Hub:
             if sess is None or sess.kind != kind or not session_valid(sess, self.settings):
                 return None
             user = db.get(User, sess.user_id)
-            if user is None or not user.is_active:
+            if user is None or not user.is_active or user.must_change_password:
                 return None
             return sess.id, user.id, user.display_name, sess.workspace_id
 

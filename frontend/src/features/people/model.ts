@@ -1,5 +1,5 @@
 import type { SelectOption } from "../../ui";
-import type { HeldPosition, Unit } from "./types";
+import type { HeldPosition, Unit, UnitLevel } from "./types";
 
 export const FILTER_KEYS = ["q", "status", "unit_id", "include_children", "role", "sort", "descending"];
 export const STATUS_OPTIONS = [
@@ -35,6 +35,13 @@ export function calendarDate(value: string | null): string {
   }).format(instant);
 }
 
+const LEVEL_WORDS = { group: "Group", division: "Division", section: "Section" } as const;
+
+/** " (Division)" for a unit with a known level; units made before levels existed have none. */
+export function levelSuffix(level: UnitLevel | undefined): string {
+  return level ? ` (${LEVEL_WORDS[level]})` : "";
+}
+
 /** Full unit paths disambiguate identically named sections without displaying IDs. */
 export function unitOptions(units: Unit[]): SelectOption[] {
   const organisations = units.filter((unit) => unit.kind === "org");
@@ -51,7 +58,7 @@ export function unitOptions(units: Unit[]): SelectOption[] {
         path.unshift(ancestor.name);
         parent = ancestor.parent_id;
       }
-      return { value: unit.id, label: path.join(" / ") };
+      return { value: unit.id, label: path.join(" / ") + levelSuffix(unit.level) };
     })
     .sort((left, right) => left.label.localeCompare(right.label));
 }

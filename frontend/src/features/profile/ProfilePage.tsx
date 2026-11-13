@@ -20,7 +20,8 @@ function Record({ profile }: { profile: Profile }) {
     ["Home unit", person.home_unit?.name],
     ["Employment status", person.status.replace(/_/g, " ")],
     ["Work email", person.contact_email],
-    ["Phone extension", person.contact_phone],
+    ["Phone extension", person.extension ?? person.contact_phone],
+    ["Residence phone", person.residence_phone],
     ["Date joined", calendarDate(person.joined_on)],
   ];
   return (

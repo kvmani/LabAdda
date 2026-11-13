@@ -77,6 +77,7 @@ def tree(db: Session, scope: frozenset[uuid.UUID] | None = None) -> dict:
                 {
                     **common,
                     "code": row.code,
+                    "level": row.level,
                     "parent_id": _parent(row, scope),
                     "head": heads.get((row.id, False)),
                     "acting_head": heads.get((row.id, True)),

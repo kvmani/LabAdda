@@ -72,6 +72,12 @@ class User(Base):
     designation: Mapped[str | None] = mapped_column(String(120))
     contact_email: Mapped[str | None] = mapped_column(String(254))
     contact_phone: Mapped[str | None] = mapped_column(String(64))
+    extension: Mapped[str | None] = mapped_column(String(32))
+    residence_phone: Mapped[str | None] = mapped_column(String(64))
+    # Set when an administrator chose the first password: sign-in works, but only the change form does.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
     status_effective_on: Mapped[date | None] = mapped_column(Date)
     expected_return_on: Mapped[date | None] = mapped_column(Date)
@@ -162,6 +168,8 @@ class Workspace(Base):
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     code: Mapped[str | None] = mapped_column(String(24))
+    # Null means a plain "unit" made before levels existed.
+    level: Mapped[str | None] = mapped_column(String(16))
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"))
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -173,6 +181,10 @@ class Workspace(Base):
 
     __table_args__ = (
         CheckConstraint("kind in ('org','project','group')", name="ck_workspace_kind"),
+        CheckConstraint(
+            "level is null or (kind = 'org' and level in ('organisation','group','division','section'))",
+            name="ck_workspace_level",
+        ),
         CheckConstraint("posting_policy in ('open','read_only')", name="ck_workspace_policy"),
         CheckConstraint("kind = 'org' or parent_id is null", name="ck_workspace_flat_spaces"),
         CheckConstraint("parent_id is null or parent_id <> id", name="ck_workspace_not_own_parent"),

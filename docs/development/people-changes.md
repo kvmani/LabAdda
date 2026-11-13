@@ -145,6 +145,39 @@ Keep the old admin routes until P4. Retain races with legacy writes in qualifica
   `test_changes_import.py`.
   Browser check: `e2e/people-import.mjs` (upload, report, selection, slips, bulk suspend, member 403).
 
+## Excel staff import (P6x)
+
+Extends the P6 pipeline; there is no second one. `changes/xlsx.py` reads the first sheet with the
+standard library (zipfile and ElementTree; cells are text so `00123` keeps its zeros; entry count,
+uncompressed size and doctype/entity limits; macros and encrypted files refused with a clear
+message). `changes/staff_sheet.py` matches headers and checks each row. `changes/staff_import.py`
+builds the `import_unit` and `import_person` bulk requests (kinds in `changes/kinds/`) and runs
+them through `bulk.preview` and `bulk.apply`, so the digest, locks, joint blockers and time limit
+are the existing ones. `api/staff_import.py` is the thin router.
+
+- Hierarchy: Organisation > Group > Division > Section > person. Group is the only required
+  placement. Division and section are optional and never filled in: the home unit is the deepest
+  node given, and a section with no division sits directly under the group. This resolves the
+  owner's rule that supersedes "division mandatory except under a group".
+- Missing units are separate `import_unit` items placed before the people. Their build is tolerant
+  of a parent created earlier in the same run, and apply re-resolves by name under the lock. They
+  create units through the `unit_create` draft (so codes are checked and audit steps are written)
+  and store `workspaces.level`. Codes are the initials of the name, made unique with `-2`, `-3`.
+- Passwords: `ImportPerson.password` is a `SecretStr` with `exclude=True`, so no dump, plan
+  snapshot, digest or audit row can contain it. Review never carries it (only `has_password`);
+  apply re-reads the file and hashes it once. A first password sets `must_change_password`; the
+  dependency in `deps.py` and the socket check refuse everything except session, logout and
+  `/me/password` until it is changed.
+- Account state: blank password and active gives an invited account with an activation code; a
+  password and active gives an active account; `is_active` false gives status suspended, no code.
+  `role: admin` sets `is_admin` and writes a plan step, so it is audited; an inactive admin row is
+  blocked. A different e-mail domain is a row error; `LABADDA_EMAIL_DOMAIN` must be set.
+- Skipped on purpose: the similar-name warning (it scans every user per row) and any change to
+  existing people. A username or employee number that already exists is a row error.
+- Tests: `tests/test_staff_sheet.py` (parser and hostile files) and `tests/test_staff_import.py`
+  (tree, passwords, must-change, administrators, all-or-nothing, 270-row run, denials);
+  browser check `e2e/people-import-excel.mjs`.
+
 ## Scheduled changes and the attention list (P5)
 
 - `changes/service.py`: `effective_on` on preview/apply. `people.as_of(day)` makes `site_date` return

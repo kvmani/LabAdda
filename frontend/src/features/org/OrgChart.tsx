@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button, EmptyState } from "../../ui";
 import { GAP_Y, NODE_HEIGHT, NODE_WIDTH, fitScale, layoutTree, type PlacedNode } from "./layout";
+import { levelWord } from "./level";
 import type { OrgUnit } from "./types";
 import type { DragPayload } from "./useDrag";
 
@@ -14,7 +15,10 @@ function clip(text: string, length: number): string {
 function describe(unit: OrgUnit): string {
   const head = unit.head?.name ?? unit.acting_head?.name;
   const acting = !unit.head && unit.acting_head ? "Acting head " : "Head ";
-  const parts = [`${unit.code ?? "No code"}, ${unit.name}`, head ? acting + head : "No head"];
+  const parts = [
+    `${unit.code ?? "No code"}, ${unit.name}${unit.level ? `, ${levelWord(unit)}` : ""}`,
+    head ? acting + head : "No head",
+  ];
   parts.push(`${unit.people} ${unit.people === 1 ? "person" : "people"}`);
   if (unit.archived) parts.push("closed");
   return parts.join(". ");
@@ -66,6 +70,7 @@ function Node({
       <rect className="org-node__box" width={NODE_WIDTH} height={NODE_HEIGHT} rx={10} />
       <text className="org-node__code" x={12} y={20}>
         {clip(unit.code ?? "No code", 14)}
+        {unit.level ? ` · ${levelWord(unit)}` : ""}
         {unit.archived ? " · Closed" : ""}
       </text>
       <text className="org-node__name" x={12} y={40}>

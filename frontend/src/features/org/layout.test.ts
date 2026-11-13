@@ -94,3 +94,39 @@ describe("tree helpers", () => {
     expect(unitPath(SMALL, "a1")).toBe("root / a / a1");
   });
 });
+
+describe("mixed-depth trees", () => {
+  const MIXED = [
+    unit("org", null),
+    unit("group", "org"),
+    unit("div", "group"),
+    unit("sec", "div"),
+    unit("direct", "group"),
+    unit("solo", "org"),
+  ];
+
+  it("places a section directly under a group beside a division's sections", () => {
+    const layout = layoutTree(MIXED, new Set());
+    const at = (id: string) => layout.nodes.find((node) => node.unit.id === id);
+    expect([at("div")?.depth, at("direct")?.depth, at("sec")?.depth, at("solo")?.depth]).toEqual([
+      2, 2, 3, 1,
+    ]);
+    expect(layout.nodes.map((node) => node.unit.id)).toEqual([
+      "org",
+      "group",
+      "direct",
+      "div",
+      "sec",
+      "solo",
+    ]);
+    expect(layout.edges).toHaveLength(5);
+    expect(layout.nodes.every((node) => node.x + NODE_WIDTH <= layout.width)).toBe(true);
+  });
+
+  it("collapses and reveals at any depth, and finds units by name", () => {
+    expect(layoutTree(MIXED, new Set(["div"])).nodes.map((n) => n.unit.id)).not.toContain("sec");
+    expect(reveal(new Set(["group", "div"]), MIXED, "sec").size).toBe(0);
+    expect(matchUnits(MIXED, "dir").map((u) => u.id)).toEqual(["direct"]);
+    expect(unitPath(MIXED, "direct")).toBe("org / group / direct");
+  });
+});

@@ -63,6 +63,7 @@ class Settings:
     login_attempts_per_window: int = 10
     login_window_seconds: int = 300
     reminder_interval_seconds: int = 30
+    email_domain: str = ""  # staff e-mail addresses are <username>@<this>; blank until the site sets it
     bulk_change_seconds: float = 60.0  # longest a bulk change or import review may hold the admin change lock
     run_scheduler: bool = True
     max_groups_per_user: int = 20
@@ -136,6 +137,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         max_attachment_bytes=int(env("LABADDA_MAX_ATTACHMENT_BYTES", str(20 * 1024 * 1024))),
         user_quota_bytes=int(env("LABADDA_USER_QUOTA_BYTES", str(500 * 1024 * 1024))),
         run_scheduler=_bool(env("LABADDA_RUN_SCHEDULER"), True),
+        email_domain=env("LABADDA_EMAIL_DOMAIN", "").strip().lower().lstrip("@"),
         bulk_change_seconds=float(env("LABADDA_BULK_CHANGE_SECONDS", "60")),
         reminder_interval_seconds=int(env("LABADDA_REMINDER_INTERVAL_SECONDS", "30")),
         max_groups_per_user=int(env("LABADDA_MAX_GROUPS_PER_USER", "20")),

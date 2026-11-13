@@ -13,6 +13,7 @@ import { ScheduledChanges } from "./ScheduledChanges";
 import { ExportReport } from "./ExportReport";
 import { AddPersonDialog } from "./AddPersonDialog";
 import { BulkActions, MAX_SELECTED } from "./BulkActions";
+import { ExcelImportDialog } from "./ExcelImportDialog";
 import { ImportDialog } from "./ImportDialog";
 import type { ConsoleAccess } from "../admin/console";
 import type { OrgTree } from "../org/types";
@@ -52,6 +53,7 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
             kind: "org",
             parent_id: unit.parent_id,
             archived: unit.archived,
+            level: unit.level,
           })),
         },
       }
@@ -59,6 +61,7 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
   const identity = params.get("person");
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importingExcel, setImportingExcel] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [listVersion, setListVersion] = useState(0);
   const refreshAll = () => {
@@ -79,10 +82,21 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
         onDenied={onDenied}
         onAdd={unitList ? () => setAdding(true) : undefined}
         onImport={unitAdmin ? undefined : () => setImporting(true)}
+        onImportExcel={unitAdmin ? undefined : () => setImportingExcel(true)}
         basicTools={!unitAdmin}
       />
       {importing && (
         <ImportDialog onClose={() => setImporting(false)} onDenied={onDenied} onDone={directory.refresh} />
+      )}
+      {importingExcel && (
+        <ExcelImportDialog
+          onClose={() => setImportingExcel(false)}
+          onDenied={onDenied}
+          onDone={() => {
+            refreshAll();
+            units.refresh();
+          }}
+        />
       )}
       {adding && unitList && (
         <AddPersonDialog
@@ -160,12 +174,14 @@ function PeopleHeader({
   onDenied,
   onAdd,
   onImport,
+  onImportExcel,
   basicTools,
 }: {
   reportUrl: string;
   onDenied: () => void;
   onAdd?: () => void;
   onImport?: () => void;
+  onImportExcel?: () => void;
   basicTools: boolean;
 }) {
   return (
@@ -181,6 +197,11 @@ function PeopleHeader({
           {onImport && (
             <Button icon="plus" onClick={onImport}>
               Import staff list
+            </Button>
+          )}
+          {onImportExcel && (
+            <Button icon="plus" onClick={onImportExcel}>
+              Import from Excel
             </Button>
           )}
           {basicTools && <Link to="/admin/people/basic">Basic account tools</Link>}

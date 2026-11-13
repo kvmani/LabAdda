@@ -53,7 +53,12 @@ def profile(db: Session, identity: uuid.UUID, scope: Scope = None) -> dict:
         raise NotFound()
     person, unit = row
     payload = person_json(person, unit)
-    payload.update(contact_email=person.contact_email, contact_phone=person.contact_phone)
+    payload.update(
+        contact_email=person.contact_email,
+        contact_phone=person.contact_phone,
+        extension=person.extension,
+        residence_phone=person.residence_phone,
+    )
     payload["positions"] = positions.positions_by_person(db, [person.id], scope).get(person.id, [])
     for name in ("status_effective_on", "expected_return_on", "joined_on"):
         value = getattr(person, name)

@@ -43,6 +43,7 @@ To move or suspend several people already in LabAdda, tick them in the people li
 
 ## Related
 
+- [Importing staff from Excel](import-staff-from-excel.md)
 - [Adding a person](add-a-person.md)
 - [Transferring a person](transfer.md)
 - [What the status words mean](status-words.md)

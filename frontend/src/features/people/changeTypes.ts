@@ -184,7 +184,7 @@ export type BulkReceipt = {
     person_id: string;
     username: string;
     display_name: string;
-    activation: { code: string; expires_at: string };
+    activation?: { code: string; expires_at: string };
   }[];
 };
 

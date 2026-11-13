@@ -72,6 +72,7 @@ def change_password(
     if body.new_password == body.current_password:
         raise Invalid("password_unchanged", "Choose a password you have not used just now.")
     user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
     ended = revoke_user_sessions(db, user.id, keep=actor.session.id)
     audit.record(
         db,

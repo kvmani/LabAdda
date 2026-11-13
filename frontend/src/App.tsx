@@ -13,6 +13,7 @@ import { Notes } from "./pages/Notes";
 import { NewGroup } from "./pages/NewGroup";
 import { Usage } from "./pages/Usage";
 
+import { ForcedPasswordChange } from "./features/profile/ForcedPasswordChange";
 import { ProfilePage } from "./features/profile/ProfilePage";
 import { AlertPreferences } from "./pages/AlertPreferences";
 import { Dashboard } from "./pages/Dashboard";
@@ -41,6 +42,7 @@ export function App() {
       </Routes>
     );
   }
+  if (session.must_change_password) return <ForcedPasswordChange />;
   return (
     <WorkspaceProvider>
       <Shell>

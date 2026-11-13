@@ -59,6 +59,8 @@ def origin_allowed(origin: str | None, host: str | None, settings: Settings) -> 
 
 
 PANEL_HEADER = "x-labadda-panel"
+# Only these work until a first password chosen by an administrator has been replaced.
+PASSWORD_CHANGE_PATHS = ("/auth/session", "/auth/logout", "/me/password")
 
 
 def _load_actor(request: Request, db: Session, settings: Settings, kind: str) -> Actor:
@@ -75,6 +77,8 @@ def _load_actor(request: Request, db: Session, settings: Settings, kind: str) ->
     if sess.kind != kind:
         # A board-only session can never act as a normal session, and vice versa.
         raise Unauthenticated("session_scope", "This session cannot open that page.")
+    if user.must_change_password and not request.url.path.endswith(PASSWORD_CHANGE_PATHS):
+        raise Forbidden("password_change_required", "Choose a new password before you continue.")
     if request.method in UNSAFE_METHODS:
         if not origin_allowed(request.headers.get("origin"), request.headers.get("host"), settings):
             raise Forbidden("bad_origin", "Request origin is not trusted.")

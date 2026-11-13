@@ -32,6 +32,8 @@ type Options = {
   /** An unparsed file body sent as-is with its own content type (a CSV upload). */
   raw?: { data: Blob; type: string };
   uploadKey?: string;
+  /** Extra request headers, for uploads whose body is the file itself. */
+  headers?: Record<string, string>;
   responseType?: "blob";
   params?: Record<string, string | number | undefined | null>;
 };
@@ -42,6 +44,7 @@ export async function api<T = unknown>(path: string, opts: Options = {}): Promis
     Accept: opts.responseType === "blob" ? "*/*" : "application/json",
   };
   if (opts.uploadKey) headers["Idempotency-Key"] = opts.uploadKey;
+  Object.assign(headers, opts.headers);
   // A panel never falls back to a desktop session that might exist in the same browser.
   if (PANEL) headers["X-LabAdda-Panel"] = "1";
   if (method !== "GET" && csrfToken) headers["X-CSRF-Token"] = csrfToken;

@@ -3,6 +3,7 @@ export type Named = { id: string; name: string };
 export type OrgUnit = {
   id: string;
   code: string | null;
+  level: "group" | "division" | "section" | null;
   name: string;
   archived: boolean;
   parent_id: string | null;

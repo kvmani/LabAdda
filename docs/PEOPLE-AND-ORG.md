@@ -201,6 +201,18 @@ which valid rows to apply; the selection is applied as one atomic change with on
 2 000 rows, 1 MiB. The file is parsed in memory and not stored. Multi-select on the people list
 offers the same bulk transfer and bulk status change for up to 100 people.
 
+**PO-23a. Import staff from Excel.** An administrator can onboard a laboratory from one `.xlsx`
+(or CSV) workbook with columns `full_name, division, section, Emp No, email, Extension, Group,
+Residence Phone, username, Password, is_active` and an optional `role`. The hierarchy is
+Organisation, Group, Division, Section, person; each unit records its level. **Group is
+mandatory; division and section are optional and never defaulted**: a person belongs to the
+deepest unit named, and a section with no division sits directly under the group. Missing units
+are created (matched by name, case-insensitively, within the same parent), the e-mail must be
+`<username>@<site e-mail domain>`, and the whole file is reviewed first and applied all or
+nothing through the PO-23 protocol. A given password is hashed at once, is never stored anywhere
+else, and must be changed at first sign-in; `role: admin` makes a site administrator and is
+audited. See [the guide](development/people-changes.md#excel-staff-import-p6x).
+
 ## Who may do this
 
 **PO-24. Capabilities.** Site administrators can make every change. A site administrator may

@@ -2,6 +2,7 @@ import { Button, Card, EmptyState, ErrorState, Skeleton, Tag } from "../../ui";
 import { usePeopleData } from "../people/usePeopleData";
 import type { Directory } from "../people/types";
 import { unitPath } from "./layout";
+import { levelWord } from "./level";
 import type { OrgUnit } from "./types";
 import type { DragPayload } from "./useDrag";
 
@@ -98,6 +99,10 @@ export function UnitPanel({
         <div>
           <dt>Code</dt>
           <dd>{unit.code ?? "None"}</dd>
+        </div>
+        <div>
+          <dt>Level</dt>
+          <dd>{levelWord(unit)}</dd>
         </div>
         <div>
           <dt>Under</dt>

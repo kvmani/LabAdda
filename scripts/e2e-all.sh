@@ -10,7 +10,7 @@ cd "$ROOT"
 ALL=(personal-board accessibility admin-console alert-preferences audit capabilities capacity-proposals chat-attachments
   chat-threads collaboration-review console-activity console-backups console-health console-overview
   content-charges dashboard flows governance help inspection-view inventory-jobs org-chart people
-  people-authority people-changes people-import people-scheduled preview-observations
+  people-authority people-changes people-import people-import-excel people-scheduled preview-observations
   preview-reconciliation-view profile research-day setup-checklist storage-inventory task-assignment
   task-board-reference task-comments task-conversion task-updates todos ui-kit unit-admin
   upload-receipts upload-recovery-ui welcome workspace-usage)

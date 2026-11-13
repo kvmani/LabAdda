@@ -23,6 +23,8 @@ from .kinds import (
     additional_charge,
     change_authority,
     edit_person,
+    import_person,
+    import_unit,
     leave,
     promote,
     reinstate,
@@ -65,6 +67,8 @@ KINDS: dict[str, ModuleType] = {
     "unit_reopen": unit_reopen,
     "unit_admin_grant": unit_admin,
     "unit_admin_revoke": unit_admin,
+    "import_unit": import_unit,
+    "import_person": import_person,
 }
 
 
@@ -166,6 +170,9 @@ def lock_targets(db: Session, request: ChangeRequest) -> None:
     """After the admin and actor locks: workspace role locks, then the existing person row."""
     if isinstance(request, AddPerson):
         memberships.lock_workspace_roles(db, request.home_unit_id)
+        return
+    if request.kind in ("import_unit", "import_person"):
+        KINDS[request.kind].lock_scope(db, request)
         return
     if isinstance(request, UnitChange):
         KINDS[request.kind].lock_scope(db, request)

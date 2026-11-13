@@ -103,7 +103,7 @@ def person_json(person: User, unit: Workspace | None) -> dict:
         "revision": person.revision,
         "is_admin": person.is_admin,
         "sign_in_enabled": person.is_active and not person.must_set_password,
-        "home_unit": {"id": str(unit.id), "name": unit.name} if unit else None,
+        "home_unit": {"id": str(unit.id), "name": unit.name, "level": unit.level} if unit else None,
         "last_seen_on": person.last_seen_on.isoformat() if person.last_seen_on else None,
     }
 

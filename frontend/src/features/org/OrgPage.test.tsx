@@ -27,6 +27,7 @@ const unit = (id: string, name: string, parent: string | null, code: string, ext
   stewards: [],
   people: 1,
   members: 1,
+  level: null,
   ...extra,
 });
 const TREE: OrgTree = {

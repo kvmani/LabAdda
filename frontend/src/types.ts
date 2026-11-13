@@ -5,6 +5,7 @@ export type SessionInfo = {
   timezone: string;
   instance: string;
   release: string;
+  must_change_password: boolean;
   welcome_pending: boolean;
   whats_new_pending: boolean;
   limits: { max_attachments: number; max_attachment_bytes: number };

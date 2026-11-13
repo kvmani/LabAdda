@@ -20,7 +20,7 @@ from .models import AuditEvent, User, Workspace
 from .serialize import iso
 
 # Contact details are never needed to understand who changed what.
-HIDDEN_DETAIL = {"contact_email", "contact_phone"}
+HIDDEN_DETAIL = {"contact_email", "contact_phone", "extension", "residence_phone"}
 MAX_TEXT = 200
 
 

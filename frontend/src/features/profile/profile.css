@@ -1,3 +1,10 @@
+.profile-forced {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 32rem;
+  margin: var(--space-6) auto;
+  padding: 0 var(--space-4);
+}
 .profile-page {
   display: grid;
   gap: var(--space-5);

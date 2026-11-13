@@ -78,6 +78,7 @@ def session_payload(user: User, sess: AuthSession, settings: Settings) -> dict:
         "instance": settings.instance,
         "release": __version__,
         # Never shown on a board-only panel, which has no help or account pages.
+        "must_change_password": user.must_change_password,
         "welcome_pending": sess.kind == "normal" and user.welcome_dismissed_at is None,
         "whats_new_pending": sess.kind == "normal"
         and user.welcome_dismissed_at is not None
@@ -201,6 +202,7 @@ def activate(
     user.password_hash = hash_password(body.password)
     status_before = user.status
     user.must_set_password = False
+    user.must_change_password = False
     if user.status == "invited":
         people.set_status(user, "active", effective_on=people.site_date(settings, now=now))
     people.record_sign_in(db, user, settings, now=now)
@@ -236,6 +238,7 @@ def change_password(
         raise Invalid("invalid_credentials", "Current password is incorrect.")
     _validate_password(body.new_password)
     user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
     revoke_user_sessions(db, user.id)
     token, sess = create_session(db, user, settings, label=agent_label(request.headers.get("user-agent")))
     audit.record(db, actor=user, action="auth.password_changed", scope_type="identity", target_id=user.id)

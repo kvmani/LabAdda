@@ -49,7 +49,7 @@ def _draft(db: Session, request: UnitCreate, settings: Settings) -> units.UnitDr
     draft = units.UnitDraft(parent)
     draft.blockers += units.open_unit(parent, "parent unit") + units.code_taken(db, request.code)
     box = draft.box
-    draft.actions.append(units.create_action(request.name, request.code, parent, box))
+    draft.actions.append(units.create_action(request.name, request.code, parent, box, request.level))
     if request.head_id is None:
         message = f"{request.name} will have no Head or steward until one is appointed."
         draft.warnings.append(Warning("unit_without_steward", message))

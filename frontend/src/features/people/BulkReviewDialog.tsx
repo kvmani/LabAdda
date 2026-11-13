@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Dialog } from "../../ui";
-import { SlipCard } from "./ActivationSlip";
+import { ReceiptSlips } from "./ReceiptSlips";
 import { PlanReview } from "./PlanReview";
 import { useBulkReview } from "./useBulkReview";
 import type { BulkItem } from "./changeTypes";
@@ -64,29 +64,7 @@ export function BulkReviewDialog({ title, requests, onClose, onBack, onDenied, o
           <p>
             {review.receipt.count} {review.receipt.count === 1 ? "change was" : "changes were"} applied.
           </p>
-          {review.receipt.added.length > 0 && (
-            <>
-              <p>
-                Activation codes are shown only once. Print the slips now and hand each one to its person
-                privately.
-              </p>
-              <div className="people-slips">
-                {review.receipt.added.map((person) => (
-                  <SlipCard
-                    key={person.person_id}
-                    displayName={person.display_name}
-                    username={person.username}
-                    code={person.activation.code}
-                    expiresAt={person.activation.expires_at}
-                    label={`Activation slip for ${person.display_name}`}
-                  />
-                ))}
-              </div>
-              <Button icon="download" onClick={() => window.print()}>
-                Print all activation slips
-              </Button>
-            </>
-          )}
+          <ReceiptSlips added={review.receipt.added} />
         </div>
       ) : (
         <>

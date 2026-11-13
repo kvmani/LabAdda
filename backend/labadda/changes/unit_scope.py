@@ -24,6 +24,8 @@ from ..models import User, Workspace
 from .plan import Blocker, Plan, Snapshot, Step
 
 ADMIN_ONLY = ("unit_admin_grant", "unit_admin_revoke")
+# The Excel import can create units anywhere and administrators, so it is for site administrators.
+SITE_ONLY = ("import_unit", "import_person")
 # Request fields that name one person or one unit, checked before anything is read or built.
 PERSON_FIELDS = ("person_id", "successor_id", "replace_person_id", "head_id")
 UNIT_FIELDS = ("home_unit_id", "to_unit_id", "workspace_id", "parent_id", "new_parent_id", "into_unit_id")
@@ -69,6 +71,8 @@ class Reach:
         """Refuse a request that names anything outside the branch before it is built."""
         if request.kind in ADMIN_ONLY:
             raise Forbidden("admin_required", "Only a site administrator can appoint unit administrators.")
+        if request.kind in SITE_ONLY:
+            raise Forbidden("admin_required", "Only a site administrator can import a staff list.")
         for name in PERSON_FIELDS:
             if getattr(request, name, None) is not None:
                 self.person(db, getattr(request, name))

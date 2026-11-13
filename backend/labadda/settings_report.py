@@ -38,6 +38,12 @@ GROUPS = (
         (
             Row("timezone", "Site time zone", "", "Days, reports and schedules follow this time zone."),
             Row("environment", "Kind of installation", "", "Development, test, staging or pilot."),
+            Row(
+                "email_domain",
+                "Staff e-mail domain",
+                "",
+                "Staff e-mail addresses are the username, an at sign and this domain.",
+            ),
         ),
     ),
     Group(

@@ -14,9 +14,10 @@ from .. import people
 from ..config import Settings
 from ..deps import Actor
 from ..errors import Conflict, Invalid
-from ..models import User
+from ..models import User, Workspace
 from ..realtime import Hub
 from . import service
+from .import_requests import ImportPerson, ImportUnit
 from .plan import Plan, canonical_json
 from .requests import (
     AddPerson,
@@ -28,8 +29,10 @@ from .requests import (
     _ordinary_reason,
 )
 
-MAX_REQUESTS = 2000
-type BulkItem = Annotated[AddPerson | EditPerson | Transfer | Suspend, Field(discriminator="kind")]
+MAX_REQUESTS = 4000
+type BulkItem = Annotated[
+    AddPerson | EditPerson | Transfer | Suspend | ImportUnit | ImportPerson, Field(discriminator="kind")
+]
 
 
 class BulkPreview(BaseModel):
@@ -42,7 +45,7 @@ class BulkPreview(BaseModel):
         """Two changes of one kind to one person would be built from the same old state."""
         seen = set()
         for item in self.requests:
-            key = (item.kind, item.username if isinstance(item, AddPerson) else item.person_id)
+            key = (item.kind, _identity(item))
             if key in seen:
                 raise ValueError("Each person can appear once for each kind of change.")
             seen.add(key)
@@ -62,8 +65,16 @@ class BulkApply(BulkPreview):
         return _ordinary_reason(value)
 
 
+def _identity(item: BulkItem) -> object:
+    if isinstance(item, ImportUnit):
+        return tuple(node.name.casefold() for node in item.path)
+    return item.username if isinstance(item, AddPerson | ImportPerson) else item.person_id
+
+
 def _label(db: Session, item: BulkItem) -> str:
-    if isinstance(item, AddPerson):
+    if isinstance(item, ImportUnit):
+        return item.path[-1].name
+    if isinstance(item, AddPerson | ImportPerson):
         return item.display_name
     person = db.get(User, item.person_id)
     return person.display_name if person else "Unknown person"
@@ -96,11 +107,15 @@ def _joint_blockers(
             found.append(current.blockers)
             if current.blockers:
                 continue
-            person, _ = service.KINDS[current.kind].apply(db, user, current, item, settings, "Preview")
-            service.record_plan(db, user, current, "Preview", settings, person.id)
+            person, _ = service.KINDS[item.kind].apply(db, user, current, item, settings, "Preview")
+            service.record_plan(db, user, current, "Preview", settings, person.id, _scope(person))
     finally:
         savepoint.rollback()
     return found
+
+
+def _scope(subject: User | Workspace) -> str:
+    return "workspace" if isinstance(subject, Workspace) else "identity"
 
 
 def _digest(actor_id: uuid.UUID, plans: list[Plan]) -> str:
@@ -165,10 +180,10 @@ def _commit(db: Session, user: User, body: BulkApply, settings: Settings) -> tup
             # Plans above were built from the state before any row applied; earlier rows can
             # together defeat a guard (two stewards leaving one unit), so recheck on current state.
             raise Invalid("plan_blocked", "Resolve the blocking problems before applying this change.")
-        person, extra = service.KINDS[plan.kind].apply(db, user, plan, item, settings, body.reason)
-        service.record_plan(db, user, plan, body.reason, settings, person.id)
+        person, extra = service.KINDS[item.kind].apply(db, user, plan, item, settings, body.reason)
+        service.record_plan(db, user, plan, body.reason, settings, person.id, _scope(person))
         done.append((person, plan))
-        if isinstance(item, AddPerson):
+        if isinstance(item, AddPerson | ImportPerson):
             added.append(
                 {
                     "person_id": str(person.id),

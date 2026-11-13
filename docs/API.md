@@ -1001,6 +1001,44 @@ memory and never stored.
   per request. Receipt `{applied,kind:"bulk",digest,count,added:[{person_id,username,
   display_name,activation:{code,expires_at}}],site_date}`; codes appear only here.
 
+
+### Excel staff import (P6x)
+
+Site administrators only (`people` console section; unit administrators 403, members 403, signed
+out and board-only panel 401). The workbook is parsed in memory, never stored, and read twice:
+once to review, once to apply, so passwords are never kept between the two.
+
+- `GET /admin/changes/import/staff/template`: the `.xlsx` workbook with the exact headers
+  `full_name, division, section, Emp No, email, Extension, Group, Residence Phone, username,
+  Password, is_active` and one fictional example row (an optional `role` column is accepted).
+- `POST /admin/changes/import/staff/preview`: raw body, `Content-Type` the `.xlsx` type or
+  `text/csv` (up to 1 MiB, 2 000 rows). Writes nothing. Returns `{rows:[{line,display_name,
+  username,place,role member|admin,access code|password|off,errors[],warnings[]}],total,errors,
+  units_to_create:[{name,level group|division|section,under[]}],administrators[],plan}`. `plan` is
+  the ordinary bulk plan (`steps` begin "Create the group/division/section ..." for new units;
+  `blockers`; `digest`) and is `null` when any row has an error. Headers match ignoring case,
+  spaces and underscores. Required: `full_name`, `Group`, `Emp No`, `username`. `email` must be
+  `<username>@LABADDA_EMAIL_DOMAIN` (blank is filled in). Division and section are optional and
+  never defaulted: the person's home unit is the deepest one named; a section with no division
+  sits directly under the group. Units match by name, case-insensitively, inside the same parent.
+  Errors: 422 `import_not_xlsx`, `import_encrypted`, `import_macros`, `import_unsafe` (zip or XML
+  limits), `import_header`, `import_empty`, `email_domain_missing`; 413 `import_too_large`.
+- `POST /admin/changes/import/staff/apply`: the same raw body plus headers `X-Import-Digest`
+  (the reviewed `plan.digest`) and `X-Import-Reason` (percent-encoded, 3-500). Rebuilds everything
+  under the usual locks; all or nothing. Returns the bulk receipt
+  `{applied,kind:"bulk",digest,count,added:[{person_id,username,display_name,activation?}]}`;
+  `activation` is present only for people without a first password. Errors: 422
+  `import_has_errors` (any row problem), `plan_blocked`, `invalid_request`; 409 `plan_stale`; 503
+  `changes_unavailable` (time limit). A `Password` is hashed with the account hasher, forces a
+  change at first sign-in, and appears in no response, plan, digest, audit row or log.
+- Bulk requests `import_unit` and `import_person` (site administrators only) are accepted by
+  `/admin/changes/bulk/preview` and `/bulk/apply`; `password` is never part of them.
+- Sign-in with a first password returns `must_change_password: true` in the session. Until
+  `POST /me/password` succeeds every other endpoint answers 403 `password_change_required`, and
+  live sockets are refused.
+- Fields: staff records gain `extension` and `residence_phone` (profile only); org units gain
+  `level` (`group|division|section|null`) in `/admin/org/tree`, `/admin/workspaces` and the
+  people directory's `home_unit`. `unit_create` accepts an optional `level`.
 ## P5 scheduled changes and attention list (schema 0035)
 
 Administrators with the People section only; signed out 401, members and panel sessions 403/401

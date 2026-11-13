@@ -34,6 +34,7 @@ class UnitCreate(UnitChange):
     name: str = Field(min_length=1, max_length=120, strict=True)
     code: str = Field(pattern=CODE_PATTERN, strict=True)
     head_id: uuid.UUID | None = None
+    level: Literal["group", "division", "section"] | None = None
 
     _name = field_validator("name", mode="before")(_name)
     _code = field_validator("code", mode="before")(_code)
