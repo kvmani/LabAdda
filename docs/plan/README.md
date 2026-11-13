@@ -24,25 +24,24 @@ outside groups, e-mail delivery, multi-site federation (P6).
 
 ## Status at a glance
 
-Last updated: 2026-11-12 (after A2–A5, A7, P2, P3 delivery, H1, H2, H4, D2, D3; Q3 and U4 partial). Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-13 (all of tracks A, H and U done; P1–P6 done, P7 awaiting owner decisions; Q3 partial; pilot rehearsal passed locally). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |
 | --- | --- | --- | --- |
 | Collaboration features (P1–P3, C1–C5) | 30 % | 90 % | Optional task alerts; site and device acceptance |
-| Deployment, upgrade, backup, recovery tooling | 15 % | 80 % | Rehearsal on a real Ubuntu host (D1), site acceptance (D4), release 1.0 (D5) |
-| Admin console, health and analytics | 20 % | 85 % | Overview dashboard (A6) |
-| People and organisation management | 12 % | 50 % | P3 review; org chart (P4), scheduled changes (P5), import (P6), unit administrators (P7) |
-| Interface quality and design system | 10 % | 75 % | Finish moving screens onto the kit and enable the dark theme (U4) |
-| In-app help and onboarding | 6 % | 70 % | Administrator handbook and setup checklist (H3) |
-| Code uniformity and quality gates | 7 % | 80 % | Rest of the readable rewrite (Q3), module splits (Q4) |
-| **Overall toward v1.0** | 100 % | **≈ 78 %** | |
+| Deployment, upgrade, backup, recovery tooling | 15 % | 85 % | Rehearsal on a real Ubuntu host (D1), site acceptance (D4), release 1.0 (D5) |
+| Admin console, health and analytics | 20 % | 98 % | Site acceptance of the console |
+| People and organisation management | 12 % | 93 % | Owner decisions on unit administrators (P7); a project management screen to retire the basic tools |
+| Interface quality and design system | 10 % | 95 % | Bundle budget record and forced-state checks from U4 |
+| In-app help and onboarding | 6 % | 92 % | Six generic troubleshooting pages; restore-rehearsal record for the checklist |
+| Code uniformity and quality gates | 7 % | 82 % | Rest of the readable rewrite (Q3), module splits (Q4) |
+| **Overall toward v1.0** | 100 % | **≈ 91 %** | |
 
-The delivered foundation includes 26 migrations, about 100 API endpoints and 724 backend
-tests. The collaboration profile passed 465 root/prefix browser checks in U2; A1 adds 50
-console checks and validates nine existing admin/tool suites. P1 adds 52 staff browser
-checks, 94 frontend unit tests total, and two updated console lookup assertions. Thirty-client TLS workload
-rehearsals and offline release, backup, restore and commissioning are verified locally.
+The delivered foundation includes 36 migrations and 216 frontend unit tests; the full backend
+suite and `scripts/verify.sh` pass on main. Browser checks run at root and under the prefix
+(`scripts/e2e-all.sh`). Thirty-client TLS workload rehearsals and offline release, install,
+backup, restore and upgrade are verified locally; see [the pilot runbook](../PILOT-RUNBOOK.md).
 
 ## Order of work
 
