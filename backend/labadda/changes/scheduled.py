@@ -37,15 +37,35 @@ class NeedsReview(Exception):
     """The reviewed plan no longer holds; the message is shown to staff as written."""
 
 
-def _visible_to(db: Session, viewer: User, row: ScheduledChange) -> bool:
-    """A unit administrator sees only changes that stay inside their branch, judged from now."""
+def _shown_steps(db: Session, viewer: User, row: ScheduledChange, settings: Settings) -> list[str] | None:
+    """The sentences a viewer may read, or ``None`` when the change is not theirs to see.
+
+    A unit administrator sees only changes that stay inside their branch, judged from now, and the
+    sentences are rebuilt under their reach: the ones stored for the scheduler could name places
+    outside it.
+    """
     reach = unit_scope.reach_for(db, viewer)
     if reach is None:
-        return True
-    return reach.plainly_inside(db, TypeAdapter(ChangeRequest).validate_python(row.request))
+        return list(row.steps)
+    request = TypeAdapter(ChangeRequest).validate_python(row.request)
+    if not reach.plainly_inside(db, request):
+        return None
+    try:
+        with people.as_of(row.effective_on):
+            plan = service.build(db, request, viewer.id, settings)
+    except ApiError:
+        return None
+    if any(blocker.code == "outside_your_units" for blocker in plan.blockers):
+        return None
+    return [step.summary for step in plan.steps]
 
 
-def listing(db: Session, person_id: uuid.UUID | None = None, viewer: User | None = None) -> dict:
+def listing(
+    db: Session,
+    settings: Settings,
+    person_id: uuid.UUID | None = None,
+    viewer: User | None = None,
+) -> dict:
     """Pending and needs-review changes, soonest first; names and dates only.
 
     Pass ``viewer`` when the reader is a unit administrator, to list only changes within their reach.
@@ -56,8 +76,10 @@ def listing(db: Session, person_id: uuid.UUID | None = None, viewer: User | None
         query = query.where(ScheduledChange.subject_id == person_id)
     query = query.order_by(ScheduledChange.effective_on, ScheduledChange.created_at)
     rows = db.execute(query.limit(MAX_LISTED if viewer is None else 1000)).all()
+    shown = [(row, name, row.steps) for row, name in rows]
     if viewer is not None:
-        rows = [(row, name) for row, name in rows if _visible_to(db, viewer, row)][:MAX_LISTED]
+        found = [(row, name, _shown_steps(db, viewer, row, settings)) for row, name in rows]
+        shown = [item for item in found if item[2] is not None][:MAX_LISTED]
     return {
         "items": [
             {
@@ -68,19 +90,19 @@ def listing(db: Session, person_id: uuid.UUID | None = None, viewer: User | None
                 "note": row.note,
                 "reason": row.reason,
                 "subject_id": str(row.subject_id) if row.subject_id else None,
-                "steps": row.steps,
+                "steps": steps,
                 "created_by": name,
                 "created_at": iso(row.created_at),
             }
-            for row, name in rows
+            for row, name, steps in shown
         ]
     }
 
 
-def cancel(db: Session, actor: User, change_id: uuid.UUID, reason: str) -> dict:
+def cancel(db: Session, actor: User, change_id: uuid.UUID, reason: str, settings: Settings) -> dict:
     """Withdraw a pending or needs-review change; an applied or cancelled one is final."""
     row = db.scalar(select(ScheduledChange).where(ScheduledChange.id == change_id).with_for_update())
-    if row is None or not _visible_to(db, actor, row):
+    if row is None or _shown_steps(db, actor, row, settings) is None:
         raise NotFound()
     if row.state not in ("pending", "needs_review"):
         raise Conflict("not_pending", "This change has already been applied or cancelled.")

@@ -22,6 +22,9 @@ def candidates(db: Session, workspace_id: uuid.UUID, scope: frozenset[uuid.UUID]
         raise NotFound()
     members = select(Membership.user_id).where(Membership.workspace_id == space.id)
     query = select(User).where(User.status == "active", User.is_active.is_(True))
+    if scope is not None:
+        # The same people a unit administrator may actually choose: never administrators or outsiders.
+        query = query.where(User.is_admin.is_(False), User.home_workspace_id.in_(scope))
     if space.kind == "org":
         query = query.where(or_(User.home_workspace_id.in_(unit_branch(db, space.id)), User.id.in_(members)))
     else:

@@ -1077,8 +1077,13 @@ behaves for them exactly as for any member.
   - Scope is judged again inside the locks at apply and at a scheduled change's run. A reviewed
     plan applied after the appointment was withdrawn answers 403 `admin_required`; after the
     branch shrank, 404; a scheduled change whose actor lost the scope becomes `needs_review`.
+  - A plan that would give the unit administrator themself a role or membership (additional
+    charge, transfer, promotion, change of authority, a successor) carries the blocker
+    `self_access`. Warnings about similar names of people outside the branch are left out, and the
+    earlier-places warning on a reinstatement names no places.
   - Scheduled changes: the list and cancellation include only changes whose request stays inside the
-    branch (others answer 404 on cancel).
+    branch and whose rebuilt review names nothing outside it (others answer 404 on cancel). The
+    candidates list leaves out site administrators and people whose home is outside the branch.
 - Not available to unit administrators (403 `admin_required`): `/admin/org/attention`,
   `/admin/changes/import/*`, `/admin/org/unit-admins`, and every other `/admin/*` route
   including the legacy `/admin/users` and `/admin/workspaces` tools, audit, usage, storage,

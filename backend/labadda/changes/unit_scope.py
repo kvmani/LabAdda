@@ -40,6 +40,8 @@ OUTSIDE = (
     "This change also reaches people, units or groups outside your units. A site administrator must make it."
 )
 HIDDEN = "This concerns a unit or group outside your units."
+SELF_ACCESS = "Ask another administrator to give you access to a unit; an administrator cannot do it alone."
+EARLIER_PLACES = "Nothing is given back automatically; use Transfer or Additional charge after review."
 
 
 @dataclass(frozen=True)
@@ -102,6 +104,31 @@ class Reach:
             return False
         return any(row.workspace_id not in self.units for row in positions.current(db, user_id=person_id))
 
+    def _gives_actor_access(self, request) -> bool:
+        """A role or membership for the administrator themself would be content access by appointment."""
+        me = self.actor.id
+        if request.kind in ("additional_charge", "transfer"):
+            return request.person_id == me
+        if request.kind == "promote":
+            return request.person_id == me and request.role is not None
+        if request.kind == "change_authority":
+            return request.successor_id == me
+        covers = [*getattr(request, "successors", ()), *getattr(request, "acting", ())]
+        return any(item.successor_id == me for item in covers)
+
+    def _warnings(self, db: Session, warnings: tuple) -> tuple:
+        """Warnings that name a person or the places they once held would show what lies outside."""
+        kept = []
+        for item in warnings:
+            if item.code == "similar_name" and not self._sees_person(db, item.target_id):
+                continue
+            kept.append(replace(item, message=EARLIER_PLACES) if item.code == "last_placement" else item)
+        return tuple(kept)
+
+    def _sees_person(self, db: Session, person_id: str | None) -> bool:
+        person = db.get(User, uuid.UUID(person_id)) if _is_uuid(person_id) else None
+        return person is not None and not person.is_admin and person.home_workspace_id in self.units
+
     def restrict(self, db: Session, request, plan: Plan) -> Plan:
         """Block what leaves the branch and hide what the actor may not see; the digest follows."""
         steps = tuple(step if self._step_inside(db, step) else _hidden(step) for step in plan.steps)
@@ -120,8 +147,11 @@ class Reach:
         warnings = tuple(
             replace(item, message=HIDDEN) if item.target_id in hidden else item for item in plan.warnings
         )
+        warnings = self._warnings(db, warnings)
         if outside:
             blockers += (Blocker("outside_your_units", OUTSIDE),)
+        if self._gives_actor_access(request):
+            blockers += (Blocker("self_access", SELF_ACCESS),)
         return replace(plan, steps=steps, blockers=blockers, warnings=warnings)
 
 

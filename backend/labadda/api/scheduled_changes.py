@@ -28,7 +28,9 @@ def list_scheduled(
         request,
         db,
         actor,
-        lambda scope: scheduled.listing(db, person_id, None if scope is None else actor.user),
+        lambda scope: scheduled.listing(
+            db, get_settings(request), person_id, None if scope is None else actor.user
+        ),
     )
 
 
@@ -43,7 +45,7 @@ def cancel_scheduled(
     """Withdraw a change before it runs, with an audited reason."""
     try:
         user = service.authorize(db, actor, get_settings(request))
-        return scheduled.cancel(db, user, change_id, _ordinary_reason(reason.strip()))
+        return scheduled.cancel(db, user, change_id, _ordinary_reason(reason.strip()), get_settings(request))
     except DBAPIError:
         db.rollback()
         raise ApiError(
