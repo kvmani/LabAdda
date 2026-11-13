@@ -1,0 +1,75 @@
+/* Site announcements strip (AD-11). Colours are the same notice tokens as the Banner. */
+.broadcast-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--line-strong);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+.broadcast-strip--info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.broadcast-strip--warning {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.broadcast-strip__window {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.broadcast-strip__track {
+  display: inline-flex;
+  gap: var(--space-7);
+  margin: 0;
+  padding: 0 0 0 100%;
+  list-style: none;
+  white-space: nowrap;
+  animation: broadcast-scroll 30s linear infinite;
+}
+.broadcast-strip__track--speed-2 {
+  animation-duration: 60s;
+}
+.broadcast-strip__track--speed-3 {
+  animation-duration: 90s;
+}
+.broadcast-strip__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+/* Hovering the strip or tabbing to its button stops the motion so the text can be read. */
+.broadcast-strip:hover .broadcast-strip__track,
+.broadcast-strip:focus-within .broadcast-strip__track,
+.broadcast-strip--paused .broadcast-strip__track {
+  animation-play-state: paused;
+}
+@keyframes broadcast-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+/* No motion at all: the messages are listed, wrapping, and the pause button is not needed. */
+.broadcast-strip--still .broadcast-strip__track {
+  animation: none;
+  display: grid;
+  gap: var(--space-1);
+  padding: 0;
+  white-space: normal;
+}
+@media (prefers-reduced-motion: reduce) {
+  .broadcast-strip__track {
+    animation: none;
+    display: grid;
+    gap: var(--space-1);
+    padding: 0;
+    white-space: normal;
+  }
+}

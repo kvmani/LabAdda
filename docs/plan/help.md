@@ -81,7 +81,7 @@ edit-a-record · transfer · promotion · change-of-head · acting-appointments 
 long-leave · retirement-and-leaving · suspend-and-reinstate · reset-a-password ·
 import-a-staff-list · organisation-chart · create-move-merge-close-units · scheduled-changes ·
 attention-list · unit-administrators · overview-page · system-health · status-words ·
-activity-page · audit-trail · events · backups-page · site-notice · settings.
+activity-page · audit-trail · events · backups-page · broadcast · settings.
 
 `operator/`: install · upgrade · backup · restore · certificate-renewal · site-is-down ·
 status-report · disk-is-filling · moving-to-a-new-server.

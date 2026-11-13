@@ -4,14 +4,15 @@ import { api } from "../../api";
 import { Notifications } from "../../components/Notifications";
 import { realtime, type ConnState } from "../../realtime";
 import { useSession } from "../../session";
-import { Banner, HelpEntryContext } from "../../ui";
+import { HelpEntryContext } from "../../ui";
 import { useWorkspaces } from "../../workspaces";
+import { BroadcastStrip } from "../broadcast/BroadcastStrip";
+import { useBroadcasts } from "../broadcast/useBroadcasts";
 import { HelpLink } from "../help/HelpLink";
 import { BuildFooter } from "./BuildFooter";
 import { FirstUse } from "./FirstUse";
 import { RailNav } from "./RailNav";
 import { TopBar } from "./TopBar";
-import { useSiteBanner } from "./useSiteBanner";
 import "./shell.css";
 
 /** Refresh the unread count this often while a page stays open. */
@@ -27,7 +28,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [operations, setOperations] = useState(false);
   const [unitAdmin, setUnitAdmin] = useState(false);
   const [unread, setUnread] = useState(0);
-  const notice = useSiteBanner();
+  const broadcasts = useBroadcasts();
   const currentId = /^\/w\/([^/]+)/.exec(location.pathname)?.[1];
   const currentRef = useRef(currentId);
   currentRef.current = currentId;
@@ -81,7 +82,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <HelpEntryContext.Provider value={HelpLink}>
-      <div className={notice ? "shell shell--notice" : "shell"}>
+      <div className={broadcasts.length > 0 ? "shell shell--notice" : "shell"}>
         {/* Moves focus programmatically: a "#main" href would resolve against <base href> under a prefix. */}
         <a
           href="#main"
@@ -103,9 +104,9 @@ export function Shell({ children }: { children: ReactNode }) {
           notificationsOpen={notificationsOpen}
           onToggleNotifications={() => setNotificationsOpen((open) => !open)}
         />
-        {notice && (
+        {broadcasts.length > 0 && (
           <div className="shell-notice">
-            <Banner level={notice.level}>{notice.message}</Banner>
+            <BroadcastStrip messages={broadcasts} />
           </div>
         )}
         {notificationsOpen && (

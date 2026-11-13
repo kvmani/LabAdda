@@ -60,6 +60,12 @@ The first command prints a one-time token. Give it to Ana privately; she opens
 `https://<site-address>/activate`, enters it and chooses a password. Run the doctor until every
 line is fine, except the backup line, which passes after the first backup (section 4).
 
+On a pilot site the first administrator's creation also adds one warning to the top of every page:
+"The software is under pilot testing. Exercise caution in usage! Don't put any sensitive information."
+When the pilot ends, an administrator removes it in the app: **Administration → Broadcast**, then **Turn off**
+or **Delete** (see the Broadcast help page). It is added only for the first account and never comes back by
+itself; no operator command is needed.
+
 ## 3. First day in the app
 
 Sign in as the first administrator, then open **Administration**, **Help for administrators**

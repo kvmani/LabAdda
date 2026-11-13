@@ -93,7 +93,7 @@ REQUIRED_PAGES: tuple[str, ...] = (
     "admin/audit-trail.md",
     "admin/events.md",
     "admin/backups-page.md",
-    "admin/site-notice.md",
+    "admin/broadcast.md",
     "admin/settings.md",
     "operator/install.md",
     "operator/upgrade.md",

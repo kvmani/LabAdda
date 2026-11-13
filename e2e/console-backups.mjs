@@ -1,4 +1,4 @@
-// A7 Backups page, read-only settings and the site notice at / and /labadda-staging.
+// A7 Backups page, read-only settings at / and /labadda-staging.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -64,11 +64,6 @@ async function audit(page, width, label) {
   );
   await page.setViewportSize({ width: 1400, height: 1100 });
 }
-function localValue(date) {
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 async function checkBackups(admin, base) {
   const { page } = admin;
   const label = base + " backups";
@@ -112,7 +107,6 @@ async function checkSettings(admin, member, base) {
   const label = base + " settings";
   await page.goto(origin + base + "/admin/settings");
   await page.getByRole("heading", { name: "Settings", exact: true }).waitFor();
-  await page.getByRole("heading", { name: "Site notice", exact: true }).waitFor();
   await page.getByRole("heading", { name: "Signing in", exact: true }).waitFor();
   const text = await page.locator("main").innerText();
   check(
@@ -123,36 +117,12 @@ async function checkSettings(admin, member, base) {
     !/postgresql|labadda_e2e|proxy-stack|labadda-dev|127\.0\.0\.1/.test(text),
     label + " shows no path or host",
   );
-  const markup = "<b>Maintenance at six</b>";
-  await page.getByLabel(/Notice text/).fill(markup);
-  await page.getByLabel("Notice level", { exact: true }).selectOption("warning");
-  await page.getByLabel(/Show until/).fill(localValue(new Date(Date.now() + 86400_000)));
-  await page.getByRole("button", { name: "Publish notice", exact: true }).click();
-  const outcome = page.getByText("The site notice was published.").or(page.locator("main [role=alert]"));
-  await outcome.first().waitFor();
-  check(
-    await page.getByText("The site notice was published.").isVisible(),
-    label + " publishes: " + (await outcome.first().innerText()),
-  );
-  await page.goto(origin + base + "/admin/settings");
-  const banner = page.getByRole("status").filter({ hasText: "Maintenance at six" }).first();
-  await banner.waitFor();
-  check((await banner.innerText()).includes(markup), label + " banner shows markup as typed");
-  check((await page.locator(".shell-notice b").count()) === 0, label + " banner is escaped");
-  await audit(page, 1400, label + " with notice");
-  await audit(page, 390, label + " with notice");
+  await audit(page, 1400, label + " settings");
+  await audit(page, 390, label + " settings");
   await page.screenshot({
     path: output + (base ? "/prefix-settings.png" : "/root-settings.png"),
     fullPage: true,
   });
-  await member.page.goto(origin + base + "/");
-  await member.page.locator(".shell-notice").getByText("Maintenance at six").waitFor();
-  check(true, label + " every signed-in person sees the notice");
-  await page.getByRole("button", { name: "Remove notice", exact: true }).click();
-  await page.getByText("The site notice was removed.").waitFor();
-  await member.page.goto(origin + base + "/");
-  await member.page.getByRole("button", { name: /^Account menu for / }).waitFor();
-  check((await member.page.locator(".shell-notice").count()) === 0, label + " removed notice disappears");
 }
 
 async function checkMember(member, base) {
@@ -167,8 +137,8 @@ async function checkMember(member, base) {
     label + " no settings",
   );
   check(
-    (await member.context.request.get(endpoint + "/site/banner")).status() === 200,
-    label + " can read banner",
+    (await member.context.request.get(endpoint + "/site/broadcasts")).status() === 200,
+    label + " can read broadcasts",
   );
 }
 

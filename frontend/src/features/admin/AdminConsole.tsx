@@ -12,6 +12,7 @@ import { HealthPage } from "../health/HealthPage";
 import { OrgPage } from "../org/OrgPage";
 import { OverviewPage } from "../overview/OverviewPage";
 import { PeoplePage } from "../people/PeoplePage";
+import { BroadcastPage } from "./BroadcastPage";
 import { BackupsPage } from "./BackupsPage";
 import { Settings } from "./Settings";
 import { SetupChecklist } from "./SetupChecklist";
@@ -70,6 +71,8 @@ export function AdminConsole() {
                 <Storage />
               ) : section.key === "backups" ? (
                 <BackupsPage />
+              ) : section.key === "broadcast" ? (
+                <BroadcastPage />
               ) : section.key === "settings" ? (
                 <Settings />
               ) : (

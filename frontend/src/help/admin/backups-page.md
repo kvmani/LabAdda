@@ -35,4 +35,4 @@ If the word is Degraded, the last good backup is more than 26 hours old. If it i
 ## Related
 
 - [Reading the settings page](settings.md)
-- [Publishing a site notice](site-notice.md)
+- [Broadcast messages](broadcast.md)

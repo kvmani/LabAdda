@@ -9,6 +9,7 @@ export const SECTIONS = [
   { key: "backups", label: "Backups", path: "/admin/backups" },
   { key: "audit", label: "Audit", path: "/admin/audit" },
   { key: "events", label: "Events", path: "/admin/events" },
+  { key: "broadcast", label: "Broadcast", path: "/admin/broadcast" },
   { key: "settings", label: "Settings", path: "/admin/settings" },
   { key: "help", label: "Help for administrators", path: "/admin/help" },
 ] as const;

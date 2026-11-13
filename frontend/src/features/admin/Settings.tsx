@@ -4,9 +4,8 @@ import { invalidate } from "../../generation";
 import { BASE } from "../../config";
 import { UsageReaders } from "../../components/UsageReaders";
 import { ErrorState, PageHeader, Skeleton } from "../../ui";
-import { NoticeEditor } from "./NoticeEditor";
 import { SettingsGroups } from "./SettingsGroups";
-import type { Notice, SettingsPayload } from "./settingsTypes";
+import type { SettingsPayload } from "./settingsTypes";
 import { useAdminData } from "./useAdminData";
 
 type Account = { id: string; username: string; display_name: string; is_active: boolean; is_admin: boolean };
@@ -33,16 +32,14 @@ function Delegations() {
   return users ? <UsageReaders users={users} /> : <Skeleton label="Loading accounts for delegations" />;
 }
 
-/** Site notice, effective limits in plain words, and time-limited operational delegations. */
+/** Effective limits in plain words, and time-limited operational delegations. */
 export function Settings() {
   const { data, error, reload } = useAdminData<SettingsPayload>("/admin/settings");
-  const [notice, setNotice] = useState<{ value: Notice | null } | null>(null);
-  const current = notice ? notice.value : (data?.banner ?? null);
   return (
     <>
       <PageHeader
         title="Settings"
-        scope="The site notice, the limits this site runs with, and time-limited operational access."
+        scope="The limits this site runs with, and time-limited operational access."
         helpHref={BASE + "/admin/help"}
       />
       {error ? (
@@ -51,11 +48,6 @@ export function Settings() {
         <Skeleton label="Loading settings" />
       ) : (
         <>
-          <NoticeEditor
-            current={current}
-            maxLength={data.banner_max_length}
-            onSaved={(saved) => setNotice({ value: saved })}
-          />
           <SettingsGroups groups={data.groups} />
         </>
       )}

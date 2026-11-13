@@ -64,7 +64,8 @@ chat. Collection costs at most one small batched insert per minute.
 | `/admin/backups` | Last backup time, age, size, verification result, destination alias, next scheduled run, last restore rehearsal (AD-10) | Open the backup and restore guides |
 | `/admin/audit` | Searchable audit trail (AD-09) | Filter, open detail, export CSV |
 | `/admin/events` | Operational events (AD-06) | Acknowledge with a note, resolve, open the guide |
-| `/admin/settings` | Site name and time zone; site notice banner (AD-11); effective limits and timeouts read-only with a plain explanation and where each is changed; administrators and delegations | Edit banner; manage delegations |
+| `/admin/settings` | Site name and time zone; broadcasts are on their own page (AD-11); effective limits and timeouts read-only with a plain explanation and where each is changed; administrators and delegations | Edit banner; manage delegations |
+| `/admin/broadcast` | Broadcast messages scrolled across the top of every page (AD-11) | Add, edit, turn off, reorder, delete |
 | `/admin/help` | Administrator handbook and setup checklist ([HELP-CENTER.md](HELP-CENTER.md)) | — |
 
 Every page is deep-linkable, keeps its filters in the URL, and has a help link.
@@ -148,9 +149,17 @@ alias, schema, release. The console reads and validates that file (strict schema
 no paths or secrets displayed). If the file is missing the page says backups are `unknown` and
 links to the set-up guide — it never implies that backups exist.
 
-**AD-11. Site notice banner.** An administrator can publish one short plain-text notice to all
-signed-in users (for example planned maintenance), with a start and end time and a level
-(info or warning). It is audited, escaped, limited to 280 characters and removed automatically.
+**AD-11. Broadcasts.** Administrators can keep several short plain-text messages that scroll across
+the top of every page for all signed-in users (planned maintenance, pilot warnings). Each has text
+(escaped, at most 300 characters), a level (info or warning), an optional start and end time, an active
+flag and a position; the server returns only those active and inside their window. Administrators add,
+edit, turn off, reorder and delete them from the Broadcast page; every change is audited in the same
+transaction, without the text. Deleting is allowed here because a broadcast is site configuration written
+by an administrator, not user content, so the "nothing destroys user content" rule does not apply. The
+strip meets WCAG 2.2.2 (Pause/Play, paused on hover and focus, still list under reduced motion). New pilot
+installations start with one warning, "The software is under pilot testing. Exercise caution in usage!
+Don't put any sensitive information.", added by `labadda create-admin` for the first account; an
+administrator removes it with Turn off or Delete.
 
 **AD-12. Interfaces** (full shapes go in docs/API.md with each package):
 
@@ -162,8 +171,10 @@ GET  /admin/analytics/summary?period=            GET /admin/analytics/units?peri
 GET  /admin/audit?…filters…&cursor=              GET /admin/audit/export.csv?…
 GET  /admin/events?state=&severity=&cursor=      POST /admin/events/{id}/acknowledge | /resolve
 GET  /admin/backups/status
-GET  /admin/settings                             PUT /admin/settings/banner
-GET  /site/banner                                (any signed-in user)
+GET  /admin/settings
+GET/POST /admin/broadcasts                       PATCH/DELETE /admin/broadcasts/{id}
+POST /admin/broadcasts/{id}/move
+GET  /site/broadcasts                            (any signed-in user)
 ```
 
 ## Acceptance

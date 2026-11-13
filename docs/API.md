@@ -883,7 +883,7 @@ this period, previous period`; UTF-8 with BOM, formula-escaped; suppressed figur
 than 5", missing ones "not measured"). Audited as `analytics.export` (period words and row
 count) before delivery.
 
-## A7 · Backups page, settings and site notice (AD-10, AD-11)
+## A7 · Backups page, settings and broadcasts (AD-10, AD-11)
 
 All errors use the common envelope. Board-only sessions get 401 on every route here.
 
@@ -900,21 +900,44 @@ malformed or future-dated receipt is `unknown`; a failed backup or failed verifi
 
 `GET /admin/settings` (administrators only; usage readers 403 `admin_required`). Returns
 `groups[]` of `{key, title, summary, items[]}`, each item `{key, label, value, unit, explanation,
-changed_by}` with `changed_by` always "Changed by the operator in the site configuration file.",
-the current `banner` (or null) and `banner_max_length` (280). Only an explicit list of non-secret
+changed_by}` with `changed_by` always "Changed by the operator in the site configuration file.". The first
+item is the software version. Only an explicit list of non-secret
 limits is returned; paths, hosts, cookie names and database addresses never are.
 
-`PUT /admin/settings/banner` (administrators only; CSRF required). Body `{message, level
-("info"|"warning"), starts_at (optional, default now), ends_at, expected_revision}`; times carry a
-zone. The message is plain text on one line, 1 to 280 characters after whitespace is collapsed; an
-empty message removes the notice (`level` and `ends_at` then optional). `expected_revision` is the
-revision last read (0 when there is no notice). Returns `{banner}` with `revision` or `{banner:
-null}`. Errors: 422 `banner_too_long`, `invalid_banner`, `invalid_banner_times` (must end after it
-starts and in the future), 409 `banner_changed`. Audited as `site.banner_set` (level, times and
-length, not the text) and `site.banner_clear` in the same transaction.
+`GET /site/version` is listed under Ops above. The single site notice (`PUT /admin/settings/banner`,
+`GET /site/banner`) is replaced by broadcasts below; migration 0039 moves an existing notice into the
+first broadcast.
 
-`GET /site/banner` (any signed-in person). Returns `{banner: {message, level, starts_at,
-ends_at} | null}` for the notice whose window contains now. Clients render the text as text.
+### Broadcasts (AD-11)
+
+Console section `broadcast`: administrators only. Usage readers, members and unit administrators get
+403 `admin_required`; signed-out and board-only requests get 401. CSRF is required on writes. A
+broadcast is plain text on one line, 1 to 300 characters after whitespace is collapsed, rendered as
+text by every client. Deleting is allowed because a broadcast is site configuration, not user content.
+At most 20 exist.
+
+`GET /admin/broadcasts` returns `{broadcasts[], max_length (300)}` in display order; each is `{id,
+message, level ("info"|"warning"), starts_at, ends_at (either may be null), active, position, status
+("showing"|"scheduled"|"ended"|"off"), revision}`.
+
+`POST /admin/broadcasts` body `{message, level, starts_at?, ends_at?, active? (default true)}`; times
+carry a zone; no unknown fields. 201 `{broadcast}`, placed last. Errors: 422 `invalid_broadcast`,
+`broadcast_too_long`, `invalid_broadcast_times` (end must be in the future and after the start), 409
+`too_many_broadcasts`.
+
+`PATCH /admin/broadcasts/{id}` body with any of the fields above plus `expected_revision`; only
+fields sent change. 200 `{broadcast}`; 404 when gone; 409 `broadcast_changed` on a stale revision.
+
+`POST /admin/broadcasts/{id}/move` body `{direction: "up"|"down"}` returns `{broadcasts[]}`.
+`DELETE /admin/broadcasts/{id}` returns `{deleted: true}`; 404 when gone.
+
+Each write is audited in the same transaction as `site.broadcast_add`, `_edit`, `_move`, `_delete`
+(level, times, active, length and id; never the text). Setup records `site.broadcast_seed` when
+`labadda create-admin` creates the first account of a pilot installation, adding the pilot-testing
+warning once.
+
+`GET /site/broadcasts` (any signed-in person; board-only 401) returns `{broadcasts: [{id, message,
+level}]}`: only messages that are active and whose window contains now, in order.
 
 ## H3 · Setup checklist (HP-07)
 

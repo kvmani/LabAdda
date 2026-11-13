@@ -66,7 +66,7 @@ loaded page. Browser check: `e2e/audit.mjs` (with `e2e/audit-fixture.py`) at `/`
 filters, drawer, export, retry, axe at 1400 and 390 px, member denial.
 
 
-## A7 backups page, settings and site notice
+## A7 backups page and settings; AD-11 broadcasts
 
 Backend: `backup_report.py` turns the D3 status file (`backup_status.read_status`, strict schema and 4 KiB limit,
 reused not copied) into the page payload and the AD-03 word: missing, unreadable or future-dated is `unknown` with
@@ -74,19 +74,25 @@ guidance, never an error; failed backup or verification is `unavailable`; older 
 50 h `stale`. Next run and restore rehearsal are `null` (the receipt does not carry them) and the page says "Not
 recorded". `settings_report.py` lists an explicit set of non-secret `Settings` fields in groups with a plain
 explanation; add a row there to expose a new setting, never iterate over `Settings`. Every row says "Changed by the
-operator in the site configuration file." `banner.py` holds the notice rules (280 characters, one line, no control
-characters, `expected_revision`, audited as `site.banner_set` / `site.banner_clear` without the text);
-`api/admin_site.py` serves `/admin/backups/status` (backups console section, readers allowed), `/admin/settings`
-and `PUT /admin/settings/banner` (administrators only) and `/site/banner` (any signed-in person, panel 401).
-Migration 0029 creates the single-row `site_banner`; its downgrade refuses while a notice exists. Tests:
-`test_admin_site.py`.
+operator in the site configuration file." The first row is the software version (`build_info.py`).
 
-Frontend: `features/admin/BackupsPage.tsx`, `Settings.tsx` (site notice editor `NoticeEditor.tsx`, groups
-`SettingsGroups.tsx`, then the existing delegation tools), `useAdminData.ts`. `ui/Banner.tsx` (test, gallery entry)
-renders the notice as text; `Shell.tsx` polls `/site/banner` through `useSiteBanner.ts` every minute and gives it a
-full-width row under the top bar. Help: `help/admin/backups-page.md`, `site-notice.md`, `settings.md`. Browser check:
-`e2e/console-backups.mjs` at `/` and `/labadda-staging`: unknown backup, fresh and stale receipts, settings without
-paths or secrets, notice publish/appear/remove, member denial, axe at 1400 and 390 px.
+Broadcasts replaced the single site notice. `broadcast.py` holds the rules (300 characters, one line, no control
+characters, at most 20, `expected_revision`, active flag, optional window, `position` order, audited as
+`site.broadcast_add/_edit/_move/_delete` without the text). Deleting is allowed: a broadcast is site configuration,
+not user content. `api/admin_site.py` serves `/admin/backups/status`, `/admin/settings`, `/admin/broadcasts` (console
+section `broadcast`, administrators only) and `/site/broadcasts` (any signed-in person, panel 401). Migration 0039
+creates `site_broadcasts`, moves the old `site_banner` row into broadcast 1 and drops the old table; its downgrade
+refuses unless the broadcasts fit one old notice. `labadda create-admin` on the very first account of a pilot
+installation adds the pilot-testing warning (`seed_pilot_notice`, audited as `site.broadcast_seed`); test fixtures
+start with none. Tests: `test_admin_site.py`, `test_broadcast.py`.
+
+Frontend: `features/admin/BackupsPage.tsx`, `Settings.tsx` (groups `SettingsGroups.tsx`, then the delegation tools),
+`BroadcastPage.tsx` (DataTable, ConfirmDialog) with `features/broadcast/BroadcastDialog.tsx`, `useAdminData.ts`.
+`features/broadcast/BroadcastStrip.tsx` is the scrolling strip (WCAG 2.2.2: Pause/Play button, paused on hover and
+focus, still list under reduced motion, one polite status region); `Shell.tsx` polls `/site/broadcasts` through
+`useBroadcasts.ts` every minute and gives it a full-width row under the top bar. Help: `help/admin/backups-page.md`,
+`broadcast.md`, `settings.md`. Browser checks: `e2e/console-backups.mjs` and `e2e/console-broadcast.mjs` at `/` and
+`/labadda-staging`: both themes, axe at 1400 and 390 px, member denial.
 
 ## A4 system health and events
 

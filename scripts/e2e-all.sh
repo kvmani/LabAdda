@@ -8,7 +8,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 ALL=(personal-board accessibility admin-console alert-preferences audit capabilities capacity-proposals chat-attachments
-  chat-threads collaboration-review console-activity console-backups console-health console-overview
+  chat-threads collaboration-review console-activity console-backups console-broadcast console-health console-overview
   content-charges dashboard flows governance help inspection-view inventory-jobs org-chart people
   people-authority people-changes people-import people-import-excel people-scheduled preview-observations
   preview-reconciliation-view profile research-day setup-checklist storage-inventory task-assignment
