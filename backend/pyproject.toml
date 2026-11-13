@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest==8.3.4", "httpx==0.28.1", "ruff==0.17.4"]
+test = ["pytest==8.3.4", "httpx==0.28.1", "ruff==0.17.0"]
 
 [project.scripts]
 labadda = "labadda.cli:main"
