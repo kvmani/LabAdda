@@ -8,7 +8,8 @@ from alembic import command
 from sqlalchemy import select
 
 from labadda.cli import alembic_config
-from labadda.models import PersonalBoardRevision
+from labadda.models import PersonalBoardRevision, User
+from tests.test_panel import pair
 
 
 def note(text="Private test note"):
@@ -81,3 +82,28 @@ def test_populated_migration_cannot_discard_work(as_user, settings):
     as_user("asha").put("/me/whiteboard", json={"revision": 0, "objects": [note()]})
     with pytest.raises(RuntimeError, match="Personal whiteboard history exists"):
         command.downgrade(alembic_config(settings.database_url), "0036")
+
+
+def test_real_panel_session_and_deactivated_owner_are_refused(as_user, make_client, ids, db_factory):
+    owner = as_user("asha")
+    owner.put("/me/whiteboard", json={"revision": 0, "objects": [note("Hidden")]})
+    kiosk = pair(as_user, make_client, ids, user="asha")
+    assert kiosk.get("/me/whiteboard").status_code == 401
+    with db_factory() as db:
+        db.get(User, ids["users"]["asha"]).is_active = False
+        db.commit()
+    assert owner.get("/me/whiteboard").status_code == 401
+    assert owner.put("/me/whiteboard", json={"revision": 1, "objects": []}).status_code == 401
+
+
+def stroke(points):
+    return {**note(), "kind": "stroke", "color": "teal", "points": points}
+
+
+def test_oversized_documents_are_rejected_and_nothing_is_stored(as_user):
+    owner = as_user("asha")
+    many_points = [stroke([[1.0, 2.0]] * 2000) for _ in range(11)]
+    assert owner.put("/me/whiteboard", json={"revision": 0, "objects": many_points}).status_code == 422
+    big_text = [note("x" * 1000) for _ in range(500)]
+    assert owner.put("/me/whiteboard", json={"revision": 0, "objects": big_text}).status_code == 422
+    assert owner.get("/me/whiteboard").json() == {"revision": 0, "objects": []}
