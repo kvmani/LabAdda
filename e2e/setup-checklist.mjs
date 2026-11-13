@@ -73,6 +73,7 @@ async function checkChecklist(admin, base) {
   await page.waitForURL(/\/admin\/help\/setup$/);
   await page.getByRole("heading", { name: "Setting up this site", exact: true }).waitFor();
   const items = page.getByRole("list", { name: "Setup checklist" }).getByRole("listitem");
+  await items.first().waitFor(); // the heading renders before the checklist request returns
   check((await items.count()) === 7, label + " lists seven items");
   check((await page.getByRole("checkbox").count()) === 0, label + " has nothing to tick");
   const backups = items.filter({ hasText: "Backups reporting healthy" });

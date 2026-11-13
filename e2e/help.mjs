@@ -151,7 +151,7 @@ async function checkDrawer(member, base) {
   await page.getByRole("button", { name: "Open the full guide", exact: true }).click();
   await page.getByRole("heading", { level: 1, name: "Reading My day" }).waitFor();
   check(page.url().endsWith(base + "/help/using/my-day"), base + " the drawer opens the full guide");
-  await page.goto(origin + base + "/notes");
+  await page.goto(origin + base + "/no-such-screen"); // /notes has its own help page now
   await page.getByRole("heading", { level: 1 }).first().waitFor();
   check(
     (await page.getByRole("button", { name: "Help with this page" }).count()) === 0,

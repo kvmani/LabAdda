@@ -33,6 +33,10 @@ For T13 local regression, use `scripts/soak.py --drawers 8 --seconds 120 --enfor
 
 For a realistic five-person fixture with handwritten native ink, sibling sections, parent division and a private colleague handoff, see [research-day scenario](fixtures/research-day/README.md). `e2e/research-day.mjs` runs only against an explicitly selected local synthetic instance; it saves real screenshots and fails on permission/replay/upload-boundary regressions. SVG sources and native-object JSON are deterministic and covered by `test_research_fixture.py`.
 
+## Running every browser suite
+
+`scripts/e2e-all.sh` runs every `e2e/*.mjs` suite, each on its own fresh `scripts/proxy-stack.sh` stack because suites change data, and prints one `PASS` or `FAIL` line per suite with its number of passed checks. Each suite covers the root and the `/labadda-staging` instance itself. It exits non-zero if any suite fails. Name suites to run a subset: `scripts/e2e-all.sh help setup-checklist`. Build the frontend first. Logs and screenshots go to a temporary folder (set `LABADDA_E2E_OUT` to choose one). The script supplies the origin argument, the `--synthetic-instance` flag and the operator steps some suites need first (`inspect-storage`, `reconcile-previews`, `inventory-storage`, the inventory-jobs fixture).
+
 ## Future data lifecycle/admin acceptance matrix (S5–S7)
 
 These are **requirements for future tests**, not checks claimed to have passed or features currently present. Each implementation slice must add real positive/negative, race/restart and browser evidence as applicable. Reference the stable requirement IDs in the three normative documents; record schema/commit, environment, metrics, counts, skips and limitations. Reuse the five-person research-day fixture for two siblings, their division, a five-member group, private two-person sharing and personal notes.
