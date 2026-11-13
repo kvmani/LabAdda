@@ -45,12 +45,13 @@
   gap: var(--space-3);
   min-height: 56px;
   padding: var(--space-2) var(--space-5);
-  background: var(--surface-card);
+  background: var(--brand-navy);
+  color: var(--board-white);
   border-bottom: 1px solid var(--line);
   box-shadow: var(--shadow-1);
 }
 .shell-topbar__brand {
-  color: var(--text);
+  color: var(--board-white);
   font-size: var(--text-xl);
   font-weight: 750;
   letter-spacing: -0.02em;
@@ -286,4 +287,19 @@
 }
 .first-use__actions {
   margin-top: var(--space-3);
+}
+
+.shell-topbar__link {
+  color: var(--board-white);
+}
+.shell-topbar__link:hover,
+.shell-topbar__link.active {
+  color: var(--brand-navy);
+}
+
+.shell-topbar__notifications {
+  color: var(--board-white);
+}
+.shell-topbar__notifications:hover {
+  color: var(--brand-navy);
 }

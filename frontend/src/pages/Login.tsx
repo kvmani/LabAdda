@@ -1,3 +1,5 @@
+import { Brand } from "../features/home/Brand";
+import "../features/home/home.css";
 import { errorMessage } from "../api";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -6,7 +8,8 @@ import { INSTANCE } from "../config";
 import { Button, Card, TextInput } from "../ui";
 import "./auth.css";
 
-export function Login({ next }: { next: string }) {
+export function Login({ next, embedded = false }: { next: string; embedded?: boolean }) {
+  const Container = embedded ? "section" : "main";
   const { signIn, expired } = useSession();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
@@ -30,12 +33,12 @@ export function Login({ next }: { next: string }) {
   }
 
   return (
-    <main className="auth">
+    <Container className="auth">
       <Card>
         <form className="auth__form" onSubmit={submit} aria-labelledby="signin-title">
           <div>
             <h1 className="auth__title" id="signin-title">
-              LabAdda
+              <Brand />
             </h1>
             <p className="auth__scope">
               Sign in to your research workspace{INSTANCE !== "pilot" ? ` · ${INSTANCE}` : ""}
@@ -54,7 +57,7 @@ export function Login({ next }: { next: string }) {
             onChange={(e) => setUsername(e.target.value)}
             // The sign-in page has one purpose, so starting in the username field is expected.
             // eslint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
+            autoFocus={!embedded}
           />
           <TextInput
             label="Password"
@@ -73,7 +76,7 @@ export function Login({ next }: { next: string }) {
           </p>
         </form>
       </Card>
-    </main>
+    </Container>
   );
 }
 

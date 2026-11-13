@@ -146,3 +146,31 @@
     --motion-base: 0ms;
   }
 }
+
+:root {
+  --brand-navy: #172d40;
+  --brand-teal: #087f8b;
+  --brand-amber: #e4ab45;
+  --brand-paper: #faf8f2;
+  --board-white: #ffffff;
+  --board-ink: #172d40;
+  --board-teal: #087f8b;
+  --board-blue: #2864cd;
+  --board-orange: #d87018;
+  --board-yellow: #fff0a5;
+  --board-mint: #d7efcb;
+  --board-pink: #f9d7df;
+  --board-purple: #ddd1f5;
+  --brand-logo-size: 3rem;
+  --brand-hero-size: clamp(2rem, 3.2vw, 3rem);
+  --landing-width: 90rem;
+  --canvas-stroke: 3;
+}
+:root {
+  --brand-logo-compact: 2rem;
+  --brand-font-compact: 1.1rem;
+}
+
+:root {
+  --board-violet: #7550ac;
+}

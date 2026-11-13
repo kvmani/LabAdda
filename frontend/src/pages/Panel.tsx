@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, setCsrf, setUnauthenticatedHandler, errorMessage } from "../api";
+import { BASE } from "../config";
 import { realtime } from "../realtime";
 import type { Workspace } from "../types";
 import { Banner, Button, Card, TextInput } from "../ui";
@@ -76,6 +77,7 @@ function PairScreen({ notice, onPaired }: { notice: string | null; onPaired: (s:
     <main className="panel-pair">
       <Card>
         <form className="panel-pair__form" onSubmit={submit}>
+          <img className="panel-pair__logo" src={`${BASE}/logo.png`} alt="" />
           <h1 className="panel-pair__title">LabAdda touch panel</h1>
           {notice && <Banner>{notice}</Banner>}
           <p>

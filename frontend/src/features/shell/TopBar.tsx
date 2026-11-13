@@ -1,3 +1,5 @@
+import { Brand } from "../home/Brand";
+import "../home/home.css";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { INSTANCE } from "../../config";
@@ -61,8 +63,8 @@ export function TopBar({
   const name = session?.user.display_name ?? "";
   return (
     <header className="shell-topbar">
-      <Link to="/" className="shell-topbar__brand">
-        LabAdda
+      <Link to="/" className="shell-topbar__brand" aria-label="LabAdda home">
+        <Brand />
       </Link>
       {INSTANCE !== "pilot" && (
         <span className="shell-topbar__instance">

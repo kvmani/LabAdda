@@ -85,3 +85,9 @@
   padding: var(--space-2) var(--space-5);
   font-size: 1.2rem;
 }
+
+.panel-pair__logo {
+  width: var(--brand-logo-size);
+  height: var(--brand-logo-size);
+  object-fit: contain;
+}
