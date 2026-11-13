@@ -236,11 +236,11 @@
     padding: var(--space-2) var(--space-3);
   }
   .shell-topbar__end {
-    flex-wrap: wrap;
-    max-width: 100%;
+    min-width: 0;
     gap: var(--space-1);
   }
   /* Icon-only on phones; the words stay available to screen readers. */
+  .shell-topbar__connection .ui-pill > span,
   .shell-topbar__label {
     position: absolute;
     width: 1px;
@@ -255,7 +255,7 @@
     padding: 0 var(--space-2);
   }
   .shell-topbar .ui-menu .ui-button > span {
-    max-width: 7.5rem;
+    max-width: 3.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -293,7 +293,10 @@
   color: var(--board-white);
 }
 .shell-topbar__link:hover,
-.shell-topbar__link.active {
+.shell-topbar__link.active,
+.shell-topbar__link[aria-current="page"] {
+  /* The bar is navy in both themes, so a themed tint would hide the navy label in dark mode. */
+  background: var(--board-white);
   color: var(--brand-navy);
 }
 
@@ -301,5 +304,6 @@
   color: var(--board-white);
 }
 .shell-topbar__notifications:hover {
+  background: var(--board-white);
   color: var(--brand-navy);
 }
