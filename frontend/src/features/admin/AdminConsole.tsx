@@ -8,6 +8,7 @@ import { BasicAdministration } from "./BasicAdministration";
 import { ActivityPage } from "../activity/ActivityPage";
 import { AuditPage } from "../audit/AuditPage";
 import { EventsPage } from "../events/EventsPage";
+import { FeedbackPage } from "../feedback/FeedbackPage";
 import { HealthPage } from "../health/HealthPage";
 import { OrgPage } from "../org/OrgPage";
 import { OverviewPage } from "../overview/OverviewPage";
@@ -67,6 +68,8 @@ export function AdminConsole() {
                 <HealthPage />
               ) : section.key === "events" ? (
                 <EventsPage />
+              ) : section.key === "feedback" ? (
+                <FeedbackPage />
               ) : section.key === "storage" ? (
                 <Storage />
               ) : section.key === "backups" ? (

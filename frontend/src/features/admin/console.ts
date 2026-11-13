@@ -10,6 +10,7 @@ export const SECTIONS = [
   { key: "audit", label: "Audit", path: "/admin/audit" },
   { key: "events", label: "Events", path: "/admin/events" },
   { key: "broadcast", label: "Broadcast", path: "/admin/broadcast" },
+  { key: "feedback", label: "Feedback", path: "/admin/feedback" },
   { key: "settings", label: "Settings", path: "/admin/settings" },
   { key: "help", label: "Help for administrators", path: "/admin/help" },
 ] as const;

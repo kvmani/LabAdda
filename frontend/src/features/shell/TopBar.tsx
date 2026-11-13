@@ -17,6 +17,7 @@ import {
   type ThemeChoice,
   type Tone,
 } from "../../ui";
+import { FeedbackDialog } from "../feedback/FeedbackDialog";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import type { Workspace } from "../../types";
 
@@ -59,6 +60,7 @@ export function TopBar({
   const { session, signOut } = useSession();
   const navigate = useNavigate();
   const [theme, setTheme] = useState<ThemeChoice>(readThemeChoice);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const status = CONNECTION[connection];
   const name = session?.user.display_name ?? "";
   return (
@@ -86,6 +88,14 @@ export function TopBar({
           <Icon name="bell" />
           <span className="shell-topbar__label">Notifications</span>
           <Badge count={unread} label="unread" />
+        </button>
+        <button
+          type="button"
+          className="ui-button ui-button--quiet ui-button--md shell-topbar__notifications"
+          onClick={() => setFeedbackOpen(true)}
+        >
+          <Icon name="edit" />
+          <span className="shell-topbar__label">Feedback</span>
         </button>
         <Link to="/help" className="shell-topbar__link">
           <Icon name="help" />
@@ -115,6 +125,7 @@ export function TopBar({
           ]}
         />
       </div>
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </header>
   );
 }

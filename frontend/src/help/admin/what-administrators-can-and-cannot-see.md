@@ -21,6 +21,8 @@ Being an administrator lets you look after accounts, units and the health of the
 
 You never see message text, note titles, file names, whiteboard images, task text or what people typed into search. Being an administrator does not make you a member of any unit, project or group, so you cannot open their workspaces. To work in a unit you must be added to it like anyone else, and that change appears in the audit trail.
 
+The one exception is **Feedback**: a message someone chose to send to the administrators with the Feedback button. They are told you will read it, and each time you open one the audit trail records it.
+
 ## If something goes wrong
 
 - Someone asks you to read a message or recover a note. Administrators cannot do this. Tell them to ask the steward of the workspace.

@@ -1,0 +1,75 @@
+/* Feedback button, form dialog and administrator page. */
+.feedback-facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+.feedback-facts dt {
+  color: var(--text-muted);
+}
+.feedback-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.feedback-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.feedback-notice {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.feedback-drop {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-md);
+}
+.feedback-drop--over {
+  border-color: var(--accent);
+}
+.feedback-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.feedback-files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.feedback-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-4);
+  align-items: end;
+}
+.feedback-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0 0 var(--space-4);
+}
+.feedback-previews {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+.feedback-previews img {
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}

@@ -18,7 +18,7 @@ What people notice: nothing. Their feedback is saved either way. Administrators 
 
 1. Open **Feedback** in the console and look at the e-mail column.
 2. Read the reason shown for a failed message.
-3. Ask the person who looks after the server to fix the mail settings, then send the e-mail again from the message.
+3. Ask the person who looks after the server to fix the mail settings, then choose **Send e-mail again**.
 
 ## What happens next
 
