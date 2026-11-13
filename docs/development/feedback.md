@@ -1,6 +1,6 @@
 # Feedback button guide
 
-Contract: [API.md](../API.md#pilot--feedback-button-schema-0039).
+Contract: [API.md](../API.md#pilot--feedback-button-schema-0040).
 
 | Part | Where |
 | --- | --- |

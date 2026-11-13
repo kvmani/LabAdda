@@ -1162,7 +1162,7 @@ see only their own board; panel-intent and board sessions are denied (401). No s
 workspace search, notification, or analytics content path includes personal boards. At most 500
 objects, 20,000 points and 250,000 encoded bytes per save; 422 on invalid or oversized input.
 
-## Pilot · Feedback button (schema 0039)
+## Pilot · Feedback button (schema 0040)
 
 Contract: people choose to send feedback to the administrators, so administrators **may read
 the message and its files** (the form says so). This is the only content administrators can

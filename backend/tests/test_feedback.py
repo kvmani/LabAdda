@@ -10,9 +10,8 @@ from alembic import command
 from PIL import Image
 from sqlalchemy import text
 
-from labadda import build_info
+from labadda import build_info, feedback_mail
 from labadda import feedback as fb
-from labadda import feedback_mail
 from labadda.cli import alembic_config
 from labadda.models import Asset, AuditEvent, Feedback, FeedbackMail, User
 from labadda.security import feedback_limiter, utcnow
@@ -512,11 +511,11 @@ def test_downgrade_refuses_while_feedback_exists(scratch_url, ids, db_factory):
         )
         db.commit()
     with pytest.raises(Exception, match="Feedback exists"):
-        command.downgrade(cfg, "0038")
+        command.downgrade(cfg, "0039")
     with db_factory() as db:
         db.execute(text("delete from feedback"))
         db.commit()
-    command.downgrade(cfg, "0038")
+    command.downgrade(cfg, "0039")
     command.upgrade(cfg, "head")
 
 
