@@ -1,4 +1,5 @@
 import type { CapacityForecast as Forecast } from "../governance-types";
+import { fmtTime } from "../format";
 import { fmtBytes } from "../format";
 import "./storage.css";
 
@@ -36,10 +37,10 @@ export function CapacityForecast({ forecast }: { forecast: Forecast }) {
         <dt>Shortfall below proposed filesystem reserve</dt>
         <dd>{fmtBytes(forecast.filesystem.reserve_shortfall_bytes)}</dd>
         <dt>Asset counters observed</dt>
-        <dd>{new Date(forecast.asset_observed_at).toLocaleString()}</dd>
+        <dd>{fmtTime(forecast.asset_observed_at)}</dd>
         <dt>Filesystem observed independently</dt>
         <dd>
-          {new Date(forecast.filesystem.observed_at).toLocaleString()} · {forecast.filesystem.state}
+          {fmtTime(forecast.filesystem.observed_at)} · {forecast.filesystem.state}
         </dd>
       </dl>
       <ul className="storage-steps">

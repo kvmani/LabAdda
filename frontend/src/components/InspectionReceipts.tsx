@@ -1,4 +1,5 @@
 import type { InventorySummary } from "./StorageInventory";
+import { fmtTime } from "../format";
 import { StorageInventory } from "./StorageInventory";
 import "./storage.css";
 
@@ -77,7 +78,7 @@ export function InspectionReceipts({ inspections }: { inspections: StorageReceip
               ? ""
               : ` · ${r.summary.checked_assets ?? "Not reported"} asset rows checked`}{" "}
             · {r.summary.issue_count ?? "Not reported"} issues ·{" "}
-            {r.finished_at ? new Date(r.finished_at).toLocaleString() : "No completion receipt"}
+            {r.finished_at ? fmtTime(r.finished_at) : "No completion receipt"}
             {r.summary.scope !== "asset_directory_inventory" && <Detail summary={r.summary} />}
           </p>
           {r.summary.scope === "asset_directory_inventory" && <StorageInventory summary={r.summary} />}

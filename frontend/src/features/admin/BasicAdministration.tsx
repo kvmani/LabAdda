@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { fmtTime } from "../../format";
 import type { WorkspaceMember } from "../../types";
 import { api, errorMessage } from "../../api";
 import { kindLabel } from "../../format";
@@ -93,7 +94,7 @@ export function BasicAdministration({ area }: { area: "people" | "org" }) {
     );
     if (r) {
       setToken(
-        `Activation code for ${r.user.username}: ${r.activation_token} (expires ${new Date(r.expires_at).toLocaleString()}). Share it through an approved channel.`,
+        `Activation code for ${r.user.username}: ${r.activation_token} (expires ${fmtTime(r.expires_at)}). Share it through an approved channel.`,
       );
       setForm({ username: "", display_name: "", is_admin: false });
     }

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, setCsrf, setUnauthenticatedHandler } from "./api";
+import { setSiteTimeZone } from "./format";
 import { realtime } from "./realtime";
 import type { SessionInfo } from "./types";
 
@@ -23,6 +24,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const accept = useCallback((s: SessionInfo | null) => {
     setCsrf(s?.csrf_token ?? null);
+    setSiteTimeZone(s?.timezone);
     setSession(s);
     if (s) {
       setExpired(false);

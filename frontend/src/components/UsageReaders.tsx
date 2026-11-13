@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { fmtTime } from "../format";
 import { api, errorMessage } from "../api";
 import { Button, Card, DataTable, ErrorState, Select, TextArea, TextInput, type Column } from "../ui";
 import "./storage.css";
@@ -47,7 +48,7 @@ export function UsageReaders({ users }: { users: Candidate[] }) {
   }
   const columns: Column<Grant>[] = [
     { key: "account", header: "Account", render: (g) => g.username },
-    { key: "expiry", header: "Expiry", render: (g) => new Date(g.expires_at).toLocaleString() },
+    { key: "expiry", header: "Expiry", render: (g) => fmtTime(g.expires_at) },
     { key: "state", header: "State", render: (g) => (g.active ? "Active" : "Expired or disabled") },
     {
       key: "action",

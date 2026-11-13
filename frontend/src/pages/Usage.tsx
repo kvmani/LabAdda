@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { LogicalCharges } from "../components/LogicalCharges";
 import type { UserUsage } from "../governance-types";
-import { fmtBytes as bytes } from "../format";
+import { fmtBytes as bytes, fmtTime } from "../format";
 import { api, errorMessage } from "../api";
 import { Button, Card, ErrorState, PageHeader, Skeleton } from "../ui";
 import "./usage.css";
@@ -52,7 +52,7 @@ export function Usage() {
               <dt>Current pilot limit</dt>
               <dd>{bytes(data.runtime_limit.bytes)} (environment setting)</dd>
               <dt>Observed</dt>
-              <dd>{new Date(data.measurement.observed_at).toLocaleString()}</dd>
+              <dd>{fmtTime(data.measurement.observed_at)}</dd>
             </dl>
             <LogicalCharges charges={data.logical_charges} scope="user" />
             <p className="usage__note">

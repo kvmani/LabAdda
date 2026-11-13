@@ -15,3 +15,13 @@ describe("storage display preserves small measurements and unknowns", () => {
     expect(fmtBytes(value)).toBe(expected);
   });
 });
+
+describe("fmtTime site time zone", () => {
+  it("uses the site time zone unless one is given", async () => {
+    const { fmtTime, setSiteTimeZone } = await import("./format");
+    setSiteTimeZone("Pacific/Auckland");
+    expect(fmtTime("2026-11-12T23:30:00Z")).toMatch(/13/);
+    expect(fmtTime("2026-11-12T23:30:00Z", "UTC")).toMatch(/12/);
+    setSiteTimeZone(undefined);
+  });
+});

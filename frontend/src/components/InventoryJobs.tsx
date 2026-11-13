@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { fmtTime } from "../format";
 import { invalidate } from "../generation";
 import { api, errorMessage } from "../api";
 import { Button, Card, ErrorState, Select, Skeleton } from "../ui";
@@ -34,7 +35,7 @@ const guidance: Record<string, string> = {
   cancelled:
     "Result acceptance is cancelled. A worker stops at its next checkpoint; blocked storage calls may take longer.",
 };
-const time = (value: string | null) => (value ? new Date(value).toLocaleString() : "Not recorded");
+const time = (value: string | null) => (value ? fmtTime(value) : "Not recorded");
 const status = (job: Job) => (job.lease_expired ? "Expired lease — investigation required" : job.state);
 
 export function InventoryJobs() {

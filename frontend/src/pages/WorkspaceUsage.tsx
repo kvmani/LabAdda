@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidate } from "../generation";
 import { api, errorMessage } from "../api";
-import { fmtBytes } from "../format";
+import { fmtBytes, fmtTime } from "../format";
 import type { WorkspaceUsage as Observation } from "../governance-types";
 import { LogicalCharges } from "../components/LogicalCharges";
 import { Button, Card, ErrorState, Skeleton } from "../ui";
@@ -71,7 +71,7 @@ export function WorkspaceUsage({ workspaceId }: { workspaceId: string }) {
               <dt>Workspace budget</dt>
               <dd>Not configured</dd>
               <dt>Observed</dt>
-              <dd>{new Date(data.observed_at).toLocaleString()}</dd>
+              <dd>{fmtTime(data.observed_at)}</dd>
             </dl>
             <LogicalCharges charges={data.logical_charges} scope="workspace" />
             <p className="usage__note">

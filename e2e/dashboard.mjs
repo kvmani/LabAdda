@@ -102,6 +102,34 @@ async function checkReadFailureIsNotZero(bharat, base) {
   await linkNamed(page, "Shared daily action").waitFor();
 }
 
+async function checkFreshLoadIsQuiet(bharat, base) {
+  const page = bharat.page;
+  await page.goto(origin + base + "/today");
+  await linkNamed(page, "Private daily action").waitFor();
+  await page.waitForTimeout(1500);
+  check(
+    (await page.getByText("Activity may have changed.", { exact: false }).count()) === 0,
+    base + " a fresh load shows no may-have-changed notice",
+  );
+  const update = page.locator(".daily-dashboard__panel li > .ui-button").first();
+  if ((await update.count()) > 0) {
+    check(
+      (await update.evaluate((el) => getComputedStyle(el).textAlign)) === "left",
+      base + " mention rows read as left-aligned list items",
+    );
+  }
+}
+
+async function checkPhoneTopBar(bharat, base) {
+  const page = bharat.page;
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto(origin + base + "/today");
+  await linkNamed(page, "LabAdda home").waitFor();
+  const height = await page.locator(".shell-topbar").evaluate((el) => el.getBoundingClientRect().height);
+  check(height <= 120, base + " phone top bar stays within two compact rows (" + height + "px)");
+  await page.setViewportSize({ width: 1400, height: 1100 });
+}
+
 async function checkDelayedResponseAfterRevocation(bharat, admin, base, workspaceId) {
   const page = bharat.page;
   const heldOverview = await holdFirstResponse(page, "**/api/v1/dashboard");
@@ -145,6 +173,8 @@ try {
     await seedDailyWork({ bharat, asha, workspaceId, today });
     await checkOverviewContent(bharat, base, today);
     await checkOverviewLayouts(bharat, base);
+    await checkFreshLoadIsQuiet(bharat, base);
+    await checkPhoneTopBar(bharat, base);
     await checkSiblingOverview(chitra, base);
     await checkReadFailureIsNotZero(bharat, base);
     await checkDelayedResponseAfterRevocation(bharat, admin, base, workspaceId);

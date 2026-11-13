@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { fmtTime } from "../format";
 import { invalidate } from "../generation";
 import { Button } from "../ui";
 import "./task.css";
@@ -59,8 +60,7 @@ function HistoryEntry({ event }: { event: Change }) {
     <li>
       <p>
         Revision {event.revision} · {actionName} ·{" "}
-        {event.actor?.display_name ?? "Earlier author not recorded"} ·{" "}
-        {new Date(event.created_at).toLocaleString()}
+        {event.actor?.display_name ?? "Earlier author not recorded"} · {fmtTime(event.created_at)}
       </p>
       {event.action === "baseline" && (
         <p>History tracking began here. Earlier edits and their authors were not recorded.</p>

@@ -3,7 +3,7 @@ import { InventoryJobs } from "./InventoryJobs";
 import { DatabaseStorage } from "./DatabaseStorage";
 import { LogicalCharges } from "./LogicalCharges";
 import { api, asApiError, errorMessage } from "../api";
-import { fmtBytes as bytes } from "../format";
+import { fmtBytes as bytes, fmtTime } from "../format";
 import type {
   CapacityForecast as Forecast,
   CapacityProfile,
@@ -162,7 +162,7 @@ export function Governance() {
               <dt>Configured site budget</dt>
               <dd>Not configured</dd>
               <dt>Observed</dt>
-              <dd>{new Date(usage.assets.observed_at).toLocaleString()}</dd>
+              <dd>{fmtTime(usage.assets.observed_at)}</dd>
             </dl>
             <LogicalCharges charges={usage.logical_charges} scope="site" />
             <DatabaseStorage storage={usage.database} />
@@ -190,8 +190,8 @@ export function Governance() {
               <ul className="storage-steps">
                 {history.slice(0, 5).map((h) => (
                   <li key={h.id}>
-                    {new Date(h.observed_at).toLocaleString()} ·{" "}
-                    {bytes(h.measurement.assets.tracked_original_bytes)} tracked originals
+                    {fmtTime(h.observed_at)} · {bytes(h.measurement.assets.tracked_original_bytes)} tracked
+                    originals
                   </li>
                 ))}
               </ul>

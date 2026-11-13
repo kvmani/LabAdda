@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { fmtTime } from "../format";
 import { invalidate } from "../generation";
 import { Button, TextArea } from "../ui";
 import "./task.css";
@@ -111,7 +112,7 @@ function CommentList({ page }: { page: Page }) {
       {page.items.map((comment) => (
         <li key={comment.id} data-comment-sequence={comment.sequence}>
           <p>
-            <strong>{comment.author.display_name}</strong> · {new Date(comment.created_at).toLocaleString()}
+            <strong>{comment.author.display_name}</strong> · {fmtTime(comment.created_at)}
           </p>
           <p className="task__text">{comment.body}</p>
         </li>

@@ -4,7 +4,7 @@ import { DatabaseStorage } from "../components/DatabaseStorage";
 import { LogicalCharges } from "../components/LogicalCharges";
 import { api, errorMessage } from "../api";
 import type { SiteUsage } from "../governance-types";
-import { fmtBytes } from "../format";
+import { fmtBytes, fmtTime } from "../format";
 import { Button, Card, ErrorState, Skeleton } from "../ui";
 import "../components/storage.css";
 
@@ -53,7 +53,7 @@ export function Operations() {
                 {fmtBytes(data.filesystem.free_bytes)} · {data.filesystem.state}
               </dd>
               <dt>Observed</dt>
-              <dd>{new Date(data.assets.observed_at).toLocaleString()}</dd>
+              <dd>{fmtTime(data.assets.observed_at)}</dd>
             </dl>
             <LogicalCharges charges={data.logical_charges} scope="site" />
             <DatabaseStorage storage={data.database} />

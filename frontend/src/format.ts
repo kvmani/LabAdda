@@ -1,4 +1,11 @@
-export function fmtTime(iso: string | null | undefined, tz?: string): string {
+let siteTimeZone: string | undefined;
+
+/** Set from the signed-in session so every screen shows times in the site time zone. */
+export function setSiteTimeZone(tz: string | undefined) {
+  siteTimeZone = tz;
+}
+
+export function fmtTime(iso: string | null | undefined, tz: string | undefined = siteTimeZone): string {
   if (!iso) return "";
   try {
     return new Intl.DateTimeFormat(undefined, {
