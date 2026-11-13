@@ -256,4 +256,29 @@ def settings_groups(settings: Settings) -> list[dict]:
             "changed_by": CHANGED_BY,
         }
     ]
+    groups.append(
+        {
+            "key": "feedback",
+            "title": "Feedback e-mail",
+            "summary": "Feedback is always saved here; e-mail is an extra copy sent to the administrators.",
+            "items": [
+                {
+                    "key": "feedback_mail",
+                    "label": "E-mail to administrators",
+                    "value": "configured" if settings.mail_configured else "not configured",
+                    "unit": "",
+                    "explanation": "Addresses and the mail server are never shown here.",
+                    "changed_by": CHANGED_BY,
+                },
+                {
+                    "key": "smtp_starttls",
+                    "label": "Encrypted mail connection",
+                    "value": "on" if settings.smtp_starttls else "off",
+                    "unit": "",
+                    "explanation": "Whether the mail server connection is upgraded to an encrypted one.",
+                    "changed_by": CHANGED_BY,
+                },
+            ],
+        }
+    )
     return groups

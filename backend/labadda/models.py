@@ -381,6 +381,9 @@ class Asset(Base):
     board_workspace_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_assets_board_workspace")
     )
+    feedback_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feedback.id", name="fk_assets_feedback")
+    )
     has_preview: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     preview_size: Mapped[int | None] = mapped_column(BigInteger)
     preview_sha256: Mapped[str | None] = mapped_column(String(64))
@@ -390,11 +393,12 @@ class Asset(Base):
         CheckConstraint("status in ('provisional','committed')", name="ck_asset_status"),
         CheckConstraint(
             "status = 'provisional' or post_id is not null or board_workspace_id is not null or "
-            "chat_message_id is not null",
+            "chat_message_id is not null or feedback_id is not null",
             name="ck_asset_committed_owner",
         ),
         CheckConstraint(
-            "num_nonnulls(post_id, board_workspace_id, chat_message_id) <= 1", name="ck_asset_single_owner"
+            "num_nonnulls(post_id, board_workspace_id, chat_message_id, feedback_id) <= 1",
+            name="ck_asset_single_owner",
         ),
         CheckConstraint(
             "(preview_size is null and preview_sha256 is null) or "
@@ -408,6 +412,7 @@ class Asset(Base):
         Index("ix_assets_post", "post_id"),
         Index("ix_assets_chat", "chat_message_id"),
         Index("ix_assets_board", "board_workspace_id"),
+        Index("ix_assets_feedback", "feedback_id"),
     )
 
 
@@ -952,6 +957,54 @@ class OpsEvent(Base):
             unique=True,
             postgresql_where=text("state <> 'resolved'"),
         ),
+    )
+
+
+class Feedback(Base):
+    """A message a signed-in person chose to send to the administrators (who may read it)."""
+
+    __tablename__ = "feedback"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    client_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    username: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    category: Mapped[str] = mapped_column(String(12), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    route: Mapped[str | None] = mapped_column(String(200))
+    software_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    commit: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_agent: Mapped[str | None] = mapped_column(String(300))
+    screen: Mapped[str | None] = mapped_column(String(12))
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="new")
+    admin_note: Mapped[str | None] = mapped_column(Text)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    handled_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    handled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        CheckConstraint("category in ('problem','suggestion','question')", name="ck_feedback_category"),
+        CheckConstraint("status in ('new','seen','resolved')", name="ck_feedback_status"),
+        UniqueConstraint("user_id", "client_id", name="uq_feedback_user_client"),
+        Index("ix_feedback_created", "created_at", "id"),
+        Index("ix_feedback_status", "status", "created_at"),
+    )
+
+
+class FeedbackMail(Base):
+    """The e-mail copy of one feedback message: an outbox row retried until sent or given up."""
+
+    __tablename__ = "feedback_mail"
+    feedback_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feedback.id"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(8), nullable=False, default="queued")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_error: Mapped[str | None] = mapped_column(String(200))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        CheckConstraint("status in ('queued','sent','failed')", name="ck_feedback_mail_status"),
+        Index("ix_feedback_mail_due", "status", "next_attempt_at"),
     )
 
 

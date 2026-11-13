@@ -25,6 +25,7 @@ export const COMPONENT_OPTIONS: SelectOption[] = [
   { value: "backups", label: "Backups" },
   { value: "server", label: "Server" },
   { value: "certificate", label: "Certificate" },
+  { value: "feedback_mail", label: "Feedback e-mail" },
 ];
 
 const STATE_LABEL: Record<EventState, string> = {

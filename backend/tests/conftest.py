@@ -17,7 +17,7 @@ from labadda.db import session_factory
 from labadda.fixtures import fixture_password, reset_database, seed
 from labadda.metrics import REGISTRY
 from labadda.metrics.activity import ACTIVITY
-from labadda.security import login_limiter
+from labadda.security import feedback_limiter, login_limiter
 
 TEST_DB = os.environ.get(
     "LABADDA_TEST_DATABASE_URL", "postgresql+psycopg://labadda:labadda-dev@localhost:5432/labadda_test"
@@ -70,6 +70,7 @@ def db_factory(settings):
 @pytest.fixture
 def ids(db_factory):
     login_limiter.reset()
+    feedback_limiter.reset()
     with db_factory() as db:
         reset_database(db)
         return seed(db)

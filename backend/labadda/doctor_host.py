@@ -67,6 +67,22 @@ def database_state(url: str) -> DatabaseState:
         engine.dispose()
 
 
+def mail_outbox(url: str) -> tuple[int, int] | None:
+    """Feedback e-mails waiting and failed, or None when the outbox cannot be read."""
+    engine = create_engine(url, connect_args={"connect_timeout": 5})
+    try:
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text("select status, count(*) from feedback_mail group by status")
+            ).all()
+    except Exception:  # noqa: BLE001 — any driver failure means "cannot read"; its text may hold the URL
+        return None
+    finally:
+        engine.dispose()
+    counts = dict(rows)
+    return counts.get("queued", 0), counts.get("failed", 0)
+
+
 def release_schema_head() -> str:
     """The schema revision this release expects, from its own migration scripts."""
     return expected_schema_head()

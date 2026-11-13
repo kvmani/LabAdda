@@ -18,7 +18,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import text
 
-from . import __version__, boardstate, health, metrics, positions, scheduler
+from . import __version__, boardstate, feedback_mail, health, metrics, positions, scheduler
 from .api import (
     admin,
     admin_site,
@@ -30,6 +30,7 @@ from .api import (
     chat,
     dashboard,
     events,
+    feedback,
     files,
     governance,
     groups,
@@ -123,6 +124,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         (
                             cleanup,
                             collector.tick,
+                            feedback_mail.outbox_job(factory, settings, store),
                             positions.expiry_job(factory, settings, hub),
                             scheduled.run_job(factory, settings, hub),
                         ),
@@ -207,6 +209,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         overview,
         setup_checklist,
         events,
+        feedback,
         capabilities,
         groups,
         task_assignment,

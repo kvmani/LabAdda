@@ -11,6 +11,7 @@ from . import (
     certificate,
     connections,
     database,
+    feedback_mail,
     file_storage,
     jobs,
     response_time,
@@ -74,5 +75,6 @@ ITEMS: tuple[Item, ...] = (
     Item("backups", "Backups", backups.check, "health-backups"),
     Item("server", "Server", server.check, "health-server"),
     Item("certificate", "Certificate", certificate.check, "health-certificate"),
+    Item("feedback_mail", "Feedback e-mail", feedback_mail.check, "health-feedback-mail"),
 )
 BY_KEY = {item.key: item for item in ITEMS}

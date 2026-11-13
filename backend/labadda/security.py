@@ -141,3 +141,4 @@ class RateLimiter:
 
 
 login_limiter = RateLimiter()
+feedback_limiter = RateLimiter()

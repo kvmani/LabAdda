@@ -42,6 +42,7 @@ def test_health_reports_every_item_with_the_common_shape(as_user, app):
         "backups",
         "server",
         "certificate",
+        "feedback_mail",
     ]
     for item in body["items"]:
         assert {"status", "value", "unit", "detail", "checked_at", "age_seconds", "help", "chart"} <= set(

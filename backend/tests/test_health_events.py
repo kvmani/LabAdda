@@ -102,14 +102,14 @@ def sampler(settings, db_factory, **overrides):
 def test_sampler_serves_not_checked_yet_as_unknown(ids, settings, db_factory):
     rows_ = sampler(settings, db_factory).snapshot()
     assert {result.status for _, result, _ in rows_} == {"unknown"}
-    assert len(rows_) == 10
+    assert len(rows_) == 11
 
 
 def test_sampler_measures_every_item_and_records_events(ids, settings, db_factory):
     target = sampler(settings, db_factory, expected_schema=lambda: "9999")
     assert target.run_once()
     by_key = {key: result for key, result, _ in target.snapshot()}
-    assert len(by_key) == 10
+    assert len(by_key) == 11
     assert by_key["application"].status == "degraded"
     assert by_key["database"].status == "healthy"
     assert [e.code for e in rows(db_factory)] == ["application.degraded"]

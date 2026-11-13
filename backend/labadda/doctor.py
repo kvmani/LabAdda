@@ -68,6 +68,7 @@ class Host:
     fetch: Callable[[str, str], FetchState] = doctor_host.fetch_health
     certificate: Callable[[str, int, datetime], TlsState] = doctor_host.inspect_certificate
     reserve_bytes: int = RESERVE_FREE_BYTES
+    outbox: Callable[[str], tuple[int, int] | None] = doctor_host.mail_outbox
 
 
 def read_env_file(path: Path) -> dict[str, str]:
@@ -388,6 +389,30 @@ def check_backup(host: Host, settings: Settings) -> CheckResult:  # noqa: PLR091
     )
 
 
+def check_mail(host: Host, settings: Settings) -> CheckResult:
+    """Feedback e-mail: set up or not, and what is waiting or failed in the outbox."""
+    title = "Feedback e-mail"
+    if not settings.mail_configured:
+        return CheckResult(
+            "mail", title, "skip", "E-mail is not set up; feedback is saved in the console only."
+        )
+    counts = host.outbox(settings.database_url)
+    if counts is None:
+        return CheckResult(
+            "mail", title, "fail", "The e-mail outbox could not be read.", "Check the database."
+        )
+    queued, failed = counts
+    if failed:
+        return CheckResult(
+            "mail",
+            title,
+            "fail",
+            f"{failed} feedback e-mails could not be sent and {queued} are waiting.",
+            "Open Feedback in the console to read the reason, then fix the mail settings.",
+        )
+    return CheckResult("mail", title, "pass", f"{queued} feedback e-mails are waiting; none failed.")
+
+
 def check_timezone(host: Host) -> CheckResult:
     """The configured time zone is a real, installed one."""
     title = "Time zone"
@@ -416,6 +441,7 @@ def run_checks(host: Host) -> list[CheckResult]:
         ("proxy", "Address people use", check_proxy),
         ("tls", "Secure connection", check_tls),
         ("backup", "Backups", check_backup),
+        ("mail", "Feedback e-mail", check_mail),
     )
     for check_id, title, check in needing_settings:
         results.append(_blocked(check_id, title) if settings is None else check(host, settings))

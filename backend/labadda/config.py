@@ -78,6 +78,14 @@ class Settings:
     metrics_hour_retention_days: int = 35
     metrics_day_retention_days: int = 730
     activity_retention_days: int = 730  # per-person activity days (AD-08)
+    # Feedback e-mail (the one outbound connection, to an operator-named intranet relay only).
+    feedback_email: str = ""  # administrators' address; blank leaves feedback in the console only
+    smtp_host: str = ""
+    smtp_port: int = 25
+    smtp_starttls: bool = False
+    smtp_user: str = ""
+    smtp_password: str = field(default="", repr=False)
+    smtp_from: str = ""
     health: HealthThresholds = field(default_factory=HealthThresholds)
     # Test-only: forces health items into a state, such as "database=degraded". Honoured only in
     # development and test environments.
@@ -97,6 +105,10 @@ class Settings:
         return self.base_path or "/"
 
     @property
+    def mail_configured(self) -> bool:
+        return bool(self.feedback_email and self.smtp_host and self.smtp_from)
+
+    @property
     def fixtures_allowed(self) -> bool:
         return self.environment in {"development", "test"}
 
@@ -107,6 +119,17 @@ def _timezone(value: str) -> str:
     except (ZoneInfoNotFoundError, ValueError) as error:
         raise ValueError("LABADDA_TIMEZONE must name an installed IANA timezone") from error
     return value
+
+
+def _secret(env, name: str) -> str:
+    """A secret from NAME, or from the file named by NAME_FILE (kept out of the process listing)."""
+    path = env(name + "_FILE")
+    if path:
+        try:
+            return Path(path).read_text(encoding="utf-8").strip()
+        except OSError as error:
+            raise ValueError(f"{name}_FILE cannot be read") from error
+    return env(name, "")
 
 
 def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
@@ -170,6 +193,13 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         activity_retention_days=_positive(
             env("LABADDA_ACTIVITY_RETENTION_DAYS", "730"), "LABADDA_ACTIVITY_RETENTION_DAYS"
         ),
+        feedback_email=env("LABADDA_FEEDBACK_EMAIL", "").strip(),
+        smtp_host=env("LABADDA_SMTP_HOST", "").strip(),
+        smtp_port=_positive(env("LABADDA_SMTP_PORT", "25"), "LABADDA_SMTP_PORT"),
+        smtp_starttls=_bool(env("LABADDA_SMTP_STARTTLS"), False),
+        smtp_user=env("LABADDA_SMTP_USER", "").strip(),
+        smtp_password=_secret(env, "LABADDA_SMTP_PASSWORD"),
+        smtp_from=env("LABADDA_SMTP_FROM", "").strip(),
         health=load_thresholds(os.environ if environ is None else environ),
         test_health_force=env("LABADDA_TEST_HEALTH_FORCE", ""),
     )

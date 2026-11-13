@@ -76,7 +76,8 @@ def result_for(results, check_id):
 def test_healthy_site_passes_every_check_and_exits_zero(assets, status_dir):
     results = doctor.run_checks(healthy_host(assets, status_dir))
 
-    assert [result.status for result in results] == ["pass"] * 8
+    # Feedback e-mail is optional: not set up reads as skipped, never as a failure.
+    assert [result.status for result in results] == ["pass"] * 7 + ["skip", "pass"]
     assert doctor.passed(results)
 
 
@@ -455,6 +456,7 @@ def test_json_report_has_a_stable_shape(assets, status_dir):
         "proxy",
         "tls",
         "backup",
+        "mail",
         "timezone",
     ]
     assert set(report["checks"][0]) == {"id", "title", "status", "summary", "fix"}

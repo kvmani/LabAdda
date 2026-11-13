@@ -21,7 +21,16 @@ SIGNATURES = {
     "image/png": (b"\x89PNG\r\n\x1a\n",),
     "image/jpeg": (b"\xff\xd8\xff",),
 }
-EXTENSIONS = {"application/pdf": ".pdf", "image/png": ".png", "image/jpeg": ".jpg"}
+EXTENSIONS = {
+    "application/pdf": ".pdf",
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "text/plain": ".txt",
+}
+# Feedback also takes WebP screenshots and plain-text logs; every other upload keeps the shorter list.
+FEEDBACK_TYPES = frozenset({"application/pdf", "image/png", "image/jpeg", "image/webp", "text/plain"})
+DEFAULT_TYPES = frozenset({"application/pdf", "image/png", "image/jpeg"})
 PREVIEW_MAX = 800
 Image.MAX_IMAGE_PIXELS = 40_000_000  # refuse decompression bombs
 
@@ -44,16 +53,39 @@ def safe_display_name(name: str | None, media_type: str) -> str:
     return (stem[:150] or "attachment") + EXTENSIONS[media_type]
 
 
-def detect_media_type(head: bytes, declared: str | None) -> str:
+def _looks_like_text(data: bytes) -> bool:
+    """Plain text is the only type with no signature: accept valid UTF-8 without control bytes."""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return all(c in "\t\n\r" or (c >= " " and c != "\x7f") for c in text)
+
+
+def _check_declared(media_type: str, declared: str | None) -> str:
+    accepted = {media_type, "application/octet-stream"}
+    if media_type == "image/jpeg":
+        accepted.add("image/jpg")
+    if media_type == "text/plain":
+        accepted.add("text/csv")
+    if declared and declared not in accepted:
+        raise Invalid("type_mismatch", "The file type does not match its contents.")
+    return media_type
+
+
+def detect_media_type(
+    head: bytes, declared: str | None, allowed: frozenset[str] = DEFAULT_TYPES, whole: bytes | None = None
+) -> str:
+    """Decide the type from the bytes; the declared type may only agree, never decide."""
+    if "image/webp" in allowed and head.startswith(b"RIFF") and head[8:12] == b"WEBP":
+        return _check_declared("image/webp", declared)
     for media_type, sigs in SIGNATURES.items():
-        if any(head.startswith(s) for s in sigs):
-            if (
-                declared
-                and declared not in (media_type, "application/octet-stream")
-                and not (media_type == "image/jpeg" and declared == "image/jpg")
-            ):
-                raise Invalid("type_mismatch", "The file type does not match its contents.")
-            return media_type
+        if media_type in allowed and any(head.startswith(s) for s in sigs):
+            return _check_declared(media_type, declared)
+    if "text/plain" in allowed and whole is not None and _looks_like_text(whole):
+        return _check_declared("text/plain", declared)
+    if allowed == FEEDBACK_TYPES:
+        raise Invalid("unsupported_type", "Attach PNG, JPEG or WebP pictures, PDF or text files only.")
     raise Invalid("unsupported_type", "Attach PDF, PNG or JPEG files only.")
 
 
@@ -67,8 +99,10 @@ class AssetStore:
         name = storage_key + (".preview.png" if preview else ".bin")
         return self.root / storage_key[:2] / name
 
-    def save(self, data: bytes, declared_type: str | None) -> StoredFile:
-        media_type = detect_media_type(data[:16], declared_type)
+    def save(
+        self, data: bytes, declared_type: str | None, allowed: frozenset[str] = DEFAULT_TYPES
+    ) -> StoredFile:
+        media_type = detect_media_type(data[:16], declared_type, allowed, data)
         has_preview = False
         preview_bytes = None
         if media_type.startswith("image/"):

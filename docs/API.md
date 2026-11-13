@@ -1161,3 +1161,32 @@ save against the preceding revision returns the existing result; different stale
 see only their own board; panel-intent and board sessions are denied (401). No shared socket,
 workspace search, notification, or analytics content path includes personal boards. At most 500
 objects, 20,000 points and 250,000 encoded bytes per save; 422 on invalid or oversized input.
+
+## Pilot · Feedback button (schema 0039)
+
+Contract: people choose to send feedback to the administrators, so administrators **may read
+the message and its files** (the form says so). This is the only content administrators can
+read, and every read is audited (`feedback.read`, `feedback.attachment_read`). Version, commit,
+username and time are recorded by the server; only the page path and screen size come from the
+browser and both are validated (query strings and fragments are dropped). The e-mail copy is the
+one outbound connection the product makes, to the operator-named intranet relay only
+(owner-approved exception to the no-outbound-request rule; settings `LABADDA_FEEDBACK_EMAIL`,
+`LABADDA_SMTP_HOST`, `_PORT`, `_STARTTLS`, `_USER`, `_PASSWORD` / `_PASSWORD_FILE`, `_FROM`).
+
+| Endpoint | Who | Notes |
+| --- | --- | --- |
+| `GET /feedback/form` | any signed-in person | `username`, `time`, `software_version`, `commit`, limits, `email_copy` |
+| `POST /feedback` (multipart: `client_id`, `category` problem/suggestion/question, `message` max 5000, `route`, `screen` `WxH`, `files` up to 5) | any signed-in person; board-only 401 | 201 `{id, created_at}`. Idempotent per `client_id`. 10 per hour per person. Files: PNG, JPEG, WebP, PDF, plain text; type sniffed from bytes; 10 MiB each, 25 MiB total; counts toward the person's quota |
+| `GET /admin/feedback` | administrators only | filters `status`, `category`, `username`; `cursor`, `limit`; no message text; `email {configured, queued, failed}` |
+| `GET /admin/feedback/{id}` | administrators only | full record, `revision`, attachments, e-mail status; audited |
+| `PATCH /admin/feedback/{id}` | administrators only | `{expected_revision, status new/seen/resolved, admin_note}`; audited |
+| `POST /admin/feedback/{id}/resend` | administrators only | only when e-mail `failed` |
+| `GET /admin/feedback/{id}/attachments/{asset_id}` and `/preview` | administrators only | protected headers; audited |
+
+Errors: `empty_message`, `message_too_long`, `invalid_message`, `invalid_category`,
+`invalid_request_id`, `too_many_attachments`, `empty_file`, `file_too_large`, `files_too_large`,
+`unsupported_type`, `type_mismatch`, `quota_exceeded` (422), `client_id_reused`,
+`feedback_changed`, `not_failed` (409), `feedback_rate_limited` (429). Usage readers and
+members get 403; signed-out and board-only get 401. No socket messages.
+E-mail status per message: `queued` (retried after 1, 5, 15, 60, 240 minutes), `sent`, `failed`
+with a plain reason. System health gains the item `feedback_mail`.

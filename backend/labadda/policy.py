@@ -164,6 +164,7 @@ CONSOLE_SECTIONS = (
     "audit",
     "events",
     "broadcast",
+    "feedback",
     "settings",
     "help",
 )

@@ -243,6 +243,9 @@ def _authorized_asset(db: Session, actor: Actor, asset_id: uuid.UUID) -> Asset:
         if message is None or not policy.can_read(db, actor.user, message.workspace_id):
             raise NotFound()
         return asset
+    if asset.feedback_id is not None:
+        # Feedback files are read only through the administrator console, never by id here.
+        raise NotFound()
     post = db.get(Post, asset.post_id)
     if post is None or post.deleted_at is not None or not policy.can_read(db, actor.user, post.workspace_id):
         raise NotFound()
