@@ -79,6 +79,7 @@ step_database() {
 step_config() {
   step "Site settings"
   local helper="$PYTHON $TOOLS_DIR/scripts/install_helpers.py" url
+  if ((DRY_RUN)); then say "    [dry-run] would write $ENV_FILE, $SITE_JSON and $ANSWERS_FILE"; return 0; fi
   url="postgresql+psycopg://labadda_$SITE:$(<"$SECRETS_DIR/$SITE.db-password")@localhost:5432/labadda_$SITE"
   if [[ -f $ENV_FILE ]]; then ok "$ENV_FILE exists and is kept (edit it by hand to change settings)"
   else
@@ -100,7 +101,8 @@ step_release() {
   local archive="$KIT/release/labadda-$VERSION.tar.gz" digest
   digest=$(cut -d' ' -f1 "$archive.sha256" 2>/dev/null || cut -d' ' -f1 "${archive%.gz}.gz.sha256")
   if [[ -d $INSTANCE_ROOT/releases/$VERSION ]]; then ok "already installed"; return 0; fi
-  run "$PYTHON" "$TOOLS_DIR/scripts/release.py" install "$archive" --sha256 "$digest" --instance "$INSTANCE_ROOT"
+  run "$PYTHON" "$TOOLS_DIR/scripts/release.py" install "$archive" --sha256 "$digest" --instance "$INSTANCE_ROOT" >/dev/null
+  ok "release $VERSION installed from the wheelhouse (no internet used)"
 }
 
 step_tls() {
@@ -109,12 +111,20 @@ step_tls() {
   run install -d -m 0755 "$CERT_DIR"
   if [[ -n ${CERT_FILE:-} ]]; then
     run install -m 0644 "$CERT_FILE" "$crt"; run install -m 0600 "$KEY_FILE" "$key"; ok "site certificate installed"
+    if [[ -n ${CA_FILE:-} ]]; then
+      run install -m 0644 "$CA_FILE" "$CERT_DIR/ca.crt"
+      printf '%s\n' "$CERT_DIR/ca.crt" | write_file 0644 root:root "$ETC_DIR/$SITE.probe-ca"
+      LABADDA_PROBE_CA_FILE=$CERT_DIR/ca.crt; export LABADDA_PROBE_CA_FILE
+    else warn "if your certificate authority is not trusted by this server, re-run with --ca-file CA.crt"; fi
   elif [[ -f $crt && -f $key ]]; then ok "certificate already in $CERT_DIR"
   else
     warn "no site certificate given: making a SELF-SIGNED one for the pilot. Browsers will warn until it is trusted."
     run openssl req -x509 -newkey rsa:3072 -nodes -days 825 -subj "/CN=$HOSTNAME_" -keyout "$key" -out "$crt" \
       -addext "subjectAltName=DNS:$HOSTNAME_" -addext "basicConstraints=critical,CA:TRUE" 2>/dev/null
-    run chmod 0600 "$key"; SELF_SIGNED=1
+    run chmod 0600 "$key"
+    # The server's own probes must trust this certificate too (see operations.py probe).
+    printf '%s\n' "$crt" | write_file 0644 root:root "$ETC_DIR/$SITE.probe-ca"
+    LABADDA_PROBE_CA_FILE=$crt; export LABADDA_PROBE_CA_FILE
   fi
 }
 
@@ -124,6 +134,7 @@ step_render_units() {
   out=$(mktemp -d)/review
   if ((DRY_RUN)); then say "    [dry-run] would render and install the labadda-$SITE service and nginx site"; return 0; fi
   operations render --out "$out" >/dev/null
+  install -d "$SYSTEMD_DIR"
   install -m 0644 "$out/service.conf" "$SYSTEMD_DIR/$UNIT"
   install -m 0644 "$TOOLS_DIR/deploy/systemd/labadda-backup@.service" "$SYSTEMD_DIR/"
   install -m 0644 "$TOOLS_DIR/deploy/systemd/labadda-backup@.timer" "$SYSTEMD_DIR/"
@@ -133,6 +144,11 @@ step_render_units() {
     nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}" >/dev/null 2>&1 \
       || { nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}"; die "nginx rejected the generated site file."; }
     ok "nginx accepts the site file"
+  fi
+  if [[ -f $ETC_DIR/$SITE.probe-ca ]]; then
+    install -d "$SYSTEMD_DIR/labadda-backup@$SITE.service.d"
+    printf '[Service]\nEnvironment=LABADDA_PROBE_CA_FILE=%s\n' "$(<"$ETC_DIR/$SITE.probe-ca")" \
+      >"$SYSTEMD_DIR/labadda-backup@$SITE.service.d/probe-ca.conf"
   fi
   "$SYSTEMCTL" daemon-reload
   ok "installed $UNIT and the nightly backup timer files"
@@ -178,8 +194,7 @@ step_start() {
   rm -f "$INSTANCE_ROOT/traffic/maintenance"
   if ((NO_NGINX)); then return 0; fi
   "$SYSTEMCTL" enable --now nginx >/dev/null; "$SYSTEMCTL" reload nginx
-  local ca=(); ((${SELF_SIGNED:-0})) && ca=(--ca-file "$CERT_DIR/server.crt")
-  operations probe "${ca[@]}" >/dev/null || die "The service is up but the HTTPS address https://$HOSTNAME_ does not answer; check DNS and nginx."
+  operations probe >/dev/null || die "The service is up but the HTTPS address https://$HOSTNAME_ does not answer; check DNS and nginx."
   ok "https://$HOSTNAME_ answers"
 }
 

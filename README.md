@@ -30,6 +30,7 @@ The repository holds a runnable application (FastAPI + PostgreSQL backend, React
 | [In-app help](docs/HELP-CENTER.md) | Help centre, setup checklist, sync checks (v1.0 contract) |
 | [TESTING.md](TESTING.md) | Test matrix and release evidence |
 | [REVIEW.md](REVIEW.md) | Independent review procedure and release decisions |
+| [Intranet rollout checklist](docs/ROLLOUT-INTRANET.md) | Build the offline install kit, install on the air-gapped server, first day, backups, upgrade, rollback |
 | [Operator quickstart](docs/OPERATOR-QUICKSTART.md) | Install, first administrator, `labadda doctor`, backup, upgrade in five steps |
 | [Pilot runbook](docs/PILOT-RUNBOOK.md) | What to prepare, install, daily check, backup, upgrade, rollback and known limits for the pilot |
 | [Intranet deployment design](docs/DEPLOYMENT.md) | Runtime, offline release, staging, recovery, and site decisions |

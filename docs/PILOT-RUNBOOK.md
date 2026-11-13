@@ -12,6 +12,8 @@ addresses or activation codes into tickets or chat.
 
 ## 1. Before the pilot
 
+The scripted path, which does sections 1 to 4 of this runbook for you from an offline kit, is the [intranet rollout checklist](ROLLOUT-INTRANET.md); use this runbook for the reasoning and the manual commands behind it.
+
 | Need | Detail |
 | --- | --- |
 | Server | One Ubuntu **24.04 LTS** x86-64 virtual machine with Python 3.12, PostgreSQL 16 (with its `pg_dump` and `pg_restore` clients) and nginx, all from your internal mirror. A release built on any other system is refused. |

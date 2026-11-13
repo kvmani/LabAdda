@@ -194,3 +194,22 @@ def test_backup_unit_can_import_its_sibling_modules(tmp_path):
     assert flags == ["-E", "-s"]
     done = run(sys.executable, *flags, str(SCRIPTS / "lifecycle.py"), "--help", cwd=tmp_path)
     assert done.returncode == 0, done.stderr
+
+
+def test_tls_probe_trusts_the_recorded_certificate_file(monkeypatch):
+    seen = {}
+
+    def fake_context(cafile=None):
+        seen["cafile"] = cafile
+        raise OSError("stop here")
+
+    monkeypatch.setattr(operations.ssl, "create_default_context", fake_context)
+    site = {"instance": "main", "server_name": "labadda.lab.example.in", "port": 8100, "base_path": ""}
+    monkeypatch.setenv("LABADDA_PROBE_CA_FILE", "/etc/ssl/labadda/server.crt")
+    with pytest.raises(OSError, match="stop here"):
+        operations.probe(site)
+    assert seen["cafile"] == "/etc/ssl/labadda/server.crt"
+    monkeypatch.delenv("LABADDA_PROBE_CA_FILE")
+    with pytest.raises(OSError, match="stop here"):
+        operations.probe(site)
+    assert seen["cafile"] is None

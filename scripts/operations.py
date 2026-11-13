@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import signal
 import ssl
@@ -207,7 +208,9 @@ def deadline(seconds: int):
 
 def probe(site: dict, *, direct: bool = False, ca_file: str | None = None) -> dict:
     origin = f"http://127.0.0.1:{site['port']}" if direct else f"https://{site['server_name']}"
-    context = ssl.create_default_context(cafile=ca_file)
+    # A pilot may use a self-signed or private-CA certificate the server's own trust store does not
+    # list; the installer records its file here so scheduled backups and upgrades can confirm TLS too.
+    context = ssl.create_default_context(cafile=ca_file or os.environ.get("LABADDA_PROBE_CA_FILE") or None)
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}), NoRedirect(), urllib.request.HTTPSHandler(context=context)
     )

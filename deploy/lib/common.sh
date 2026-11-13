@@ -3,6 +3,8 @@
 # scratch folder; on the real server the prefix is empty.
 set -euo pipefail
 
+# Never write .pyc files into the kit (a read-only USB drive, and the kit must stay exactly as built).
+export PYTHONDONTWRITEBYTECODE=1
 PREFIX="${LABADDA_ROOT_PREFIX:-}"
 DRY_RUN=0
 ASSUME_YES=0
@@ -56,6 +58,8 @@ set_paths() {
   INSTANCE_ROOT="$PREFIX/srv/labadda/$SITE"
   BACKUP_ROOT="$PREFIX/srv/labadda-backups/$SITE"
   UNIT="labadda-$SITE.service"
+  # A self-signed or private-CA certificate is confirmed against its own file by every probe.
+  if [[ -f $ETC_DIR/$SITE.probe-ca ]]; then LABADDA_PROBE_CA_FILE=$(<"$ETC_DIR/$SITE.probe-ca"); export LABADDA_PROBE_CA_FILE; fi
 }
 
 # Read one field from the site description written by the installer.

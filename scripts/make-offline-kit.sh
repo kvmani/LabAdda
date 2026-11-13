@@ -14,7 +14,8 @@ PY="${LABADDA_PYTHON:-$ROOT/.venv/bin}/python"
 command -v dpkg-scanpackages >/dev/null || { echo "Install dpkg-dev first: sudo apt-get install dpkg-dev" >&2; exit 1; }
 mkdir -p "$OUT"
 echo "Building the kit for version $("$PY" "$ROOT/scripts/kit.py" version) ..."
-KIT="$("$PY" "$ROOT/scripts/kit.py" build --output "$OUT" --root "$ROOT" "${@:2}")"
+# The build prints a lot (npm, pip, apt); its last line is the kit folder.
+KIT="$("$PY" "$ROOT/scripts/kit.py" build --output "$OUT" --root "$ROOT" "${@:2}" | tee /dev/stderr | tail -n 1)"
 "$PY" "$ROOT/scripts/kit.py" verify "$KIT"
 echo
 echo "Kit ready: $KIT"

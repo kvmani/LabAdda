@@ -2,7 +2,7 @@
 # Install LabAdda on a blank Ubuntu 24.04 server from the offline kit. Run as root, from the kit:
 #   sudo bash install.sh                  asks a few questions, then does everything
 #   sudo bash install.sh --dry-run        shows the plan; changes nothing
-# Options: --answers FILE  --yes  --cert FILE --key FILE  --site NAME  --port N  --service-user NAME
+# Options: --answers FILE  --yes  --cert FILE --key FILE [--ca-file CA.crt]  --site NAME  --port N  --service-user NAME
 #          --skip-os-packages  --no-nginx  --no-timer  --restore-bundle DIR --manifest-sha256 HEX
 # Safe to run again: finished steps are recognised and skipped. Rehearsal: LABADDA_ROOT_PREFIX=DIR.
 set -euo pipefail
@@ -14,7 +14,7 @@ source "$KIT/lib/steps.sh"
 
 SITE_TITLE="" HOSTNAME_="" TIMEZONE_="" EMAIL_DOMAIN="" FEEDBACK_EMAIL="" SMTP_RELAY="" PORT="" SERVICE_USER=""
 ADMIN_USER="" ADMIN_NAME="" CERT_FILE="" KEY_FILE="" RESTORE_BUNDLE="" RESTORE_SHA=""
-ANSWERS="" NO_NGINX=0 NO_TIMER=0 SKIP_OS_PACKAGES=0 SELF_SIGNED=0 EXPECT_FINGERPRINT=""
+CA_FILE="" ANSWERS="" NO_NGINX=0 NO_TIMER=0 SKIP_OS_PACKAGES=0 EXPECT_FINGERPRINT=""
 
 while (($#)); do
   case $1 in
@@ -23,6 +23,7 @@ while (($#)); do
     --answers) ANSWERS=$2; shift ;;
     --cert) CERT_FILE=$2; shift ;;
     --key) KEY_FILE=$2; shift ;;
+    --ca-file) CA_FILE=$2; shift ;;
     --site) SITE=$2; shift ;;
     --port) PORT=$2; shift ;;
     --service-user) SERVICE_USER=$2; shift ;;

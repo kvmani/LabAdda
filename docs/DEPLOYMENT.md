@@ -39,4 +39,6 @@ proxy templates remain alternatives; choose one coherent layout rather than mixi
 
 ## Pilot
 
+Putting the pilot on the real intranet server from one USB drive (offline kit, install, upgrade, backup, restore) is the step-by-step [intranet rollout checklist](ROLLOUT-INTRANET.md).
+
 The order of work, daily checks, upgrade, rollback and known limits for the supervised pilot are in the [pilot runbook](PILOT-RUNBOOK.md).
