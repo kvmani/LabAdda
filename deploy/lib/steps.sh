@@ -4,12 +4,25 @@
 REQUIRED_DEBS=(postgresql-16 postgresql-client-16 nginx python3.12-venv openssl)
 
 step_os_packages() {
-  step "Operating system packages (from the kit, no internet)"
+  step "Operating system packages ($MODE mode)"
   local missing=() p work
   for p in "${REQUIRED_DEBS[@]}"; do
     dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed" || missing+=("$p")
   done
   if ((${#missing[@]} == 0)); then ok "already installed: ${REQUIRED_DEBS[*]}"; return 0; fi
+  if [[ $MODE == mirror ]]; then
+    # apt uses the sources configured on this server (the office mirror); nothing is added or bypassed.
+    if ((DRY_RUN)); then
+      apt-get -s install --no-install-recommends "${missing[@]}" >/dev/null 2>&1 \
+        && ok "apt could install: ${missing[*]}" || warn "apt cannot find ${missing[*]} yet; check /etc/apt/sources.list points to the office mirror"
+      return 0
+    fi
+    apt-get update -qq || die "apt-get update failed: check that /etc/apt/sources.list points to the office mirror and it is reachable."
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}" >/dev/null \
+      || die "apt could not install ${missing[*]} from the mirror. Ask the network team whether the mirror carries Ubuntu 24.04 (noble, noble-updates)."
+    ok "installed from the mirror: ${missing[*]}"
+    return 0
+  fi
   [[ -f $KIT/os-packages/Packages.gz ]] || die "The kit has no os-packages folder; rebuild the kit with make-offline-kit.sh."
   work=$(mktemp -d)
   mkdir -p "$work/lists/partial" "$work/cache/archives/partial"
@@ -38,6 +51,7 @@ step_service_user() {
     run install -d -m 0755 -o root -g root "$d"
   done
   run install -d -m 0700 -o "$SERVICE_USER" -g "$SERVICE_USER" "$INSTANCE_ROOT/assets"
+  run install -d -m 0700 -o "$SERVICE_USER" -g "$SERVICE_USER" "$INSTANCE_ROOT/secrets"
   for d in "$INSTANCE_ROOT/operations" "$BACKUP_ROOT" "$ETC_DIR" "$SECRETS_DIR"; do
     run install -d -m 0700 -o root -g root "$d"
   done
@@ -81,19 +95,32 @@ step_config() {
   local helper="$PYTHON $TOOLS_DIR/scripts/install_helpers.py" url
   if ((DRY_RUN)); then say "    [dry-run] would write $ENV_FILE, $SITE_JSON and $ANSWERS_FILE"; return 0; fi
   url="postgresql+psycopg://labadda_$SITE:$(<"$SECRETS_DIR/$SITE.db-password")@localhost:5432/labadda_$SITE"
+  local fb relay smtp_from smtp_user pw_file="" smtp=()
+  fb=$(blank_if_none "$FEEDBACK_EMAIL"); relay=$(blank_if_none "$SMTP_RELAY"); smtp_user=$(blank_if_none "$SMTP_USER")
+  smtp_from=${SMTP_FROM:-labadda@$HOSTNAME_}
+  if [[ -n $smtp_user ]]; then
+    pw_file="$INSTANCE_ROOT/secrets/smtp-password"
+    if [[ ! -f $pw_file ]]; then
+      [[ -n ${SMTP_PASSWORD_INPUT:-} ]] || { read -r -s -p "Password for mail user $smtp_user: " SMTP_PASSWORD_INPUT; echo; }
+      printf '%s\n' "$SMTP_PASSWORD_INPUT" | write_file 0400 "$SERVICE_USER:$SERVICE_USER" "$pw_file"
+    fi
+  fi
+  [[ -z $fb || -z $relay ]] || smtp=(--feedback "$fb" --smtp-relay "$relay" --smtp-from "$smtp_from" --smtp-user "$smtp_user" --smtp-password-file "$pw_file")
+  [[ ${SMTP_STARTTLS:-false} != true ]] || smtp+=(--smtp-starttls)
   if [[ -f $ENV_FILE ]]; then ok "$ENV_FILE exists and is kept (edit it by hand to change settings)"
   else
-    $helper env-file --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" \
+    $helper env-file "${smtp[@]}" --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" \
       --domain "$EMAIL_DOMAIN" --database-url "$url" --example "$TOOLS_DIR/deploy/labadda.env.example" \
       | write_file 0600 root:root "$ENV_FILE"
   fi
   if [[ -f $SITE_JSON ]]; then ok "$SITE_JSON exists and is kept"
   else $helper site-json --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --user "$SERVICE_USER" \
     | write_file 0644 root:root "$SITE_JSON"; fi
-  printf 'SITE_TITLE=%s\nHOSTNAME_=%s\nTIMEZONE_=%s\nEMAIL_DOMAIN=%s\nFEEDBACK_EMAIL=%s\nSMTP_RELAY=%s\nPORT=%s\nSERVICE_USER=%s\n' \
-    "$SITE_TITLE" "$HOSTNAME_" "$TIMEZONE_" "$EMAIL_DOMAIN" "$FEEDBACK_EMAIL" "$SMTP_RELAY" "$PORT" "$SERVICE_USER" \
+  printf 'SITE_TITLE=%s\nHOSTNAME_=%s\nTIMEZONE_=%s\nEMAIL_DOMAIN=%s\nFEEDBACK_EMAIL=%s\nSMTP_RELAY=%s\nSMTP_FROM=%s\nSMTP_STARTTLS=%s\nSMTP_USER=%s\nPIP_INDEX_URL=%s\nPIP_TRUSTED_HOST=%s\nPORT=%s\nSERVICE_USER=%s\n' \
+    "$SITE_TITLE" "$HOSTNAME_" "$TIMEZONE_" "$EMAIL_DOMAIN" "$FEEDBACK_EMAIL" "$SMTP_RELAY" "$smtp_from" "${SMTP_STARTTLS:-false}" \
+    "${SMTP_USER:-none}" "$PIP_INDEX_URL" "$PIP_TRUSTED_HOST" "$PORT" "$SERVICE_USER" \
     | write_file 0600 root:root "$ANSWERS_FILE"
-  ok "answers recorded in $ANSWERS_FILE (this release does not send e-mail; they are kept for later)"
+  ok "answers recorded in $ANSWERS_FILE (feedback e-mail settings are also in the env file)"
 }
 
 step_release() {
@@ -101,8 +128,10 @@ step_release() {
   local archive="$KIT/release/labadda-$VERSION.tar.gz" digest
   digest=$(cut -d' ' -f1 "$archive.sha256" 2>/dev/null || cut -d' ' -f1 "${archive%.gz}.gz.sha256")
   if [[ -d $INSTANCE_ROOT/releases/$VERSION ]]; then ok "already installed"; return 0; fi
-  run "$PYTHON" "$TOOLS_DIR/scripts/release.py" install "$archive" --sha256 "$digest" --instance "$INSTANCE_ROOT" >/dev/null
-  ok "release $VERSION installed from the wheelhouse (no internet used)"
+  local mirror=()
+  if [[ $MODE == mirror ]]; then mirror=(--index-url "$PIP_INDEX_URL"); [[ -z $PIP_TRUSTED_HOST ]] || mirror+=(--trusted-host "$PIP_TRUSTED_HOST"); fi
+  run "$PYTHON" "$TOOLS_DIR/scripts/release.py" install "$archive" --sha256 "$digest" --instance "$INSTANCE_ROOT" "${mirror[@]}" >/dev/null
+  ok "release $VERSION installed ($MODE mode: exact pinned packages only)"
 }
 
 step_tls() {

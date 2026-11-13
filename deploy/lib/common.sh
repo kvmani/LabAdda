@@ -10,6 +10,9 @@ DRY_RUN=0
 ASSUME_YES=0
 SITE="${LABADDA_SITE:-main}"
 SYSTEMCTL="${LABADDA_SYSTEMCTL:-systemctl}"
+MODE=mirror  # mirror: OS and Python packages come from the office mirrors; offline: from the kit
+PIP_INDEX_URL="${PIP_INDEX_URL:-}"
+PIP_TRUSTED_HOST="${PIP_TRUSTED_HOST:-}"
 PYTHON="${LABADDA_PYTHON312:-python3.12}"
 
 say() { printf '%s\n' "$*"; }
@@ -116,7 +119,7 @@ load_answers() {
   while IFS='=' read -r key value; do
     [[ -z $key || $key == \#* ]] && continue
     case $key in
-      SITE_TITLE | HOSTNAME_ | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
+      SITE_TITLE | HOSTNAME_ | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | SMTP_FROM | SMTP_STARTTLS | SMTP_USER | PIP_INDEX_URL | PIP_TRUSTED_HOST | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
         [[ $value =~ ^[A-Za-z0-9@._:/\ -]*$ ]] || die "Answers file: odd characters in $key"
         [[ -n ${!key:-} ]] || printf -v "$key" '%s' "$value" ;;
       *) die "Answers file: unknown setting $key" ;;
@@ -133,3 +136,17 @@ verify_kit() {
 }
 
 kit_field() { "$PYTHON" -c 'import json,sys;print(json.load(open(sys.argv[1]+"/MANIFEST.json"))[sys.argv[2]])' "$1" "$2"; }
+
+blank_if_none() { if [[ $1 == none ]]; then echo ""; else echo "$1"; fi; }
+
+# Mirror mode needs the Python mirror address; offline mode must run on a kit that carries the packages.
+check_mode() {
+  local kit=$1
+  if [[ $MODE == offline ]]; then
+    [[ $(kit_field "$kit" mode) == offline ]] || die "--offline-kit needs an offline kit (built with make-offline-kit.sh); this is a mirror-mode bundle."
+    return 0
+  fi
+  ask PIP_INDEX_URL "Python package mirror address (for example https://mirror.lab.example.in/simple)" ""
+  [[ $PIP_INDEX_URL =~ ^https?://[A-Za-z0-9.:/_-]+$ ]] || die "The Python mirror address must be an http(s) URL."
+  ok "Python packages come from $PIP_INDEX_URL; operating system packages from this server's apt sources"
+}

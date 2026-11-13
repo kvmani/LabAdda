@@ -9,11 +9,11 @@ set -euo pipefail
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$KIT/lib/common.sh"
-BUNDLE="" DIGEST="" TEST_SITE="" PORT_TEST="8101" REMOVE=0 MAIN_SITE=$SITE
+MODE_ARGS=() BUNDLE="" DIGEST="" TEST_SITE="" PORT_TEST="8101" REMOVE=0 MAIN_SITE=$SITE
 while (($#)); do
   case $1 in
     --bundle) BUNDLE=$2; shift ;; --manifest-sha256) DIGEST=$2; shift ;; --test-site) TEST_SITE=$2; shift ;;
-    --port) PORT_TEST=$2; shift ;; --site) MAIN_SITE=$2; shift ;; --remove-test) REMOVE=1 ;; --dry-run) DRY_RUN=1 ;;
+    --port) PORT_TEST=$2; shift ;; --site) MAIN_SITE=$2; shift ;; --remove-test) REMOVE=1 ;; --offline-kit) MODE_ARGS=(--offline-kit) ;; --dry-run) DRY_RUN=1 ;;
     -h | --help) sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "Unknown option $1" ;;
   esac; shift
@@ -36,4 +36,4 @@ SITE=$MAIN_SITE; set_paths
 [[ -f $ANSWERS_FILE ]] || die "No install answers for site $MAIN_SITE; run on the server that holds the live site."
 extra=(); ((DRY_RUN)) && extra=(--dry-run)
 exec bash "$KIT/install.sh" --site "$TEST_SITE" --answers "$ANSWERS_FILE" --port "$PORT_TEST" --yes --skip-os-packages \
-  --no-nginx --no-timer --restore-bundle "$BUNDLE" --manifest-sha256 "$DIGEST" "${extra[@]}"
+  --no-nginx --no-timer --restore-bundle "$BUNDLE" --manifest-sha256 "$DIGEST" "${MODE_ARGS[@]}" "${extra[@]}"

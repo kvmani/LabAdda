@@ -59,13 +59,16 @@ def run(*args, **kwargs):
 @pytest.fixture
 def built(tmp_path):
     root = fake_root(tmp_path)
-    return kit.build(tmp_path / "out", root=root, archive=fake_archive(tmp_path), skip_debs=True)
+    return kit.build(
+        tmp_path / "out", root=root, archive=fake_archive(tmp_path), skip_debs=True, offline=True
+    )
 
 
 def test_version_comes_from_the_code_and_names_the_kit(tmp_path):
     root = fake_root(tmp_path, "0.0.1-beta")
     assert kit.code_version(root) == "0.0.1-beta"
-    assert kit.kit_name("0.0.1-beta") == "labadda-0.0.1-beta-offline-kit"
+    assert kit.kit_name("0.0.1-beta") == "labadda-0.0.1-beta-bundle"
+    assert kit.kit_name("0.0.1-beta", "offline") == "labadda-0.0.1-beta-offline-kit"
     (root / kit.VERSION_FILE).write_text("nothing here\n")
     with pytest.raises(kit.KitError):
         kit.code_version(root)
@@ -111,13 +114,13 @@ def test_kit_without_os_packages_is_not_complete(built):
 def test_build_refuses_to_overwrite_and_cleans_up(tmp_path):
     root = fake_root(tmp_path)
     archive = fake_archive(tmp_path)
-    kit.build(tmp_path / "out", root=root, archive=archive, skip_debs=True)
+    kit.build(tmp_path / "out", root=root, archive=archive, skip_debs=True, offline=True)
     with pytest.raises(kit.KitError):
-        kit.build(tmp_path / "out", root=root, archive=archive, skip_debs=True)
+        kit.build(tmp_path / "out", root=root, archive=archive, skip_debs=True, offline=True)
     (root / "deploy/status.sh").unlink()
     broken = tmp_path / "out2"
     with pytest.raises(OSError):
-        kit.build(broken, root=root, archive=archive, skip_debs=True)
+        kit.build(broken, root=root, archive=archive, skip_debs=True, offline=True)
     assert not any(p.name.startswith(".") for p in broken.iterdir())
 
 
@@ -213,3 +216,45 @@ def test_tls_probe_trusts_the_recorded_certificate_file(monkeypatch):
     with pytest.raises(OSError, match="stop here"):
         operations.probe(site)
     assert seen["cafile"] is None
+
+
+def test_mirror_bundle_is_small_and_needs_no_os_packages(tmp_path):
+    root = fake_root(tmp_path)
+    bundle = kit.build(tmp_path / "out", root=root, archive=fake_archive(tmp_path))
+    assert bundle.name == "labadda-9.9.9-test-bundle"
+    assert json.loads((bundle / "MANIFEST.json").read_text())["mode"] == "bundle"
+    assert kit.check(bundle, deep=False) == []
+    assert not (bundle / "os-packages").exists()
+
+
+def test_feedback_mail_answers_become_settings_the_operator_tools_accept(tmp_path):
+    values = install_helpers.smtp_settings(
+        "mail.lab.example.in:2525", "admin@lab.example.in", "labadda@lab.example.in",
+        starttls=True, user="relay", password_file="/srv/labadda/main/secrets/smtp-password",
+    )  # fmt: skip
+    assert values["LABADDA_SMTP_PORT"] == "2525" and values["LABADDA_SMTP_STARTTLS"] == "true"
+    site = install_helpers.site_json("main", "", "labadda.lab.example.in", 8100, "labadda")
+    base = install_helpers.env_values(
+        "main", site["root"], 8100, "labadda.lab.example.in", zone="UTC", domain="lab.example.in", db_url="postgresql+psycopg://u:p@localhost/d"
+    )  # fmt: skip
+    text = install_helpers.env_file((DEPLOY / "labadda.env.example").read_text(), base | values)
+    path = tmp_path / "main.env"
+    path.write_text(text)
+    path.chmod(0o600)
+    environment = site_environment.runtime_environment({**site, "env_file": str(path)})
+    assert environment["LABADDA_FEEDBACK_EMAIL"] == "admin@lab.example.in"
+    assert "LABADDA_SMTP_PASSWORD=\n" in text  # the password itself is never written to the env file
+
+
+def test_blank_relay_leaves_feedback_in_the_console_only():
+    assert (
+        install_helpers.smtp_settings("", "a@b.in", "x@b.in", starttls=False, user="", password_file="") == {}
+    )
+    assert (
+        install_helpers.smtp_settings("mail.in", "", "x@b.in", starttls=False, user="", password_file="")
+        == {}
+    )
+    with pytest.raises(install_helpers.InputError):
+        install_helpers.smtp_settings(
+            "bad host:25", "a@b.in", "x@b.in", starttls=False, user="", password_file=""
+        )

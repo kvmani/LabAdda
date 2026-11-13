@@ -27,6 +27,9 @@ ZONE = re.compile(r"[A-Za-z][A-Za-z0-9_+-]*(?:/[A-Za-z0-9_+-]+){0,2}\Z")
 EMAIL = re.compile(r"[^@\s]+@[a-z0-9]+(?:[.-][a-z0-9]+)*\Z")
 
 
+SMTP_HOST = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*\Z")
+
+
 class InputError(ValueError):
     """An answer that cannot be used, phrased for the person typing it."""
 
@@ -42,6 +45,31 @@ def check_answers(site: str, hostname: str, zone: str, domain: str, feedback: st
         raise InputError("E-mail domain: something like lab.example.in, without the @.")
     if feedback and not EMAIL.fullmatch(feedback):
         raise InputError("Feedback e-mail: an address such as admin@lab.example.in.")
+
+
+def smtp_settings(
+    relay: str, feedback: str, sender: str, *, starttls: bool, user: str, password_file: str
+) -> dict:
+    """Feedback e-mail settings from the relay answer `host[:port]`; blank means console only."""
+    if not relay or not feedback:
+        return {}
+    host, _, port = relay.partition(":")
+    if not SMTP_HOST.fullmatch(host) or (port and not (port.isdigit() and 0 < int(port) < 65536)):
+        raise InputError("Mail relay: host or host:port, for example mail.lab.example.in:25.")
+    if not EMAIL.fullmatch(sender):
+        raise InputError("Mail 'from' address: an address such as labadda@lab.example.in.")
+    values = {
+        "LABADDA_FEEDBACK_EMAIL": feedback,
+        "LABADDA_SMTP_HOST": host,
+        "LABADDA_SMTP_PORT": port or "25",
+        "LABADDA_SMTP_STARTTLS": "true" if starttls else "false",
+        "LABADDA_SMTP_FROM": sender,
+    }
+    if user:
+        values["LABADDA_SMTP_USER"] = user
+    if password_file:
+        values["LABADDA_SMTP_PASSWORD_FILE"] = password_file
+    return values
 
 
 def site_json(site: str, prefix: str, hostname: str, port: int, user: str) -> dict:
@@ -129,6 +157,9 @@ def main(argv: list[str] | None = None) -> int:
     env.add_argument("--zone", required=True)
     env.add_argument("--domain", default="")
     env.add_argument("--database-url", required=True)
+    for name in ("--feedback", "--smtp-relay", "--smtp-from", "--smtp-user", "--smtp-password-file"):
+        env.add_argument(name, default="")
+    env.add_argument("--smtp-starttls", action="store_true")
     stat = sub.add_parser("status")
     stat.add_argument("--status-dir", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -150,6 +181,10 @@ def main(argv: list[str] | None = None) -> int:
                 domain=args.domain,
                 db_url=args.database_url,
             )
+            values |= smtp_settings(
+                args.smtp_relay, args.feedback, args.smtp_from,
+                starttls=args.smtp_starttls, user=args.smtp_user, password_file=args.smtp_password_file,
+            )  # fmt: skip
             sys.stdout.write(env_file(args.example.read_text(), values))
         else:
             print(json.dumps(status_facts(args.status_dir)))

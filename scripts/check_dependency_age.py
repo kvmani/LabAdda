@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -124,9 +123,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     total = sum(len(v) for v in pins.values())
     for kind, name, version, released in too_new:
-        print(
-            f"TOO NEW  {kind:4} {name}=={version}  released {released:%Y-%m-%d} ({(now - released).days} days)"
-        )
+        age = (now - released).days
+        print(f"TOO NEW  {kind:4} {name}=={version}  released {released:%Y-%m-%d} ({age} days)")
     for kind, name, version, _ in unknown:
         print(f"UNKNOWN  {kind:4} {name}=={version}  release date not found in the index")
     print(

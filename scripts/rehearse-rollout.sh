@@ -8,10 +8,12 @@
 # NOT rehearsed here: real systemd, the real /etc/nginx tree, apt installing missing packages.
 set -uo pipefail
 export PYTHONDONTWRITEBYTECODE=1
+# This machine's own package access stands in for the office mirror (public index allowed for the rehearsal only).
+export LABADDA_ALLOW_PUBLIC_INDEX=1
 HERE="$(cd "$(dirname "$0")" && pwd)"
-KIT="" KIT2="" KEEP=0 ORIGINAL=("$@")
+KIT="" KIT2="" KEEP=0 OFFLINE=0 ORIGINAL=("$@")
 while (($#)); do
-  case $1 in --upgrade-kit) KIT2=$2; shift ;; --keep) KEEP=1 ;; *) KIT=$1 ;; esac; shift
+  case $1 in --upgrade-kit) KIT2=$2; shift ;; --keep) KEEP=1 ;; --offline-kit) OFFLINE=1 ;; *) KIT=$1 ;; esac; shift
 done
 [[ -d $KIT && $(id -u) -eq 0 ]] || { sed -n '2,3p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 if [[ -z ${REHEARSAL_INNER:-} ]]; then
@@ -51,6 +53,10 @@ TIMEZONE_=Asia/Kolkata
 EMAIL_DOMAIN=lab.example.in
 FEEDBACK_EMAIL=feedback@lab.example.in
 SMTP_RELAY=mail.lab.example.in:25
+SMTP_FROM=labadda@lab.example.in
+SMTP_STARTTLS=false
+SMTP_USER=none
+PIP_INDEX_URL=https://pypi.org/simple
 PORT=8197
 SERVICE_USER=labadda-rh
 ADMIN_USER=asha.rollout
@@ -74,6 +80,7 @@ cleanup() {
 trap cleanup EXIT
 
 INSTALL=(bash "$KIT/install.sh" --answers "$P/answers" --yes --skip-os-packages)
+((OFFLINE)) && INSTALL+=(--offline-kit)
 check "install.sh --dry-run runs" "${INSTALL[@]}" --dry-run
 check "dry run changed nothing" test ! -e "$P/srv/labadda"
 check "kit verifies" python3.12 "$KIT/tools/scripts/kit.py" verify "$KIT"
@@ -93,8 +100,9 @@ check "test restore into a separate copy" bash "$KIT/restore.sh" --bundle "$P/sr
 check "restored copy answers" python3.12 "$HERE/operations.py" --site "$P/etc/labadda/rolloutrestore.site.json" probe --direct
 check "restore copy removed again" bash "$KIT/restore.sh" --remove-test --test-site rolloutrestore --site rollout
 if [[ -n $KIT2 ]]; then
-  check "upgrade --dry-run" bash "$KIT2/upgrade.sh" --dry-run --site rollout
-  check "upgrade to the second kit" bash "$KIT2/upgrade.sh" --yes --site rollout
+  UPG=(); ((OFFLINE)) && UPG=(--offline-kit)
+  check "upgrade --dry-run" bash "$KIT2/upgrade.sh" --dry-run --site rollout "${UPG[@]}"
+  check "upgrade to the second kit" bash "$KIT2/upgrade.sh" --yes --site rollout "${UPG[@]}"
   cp "$P/last.log" "$P/upgrade.log"; tail -12 "$P/upgrade.log"
   check "status after upgrade names the new release" bash -c "bash '$KIT2/status.sh' --site rollout | grep -q \"$(python3.12 -c 'import json,sys;print(json.load(open(sys.argv[1]+"/MANIFEST.json"))["release"])' "$KIT2")\""
 fi

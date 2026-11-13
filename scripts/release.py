@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.parse
 import uuid
 import venv
 import zipfile
@@ -133,11 +134,26 @@ def source_version(root: Path) -> str:
     return found.group(1)
 
 
-def build(root: Path, output: Path, release_id: str) -> Path:
+def age_check(root: Path) -> None:
+    """Refuse to build with a dependency younger than the policy minimum (30 days)."""
+    import check_dependency_age  # noqa: PLC0415 â€” only builds need it; tests load release.py on its own
+
+    if check_dependency_age.main(["--root", str(root)]):
+        raise ReleaseError(
+            "A pinned dependency is too new or its date is unknown. Re-pin it (docs/RELEASES.md) "
+            "or, for a rehearsal only, build with --skip-age-check"
+        )
+
+
+def build(
+    root: Path, output: Path, release_id: str, *, wheelhouse: bool = True, skip_age_check: bool = False
+) -> Path:
     if not RELEASE_ID.fullmatch(release_id):
         raise ReleaseError("Invalid release ID")
     if sys.version_info[:2] != (3, 12):
         raise ReleaseError("Build with Python 3.12")
+    if not skip_age_check:
+        age_check(root)
     status = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root)
     if status:
         raise ReleaseError("Build from a clean committed checkout")
@@ -200,7 +216,9 @@ def build(root: Path, output: Path, release_id: str) -> Path:
             env={**os.environ, "LABADDA_BUILD_COMMIT": commit, "LABADDA_BUILD_DATE": commit_date},
         )
         shutil.copytree(root / "frontend/dist", stage / "frontend/dist")
-        wheels = stage / "wheelhouse"
+        # Mirror-mode releases carry no wheels; the pins are still downloaded once to prove they
+        # exist and to inventory their licences.
+        wheels = (stage / "wheelhouse") if wheelhouse else Path(temporary) / "wheels-inventory"
         wheels.mkdir()
         run(
             sys.executable,
@@ -236,6 +254,7 @@ def build(root: Path, output: Path, release_id: str) -> Path:
                 cwd=root / "backend",
                 text=True,
             ).strip(),
+            "wheelhouse": wheelhouse,
             "files": files,
             "dependencies": dependencies,
             "frontend_dependencies": frontend_dependencies,
@@ -283,9 +302,8 @@ def verify(archive_path: Path, expected_digest: str) -> dict:  # noqa: PLR0912 â
             "scripts/release.py",
             "docs/RELEASES.md",
         }
-        if not required <= names or not any(
-            n.startswith("wheelhouse/") and n.endswith(".whl") for n in names
-        ):
+        has_wheels = any(n.startswith("wheelhouse/") and n.endswith(".whl") for n in names)
+        if not required <= names or (manifest.get("wheelhouse", True) and not has_wheels):
             raise ReleaseError("Incomplete release")
         for member in members:
             if member.name == "manifest.json":
@@ -307,16 +325,48 @@ def verify(archive_path: Path, expected_digest: str) -> dict:  # noqa: PLR0912 â
     return manifest
 
 
-def install(archive_path: Path, expected_digest: str, instance: Path) -> Path:
+PUBLIC_INDEX_HOSTS = ("pypi.org", "pythonhosted.org")
+
+
+def mirror_environment(index_url: str, trusted_host: str | None) -> dict:
+    """pip settings for installing the exact pins from the site's own mirror, never the internet."""
+    host = urllib.parse.urlparse(index_url).hostname or ""
+    if not index_url.startswith(("http://", "https://")) or not host:
+        raise ReleaseError("The Python package mirror must be an http(s) URL")
+    public = any(host == h or host.endswith("." + h) for h in PUBLIC_INDEX_HOSTS)
+    if public and os.environ.get("LABADDA_ALLOW_PUBLIC_INDEX") != "1":
+        raise ReleaseError("Refusing the public Python index; use your office mirror")
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("PIP_", "PYTHON"))}
+    env.update(PIP_INDEX_URL=index_url, PIP_DISABLE_PIP_VERSION_CHECK="1", PIP_CONFIG_FILE=os.devnull)
+    if trusted_host:
+        env["PIP_TRUSTED_HOST"] = trusted_host
+    return env
+
+
+def install(
+    archive_path: Path,
+    expected_digest: str,
+    instance: Path,
+    *,
+    index_url: str | None = None,
+    trusted_host: str | None = None,
+) -> Path:
     # A private snapshot binds verification and extraction to identical bytes even
     # when a transfer directory is concurrently replaced by another process.
     with tempfile.TemporaryDirectory() as temporary:
         snapshot = Path(temporary) / "candidate.tar.gz"
         shutil.copyfile(archive_path, snapshot)
-        return install_snapshot(snapshot, expected_digest, instance)
+        mirror = {"index_url": index_url, "trusted_host": trusted_host} if index_url else {}
+        return install_snapshot(snapshot, expected_digest, instance, **mirror)
 
 
-def install_snapshot(archive_path: Path, expected_digest: str, instance: Path) -> Path:
+def install_snapshot(
+    archive_path: Path,
+    expected_digest: str,
+    instance: Path,
+    index_url: str | None = None,
+    trusted_host: str | None = None,
+) -> Path:
     manifest = verify(archive_path, expected_digest)
     instance.mkdir(parents=True, exist_ok=True)
     releases = instance / "releases"
@@ -343,19 +393,19 @@ def install_snapshot(archive_path: Path, expected_digest: str, instance: Path) -
         python = target / "venv/bin/python"
         offline = {k: v for k, v in os.environ.items() if not k.startswith(("PIP_", "PYTHON"))}
         offline.update(PIP_NO_INDEX="1", PIP_DISABLE_PIP_VERSION_CHECK="1", PIP_CONFIG_FILE=os.devnull)
-        run(
-            python,
-            "-m",
-            "pip",
-            "install",
-            "--no-index",
-            "--only-binary=:all:",
-            "--find-links",
-            target / "wheelhouse",
-            "-r",
-            target / "backend/requirements.lock",
-            env=offline,
-        )
+        lock = target / "backend/requirements.lock"
+        if index_url:
+            # Exact pins only (--no-deps): the lock already lists every transitive dependency.
+            offline = mirror_environment(index_url, trusted_host)
+            run(python, "-m", "pip", "install", "--only-binary=:all:", "--no-deps", "-r", lock, env=offline)
+            run(python, "-m", "pip", "check", env=offline)
+        elif manifest.get("wheelhouse", True):
+            run(
+                python, "-m", "pip", "install", "--no-index", "--only-binary=:all:",
+                "--find-links", target / "wheelhouse", "-r", lock, env=offline,
+            )  # fmt: skip
+        else:
+            raise ReleaseError("This release has no wheelhouse: give the Python package mirror (--index-url)")
         # Source layout retains migrations beside the package, as required by the CLI.
         site = subprocess.check_output(
             [str(python), "-I", "-c", "import site; print(site.getsitepackages()[0])"], text=True, env=offline
@@ -472,12 +522,18 @@ def main() -> int:
     builder.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     builder.add_argument("--output", type=Path, required=True)
     builder.add_argument("--release", required=True)
+    builder.add_argument("--no-wheelhouse", action="store_true", help="mirror-mode release without wheels")
+    builder.add_argument(
+        "--skip-age-check", action="store_true", help="rehearsal only: skip the 30-day check"
+    )
     for name in ("verify", "install"):
         sub = commands.add_parser(name)
         sub.add_argument("archive", type=Path)
         sub.add_argument("--sha256", required=True, help="digest from a separately trusted channel")
         if name == "install":
             sub.add_argument("--instance", type=Path, required=True)
+            sub.add_argument("--index-url", default=os.environ.get("PIP_INDEX_URL"), help="Python mirror")
+            sub.add_argument("--trusted-host", default=os.environ.get("PIP_TRUSTED_HOST"))
     for name in ("preflight", "activate", "rollback"):
         sub = commands.add_parser(name)
         sub.add_argument("--instance", type=Path, required=True)
@@ -491,11 +547,21 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "build":
-            print(build(args.root.resolve(), args.output.resolve(), args.release))
+            print(
+                build(
+                    args.root.resolve(), args.output.resolve(), args.release,
+                    wheelhouse=not args.no_wheelhouse, skip_age_check=args.skip_age_check,
+                )
+            )  # fmt: skip
         elif args.command == "verify":
             print(json.dumps(verify(args.archive, args.sha256), indent=2))
         elif args.command == "install":
-            print(install(args.archive.resolve(), args.sha256, args.instance.resolve()))
+            print(
+                install(
+                    args.archive.resolve(), args.sha256, args.instance.resolve(),
+                    index_url=args.index_url, trusted_host=args.trusted_host,
+                )
+            )  # fmt: skip
         elif args.command == "preflight":
             print("Observed database schema:", preflight(args.instance.resolve(), args.release))
         else:

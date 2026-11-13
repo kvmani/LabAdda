@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Upgrade to the release in a NEW offline kit: backup first, verify, migrate, restart, check health.
-#   cd /media/usb/labadda-<new-version>-offline-kit && sudo bash upgrade.sh [--dry-run] [--yes]
+#   cd /media/usb/labadda-<new-version>-bundle && sudo bash upgrade.sh [--dry-run] [--yes] [--offline-kit]
 # The site is closed to users while this runs. If something fails the script puts the old version
 # back automatically when the database allows it; otherwise it leaves the site closed and says
 # exactly what to do. Your data is never rewound silently.
@@ -13,6 +13,7 @@ source "$KIT/lib/steps.sh"
 while (($#)); do
   case $1 in
     --dry-run) DRY_RUN=1 ;; --yes) ASSUME_YES=1 ;; --site) SITE=$2; shift ;;
+    --offline-kit) MODE=offline ;; --pip-index-url) PIP_INDEX_URL=$2; shift ;; --pip-trusted-host) PIP_TRUSTED_HOST=$2; shift ;;
     -h | --help) sed -n '2,6p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "Unknown option $1" ;;
   esac; shift
@@ -20,8 +21,10 @@ done
 set_paths; need_root
 [[ -f $SITE_JSON ]] || die "Site '$SITE' is not installed here. Use install.sh for a first install."
 SERVICE_USER=$(site_field user)
+[[ ! -f $ANSWERS_FILE ]] || load_answers "$ANSWERS_FILE"  # keeps the mirror address chosen at install
 step "Checking the new kit"
 verify_kit "$KIT"
+check_mode "$KIT"
 VERSION=$(kit_field "$KIT" release)
 CURRENT=$(current_version)
 [[ $CURRENT != none ]] || die "No active release found; run install.sh."

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Build and check the offline install kit: everything a pilot server needs, on one USB drive.
+"""Build and check the install bundle for the office server.
 
-The kit wraps the release archive made by `release.py` (application, built frontend, Python
-wheelhouse) with what a blank Ubuntu 24.04 server still needs without internet: its operating
-system packages as a small local package repository, the operator scripts and the install guide.
+Default (mirror mode): a small bundle with the release archive (application, built frontend), the
+operator scripts, the guide and a manifest; the server installs OS packages and Python pins from the
+office mirrors. `--offline-kit`: the fallback for a server with no mirror, which also carries the
+Python wheelhouse and the operating system packages as a small local package repository.
 Every file is listed with its SHA-256 in `MANIFEST.json` and `SHA256SUMS`. Standard library only.
 
-    kit.py build --output DIR          run on a connected Ubuntu 24.04 x86-64 build machine
+    kit.py build --output DIR [--offline-kit]   run on a connected Ubuntu 24.04 x86-64 build machine
     kit.py verify DIR                  run on the build machine and again on the server
     kit.py version                     print the application version (the single source)
 """
@@ -59,8 +60,9 @@ def code_version(root: Path = ROOT) -> str:
     return match[1]
 
 
-def kit_name(version: str) -> str:
-    return f"labadda-{version}-offline-kit"
+def kit_name(version: str, mode: str = "bundle") -> str:
+    """Mirror-mode bundles are small; offline kits also carry the OS packages and the wheelhouse."""
+    return f"labadda-{version}-{'offline-kit' if mode == 'offline' else 'bundle'}"
 
 
 def package_names(root: Path = ROOT) -> list[str]:
@@ -127,11 +129,12 @@ def inventory(kit: Path) -> dict[str, dict]:
     }
 
 
-def write_manifest(kit: Path, version: str, release_manifest: dict) -> None:
+def write_manifest(kit: Path, version: str, release_manifest: dict, mode: str = "bundle") -> None:
     files = inventory(kit)
     manifest = {
         "format": FORMAT,
-        "kit": kit_name(version),
+        "kit": kit_name(version, mode),
+        "mode": mode,
         "version": version,
         "release": release_manifest["release"],
         "commit": release_manifest["commit"],
@@ -144,18 +147,29 @@ def write_manifest(kit: Path, version: str, release_manifest: dict) -> None:
     (kit / "SHA256SUMS").write_text(sums)
 
 
-def build(output: Path, *, root: Path = ROOT, archive: Path | None = None, skip_debs: bool = False) -> Path:
+def build(
+    output: Path,
+    *,
+    root: Path = ROOT,
+    archive: Path | None = None,
+    skip_debs: bool = False,
+    offline: bool = False,
+    skip_age_check: bool = False,
+) -> Path:
+    mode = "offline" if offline else "bundle"
     version = code_version(root)
-    kit = output / kit_name(version)
+    kit = output / kit_name(version, mode)
     if kit.exists():
         raise KitError(f"{kit} already exists; choose another output folder or remove it")
-    work = output / f".{kit_name(version)}.partial"
+    work = output / f".{kit_name(version, mode)}.partial"
     if work.exists():
         shutil.rmtree(work)
     work.mkdir(parents=True)
     try:
         if archive is None:
-            archive = release.build(root, work / "build", version)
+            archive = release.build(
+                root, work / "build", version, wheelhouse=offline, skip_age_check=skip_age_check
+            )
         digest_file = archive.with_suffix(".gz.sha256")
         (work / "release").mkdir()
         for source in (archive, digest_file):
@@ -166,12 +180,12 @@ def build(output: Path, *, root: Path = ROOT, archive: Path | None = None, skip_
             (work / name).chmod(0o755)
         shutil.copytree(root / "deploy/lib", work / "lib")
         shutil.copyfile(root / "docs/ROLLOUT-INTRANET.md", work / "READ-ME-FIRST.md")
-        if not skip_debs:
+        if offline and not skip_debs:
             fetch_debs(package_closure(package_names(root)), work / "os-packages")
         shutil.rmtree(work / "build", ignore_errors=True)
         with tarfile.open(work / "release" / archive.name, "r:gz") as tar:
             release_manifest = json.load(tar.extractfile("manifest.json"))
-        write_manifest(work, version, release_manifest)
+        write_manifest(work, version, release_manifest, mode)
         problems = check(work, deep=False, allow_no_debs=skip_debs)
         if problems:
             raise KitError("; ".join(problems))
@@ -208,7 +222,8 @@ def check(kit: Path, *, deep: bool = True, allow_no_debs: bool = False) -> list[
             release.verify(archive, release.digest(archive))
         except release.ReleaseError as error:
             problems.append(f"release archive: {error}")
-    if not allow_no_debs and not (kit / "os-packages/Packages.gz").is_file():
+    offline = manifest.get("mode") == "offline"
+    if offline and not allow_no_debs and not (kit / "os-packages/Packages.gz").is_file():
         problems.append("no operating system packages (os-packages/Packages.gz)")
     return problems
 
@@ -221,7 +236,9 @@ def main(argv: list[str] | None = None) -> int:
     built.add_argument("--output", type=Path, required=True)
     built.add_argument("--root", type=Path, default=ROOT)
     built.add_argument("--release-archive", type=Path, help="reuse an archive made by release.py")
+    built.add_argument("--offline-kit", action="store_true", help="also carry OS packages and wheelhouse")
     built.add_argument("--skip-os-packages", action="store_true", help="rehearsal only: no .deb files")
+    built.add_argument("--skip-age-check", action="store_true", help="rehearsal only: skip the 30-day check")
     check_cmd = sub.add_parser("verify")
     check_cmd.add_argument("kit", type=Path)
     check_cmd.add_argument("--no-deep", action="store_true", help="skip re-reading the archive contents")
@@ -231,8 +248,14 @@ def main(argv: list[str] | None = None) -> int:
             print(code_version())
         elif args.command == "build":
             archive = args.release_archive.resolve() if args.release_archive else None
-            kit = build(args.output.resolve(), root=args.root.resolve(), archive=archive,
-                        skip_debs=args.skip_os_packages)  # fmt: skip
+            kit = build(
+                args.output.resolve(),
+                root=args.root.resolve(),
+                archive=archive,
+                skip_debs=args.skip_os_packages,
+                offline=args.offline_kit,
+                skip_age_check=args.skip_age_check,
+            )
             print(kit)
         else:
             problems = check(args.kit.resolve(), deep=not args.no_deep)
