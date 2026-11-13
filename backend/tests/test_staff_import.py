@@ -346,7 +346,7 @@ def test_template_has_exact_headers_and_one_example(as_user):
 
 def test_only_signed_in_administrators_may_use_it(as_user, make_client, ids):
     data = sheet(MIXED[0])
-    for name in ("ben", "asha", "dana"):
+    for name in ("bharat", "asha", "deepa"):
         member = as_user(name)
         assert preview(member, data).status_code == 403
         assert member.get("/admin/changes/import/staff/template").status_code == 403

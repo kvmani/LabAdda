@@ -250,18 +250,18 @@ async function firstPassword(base) {
 }
 
 async function denied(base) {
-  const ben = await login(base, "ben");
+  const bharat = await login(base, "bharat");
   try {
-    await ben.page.getByRole("button", { name: /^Account menu for / }).waitFor();
+    await bharat.page.getByRole("button", { name: /^Account menu for / }).waitFor();
     const endpoint = origin + base + "/api/v1";
-    const session = await (await ben.context.request.get(endpoint + "/auth/session")).json();
-    const post = await ben.context.request.post(endpoint + "/admin/changes/import/staff/preview", {
+    const session = await (await bharat.context.request.get(endpoint + "/auth/session")).json();
+    const post = await bharat.context.request.post(endpoint + "/admin/changes/import/staff/preview", {
       headers: { "X-CSRF-Token": session.csrf_token, "Content-Type": SHEET },
       data: workbook([HEAD, PEOPLE[0]]),
     });
     check(post.status() === 403, base + " member cannot use the Excel import API");
   } finally {
-    await ben.context.close();
+    await bharat.context.close();
   }
 }
 
