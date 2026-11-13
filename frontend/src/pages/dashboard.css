@@ -35,3 +35,13 @@
   border-radius: var(--radius-sm);
   background: var(--warn-soft);
 }
+/* A notification reads as a left-aligned, wrapping list item rather than a centred button. */
+.daily-dashboard__panel li > .ui-button {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 0;
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  font-weight: 400;
+  line-height: 1.4;
+}
