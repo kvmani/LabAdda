@@ -5,6 +5,7 @@
 # LABADDA_STATUS_DIR and then trims old local backups. The flag --external-writers-stopped is
 # YOUR attestation that no other LabAdda command (for example a standalone reminders job) runs
 # at the scheduled time. Adjust the tool path to your verified operator tool directory.
+# Python runs with -E -s, not -I: -I drops the script folder from the import path and the tool could not find its sibling modules.
 # Site description: /etc/labadda/<instance>.site.json (deploy/site.example.json).
 [Unit]
 Description=LabAdda scheduled backup (%i)
@@ -12,9 +13,9 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 -I /opt/labadda/tools/scripts/lifecycle.py --site /etc/labadda/%i.site.json backup --unattended --apply --external-writers-stopped --resume-after-backup --destination-alias local
+ExecStart=/usr/bin/python3 -E -s /opt/labadda/tools/scripts/lifecycle.py --site /etc/labadda/%i.site.json backup --unattended --apply --external-writers-stopped --resume-after-backup --destination-alias local
 # Runs only when the backup above succeeded, so a failing backup never costs an older good one.
-ExecStartPost=/usr/bin/python3 -I /opt/labadda/tools/scripts/lifecycle.py --site /etc/labadda/%i.site.json prune-backups --keep 7 --apply
+ExecStartPost=/usr/bin/python3 -E -s /opt/labadda/tools/scripts/lifecycle.py --site /etc/labadda/%i.site.json prune-backups --keep 7 --apply
 TimeoutStartSec=2h
 NoNewPrivileges=true
 PrivateTmp=true

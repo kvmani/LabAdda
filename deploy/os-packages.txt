@@ -1,0 +1,8 @@
+# Operating system packages the pilot server needs and the kit carries (Ubuntu 24.04).
+# make-offline-kit.sh downloads these and everything they depend on.
+postgresql-16
+postgresql-client-16
+nginx
+python3.12-venv
+openssl
+ca-certificates

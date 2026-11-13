@@ -20,7 +20,7 @@ Choose a new destination outside release code and the asset tree. Publication ha
 `deploy/systemd/labadda-backup@.service` and `labadda-backup@.timer` run the lifecycle backup every night (default 02:30, with a random delay of up to ten minutes, and a missed run is made up when the host starts). Install both under `/etc/systemd/system/`, adjust the tool path and the site description file name in the service, then `systemctl enable --now labadda-backup@<instance>.timer`. The unit runs
 
 ```bash
-python3 -I <tools>/scripts/lifecycle.py --site /etc/labadda/<instance>.site.json backup \
+python3 -E -s <tools>/scripts/lifecycle.py --site /etc/labadda/<instance>.site.json backup \
   --unattended --apply --external-writers-stopped --resume-after-backup --destination-alias local
 ```
 
