@@ -81,7 +81,15 @@ fails=0
 printf '%-30s %-5s %s\n' SUITE RESULT CHECKS
 for s in "${SUITES[@]}"; do
   mkdir -p "$OUT/$s"
-  ( exec 9>/tmp/labadda-e2e.lock; flock 9; run_suite "$s" ) >"$OUT/$s.log" 2>&1; rc=$?
+  # Takes the stack lock itself: wrapping this script in another flock on the same file deadlocks.
+  (
+    exec 9>/tmp/labadda-e2e.lock
+    until flock -w 300 9; do
+      echo "e2e-all: still waiting for /tmp/labadda-e2e.lock. Do not wrap this script in flock." >&3
+    done
+    run_suite "$s"
+  ) 3>&2 >"$OUT/$s.log" 2>&1
+  rc=$?
   n=$(grep -c '^PASS' "$OUT/$s.log")
   if [ $rc -eq 0 ]; then r=PASS; else r=FAIL; fails=$((fails + 1)); fi
   printf '%-30s %-5s %s\n' "$s" "$r" "$n"
