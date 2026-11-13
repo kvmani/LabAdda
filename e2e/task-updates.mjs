@@ -259,6 +259,10 @@ try {
     const detail = path + "/" + task.id;
     await openList(bharat, base, section.id, list);
     const shared = buttonNamed(bharat.page, "Check shared updates");
+    // Opening the list alone must not raise the notice; a real change does.
+    await bharat.page.waitForTimeout(1000);
+    check((await shared.count()) === 0, base + " opening a list shows no shared-update notice");
+    task = await call(asha, detail, taskFields(task), "PUT");
     await shared.waitFor();
     await shared.click();
     await shared.waitFor({ state: "hidden" });
