@@ -62,7 +62,7 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 
 Client to server: `subscribe` / `unsubscribe` `{workspace_id}`, `board.preview` `{workspace_id, preview_id, stroke, done?}` (transient, bounded, writers only), and `ping`.
 
-Server to client: `hello`, `subscribed`, `subscribe_failed` (unknown and forbidden look the same), `presence`, `chat.message`, `noticeboard.changed`, `board.op`, `board.epoch`, `board.preview`, `revoked` (subscription dropped after an access change), `access_changed`, and `session_ended` (socket then closes with code 4401). Every delivery rechecks the recipient's current access. After `subscribed`, clients catch up missed committed state through the API.
+Server to client: `hello`, `subscribed`, `subscribe_failed` (unknown and forbidden look the same), `presence`, `chat.message`, `noticeboard.changed`, `board.op`, `board.epoch`, `board.preview`, `revoked` (subscription dropped after an access change), `access_changed`, and `session_ended` (socket then closes with code 4401). Every delivery, including transient previews and presence, rechecks the recipient's current session and access. Previews also recheck the sender's current session and write permission; stale subscription decisions are discarded. Logout, activation/reset and password changes trigger socket revalidation after commit. After `subscribed`, clients catch up missed committed state through the API.
 
 ## Future lifecycle and administration contract families (not implemented)
 

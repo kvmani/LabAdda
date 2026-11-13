@@ -307,6 +307,10 @@ def test_stale_batch_decision_cannot_restore_write_or_drop_new_subscription(
             await hub._drop(conn, workspace)
             if regrant:
                 monkeypatch.setattr(hub, "_check", lambda *_: (True, {workspace}, {workspace}))
+                # New presence checks see the regrant; the already-running batch retains its stale result.
+                monkeypatch.setattr(
+                    hub, "_check_many", lambda conns, _ws: dict.fromkeys(conns, (True, True, True))
+                )
                 await hub._handle(conn, {"type": "subscribe", "workspace_id": str(workspace)})
         finally:
             release.set()
@@ -346,3 +350,27 @@ def test_batch_timeout_does_not_cancel_transport_cleanup(settings, monkeypatch):
         assert conn not in hub.connections
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("action", ["logout", "password", "activate"])
+def test_auth_revocation_closes_existing_socket(as_user, ids, settings, app, action):
+    from labadda.credentials import issue_credential
+    from labadda.models import User
+
+    ben = as_user("ben")
+    with shared_loop_sockets(app, settings, [ben], ids["workspaces"]["section_a"]) as (sock,):
+        if action == "activate":
+            with app.state.session_factory() as db:
+                user = db.get(User, ids["users"]["ben"])
+                token, _credential = issue_credential(db, user, "reset", None, settings)
+                db.commit()
+            response = ben.post("/auth/activate", json={"token": token, "password": "new-fixture-pass-123"})
+        elif action == "password":
+            response = ben.post(
+                "/auth/password",
+                json={"current_password": "fixture-pass-123", "new_password": "new-fixture-pass-123"},
+            )
+        else:
+            response = ben.post("/auth/logout")
+        assert response.status_code == 200
+        assert recv_until(sock, "session_ended")["reason"] == "session_ended"

@@ -141,6 +141,7 @@ def logout(
     sess = db.get(AuthSession, actor.session.id)
     sess.revoked_at = utcnow()
     db.commit()
+    request.app.state.hub.revalidate_user(actor.id)
     response.delete_cookie(settings.cookie_name, path=settings.cookie_path)
     return {"ok": True}
 
@@ -215,6 +216,7 @@ def activate(
         status_after=user.status,
     )
     db.commit()
+    request.app.state.hub.revalidate_user(user.id)
     _set_cookie(response, token, settings)
     return session_payload(user, sess, settings)
 
@@ -238,5 +240,6 @@ def change_password(
     token, sess = create_session(db, user, settings, label=agent_label(request.headers.get("user-agent")))
     audit.record(db, actor=user, action="auth.password_changed", scope_type="identity", target_id=user.id)
     db.commit()
+    request.app.state.hub.revalidate_user(user.id)
     _set_cookie(response, token, settings)
     return session_payload(user, sess, settings)

@@ -22,10 +22,11 @@ from . import policy
 from .config import Settings
 from .deps import origin_allowed
 from .models import AuthSession, User, Workspace
+from .realtime_presence import publish_presence
+from .realtime_preview import relay_preview
 from .security import digest, session_valid
 
 log = logging.getLogger("labadda.realtime")
-MAX_PREVIEW_BYTES = 16_000
 MAX_MESSAGE_BYTES = 32_000
 SEND_TIMEOUT_SECONDS = 10.0  # per client and batch; bounds head-of-line blocking
 # A board-only panel receives board activity only: no chat, feed or other content.
@@ -208,8 +209,10 @@ class Hub:
             except Exception:  # keep the worker alive; clients catch up from committed state
                 log.exception("realtime.delivery_failed")
 
-    async def _deliver(self, workspace_id: uuid.UUID, events: list[dict]) -> None:
-        targets = [c for c in list(self.connections) if workspace_id in c.subscriptions]
+    async def _deliver(
+        self, workspace_id: uuid.UUID, events: list[dict], *, exclude: Connection | None = None
+    ) -> None:
+        targets = [c for c in list(self.connections) if workspace_id in c.subscriptions and c is not exclude]
         if not targets:
             return
         # Recheck current access after commit and before sending, once per batch for all receivers.
@@ -255,14 +258,15 @@ class Hub:
             log.warning("realtime.slow_client_closed")
             await self._close(conn, "slow_client")
 
-    async def _drop(self, conn: Connection, workspace_id: uuid.UUID) -> None:
+    async def _drop(self, conn: Connection, workspace_id: uuid.UUID, *, notify_presence: bool = True) -> None:
         conn.subscription_generations[workspace_id] = conn.subscription_generations.get(workspace_id, 0) + 1
         conn.subscriptions.discard(workspace_id)
         conn.writable.discard(workspace_id)
         await self._send(conn, {"type": "revoked", "workspace_id": str(workspace_id)})
-        await self._presence(workspace_id)
+        if notify_presence:
+            await self._presence(workspace_id)
 
-    async def _close(self, conn: Connection, reason: str) -> None:
+    async def _close(self, conn: Connection, reason: str, *, notify_presence: bool = True) -> None:
         if conn not in self.connections:
             return
         subs = set(conn.subscriptions)
@@ -280,8 +284,9 @@ class Hub:
                 await conn.ws.close(code=4401)
         except Exception:  # noqa: BLE001, S110 — best-effort close of a connection that may be dead
             pass
-        for ws_id in subs:
-            await self._presence(ws_id)
+        if notify_presence:
+            for ws_id in subs:
+                await self._presence(ws_id)
 
     async def _revalidate(self, predicate) -> None:
         for conn in [c for c in list(self.connections) if predicate(c)]:
@@ -306,22 +311,7 @@ class Hub:
             await self._send(conn, {"type": "access_changed"})
 
     async def _presence(self, workspace_id: uuid.UUID) -> None:
-        present = {}
-        for c in self.connections:
-            if workspace_id in c.subscriptions:
-                present[str(c.user_id)] = c.display_name
-        payload = {
-            "type": "presence",
-            "workspace_id": str(workspace_id),
-            "users": [{"id": k, "display_name": v} for k, v in sorted(present.items(), key=lambda kv: kv[1])],
-        }
-        await asyncio.gather(
-            *(
-                self._send(c, payload, workspace_id=workspace_id)
-                for c in list(self.connections)
-                if workspace_id in c.subscriptions
-            )
-        )
+        await publish_presence(self, workspace_id)
 
     # ---- socket endpoint ------------------------------------------------
     def _authenticate(self, token: str | None, kind: str):
@@ -412,21 +402,4 @@ class Hub:
             conn.writable.discard(ws_id)
             await self._presence(ws_id)
         elif kind == "board.preview":
-            # Transient stroke preview: bounded, never stored, only from writers.
-            if (
-                conn not in self.connections
-                or ws_id not in conn.subscriptions
-                or ws_id not in conn.writable
-                or len(json.dumps(msg.get("stroke", {}))) > MAX_PREVIEW_BYTES
-            ):
-                return
-            event = {
-                "type": "board.preview",
-                "workspace_id": str(ws_id),
-                "actor_id": str(conn.user_id),
-                "stroke": msg.get("stroke"),
-                "preview_id": str(msg.get("preview_id", ""))[:64],
-                "done": bool(msg.get("done")),
-            }
-            for other in [c for c in list(self.connections) if ws_id in c.subscriptions and c is not conn]:
-                await self._send(other, event, workspace_id=ws_id)
+            await relay_preview(self, conn, ws_id, msg)

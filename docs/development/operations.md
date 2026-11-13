@@ -159,3 +159,9 @@ earlier failure and does not fail the run. Setting errors echo only the setting'
 a check: write `check_<thing>(host, settings) -> CheckResult`, register it in `run_checks`, and
 add a passing and a failing test plus a line in the quickstart if staff need to know about it.
 The step-by-step path for operators is [the quickstart](../OPERATOR-QUICKSTART.md).
+
+The runtime environment parser uses an explicit setting allowlist. Keep it aligned with
+`deploy/labadda.env.example` when adding production settings, including the health thresholds
+loaded indirectly by `health_thresholds.py`. The full-template regression in
+`backend/tests/test_lifecycle.py` exercises the environment accepted by commissioning,
+upgrades and scheduled backups; unknown and test-only settings remain rejected.

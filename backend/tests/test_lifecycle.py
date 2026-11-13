@@ -169,3 +169,16 @@ def test_postgres_tls_allowlist(configured):
     path.write_text(path.read_text().replace("verify-full", "require"))
     with pytest.raises(life.operations.OperationsError, match="verify-full"):
         life.runtime_environment(configured)
+
+
+def test_documented_environment_is_accepted_by_operator_workflows(configured):
+    path = Path(configured["env_file"])
+    reviewed = dict(line.split("=", 1) for line in path.read_text().splitlines())
+    template = (ROOT / "deploy/labadda.env.example").read_text().splitlines()
+    values = dict(line.split("=", 1) for line in template if line and not line.startswith("#"))
+    values.update(reviewed)
+    values["LABADDA_PORT"] = str(configured["port"])
+    path.write_text("".join(f"{key}={value}\n" for key, value in values.items()))
+    actual = life.runtime_environment(configured)
+    assert all(actual[key] == value for key, value in values.items())
+    assert "LABADDA_TEST_HEALTH_FORCE" not in actual
