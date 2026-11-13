@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidate } from "../generation";
 import { accessDenied, api, errorMessage } from "../api";
-import { realtime } from "../realtime";
+import { missedEventGate, realtime } from "../realtime";
 import { ChatFiles } from "./ChatFiles";
 import { ChatComposer } from "./ChatComposer";
 import { fmtTime } from "../format";
@@ -56,10 +56,11 @@ function useThreadReplies(ws: Workspace, rootId: string) {
     let active = true;
     void load();
     section.current?.scrollIntoView({ block: "start" });
+    const reconnected = missedEventGate();
     const stop = realtime.subscribe(ws.id, (event) => {
       if (!active) return;
       const isThreadReply = event.type === "chat.message" && event.message.parent_id === rootId;
-      if (event.type === "subscribed" || isThreadReply) {
+      if (reconnected(event) || isThreadReply) {
         hints.current += 1;
         setChanged(true);
       }

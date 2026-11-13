@@ -140,3 +140,19 @@ class Realtime {
 }
 
 export const realtime = new Realtime();
+
+/**
+ * The first "subscribed" per workspace only confirms the subscription that a screen just made
+ * after loading; later ones follow a reconnect, when events may have been missed.
+ */
+export function missedEventGate(): (event: RealtimeEvent) => boolean {
+  const confirmedOnce = new Set<string>();
+  return (event) => {
+    if (event.type !== "subscribed") return false;
+    if (!confirmedOnce.has(event.workspace_id)) {
+      confirmedOnce.add(event.workspace_id);
+      return false;
+    }
+    return true;
+  };
+}

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidate } from "./generation";
-import { realtime, type RealtimeEvent } from "./realtime";
+import { missedEventGate, realtime, type RealtimeEvent } from "./realtime";
 
-const CHANGE_EVENTS = ["tasks.changed", "subscribed", "access_changed"];
+const CHANGE_EVENTS = ["tasks.changed", "access_changed"];
 const DENIAL_EVENTS = ["revoked", "subscribe_failed", "session_ended"];
 
 /**
@@ -27,9 +27,11 @@ export function useTaskUpdates(workspaceIds: string[], denied?: () => void) {
       setPending(true);
     }
 
+    const reconnected = missedEventGate();
+
     function handleEvent(event: RealtimeEvent) {
       if (!active) return;
-      if (CHANGE_EVENTS.includes(event.type)) markChanged();
+      if (CHANGE_EVENTS.includes(event.type) || reconnected(event)) markChanged();
       if (DENIAL_EVENTS.includes(event.type)) {
         markChanged();
         deniedRef.current?.();

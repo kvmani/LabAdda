@@ -3,7 +3,7 @@ import { invalidate } from "../generation";
 import type { OpenedNotification } from "../types";
 import { Link, useNavigate } from "react-router-dom";
 import { api, errorMessage } from "../api";
-import { realtime } from "../realtime";
+import { missedEventGate, realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import { fmtTime } from "../format";
 import { Button, Card, ErrorState, PageHeader, Skeleton } from "../ui";
@@ -40,13 +40,7 @@ type Overview = {
   restart_required: boolean;
   observed_at: string;
 };
-const REFRESH_HINTS = [
-  "tasks.changed",
-  "chat.message",
-  "noticeboard.changed",
-  "subscribed",
-  "access_changed",
-];
+const REFRESH_HINTS = ["tasks.changed", "chat.message", "noticeboard.changed", "access_changed"];
 const DENIAL_EVENTS = ["revoked", "subscribe_failed", "session_ended"];
 
 function dueLabel(dueDate: string, today: string): string {
@@ -94,10 +88,11 @@ function useOverview() {
     void load();
     let active = true;
     const watchedIds = visibility ? visibility.split("|") : [];
+    const reconnected = missedEventGate();
     const stops = watchedIds.map((id) =>
       realtime.subscribe(id, (event) => {
         if (!active) return;
-        if (REFRESH_HINTS.includes(event.type)) {
+        if (REFRESH_HINTS.includes(event.type) || reconnected(event)) {
           signals.current += 1;
           setChanged(true);
         }
