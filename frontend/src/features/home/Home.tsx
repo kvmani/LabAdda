@@ -77,6 +77,42 @@ export function Home() {
     <main className="member-home">
       <h1>Welcome, {session?.user.display_name}</h1>
       <p>Your personal space and your team’s work, together.</p>
+
+      <section className="home-guidance" aria-label="Welcome and collaboration guidelines">
+        <div className="home-guidance__header">
+          <span className="home-guidance__icon" aria-hidden="true">
+            🤝
+          </span>
+          <div>
+            <h2>Welcome to LabAdda</h2>
+            <p className="home-guidance__tagline">
+              A friendly space for ideas, teamwork, and getting things done together.
+            </p>
+          </div>
+        </div>
+        <p className="home-guidance__intro">
+          LabAdda is here to help all of us collaborate actively, share ideas easily, and stay productive
+          across our teams and projects.
+        </p>
+        <ul className="home-guidance__list">
+          <li>
+            <strong>No sensitive data:</strong> While maximum care has been taken to ensure privacy and
+            security within our internal network, LabAdda is not a place for any sensitive data or
+            confidential information. Please use official designated channels for sensitive matters.
+          </li>
+          <li>
+            <strong>Keep files light and relevant:</strong> Please upload only necessary work-related files
+            and images. Avoiding very large files and unnecessary content keeps the server fast and reliable
+            for all colleagues.
+          </li>
+          <li>
+            <strong>Friendly teamwork and good etiquette:</strong> We do our best work when we support each
+            other. Please follow good professional ethics, communicate with kindness and courtesy, and keep
+            all discussions constructive.
+          </li>
+        </ul>
+      </section>
+
       <section className="home-cards" aria-label="Your tools">
         <Link to="/whiteboard">
           <h2>My Whiteboard</h2>

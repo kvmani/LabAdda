@@ -13,7 +13,7 @@ from .security import hash_password, utcnow
 
 TREE = [
     # key, name, parent key, code (the initials of the name, as a migrated unit would get)
-    ("root", "National Materials Research Laboratory", None, "NMRL"),
+    ("root", "National Fundamental and Advanced Science Centre, Mumbai", None, "NFASC"),
     ("group", "Materials Group", "root", "MG"),
     ("division", "Surface Engineering Division", "group", "SED"),
     ("section_a", "Thin Films Section", "division", "TFS"),

@@ -91,6 +91,57 @@
   padding: var(--space-5);
   margin-top: var(--space-6);
 }
+.home-guidance {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  background: var(--surface-card);
+  border: thin solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-lg);
+}
+.home-guidance__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.home-guidance__icon {
+  font-size: var(--text-3xl);
+  line-height: 1;
+}
+.home-guidance__header h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+.home-guidance__tagline {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.home-guidance__intro {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-md);
+  color: var(--text);
+  line-height: 1.5;
+}
+.home-guidance__list {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.home-guidance__list li strong {
+  color: var(--text-strong, var(--text));
+}
+
 .home-cards {
   margin-block: var(--space-5);
 }

@@ -18,7 +18,7 @@ def test_upward_visibility_for_section_member(as_user):
         "Thin Films Section",
         "Surface Engineering Division",
         "Materials Group",
-        "National Materials Research Laboratory",
+        "National Fundamental and Advanced Science Centre, Mumbai",
         "Microscopy Journal Club",
     }
     assert names["Thin Films Section"]["role"] == "member"
