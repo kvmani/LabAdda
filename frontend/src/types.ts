@@ -69,8 +69,9 @@ export type ChatMessage = {
 /** A board coordinate: x then y, in board units. */
 export type Point = [number, number];
 export type StrokeData = { points: Point[]; color: string; width: number };
+export type StickyShape = "rectangle" | "circle" | "hexagon" | "diamond" | "cloud" | "star";
 /** Typed notes and stickies share one shape. */
-export type NoteData = { x: number; y: number; text: string; color: string };
+export type NoteData = { x: number; y: number; text: string; color: string; shape?: StickyShape };
 export type BoardImageData = { x: number; y: number; w: number; h: number; asset_id: string };
 /** A board object's kind with the data the server validated for that kind (api/board.py). */
 export type BoardObjectContent =

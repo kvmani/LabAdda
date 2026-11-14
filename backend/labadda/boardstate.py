@@ -49,8 +49,8 @@ def apply_op(objects: dict[str, dict], op: BoardOp, by_rev: dict[int, BoardOp] |
     elif op.op_type == "erase":
         obj["alive"], obj["rev"] = False, op.revision
     elif op.op_type == "move":
-        obj["dx"] += op.payload["dx"]
-        obj["dy"] += op.payload["dy"]
+        obj["dx"] = obj.get("dx", 0.0) + op.payload["dx"]
+        obj["dy"] = obj.get("dy", 0.0) + op.payload["dy"]
         obj["rev"] = op.revision
     elif op.op_type == "undo":
         # Undo payloads carry their effect so they still apply after the target is compacted.
@@ -68,8 +68,8 @@ def apply_op(objects: dict[str, dict], op: BoardOp, by_rev: dict[int, BoardOp] |
         elif target_type == "erase":
             obj["alive"] = True
         elif target_type == "move":
-            obj["dx"] -= delta[0]
-            obj["dy"] -= delta[1]
+            obj["dx"] = obj.get("dx", 0.0) - delta[0]
+            obj["dy"] = obj.get("dy", 0.0) - delta[1]
         obj["rev"] = op.revision
 
 
@@ -276,8 +276,23 @@ def compact_all(db: Session, threshold: int, keep: int) -> int:
     return compacted
 
 
+def sticky_dimensions(shape: str = "rectangle") -> tuple[int, int]:
+    if shape == "circle":
+        return 150, 150
+    if shape == "hexagon":
+        return 160, 140
+    if shape == "diamond":
+        return 150, 150
+    if shape == "cloud":
+        return 180, 130
+    if shape == "star":
+        return 160, 160
+    return 180, 120
+
+
 def bounds(o: dict) -> tuple[float, float, float, float]:
-    d, dx, dy = o["data"], o["dx"], o["dy"]
+    d = o["data"]
+    dx, dy = o.get("dx", 0.0), o.get("dy", 0.0)
     if o["kind"] == "stroke":
         xs = [p[0] + dx for p in d["points"]]
         ys = [p[1] + dy for p in d["points"]]
@@ -286,12 +301,44 @@ def bounds(o: dict) -> tuple[float, float, float, float]:
     if o["kind"] == "image":
         return d["x"] + dx, d["y"] + dy, d["x"] + dx + d["w"], d["y"] + dy + d["h"]
     if o["kind"] == "sticky":
-        return d["x"] + dx, d["y"] + dy, d["x"] + dx + STICKY_W, d["y"] + dy + STICKY_H
+        w, h = sticky_dimensions(d.get("shape", "rectangle"))
+        return d["x"] + dx, d["y"] + dy, d["x"] + dx + w, d["y"] + dy + h
     return d["x"] + dx, d["y"] + dy, d["x"] + dx + max(40, len(d["text"]) * 9), d["y"] + dy + 24
 
 
 def _hex(color: str) -> tuple[int, int, int]:
     return tuple(int(color[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
+
+
+def _draw_sticky(draw, font, scale: float, a: tuple[float, float], d: dict) -> None:
+    shape = d.get("shape", "rectangle")
+    w, h = sticky_dimensions(shape)
+    b = (a[0] + w * scale, a[1] + h * scale)
+    col = _hex(d["color"])
+    outline_col = (180, 180, 180)
+    if shape == "circle":
+        draw.ellipse([a, b], fill=col, outline=outline_col)
+    elif shape == "hexagon":
+        pts = [
+            (a[0] + 40 * scale, a[1]),
+            (a[0] + 120 * scale, a[1]),
+            (a[0] + 160 * scale, a[1] + 70 * scale),
+            (a[0] + 120 * scale, a[1] + 140 * scale),
+            (a[0] + 40 * scale, a[1] + 140 * scale),
+            (a[0], a[1] + 70 * scale),
+        ]
+        draw.polygon(pts, fill=col, outline=outline_col)
+    elif shape == "diamond":
+        pts = [
+            (a[0] + 75 * scale, a[1]),
+            (a[0] + 150 * scale, a[1] + 75 * scale),
+            (a[0] + 75 * scale, a[1] + 150 * scale),
+            (a[0], a[1] + 75 * scale),
+        ]
+        draw.polygon(pts, fill=col, outline=outline_col)
+    else:
+        draw.rectangle([a, b], fill=col, outline=outline_col)
+    draw.multiline_text((a[0] + 10 * scale, a[1] + 6 * scale), d["text"], fill=(31, 41, 51), font=font)
 
 
 def render_png(
@@ -315,10 +362,11 @@ def render_png(
         a, b, c, d = bounds(o)
         return c >= x0 and a <= x0 + w and d >= y0 and b <= y0 + h
 
-    for o in sorted((o for o in objects.values() if o["alive"]), key=lambda o: o["rev"]):
+    for o in sorted((o for o in objects.values() if o.get("alive", True)), key=lambda o: o.get("rev", 0)):
         if not visible(o):
             continue
-        d, dx, dy = o["data"], o["dx"], o["dy"]
+        d = o["data"]
+        dx, dy = o.get("dx", 0.0), o.get("dy", 0.0)
         if o["kind"] == "stroke":
             pts = [pt(p[0] + dx, p[1] + dy) for p in d["points"]]
             width = max(1, round(d["width"] * scale))
@@ -340,11 +388,7 @@ def render_png(
         else:
             a = pt(d["x"] + dx, d["y"] + dy)
             if o["kind"] == "sticky":
-                b = pt(d["x"] + dx + STICKY_W, d["y"] + dy + STICKY_H)
-                draw.rectangle([a, b], fill=_hex(d["color"]), outline=(200, 200, 200))
-                draw.multiline_text(
-                    (a[0] + 10 * scale, a[1] + 6 * scale), d["text"], fill=(31, 41, 51), font=font
-                )
+                _draw_sticky(draw, font, scale, a, d)
             else:
                 draw.multiline_text((a[0], a[1] + 4 * scale), d["text"], fill=_hex(d["color"]), font=font)
     out = io.BytesIO()

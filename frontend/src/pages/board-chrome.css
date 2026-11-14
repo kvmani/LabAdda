@@ -63,6 +63,14 @@
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+.tool--shape {
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: var(--text-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 .tool:disabled {
   opacity: 0.5;
   cursor: not-allowed;

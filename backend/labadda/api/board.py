@@ -51,7 +51,10 @@ COLORS = {
     "#b3e5fc",
     "#c8e6c9",
     "#ffccbc",
+    "#e1bee7",
+    "#ffe082",
 }
+STICKY_SHAPES = {"rectangle", "circle", "hexagon", "diamond", "cloud", "star"}
 PNG_HEADERS = {
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
@@ -163,9 +166,15 @@ def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: d
         text = data.get("text")
         if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
             raise Invalid("invalid_board_op", "Text must be 1-1000 characters.")
+        item_data = {"x": _num(data.get("x")), "y": _num(data.get("y")), "text": text, "color": color}
+        if kind == "sticky" and "shape" in data:
+            shape = data["shape"]
+            if shape not in STICKY_SHAPES:
+                raise Invalid("invalid_board_op", "Unsupported sticky shape.")
+            item_data["shape"] = shape
         return {
             "kind": kind,
-            "data": {"x": _num(data.get("x")), "y": _num(data.get("y")), "text": text, "color": color},
+            "data": item_data,
         }
     raise Invalid("invalid_board_op", "Unknown board object kind.")
 

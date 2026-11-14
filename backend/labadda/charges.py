@@ -43,27 +43,39 @@ def board_key(workspace_id: uuid.UUID, object_id: str) -> str:
 
 def expected_board_rows(workspace_id: uuid.UUID, objects: dict[str, dict]) -> dict[str, tuple]:
     """Ledger rows (key -> (user_id, bytes)) implied by a folded board state."""
-    return {
-        board_key(workspace_id, oid): (uuid.UUID(obj["author"]), board_object_bytes(obj["kind"], obj["data"]))
-        for oid, obj in objects.items()
-        if obj["alive"]
-    }
+    rows = {}
+    for oid, obj in objects.items():
+        if not obj.get("alive", True):
+            continue
+        author = obj.get("author")
+        if not author:
+            continue
+        try:
+            author_uuid = uuid.UUID(author)
+        except (ValueError, TypeError):
+            continue
+        rows[board_key(workspace_id, oid)] = (author_uuid, board_object_bytes(obj["kind"], obj["data"]))
+    return rows
 
 
 def charge_board_object(db: Session, workspace_id: uuid.UUID, object_id: str, obj: dict | None) -> None:
     """Upsert one object's charge, or remove it when the object is not alive."""
     key = board_key(workspace_id, object_id)
-    if obj is None or not obj["alive"]:
+    if obj is None or not obj.get("alive", True) or not obj.get("author"):
         db.execute(
             delete(ContentCharge).where(
                 ContentCharge.item_type == "board_object", ContentCharge.item_key == key
             )
         )
         return
+    try:
+        author_uuid = uuid.UUID(obj["author"])
+    except (ValueError, TypeError):
+        return
     values = {
         "item_type": "board_object",
         "item_key": key,
-        "user_id": uuid.UUID(obj["author"]),
+        "user_id": author_uuid,
         "workspace_id": workspace_id,
         "method": BOARD_METHOD,
         "state": "live",
