@@ -102,71 +102,97 @@ def inventory_storage(  # noqa: PLR0915 — linear measurement pass; order matte
         references = dict(rows)
         summary["observed_asset_rows"] = len(rows)
         check_time()
-        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-        root_fd = os.open(root, flags)
-        try:
-            root_device = os.fstat(root_fd).st_dev
 
-            def scan(directory_fd, shard=None):  # noqa: PLR0912, PLR0915 — linear measurement pass; order matters for the lock and timeout budget
-                with os.scandir(directory_fd) as entries:
+        def process_file(entry, info, shard):
+            if not stat.S_ISREG(info.st_mode):
+                issue("symlink_or_special_file")
+                return
+            summary["regular_file_entries"] += 1
+            identity = (info.st_dev, info.st_ino)
+            if identity in seen:
+                summary["hardlink_aliases"] += 1
+            else:
+                seen.add(identity)
+                summary["unique_files"] += 1
+                summary["apparent_bytes"] += info.st_size
+                allocated = getattr(info, "st_blocks", None)
+                summary["allocated_bytes"] += (
+                    allocated * 512 if allocated is not None else ((info.st_size + 511) // 512) * 512
+                )
+            match = re.fullmatch(r"([A-Za-z0-9_-]{20,80})(\.bin|\.preview\.png|\.tmp)", entry.name)
+            kind = "unexpected"
+            if match and shard == match[1][:2]:
+                key, suffix = match.groups()
+                if suffix == ".tmp":
+                    kind = "temporary"
+                elif key in references and (suffix == ".bin" or references[key]):
+                    kind = "referenced_original" if suffix == ".bin" else "referenced_preview"
+                else:
+                    kind = "unreferenced_candidate"
+            bucket = summary["classes"].setdefault(kind, {"entries": 0, "apparent_bytes": 0})
+            bucket["entries"] += 1
+            bucket["apparent_bytes"] += info.st_size
+
+        if hasattr(os, "O_DIRECTORY"):
+            flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)
+            root_fd = os.open(root, flags)
+            try:
+                root_device = os.fstat(root_fd).st_dev
+
+                def scan(directory_fd, shard=None):
+                    with os.scandir(directory_fd) as entries:
+                        for entry in entries:
+                            check_time()
+                            if summary["checked_entries"] >= max_entries:
+                                raise InventoryLimit()
+                            summary["checked_entries"] += 1
+                            try:
+                                info = entry.stat(follow_symlinks=False)
+                                if stat.S_ISDIR(info.st_mode):
+                                    if shard is not None or not re.fullmatch(r"[A-Za-z0-9_-]{2}", entry.name):
+                                        issue("unsupported_directory")
+                                        continue
+                                    child = os.open(entry.name, flags, dir_fd=directory_fd)
+                                    try:
+                                        opened = os.fstat(child)
+                                        if (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
+                                            issue("changed_directory")
+                                        elif opened.st_dev != root_device:
+                                            issue("different_filesystem")
+                                        else:
+                                            scan(child, entry.name)
+                                    finally:
+                                        os.close(child)
+                                    continue
+                                process_file(entry, info, shard)
+                            except OSError:
+                                issue("entry_unavailable")
+
+                scan(root_fd)
+            finally:
+                os.close(root_fd)
+        else:
+
+            def scan_win(directory_path, shard=None):
+                with os.scandir(directory_path) as entries:
                     for entry in entries:
                         check_time()
                         if summary["checked_entries"] >= max_entries:
                             raise InventoryLimit()
                         summary["checked_entries"] += 1
                         try:
-                            info = entry.stat(follow_symlinks=False)
+                            info = os.stat(entry.path, follow_symlinks=False)
                             if stat.S_ISDIR(info.st_mode):
                                 if shard is not None or not re.fullmatch(r"[A-Za-z0-9_-]{2}", entry.name):
                                     issue("unsupported_directory")
                                     continue
-                                child = os.open(entry.name, flags, dir_fd=directory_fd)
-                                try:
-                                    opened = os.fstat(child)
-                                    if (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
-                                        issue("changed_directory")
-                                    elif opened.st_dev != root_device:
-                                        issue("different_filesystem")
-                                    else:
-                                        scan(child, entry.name)
-                                finally:
-                                    os.close(child)
+                                scan_win(entry.path, entry.name)
                                 continue
-                            if not stat.S_ISREG(info.st_mode):
-                                issue("symlink_or_special_file")
-                                continue
-                            summary["regular_file_entries"] += 1
-                            identity = (info.st_dev, info.st_ino)
-                            # Aggregate physical totals count each inode once. Class totals
-                            # count directory entries, since aliases may cross classes.
-                            if identity in seen:
-                                summary["hardlink_aliases"] += 1
-                            else:
-                                seen.add(identity)
-                                summary["unique_files"] += 1
-                                summary["apparent_bytes"] += info.st_size
-                                summary["allocated_bytes"] += info.st_blocks * 512
-                            match = re.fullmatch(
-                                r"([A-Za-z0-9_-]{20,80})(\.bin|\.preview\.png|\.tmp)", entry.name
-                            )
-                            kind = "unexpected"
-                            if match and shard == match[1][:2]:
-                                key, suffix = match.groups()
-                                if suffix == ".tmp":
-                                    kind = "temporary"
-                                elif key in references and (suffix == ".bin" or references[key]):
-                                    kind = "referenced_original" if suffix == ".bin" else "referenced_preview"
-                                else:
-                                    kind = "unreferenced_candidate"
-                            bucket = summary["classes"].setdefault(kind, {"entries": 0, "apparent_bytes": 0})
-                            bucket["entries"] += 1
-                            bucket["apparent_bytes"] += info.st_size
+                            process_file(entry, info, shard)
                         except OSError:
                             issue("entry_unavailable")
 
-            scan(root_fd)
-        finally:
-            os.close(root_fd)
+            scan_win(root)
         status = "completed"
         summary["state"] = "observed" if not summary["issue_count"] else "partial"
     except InventoryLimit:

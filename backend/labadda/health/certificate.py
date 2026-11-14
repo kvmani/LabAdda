@@ -42,7 +42,7 @@ def read(directory: Path | None) -> Reading:
     if directory is None:
         return Reading("absent")
     try:
-        descriptor = os.open(directory / STATUS_FILENAME, os.O_RDONLY | os.O_NOFOLLOW)
+        descriptor = os.open(directory / STATUS_FILENAME, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     except FileNotFoundError:
         return Reading("absent")
     except OSError:

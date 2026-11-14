@@ -230,7 +230,7 @@ def check_labels(name: str, body: str, body_start: int, source: str) -> list[str
 def check_links(root: Path, page: Path, body: str, body_start: int) -> list[str]:
     """Return a problem for each link that does not reach another help page."""
     problems = []
-    name = str(page.relative_to(root))
+    name = page.relative_to(root).as_posix()
     for number, line in prose_lines(body, body_start):
         for target in LINK.findall(INLINE_CODE.sub("", line)):
             if not target.endswith(".md") or re.match(r"^([a-zA-Z][a-zA-Z0-9+.-]*:|/|#)", target):
@@ -280,7 +280,7 @@ def documented_codes(root: Path) -> dict[str, str]:
         for line in page.read_text(encoding="utf-8").splitlines():
             match = EVENT_CODES_LINE.match(line)
             for code in re.findall(r"`([^`]+)`", match.group(1)) if match else []:
-                found[code] = str(page.relative_to(root))
+                found[code] = page.relative_to(root).as_posix()
     return found
 
 
@@ -308,7 +308,7 @@ def run(root: Path, required: tuple[str, ...] = REQUIRED_PAGES, cover_routes: bo
     screens: set[str] = set()
     tools = operator_tools(root)
     for page in help_pages(root):
-        name = str(page.relative_to(root))
+        name = page.relative_to(root).as_posix()
         data, body, body_start = split_front_matter(page.read_text(encoding="utf-8"))
         screens.add((data or {}).get("screen", ""))
         problems += check_front_matter(name, data, routes)

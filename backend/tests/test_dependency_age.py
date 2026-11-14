@@ -102,6 +102,7 @@ def load_release():
 
 def test_release_build_stops_before_building_when_a_pin_is_too_new(tmp_path, monkeypatch):
     release = load_release()
+    monkeypatch.setattr(release.sys, "version_info", (3, 12, 0))
     monkeypatch.setattr(age, "main", lambda argv: 1)
     with pytest.raises(release.ReleaseError, match="too new"):
         release.build(tmp_path, tmp_path / "out", "0.0.1-beta")

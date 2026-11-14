@@ -176,7 +176,7 @@ def command_lines(body: str, body_start: int) -> list[tuple[int, str]]:
 
 def check_commands(page: Path, root: Path, body: str, body_start: int, tools: dict[str, Tool]) -> list[str]:
     """Return a problem for each quoted command or option that the supplied tools do not have (H4)."""
-    name = str(page.relative_to(root))
+    name = page.relative_to(root).as_posix()
     every_option = {option for tool in tools.values() for option in tool.options}
     for tool in tools.values():
         every_option |= {option for options in tool.commands.values() for option in options}

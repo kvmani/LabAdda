@@ -85,7 +85,8 @@ def reconcile_previews(  # noqa: PLR0912, PLR0915 — single ordered pass compar
         budget()
         if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
             raise UnsafeFile("unsafe_path")
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(path, flags)
         with os.fdopen(fd, "rb") as stream:
             before = os.fstat(stream.fileno())
             if not stat.S_ISREG(before.st_mode):

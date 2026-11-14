@@ -1,6 +1,7 @@
 """Metadata repair requires verified originals, exact legacy bytes and reviewed plans."""
 
 import hashlib
+import sys
 
 import pytest
 from sqlalchemy import func, select
@@ -131,7 +132,10 @@ def test_bounded_batches_are_explicit_and_completed_plan_cannot_repeat(as_user, 
 def test_symlinked_preview_is_never_trusted(as_user, db_factory, settings):
     _, original, preview = legacy(as_user, db_factory, settings)
     preview.unlink()
-    preview.symlink_to(original)
+    try:
+        preview.symlink_to(original)
+    except OSError:
+        pytest.skip("Symlink creation not permitted on this platform")
     result = run(db_factory, settings)
     assert result["summary"]["candidate_count"] == 0
     assert result["summary"]["issues"][0]["code"] == "unsafe_path"
@@ -166,6 +170,8 @@ def test_cursor_can_continue_past_an_unrepairable_batch(as_user, db_factory, set
 
 
 def test_growing_file_cannot_exceed_per_file_read_bound(as_user, db_factory, settings, monkeypatch):
+    if sys.platform == "win32":
+        pytest.skip("/proc/self/fd requires Linux procfs")
     _, original, _ = legacy(as_user, db_factory, settings)
     import os
 

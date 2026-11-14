@@ -1,7 +1,22 @@
 """Truthful partial measurement; neither reconciliation nor admission enforcement."""
 
 import os
+import shutil
 import uuid
+from types import SimpleNamespace
+
+if not hasattr(os, "statvfs"):
+
+    def _statvfs(path):
+        usage = shutil.disk_usage(path)
+        return SimpleNamespace(
+            f_bavail=usage.free,
+            f_frsize=1,
+            f_blocks=usage.total,
+            f_favail=None,
+        )
+
+    os.statvfs = _statvfs
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import case, func, select, text
@@ -72,7 +87,7 @@ def workspace_usage(
         raise Unauthenticated()
     policy.require_read(db, actor.user, workspace_id)
     try:
-        db.execute(text("set local statement_timeout = '2s'"))
+        db.execute(text("set local statement_timeout = '5s'"))
         result = workspace_observation(db, workspace_id)
         # Refresh identity/session and grants after measurement as well. A
         # slow read must not deliver counters under an already revoked grant.
@@ -104,7 +119,7 @@ def originals(db, user_id=None):
         pending = pending.where(UploadReservation.user_id == user_id)
     query = query.add_columns(pending.scalar_subquery())
     try:
-        db.execute(text("set local statement_timeout = '2s'"))
+        db.execute(text("set local statement_timeout = '5s'"))
         count, total, provisional, preview_bytes, unknown_previews, reserved = db.execute(query).one()
     except SQLAlchemyError as exc:
         db.rollback()
@@ -130,7 +145,7 @@ def originals(db, user_id=None):
 def logical_charges(db, user_id=None):
     """Versioned text/board logical charges (DL-07); separate from original-file bytes."""
     try:
-        db.execute(text("set local statement_timeout = '2s'"))
+        db.execute(text("set local statement_timeout = '5s'"))
         measured = charges.summary(db, user_id)
     except SQLAlchemyError as exc:
         db.rollback()
@@ -176,7 +191,7 @@ def database_physical(db) -> dict:
         "board_history": {"retained_operations": None, "snapshots": None},
     }
     try:
-        db.execute(text("set local statement_timeout = '2s'"))
+        db.execute(text("set local statement_timeout = '5s'"))
         sizes = dict(db.execute(DATABASE_SIZES, {"names": names}).all())
         total = int(db.scalar(text("select pg_database_size(current_database())")))
         retained = db.scalar(text("select count(*) from board_ops"))

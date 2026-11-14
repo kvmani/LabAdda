@@ -178,11 +178,12 @@ def write_status(directory: Path, status: BackupStatus) -> None:
     except BaseException:
         Path(temporary).unlink(missing_ok=True)
         raise
-    directory_descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(directory_descriptor)
-    finally:
-        os.close(directory_descriptor)
+    if hasattr(os, "O_DIRECTORY"):
+        directory_descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory_descriptor)
+        finally:
+            os.close(directory_descriptor)
 
 
 def read_status(directory: Path | None) -> StatusReading:  # noqa: PLR0911 — ordered guard clauses; each failure maps to one distinct state
@@ -190,7 +191,7 @@ def read_status(directory: Path | None) -> StatusReading:  # noqa: PLR0911 — o
     if directory is None:
         return StatusReading("unknown")
     try:
-        descriptor = os.open(directory / STATUS_FILENAME, os.O_RDONLY | os.O_NOFOLLOW)
+        descriptor = os.open(directory / STATUS_FILENAME, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     except FileNotFoundError:
         return StatusReading("unknown")
     except OSError:

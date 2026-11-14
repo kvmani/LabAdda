@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
+pytest.importorskip("fcntl")
+
 ROOT = Path(__file__).resolve().parents[2]
 # CLI modules share a directory at runtime; make that explicit for importlib tests.
 sys.path.insert(0, str(ROOT / "scripts"))

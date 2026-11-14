@@ -4,10 +4,14 @@ import hashlib
 import importlib.util
 import io
 import json
+import sys
 import tarfile
 from pathlib import Path
 
 import pytest
+
+if sys.platform == "win32":
+    pytest.skip("Linux release bundle requires Linux host", allow_module_level=True)
 
 spec = importlib.util.spec_from_file_location(
     "release", Path(__file__).resolve().parents[2] / "scripts/release.py"
@@ -189,7 +193,10 @@ def test_preflight_checks_survive_optimization(tmp_path, monkeypatch):
     import sys
 
     target = installed(tmp_path, "candidate")
-    (target / "venv").symlink_to(sys.prefix, target_is_directory=True)
+    try:
+        (target / "venv").symlink_to(sys.prefix, target_is_directory=True)
+    except OSError:
+        pytest.skip("Symlink creation not permitted on this platform")
     real_run = release.subprocess.run
 
     def optimized_run(command, **kwargs):
@@ -209,7 +216,10 @@ def test_preflight_checks_survive_optimization(tmp_path, monkeypatch):
 def test_activation_temporary_link_does_not_clobber_other_operation(tmp_path, monkeypatch):
     installed(tmp_path, "candidate")
     other = tmp_path / ".current-next-other"
-    other.symlink_to("other-release")
+    try:
+        other.symlink_to("other-release")
+    except OSError:
+        pytest.skip("Symlink creation not permitted on this platform")
     release.switch(tmp_path, "candidate", "0005")
     assert other.is_symlink()
 

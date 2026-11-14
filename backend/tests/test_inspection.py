@@ -40,7 +40,10 @@ def test_mismatches_are_reported_never_repaired(as_user, settings, db_factory, m
         path.write_bytes(b"x" * len(data))
     else:
         path.unlink()
-        path.symlink_to("/etc/passwd")
+        try:
+            path.symlink_to("/etc/passwd")
+        except OSError:
+            pytest.skip("Symlink creation not permitted on this platform")
     result = inspect_storage(db_factory, settings.asset_dir)
     assert result["summary"]["issue_count"] == 1
     assert result["summary"]["issues"][0]["code"] == code

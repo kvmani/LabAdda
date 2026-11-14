@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from labadda.recovery import RecoveryError, copy_assets, inventory, verify_bundle, write_manifest
@@ -16,8 +18,9 @@ def bundle(tmp_path):
 def test_bundle_integrity_and_permissions(tmp_path):
     root = bundle(tmp_path)
     assert verify_bundle(root)["schema"] == "0005"
-    assert root.stat().st_mode & 0o777 == 0o700
-    assert (root / "database.dump").stat().st_mode & 0o777 == 0o600
+    if hasattr(os, "O_DIRECTORY"):
+        assert root.stat().st_mode & 0o777 == 0o700
+        assert (root / "database.dump").stat().st_mode & 0o777 == 0o600
 
 
 @pytest.mark.parametrize("mutation", ["alter", "missing", "extra", "link"])
@@ -32,7 +35,10 @@ def test_payload_changes_refused(tmp_path, mutation):
         (root / "extra").write_text("unexpected")
     else:
         path.unlink()
-        path.symlink_to("/etc/passwd")
+        try:
+            path.symlink_to("/etc/passwd")
+        except OSError:
+            pytest.skip("Symlink creation not permitted on this platform")
     with pytest.raises(RecoveryError):
         verify_bundle(root)
 
@@ -45,7 +51,10 @@ def test_copy_preserves_nested_asset_hashes(tmp_path):
 
 
 def test_symlink_directory_refused(tmp_path):
-    (tmp_path / "link").symlink_to("/tmp", target_is_directory=True)
+    try:
+        (tmp_path / "link").symlink_to("/tmp", target_is_directory=True)
+    except OSError:
+        pytest.skip("Symlink creation not permitted on this platform")
     with pytest.raises(RecoveryError):
         inventory(tmp_path)
 

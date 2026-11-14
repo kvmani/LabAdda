@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,7 +14,11 @@ from .policy import Access
 
 
 def iso(value: datetime | None) -> str | None:
-    return value.isoformat() if value else None
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        return value.astimezone(UTC).isoformat()
+    return value.isoformat()
 
 
 def user_brief(user: User | None) -> dict | None:

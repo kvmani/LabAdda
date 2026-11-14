@@ -65,7 +65,8 @@ def test_written_file_holds_only_documented_fields_and_no_paths(tmp_path):
 
     assert set(record) == bs.FIELDS
     assert str(tmp_path) not in json.dumps(record)
-    assert (tmp_path / bs.STATUS_FILENAME).stat().st_mode & 0o777 == 0o644
+    if hasattr(os, "O_DIRECTORY"):
+        assert (tmp_path / bs.STATUS_FILENAME).stat().st_mode & 0o777 == 0o644
 
 
 def test_missing_file_reads_as_unknown(tmp_path):
@@ -141,7 +142,10 @@ def test_symlinked_status_file_is_rejected(tmp_path):
     target.write_bytes(bs.encode(success()))
     directory = tmp_path / "status"
     directory.mkdir()
-    (directory / bs.STATUS_FILENAME).symlink_to(target)
+    try:
+        (directory / bs.STATUS_FILENAME).symlink_to(target)
+    except OSError:
+        pytest.skip("Symlink creation not permitted on this platform")
 
     assert bs.read_status(directory).state == "invalid"
 
@@ -201,4 +205,5 @@ def test_directory_fsync_is_attempted(tmp_path):
     with patch.object(bs.os, "fsync", side_effect=recording):
         bs.write_status(Path(tmp_path), success())
 
-    assert len(seen) == 2
+    expected = 2 if hasattr(os, "O_DIRECTORY") else 1
+    assert len(seen) == expected

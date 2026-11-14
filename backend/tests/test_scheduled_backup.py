@@ -10,6 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
+pytest.importorskip("fcntl")
+
 from labadda import backup_status
 from tests.test_lifecycle import configured, life  # noqa: F401 — the shared site fixture, used below
 

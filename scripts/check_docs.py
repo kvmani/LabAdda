@@ -102,7 +102,7 @@ def check_links(root: Path, files: list[Path]) -> list[str]:
                     continue
                 file_part, _, anchor = target.partition("#")
                 destination = (source.parent / file_part).resolve() if file_part else source
-                where = f"{source.relative_to(root)}:{number}"
+                where = f"{source.relative_to(root).as_posix()}:{number}"
                 if not destination.exists():
                     problems.append(f"{where}: link target does not exist: {target}")
                     continue

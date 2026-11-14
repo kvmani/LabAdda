@@ -143,11 +143,12 @@ def sync_tree(root: Path) -> None:
         for name in files:
             with (Path(directory) / name).open("rb") as stream:
                 os.fsync(stream.fileno())
-        fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        if hasattr(os, "O_DIRECTORY"):
+            fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
 
 
 def backup(
@@ -205,11 +206,12 @@ def backup(
                 verify_bundle(stage)
                 sync_tree(stage)
                 os.rename(stage, destination)
-            fd = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY)
-            try:
-                os.fsync(fd)
-            finally:
-                os.close(fd)
+            if hasattr(os, "O_DIRECTORY"):
+                fd = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
         return file_hash(destination / "manifest.json")
     finally:
         engine.dispose()
@@ -308,11 +310,12 @@ def restore(  # noqa: PLR0912, PLR0915 — ordered recovery steps whose sequence
                             pause_restored_jobs(conn)
                         sync_tree(staged_assets)
                         os.rename(staged_assets, assets)
-                        fd = os.open(assets.parent, os.O_RDONLY | os.O_DIRECTORY)
-                        try:
-                            os.fsync(fd)
-                        finally:
-                            os.close(fd)
+                        if hasattr(os, "O_DIRECTORY"):
+                            fd = os.open(assets.parent, os.O_RDONLY | os.O_DIRECTORY)
+                            try:
+                                os.fsync(fd)
+                            finally:
+                                os.close(fd)
                     finally:
                         guard.execute(text("select pg_advisory_unlock(hashtext('labadda_restore'))"))
         return {

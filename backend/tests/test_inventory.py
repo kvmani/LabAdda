@@ -49,11 +49,15 @@ def test_hardlinks_count_once_in_physical_total(settings, db_factory, ids):
     s = inventory_storage(db_factory, settings.asset_dir)["summary"]
     assert s["unique_files"] == 1 and s["hardlink_aliases"] == 1
     assert s["apparent_bytes"] == 7
-    assert s["allocated_bytes"] == first.stat().st_blocks * 512
+    allocated = getattr(first.stat(), "st_blocks", None)
+    expected_allocated = allocated * 512 if allocated is not None else ((7 + 511) // 512) * 512
+    assert s["allocated_bytes"] == expected_allocated
     assert s["classes"]["unexpected"] == {"entries": 2, "apparent_bytes": 14}
 
 
 def test_symlinks_special_and_nested_directories_are_not_followed(settings, db_factory, ids, tmp_path):
+    if not hasattr(os, "mkfifo"):
+        pytest.skip("POSIX fifo and directory symlink semantics required")
     root = settings.asset_dir
     root.mkdir()
     outside = tmp_path / "outside"
@@ -73,7 +77,10 @@ def test_symlinks_special_and_nested_directories_are_not_followed(settings, db_f
 
 def test_root_symlink_and_missing_root_fail(settings, db_factory, ids, tmp_path):
     assert inventory_storage(db_factory, settings.asset_dir)["status"] == "failed"
-    settings.asset_dir.symlink_to(tmp_path, target_is_directory=True)
+    try:
+        settings.asset_dir.symlink_to(tmp_path, target_is_directory=True)
+    except OSError:
+        pytest.skip("Symlink creation not permitted on this platform")
     assert inventory_storage(db_factory, settings.asset_dir)["status"] == "failed"
 
 
@@ -129,6 +136,8 @@ def test_cli_receipt_and_nonzero_for_incomplete(settings, db_factory, ids, monke
 
 
 def test_shard_replacement_during_open_is_not_traversed(settings, db_factory, ids, tmp_path, monkeypatch):
+    if not hasattr(os, "O_DIRECTORY"):
+        pytest.skip("O_DIRECTORY shard replacement check is POSIX-specific")
     from labadda import inventory
 
     root = settings.asset_dir
