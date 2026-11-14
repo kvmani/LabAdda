@@ -53,8 +53,12 @@ COLORS = {
     "#ffccbc",
     "#e1bee7",
     "#ffe082",
+    "#00838f",
+    "#d81b60",
+    "#757575",
 }
 STICKY_SHAPES = {"rectangle", "circle", "hexagon", "diamond", "cloud", "star"}
+STICKY_SIZES = {"small", "medium", "large"}
 PNG_HEADERS = {
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
@@ -126,6 +130,25 @@ def _num(v, lo=-1e6, hi=1e6) -> float:
     return float(v)
 
 
+def _validate_sticky_or_text(kind: str, data: dict, color: str) -> dict:
+    text = data.get("text")
+    if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
+        raise Invalid("invalid_board_op", "Text must be 1-1000 characters.")
+    item_data = {"x": _num(data.get("x")), "y": _num(data.get("y")), "text": text, "color": color}
+    if kind == "sticky":
+        if "shape" in data:
+            shape = data["shape"]
+            if shape not in STICKY_SHAPES:
+                raise Invalid("invalid_board_op", "Unsupported sticky shape.")
+            item_data["shape"] = shape
+        if "size" in data:
+            size = data["size"]
+            if size not in STICKY_SIZES:
+                raise Invalid("invalid_board_op", "Unsupported sticky size.")
+            item_data["size"] = size
+    return {"kind": kind, "data": item_data}
+
+
 def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: dict) -> dict:
     kind = payload.get("kind")
     data = payload.get("data") or {}
@@ -163,19 +186,7 @@ def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: d
         width = _num(data.get("width", 3), 1, 64)
         return {"kind": kind, "data": {"points": points, "color": color, "width": width}}
     if kind in ("text", "sticky"):
-        text = data.get("text")
-        if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
-            raise Invalid("invalid_board_op", "Text must be 1-1000 characters.")
-        item_data = {"x": _num(data.get("x")), "y": _num(data.get("y")), "text": text, "color": color}
-        if kind == "sticky" and "shape" in data:
-            shape = data["shape"]
-            if shape not in STICKY_SHAPES:
-                raise Invalid("invalid_board_op", "Unsupported sticky shape.")
-            item_data["shape"] = shape
-        return {
-            "kind": kind,
-            "data": item_data,
-        }
+        return _validate_sticky_or_text(kind, data, color)
     raise Invalid("invalid_board_op", "Unknown board object kind.")
 
 

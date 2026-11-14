@@ -276,18 +276,19 @@ def compact_all(db: Session, threshold: int, keep: int) -> int:
     return compacted
 
 
-def sticky_dimensions(shape: str = "rectangle") -> tuple[int, int]:
-    if shape == "circle":
-        return 150, 150
-    if shape == "hexagon":
-        return 160, 140
-    if shape == "diamond":
-        return 150, 150
-    if shape == "cloud":
-        return 180, 130
-    if shape == "star":
-        return 160, 160
-    return 180, 120
+def sticky_dimensions(shape: str = "rectangle", size: str = "medium") -> tuple[int, int]:
+    if shape in ("circle", "diamond"):
+        bw, bh = 150, 150
+    elif shape == "hexagon":
+        bw, bh = 160, 140
+    elif shape == "cloud":
+        bw, bh = 180, 130
+    elif shape == "star":
+        bw, bh = 160, 160
+    else:
+        bw, bh = 180, 120
+    scale = 0.75 if size == "small" else 1.4 if size == "large" else 1.0
+    return int(bw * scale), int(bh * scale)
 
 
 def bounds(o: dict) -> tuple[float, float, float, float]:
@@ -301,7 +302,7 @@ def bounds(o: dict) -> tuple[float, float, float, float]:
     if o["kind"] == "image":
         return d["x"] + dx, d["y"] + dy, d["x"] + dx + d["w"], d["y"] + dy + d["h"]
     if o["kind"] == "sticky":
-        w, h = sticky_dimensions(d.get("shape", "rectangle"))
+        w, h = sticky_dimensions(d.get("shape", "rectangle"), d.get("size", "medium"))
         return d["x"] + dx, d["y"] + dy, d["x"] + dx + w, d["y"] + dy + h
     return d["x"] + dx, d["y"] + dy, d["x"] + dx + max(40, len(d["text"]) * 9), d["y"] + dy + 24
 
@@ -312,7 +313,8 @@ def _hex(color: str) -> tuple[int, int, int]:
 
 def _draw_sticky(draw, font, scale: float, a: tuple[float, float], d: dict) -> None:
     shape = d.get("shape", "rectangle")
-    w, h = sticky_dimensions(shape)
+    size = d.get("size", "medium")
+    w, h = sticky_dimensions(shape, size)
     b = (a[0] + w * scale, a[1] + h * scale)
     col = _hex(d["color"])
     outline_col = (180, 180, 180)
@@ -320,22 +322,41 @@ def _draw_sticky(draw, font, scale: float, a: tuple[float, float], d: dict) -> N
         draw.ellipse([a, b], fill=col, outline=outline_col)
     elif shape == "hexagon":
         pts = [
-            (a[0] + 40 * scale, a[1]),
-            (a[0] + 120 * scale, a[1]),
-            (a[0] + 160 * scale, a[1] + 70 * scale),
-            (a[0] + 120 * scale, a[1] + 140 * scale),
-            (a[0] + 40 * scale, a[1] + 140 * scale),
-            (a[0], a[1] + 70 * scale),
+            (a[0] + 0.25 * w * scale, a[1]),
+            (a[0] + 0.75 * w * scale, a[1]),
+            (a[0] + w * scale, a[1] + 0.5 * h * scale),
+            (a[0] + 0.75 * w * scale, a[1] + h * scale),
+            (a[0] + 0.25 * w * scale, a[1] + h * scale),
+            (a[0], a[1] + 0.5 * h * scale),
         ]
         draw.polygon(pts, fill=col, outline=outline_col)
     elif shape == "diamond":
         pts = [
-            (a[0] + 75 * scale, a[1]),
-            (a[0] + 150 * scale, a[1] + 75 * scale),
-            (a[0] + 75 * scale, a[1] + 150 * scale),
-            (a[0], a[1] + 75 * scale),
+            (a[0] + 0.5 * w * scale, a[1]),
+            (a[0] + w * scale, a[1] + 0.5 * h * scale),
+            (a[0] + 0.5 * w * scale, a[1] + h * scale),
+            (a[0], a[1] + 0.5 * h * scale),
         ]
         draw.polygon(pts, fill=col, outline=outline_col)
+    elif shape == "cloud":
+        draw.rounded_rectangle([a, b], radius=int(16 * scale), fill=col, outline=outline_col)
+    elif shape == "star":
+        draw.polygon(
+            [
+                (a[0] + 0.5 * w * scale, a[1]),
+                (a[0] + 0.62 * w * scale, a[1] + 0.35 * h * scale),
+                (a[0] + w * scale, a[1] + 0.38 * h * scale),
+                (a[0] + 0.72 * w * scale, a[1] + 0.62 * h * scale),
+                (a[0] + 0.81 * w * scale, a[1] + h * scale),
+                (a[0] + 0.5 * w * scale, a[1] + 0.78 * h * scale),
+                (a[0] + 0.19 * w * scale, a[1] + h * scale),
+                (a[0] + 0.28 * w * scale, a[1] + 0.62 * h * scale),
+                (a[0], a[1] + 0.38 * h * scale),
+                (a[0] + 0.38 * w * scale, a[1] + 0.35 * h * scale),
+            ],
+            fill=col,
+            outline=outline_col,
+        )
     else:
         draw.rectangle([a, b], fill=col, outline=outline_col)
     draw.multiline_text((a[0] + 10 * scale, a[1] + 6 * scale), d["text"], fill=(31, 41, 51), font=font)

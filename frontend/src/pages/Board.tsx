@@ -2,16 +2,32 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorCode, errorMessage, newId, outcomeUnknown } from "../api";
 import { API, BASE } from "../config";
 import { realtime, type StrokePreview } from "../realtime";
-import type { BoardObjectContent, BoardOp, BoardOpPayload, Point, StickyShape, Workspace } from "../types";
+import type { BoardObjectContent, BoardOp, BoardOpPayload, NoteData, Point, Workspace } from "../types";
 import { PublishSnapshot } from "../components/PublishSnapshot";
 import { ConversationTask } from "../components/ConversationTask";
 import { Button, Card, Dialog } from "../ui";
+import {
+  STICKY_SHAPES,
+  STICKY_SIZES,
+  STICKY_COLORS,
+  PEN_COLORS,
+  getStickyDimensions,
+  drawStickyCanvas,
+  generateShapePoints,
+  StickyEditDialog,
+  TextEditDialog,
+  type StickyShape,
+  type StickySize,
+  type DrawMode,
+  type StickyConfig,
+} from "../features/whiteboard";
 import "./board-chrome.css";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 import type { UploadedAsset } from "../uploads";
 
 type Obj = BoardObjectContent & {
   author: string;
+  created_at?: string;
   alive: boolean;
   rev: number;
   dx: number;
@@ -28,7 +44,7 @@ type BoardState = {
   can_write: boolean;
   can_moderate: boolean;
 };
-type Tool = "pen" | "eraser" | "text" | "sticky" | "image" | "snapshot" | "pan";
+type Tool = "select" | "pen" | "eraser" | "text" | "sticky" | "image" | "snapshot" | "pan";
 export type Region = { x: number; y: number; w: number; h: number };
 type SaveState = "Saved" | "Saving…" | "Reconnecting…" | "Conflict — reloaded" | "Read-only";
 type PendingOp = {
@@ -40,25 +56,10 @@ type PendingOp = {
   base_revision?: number;
 };
 
-const PEN_COLORS = ["#1f2933", "#c62828", "#1565c0", "#2e7d32", "#ef6c00", "#6a1b9a"] as const;
-const STICKY_COLORS = ["#fff59d", "#b3e5fc", "#c8e6c9", "#ffccbc", "#e1bee7", "#ffe082"] as const;
+export { STICKY_SHAPES };
 
-export const STICKY_SHAPES: { id: StickyShape; label: string; icon: string }[] = [
-  { id: "rectangle", label: "Note", icon: "▭" },
-  { id: "circle", label: "Circle", icon: "◯" },
-  { id: "hexagon", label: "Hexagon", icon: "⬡" },
-  { id: "diamond", label: "Diamond", icon: "◇" },
-  { id: "cloud", label: "Cloud", icon: "☁" },
-  { id: "star", label: "Star", icon: "★" },
-];
-
-export function stickyDimensions(shape?: string): [number, number] {
-  if (shape === "circle") return [150, 150];
-  if (shape === "hexagon") return [160, 140];
-  if (shape === "diamond") return [150, 150];
-  if (shape === "cloud") return [180, 130];
-  if (shape === "star") return [160, 160];
-  return [180, 120];
+export function stickyDimensions(shape?: string, size?: string): [number, number] {
+  return getStickyDimensions(shape as StickyShape, size as StickySize);
 }
 
 export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<string, Obj> {
@@ -75,6 +76,7 @@ export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<str
       objects.set(op.object_id, {
         ...content,
         author: op.payload.author ?? op.actor_id,
+        created_at: op.created_at,
         alive: true,
         rev: op.revision,
         dx: 0,
@@ -116,7 +118,7 @@ function bounds(o: Obj): [number, number, number, number] {
   let w = 180;
   let h = 120;
   if (o.kind === "sticky") {
-    [w, h] = stickyDimensions(o.data.shape);
+    [w, h] = getStickyDimensions(o.data.shape, o.data.size);
   } else {
     w = Math.max(40, o.data.text.length * 9);
     h = 24;
@@ -161,9 +163,43 @@ export function Board({
   const images = useRef(new Map<string, HTMLImageElement>());
   const [epoch, setEpoch] = useState(1);
   const [tool, setTool] = useState<Tool>("pen");
+  const [drawMode, setDrawMode] = useState<DrawMode>("pen");
   const [color, setColor] = useState<string>(PEN_COLORS[0]);
   const [stickyShape, setStickyShape] = useState<StickyShape>("rectangle");
+  const [stickySize, setStickySize] = useState<StickySize>("medium");
   const [stickyColor, setStickyColor] = useState<string>(STICKY_COLORS[0]);
+  const [editingSticky, setEditingSticky] = useState<{
+    id: string;
+    obj: Obj & { kind: "sticky"; data: NoteData };
+    config: StickyConfig;
+  } | null>(null);
+  const [creatingStickyAt, setCreatingStickyAt] = useState<Point | null>(null);
+  const [editingText, setEditingText] = useState<{
+    id: string;
+    obj: Obj & { kind: "text"; data: NoteData };
+    text: string;
+    color: string;
+  } | null>(null);
+  const [creatingTextAt, setCreatingTextAt] = useState<Point | null>(null);
+  const [hoverTooltip, setHoverTooltip] = useState<{
+    x: number;
+    y: number;
+    author: string;
+    time: string;
+    kind: string;
+  } | null>(null);
+  const [members, setMembers] = useState<Map<string, string>>(new Map());
+  const shapeDrawing = useRef<{ id: string; start: Point; points: Point[] } | null>(null);
+
+  useEffect(() => {
+    api<{ id: string; display_name: string }[]>(`/workspaces/${ws.id}/members`)
+      .then((list) => {
+        const map = new Map<string, string>();
+        list.forEach((m) => map.set(m.id, m.display_name));
+        setMembers(map);
+      })
+      .catch(() => undefined);
+  }, [ws.id]);
   const [save, setSave] = useState<SaveState>(ws.can_write ? "Saved" : "Read-only");
   const [message, setMessage] = useState<string | null>(null);
   const uploads = useUploadQueue(maxUploadBytes, (asset) => {
@@ -335,77 +371,8 @@ export function Board({
           y = o.data.y + o.dy;
         if (o.kind === "sticky") {
           const shape = o.data.shape ?? "rectangle";
-          const [w, h] = stickyDimensions(shape);
-          ctx.fillStyle = o.data.color;
-          ctx.strokeStyle = "#00000033";
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          if (shape === "circle") {
-            const r = w / 2;
-            ctx.arc(x + r, y + r, r, 0, Math.PI * 2);
-          } else if (shape === "hexagon") {
-            const inset = 35;
-            ctx.moveTo(x + inset, y);
-            ctx.lineTo(x + w - inset, y);
-            ctx.lineTo(x + w, y + h / 2);
-            ctx.lineTo(x + w - inset, y + h);
-            ctx.lineTo(x + inset, y + h);
-            ctx.lineTo(x, y + h / 2);
-            ctx.closePath();
-          } else if (shape === "diamond") {
-            ctx.moveTo(x + w / 2, y);
-            ctx.lineTo(x + w, y + h / 2);
-            ctx.lineTo(x + w / 2, y + h);
-            ctx.lineTo(x, y + h / 2);
-            ctx.closePath();
-          } else if (shape === "cloud") {
-            ctx.arc(x + 45, y + 65, 30, Math.PI * 0.5, Math.PI * 1.5);
-            ctx.arc(x + 75, y + 40, 32, Math.PI * 1.0, Math.PI * 1.85);
-            ctx.arc(x + 115, y + 40, 28, Math.PI * 1.25, Math.PI * 2.05);
-            ctx.arc(x + 145, y + 65, 28, Math.PI * 1.55, Math.PI * 0.5);
-            ctx.arc(x + 90, y + 105, 35, 0, Math.PI);
-            ctx.closePath();
-          } else if (shape === "star") {
-            const cx = x + w / 2,
-              cy = y + h / 2;
-            const outerR = w / 2 - 4,
-              innerR = outerR * 0.46;
-            for (let s = 0; s < 10; s++) {
-              const r = s % 2 === 0 ? outerR : innerR;
-              const angle = (s * Math.PI) / 5 - Math.PI / 2;
-              const px = cx + Math.cos(angle) * r;
-              const py = cy + Math.sin(angle) * r;
-              if (s === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-          } else {
-            const roundRect = (
-              ctx as unknown as {
-                roundRect?: (x: number, y: number, w: number, h: number, r: number) => void;
-              }
-            ).roundRect;
-            if (typeof roundRect === "function") {
-              roundRect.call(ctx, x, y, w, h, 8);
-            } else {
-              ctx.rect(x, y, w, h);
-            }
-          }
-          ctx.fill();
-          ctx.stroke();
-
-          ctx.fillStyle = "#1f2933";
-          ctx.font = shape === "star" ? "13px system-ui, sans-serif" : "15px system-ui, sans-serif";
-          const lines = o.data.text.split("\n");
-          if (shape === "rectangle") {
-            ctx.textAlign = "left";
-            lines.forEach((t: string, i: number) => ctx.fillText(t, x + 12, y + 26 + i * 20, w - 24));
-          } else {
-            ctx.textAlign = "center";
-            const startY = y + h / 2 - (lines.length - 1) * 10;
-            lines.forEach((t: string, i: number) => ctx.fillText(t, x + w / 2, startY + i * 20, w - 36));
-            ctx.textAlign = "left";
-          }
+          const [w, h] = getStickyDimensions(shape, o.data.size);
+          drawStickyCanvas(ctx, x, y, w, h, shape, o.data.color, o.data.text);
         } else {
           ctx.fillStyle = o.data.color;
           ctx.font = "16px system-ui, sans-serif";
@@ -414,6 +381,9 @@ export function Board({
           lines.forEach((t: string, i: number) => ctx.fillText(t, x, y + 20 + i * 20));
         }
       }
+    }
+    if (shapeDrawing.current) {
+      line(shapeDrawing.current.points, color, 3);
     }
     for (const p of previews.current.values()) line(p.points, p.color ?? "#999", 3);
     if (drawing.current) line(drawing.current.points, color, 3);
@@ -445,33 +415,62 @@ export function Board({
     }
     if (!ws.can_write) return;
     if (tool === "image") return;
-    if (tool === "pen") {
+    if (tool === "select" || tool === "sticky" || tool === "text") {
+      const target = [...objects.entries()]
+        .reverse()
+        .find(([, o]) => o.alive && hit(o, x, y, 6 / view.scale));
+      if (target) {
+        const [targetId, targetObj] = target;
+        if (targetObj.kind === "sticky") {
+          setEditingSticky({
+            id: targetId,
+            obj: targetObj as Obj & { kind: "sticky"; data: NoteData },
+            config: {
+              text: targetObj.data.text,
+              shape: targetObj.data.shape ?? "rectangle",
+              size: targetObj.data.size ?? "medium",
+              color: targetObj.data.color,
+            },
+          });
+          return;
+        }
+        if (targetObj.kind === "text") {
+          setEditingText({
+            id: targetId,
+            obj: targetObj as Obj & { kind: "text"; data: NoteData },
+            text: targetObj.data.text,
+            color: targetObj.data.color,
+          });
+          return;
+        }
+      }
+      if (tool === "sticky") {
+        setCreatingStickyAt([x, y]);
+        return;
+      }
+      if (tool === "text") {
+        setCreatingTextAt([x, y]);
+        return;
+      }
+    } else if (tool === "pen") {
       (e.target as Element).setPointerCapture(e.pointerId);
-      drawing.current = { id: newId("s"), points: [[x, y]], last: 0 };
+      if (["line", "arrow", "rect", "circle"].includes(drawMode)) {
+        shapeDrawing.current = {
+          id: newId("s"),
+          start: [x, y],
+          points: [
+            [x, y],
+            [x, y],
+          ],
+        };
+      } else {
+        drawing.current = { id: newId("s"), points: [[x, y]], last: 0 };
+      }
     } else if (tool === "eraser") {
       const target = [...objects.entries()]
         .reverse()
         .find(([, o]) => o.alive && hit(o, x, y, 8 / view.scale));
       if (target) submit({ type: "erase", object_id: target[0] });
-    } else {
-      const isSticky = tool === "sticky";
-      const shapeLabel = STICKY_SHAPES.find((s) => s.id === stickyShape)?.label ?? stickyShape;
-      const text = window.prompt(isSticky ? `Sticky note (${shapeLabel}) text` : "Text");
-      if (text && text.trim())
-        submit({
-          type: "add",
-          object_id: newId(tool[0]),
-          payload: {
-            kind: tool,
-            data: {
-              x,
-              y,
-              text: text.slice(0, 1000),
-              color: isSticky ? stickyColor : color,
-              shape: isSticky ? stickyShape : undefined,
-            },
-          },
-        });
     }
   }
 
@@ -491,22 +490,67 @@ export function Board({
       });
       return;
     }
-    const d = drawing.current;
-    if (!d) return;
-    const [x, y] = toWorld(e);
-    d.points.push([Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
-    if (d.points.length > 3900) return onUp();
-    const now = performance.now();
-    if (now - d.last > 60) {
-      d.last = now;
-      realtime.send({
-        type: "board.preview",
-        workspace_id: ws.id,
-        preview_id: d.id,
-        stroke: { points: d.points.slice(-400), color },
-      });
+    if (shapeDrawing.current) {
+      const [x, y] = toWorld(e);
+      shapeDrawing.current.points = generateShapePoints(drawMode, shapeDrawing.current.start, [x, y]);
+      force((n) => n + 1);
+      return;
     }
-    force((n) => n + 1);
+    const d = drawing.current;
+    if (d) {
+      const [x, y] = toWorld(e);
+      d.points.push([Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
+      if (d.points.length > 3900) return onUp();
+      const now = performance.now();
+      if (now - d.last > 60) {
+        d.last = now;
+        realtime.send({
+          type: "board.preview",
+          workspace_id: ws.id,
+          preview_id: d.id,
+          stroke: { points: d.points.slice(-400), color },
+        });
+      }
+      force((n) => n + 1);
+      return;
+    }
+
+    const [wx, wy] = toWorld(e);
+    const hitObj = [...objects.entries()]
+      .reverse()
+      .find(([, o]) => o.alive && hit(o, wx, wy, 6 / view.scale));
+    if (hitObj) {
+      const [, o] = hitObj;
+      const authorName =
+        o.author === userId
+          ? "You"
+          : (members.get(o.author) ?? presence.find((p) => p.id === o.author)?.display_name ?? "Team member");
+      const timeStr = o.created_at
+        ? new Date(o.created_at).toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "Saved revision";
+      const kindLabel =
+        o.kind === "sticky"
+          ? `${(o.data.shape ?? "Rectangle").toUpperCase()} note (${o.data.size ?? "medium"})`
+          : o.kind === "stroke"
+            ? "Drawing stroke"
+            : o.kind === "text"
+              ? "Text label"
+              : "Image";
+      setHoverTooltip({
+        x: e.clientX + 14,
+        y: e.clientY + 14,
+        author: authorName,
+        time: timeStr,
+        kind: kindLabel,
+      });
+    } else {
+      setHoverTooltip(null);
+    }
   }
 
   function onUp() {
@@ -516,14 +560,27 @@ export function Board({
       setSelection((sel) => (sel && sel.w > 4 && sel.h > 4 ? sel : null));
       return;
     }
+    if (shapeDrawing.current) {
+      const sd = shapeDrawing.current;
+      shapeDrawing.current = null;
+      if (sd.points.length >= 2) {
+        submit({
+          type: "add",
+          object_id: sd.id,
+          payload: { kind: "stroke", data: { points: sd.points, color, width: 3 } },
+        });
+      }
+      return;
+    }
     const d = drawing.current;
     drawing.current = null;
     if (!d) return;
+    const strokeW = drawMode === "pencil" ? 1.5 : drawMode === "brush" ? 8 : 3;
     realtime.send({ type: "board.preview", workspace_id: ws.id, preview_id: d.id, done: true });
     submit({
       type: "add",
       object_id: d.id,
-      payload: { kind: "stroke", data: { points: d.points, color, width: 3 } },
+      payload: { kind: "stroke", data: { points: d.points, color, width: strokeW } },
     });
   }
 
@@ -642,7 +699,7 @@ export function Board({
           )}
         </Dialog>
         <div className="toolbar" role="toolbar" aria-label="Drawing tools">
-          {(["pen", "eraser", "text", "sticky", "pan"] as Tool[]).map((t) => (
+          {(["select", "pen", "eraser", "text", "sticky", "pan"] as Tool[]).map((t) => (
             <button
               key={t}
               className={"tool" + (tool === t ? " active" : "")}
@@ -650,17 +707,45 @@ export function Board({
               onClick={() => setTool(t)}
               disabled={!ws.can_write && t !== "pan"}
             >
-              {t === "pen"
-                ? "✏️ Pen"
-                : t === "eraser"
-                  ? "🧽 Eraser"
-                  : t === "text"
-                    ? "🔤 Text"
-                    : t === "sticky"
-                      ? "🗒 Sticky"
-                      : "✋ Pan"}
+              {t === "select"
+                ? "↖ Select"
+                : t === "pen"
+                  ? "✏️ Draw"
+                  : t === "eraser"
+                    ? "🧽 Eraser"
+                    : t === "text"
+                      ? "🔤 Text"
+                      : t === "sticky"
+                        ? "🗒 Sticky"
+                        : "✋ Pan"}
             </button>
           ))}
+          {tool === "pen" && (
+            <span className="tool-group" role="radiogroup" aria-label="Drawing tools">
+              {(
+                [
+                  { id: "pen", label: "Pen", icon: "✏️" },
+                  { id: "pencil", label: "Pencil", icon: "✎" },
+                  { id: "brush", label: "Marker", icon: "🖌️" },
+                  { id: "line", label: "Line", icon: "╱" },
+                  { id: "arrow", label: "Arrow", icon: "→" },
+                  { id: "rect", label: "Box", icon: "▭" },
+                  { id: "circle", label: "Circle", icon: "◯" },
+                ] as { id: DrawMode; label: string; icon: string }[]
+              ).map((m) => (
+                <button
+                  key={m.id}
+                  role="radio"
+                  aria-checked={drawMode === m.id}
+                  className={"tool tool--sub" + (drawMode === m.id ? " active" : "")}
+                  onClick={() => setDrawMode(m.id)}
+                  title={m.label}
+                >
+                  {m.icon} {m.label}
+                </button>
+              ))}
+            </span>
+          )}
           {!panel && (
             <>
               <button
@@ -698,21 +783,38 @@ export function Board({
             </>
           )}
           {tool === "sticky" && (
-            <span className="swatches" role="radiogroup" aria-label="Sticky note shape">
-              {STICKY_SHAPES.map((s) => (
-                <button
-                  key={s.id}
-                  role="radio"
-                  aria-checked={stickyShape === s.id}
-                  aria-label={`${s.label} shape`}
-                  className={"tool tool--shape" + (stickyShape === s.id ? " active" : "")}
-                  onClick={() => setStickyShape(s.id)}
-                  title={`${s.label} sticky note`}
-                >
-                  {s.icon} {s.label}
-                </button>
-              ))}
-            </span>
+            <>
+              <span className="tool-group" role="radiogroup" aria-label="Sticky note shape">
+                {STICKY_SHAPES.map((s) => (
+                  <button
+                    key={s.id}
+                    role="radio"
+                    aria-checked={stickyShape === s.id}
+                    aria-label={`${s.label} shape`}
+                    className={"tool tool--sub tool--shape" + (stickyShape === s.id ? " active" : "")}
+                    onClick={() => setStickyShape(s.id)}
+                    title={`${s.label} sticky note`}
+                  >
+                    {s.icon} {s.label}
+                  </button>
+                ))}
+              </span>
+              <span className="tool-group" role="radiogroup" aria-label="Sticky note size">
+                {STICKY_SIZES.map((sz) => (
+                  <button
+                    key={sz.id}
+                    role="radio"
+                    aria-checked={stickySize === sz.id}
+                    aria-label={`${sz.label} size`}
+                    className={"tool tool--sub" + (stickySize === sz.id ? " active" : "")}
+                    onClick={() => setStickySize(sz.id)}
+                    title={`${sz.label} size`}
+                  >
+                    {sz.label[0]}
+                  </button>
+                ))}
+              </span>
+            </>
           )}
           <span className="swatches" role="radiogroup" aria-label="Colour">
             {(tool === "sticky" ? STICKY_COLORS : PEN_COLORS).map((c) => (
@@ -848,6 +950,142 @@ export function Board({
               </div>
             </Card>
           </div>
+        )}
+        {hoverTooltip && (
+          <div className="board-tooltip" style={{ left: hoverTooltip.x, top: hoverTooltip.y }}>
+            <span className="board-tooltip__author">{hoverTooltip.author}</span>
+            <span className="board-tooltip__meta">
+              {hoverTooltip.time} · {hoverTooltip.kind}
+            </span>
+          </div>
+        )}
+        {editingSticky && (
+          <StickyEditDialog
+            open={true}
+            title="Edit sticky note"
+            initialConfig={editingSticky.config}
+            authorInfo={{
+              name:
+                editingSticky.obj.author === userId
+                  ? "You"
+                  : (members.get(editingSticky.obj.author) ?? "Team member"),
+              time: editingSticky.obj.created_at
+                ? new Date(editingSticky.obj.created_at).toLocaleString()
+                : "Saved revision",
+            }}
+            onClose={() => setEditingSticky(null)}
+            onSave={(cfg) => {
+              submit({ type: "erase", object_id: editingSticky.id });
+              submit({
+                type: "add",
+                object_id: newId("s"),
+                payload: {
+                  kind: "sticky",
+                  data: {
+                    x: editingSticky.obj.data.x + editingSticky.obj.dx,
+                    y: editingSticky.obj.data.y + editingSticky.obj.dy,
+                    text: cfg.text,
+                    shape: cfg.shape,
+                    size: cfg.size,
+                    color: cfg.color,
+                  },
+                },
+              });
+            }}
+            onDelete={() => {
+              submit({ type: "erase", object_id: editingSticky.id });
+              setEditingSticky(null);
+            }}
+          />
+        )}
+        {creatingStickyAt && (
+          <StickyEditDialog
+            open={true}
+            title="Add sticky note"
+            initialConfig={{
+              text: "",
+              shape: stickyShape,
+              size: stickySize,
+              color: stickyColor,
+            }}
+            onClose={() => setCreatingStickyAt(null)}
+            onSave={(cfg) => {
+              submit({
+                type: "add",
+                object_id: newId("s"),
+                payload: {
+                  kind: "sticky",
+                  data: {
+                    x: creatingStickyAt[0],
+                    y: creatingStickyAt[1],
+                    text: cfg.text,
+                    shape: cfg.shape,
+                    size: cfg.size,
+                    color: cfg.color,
+                  },
+                },
+              });
+            }}
+          />
+        )}
+        {editingText && (
+          <TextEditDialog
+            open={true}
+            initialText={editingText.text}
+            initialColor={editingText.color}
+            authorInfo={{
+              name:
+                editingText.obj.author === userId
+                  ? "You"
+                  : (members.get(editingText.obj.author) ?? "Team member"),
+              time: editingText.obj.created_at
+                ? new Date(editingText.obj.created_at).toLocaleString()
+                : "Saved revision",
+            }}
+            onClose={() => setEditingText(null)}
+            onSave={(t, c) => {
+              submit({ type: "erase", object_id: editingText.id });
+              submit({
+                type: "add",
+                object_id: newId("t"),
+                payload: {
+                  kind: "text",
+                  data: {
+                    x: editingText.obj.data.x + editingText.obj.dx,
+                    y: editingText.obj.data.y + editingText.obj.dy,
+                    text: t,
+                    color: c,
+                  },
+                },
+              });
+            }}
+            onDelete={() => {
+              submit({ type: "erase", object_id: editingText.id });
+              setEditingText(null);
+            }}
+          />
+        )}
+        {creatingTextAt && (
+          <TextEditDialog
+            open={true}
+            initialColor={color}
+            onClose={() => setCreatingTextAt(null)}
+            onSave={(t, c) => {
+              submit({
+                type: "add",
+                object_id: newId("t"),
+                payload: {
+                  kind: "text",
+                  data: {
+                    x: creatingTextAt[0],
+                    y: creatingTextAt[1],
+                    text: t,
+                    color: c,
+                  },
+                },
+              });
+            }}
+          />
         )}
       </section>
       {!panel && taskContext && (

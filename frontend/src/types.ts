@@ -70,8 +70,16 @@ export type ChatMessage = {
 export type Point = [number, number];
 export type StrokeData = { points: Point[]; color: string; width: number };
 export type StickyShape = "rectangle" | "circle" | "hexagon" | "diamond" | "cloud" | "star";
-/** Typed notes and stickies share one shape. */
-export type NoteData = { x: number; y: number; text: string; color: string; shape?: StickyShape };
+export type StickySize = "small" | "medium" | "large";
+/** Typed notes and stickies share one shape and optional size. */
+export type NoteData = {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  shape?: StickyShape;
+  size?: StickySize;
+};
 export type BoardImageData = { x: number; y: number; w: number; h: number; asset_id: string };
 /** A board object's kind with the data the server validated for that kind (api/board.py). */
 export type BoardObjectContent =
@@ -98,6 +106,7 @@ export type BoardOp = {
   type: string;
   object_id: string;
   payload: BoardOpPayload;
+  created_at?: string;
 };
 
 /** Where opening a notification leads (api/notifications.py). */

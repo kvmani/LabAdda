@@ -160,3 +160,40 @@
   width: 44px;
   height: 44px;
 }
+
+.board-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: rgba(31, 41, 51, 0.94);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+  backdrop-filter: blur(4px);
+}
+.board-tooltip__author {
+  font-weight: 600;
+  color: #fff;
+}
+.board-tooltip__meta {
+  font-size: 11px;
+  color: #9aa5b1;
+}
+.tool-group {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-2);
+}
+.tool--sub {
+  min-height: 32px;
+  padding: 2px 8px;
+  font-size: var(--text-sm);
+}

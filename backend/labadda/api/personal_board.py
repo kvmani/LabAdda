@@ -23,7 +23,9 @@ class BoardObject(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     id: uuid.UUID
     kind: Literal["stroke", "sticky"]
-    color: Literal["teal", "blue", "orange", "yellow", "mint", "pink", "purple"]
+    color: str = Field(min_length=1, max_length=32)
+    shape: Literal["rectangle", "circle", "hexagon", "diamond", "cloud", "star"] = "rectangle"
+    size: Literal["small", "medium", "large"] = "medium"
     x: float = Field(default=0, ge=0, le=1000)
     y: float = Field(default=0, ge=0, le=600)
     text: str = Field(default="", max_length=1000)
