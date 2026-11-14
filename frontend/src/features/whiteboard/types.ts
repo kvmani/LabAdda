@@ -1,6 +1,7 @@
 export type StickyShape = "rectangle" | "circle" | "hexagon" | "diamond" | "cloud" | "star";
 export type StickySize = "small" | "medium" | "large";
 export type DrawMode = "pen" | "pencil" | "brush" | "line" | "arrow" | "rect" | "circle";
+export type WhiteboardTool = "select" | "pen" | "eraser" | "text" | "sticky" | "image" | "pan";
 
 export type StickyConfig = {
   shape: StickyShape;
@@ -29,3 +30,34 @@ export const PEN_COLORS = [
   "#d81b60", // Rose Pink
   "#757575", // Graphite Grey
 ] as const;
+
+export type HoverTooltipData = {
+  x: number;
+  y: number;
+  author: string;
+  time: string;
+  kind: string;
+};
+
+export type WhiteboardCanvasObject = {
+  id: string;
+  kind: "stroke" | "sticky" | "text" | "image";
+  color: string;
+  shape?: StickyShape;
+  size?: StickySize;
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+  text?: string;
+  points?: [number, number][];
+  width?: number;
+  asset_id?: string;
+  preview_url?: string;
+  author?: string;
+  created_at?: string;
+  alive?: boolean;
+  rev?: number;
+  dx?: number;
+  dy?: number;
+};

@@ -22,14 +22,20 @@ class BoardObject(BaseModel):
 
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     id: uuid.UUID
-    kind: Literal["stroke", "sticky"]
-    color: str = Field(min_length=1, max_length=32)
+    kind: Literal["stroke", "sticky", "text", "image"]
+    color: str = Field(default="#1f2933", min_length=1, max_length=32)
     shape: Literal["rectangle", "circle", "hexagon", "diamond", "cloud", "star"] = "rectangle"
     size: Literal["small", "medium", "large"] = "medium"
     x: float = Field(default=0, ge=0, le=1000)
     y: float = Field(default=0, ge=0, le=600)
+    w: float = Field(default=0, ge=0, le=1000)
+    h: float = Field(default=0, ge=0, le=600)
     text: str = Field(default="", max_length=1000)
     points: list[tuple[float, float]] = Field(default_factory=list, max_length=2000)
+    width: float = Field(default=3, ge=1, le=50)
+    asset_id: str | None = None
+    author: str | None = None
+    created_at: str | None = None
 
     @model_validator(mode="after")
     def bounded_points(self):

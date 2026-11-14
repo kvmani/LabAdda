@@ -273,7 +273,8 @@ def _mount_frontend(app: FastAPI, settings: Settings) -> None:
         config = json.dumps({"base": base, "instance": settings.instance})
         inject = f'<base href="{base}/"><script>window.__LABADDA__={config}</script>'
         return HTMLResponse(
-            html.replace("<head>", "<head>" + inject, 1), headers={"Cache-Control": "no-cache"}
+            html.replace("<head>", "<head>" + inject, 1),
+            headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
         )
 
     if base:

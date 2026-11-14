@@ -15,6 +15,16 @@ export const STICKY_SIZES: { id: StickySize; label: string; scale: number }[] = 
   { id: "large", label: "Large", scale: 1.4 },
 ];
 
+export const DRAW_MODES: { id: DrawMode; label: string; icon: string }[] = [
+  { id: "pen", label: "Pen", icon: "✏️" },
+  { id: "pencil", label: "Pencil", icon: "✎" },
+  { id: "brush", label: "Marker", icon: "🖌️" },
+  { id: "line", label: "Line", icon: "╱" },
+  { id: "arrow", label: "Arrow", icon: "→" },
+  { id: "rect", label: "Box", icon: "▭" },
+  { id: "circle", label: "Circle", icon: "◯" },
+];
+
 export function getStickyDimensions(
   shape: StickyShape = "rectangle",
   size: StickySize = "medium",
@@ -189,4 +199,75 @@ export function generateShapePoints(
     [x1, y1],
     [x2, y2],
   ];
+}
+
+export type BoundsTarget = {
+  kind: "stroke" | "sticky" | "text" | "image";
+  data?: {
+    points?: [number, number][];
+    color?: string;
+    width?: number;
+    shape?: StickyShape;
+    size?: StickySize;
+    text?: string;
+    x?: number;
+    y?: number;
+    w?: number;
+    h?: number;
+  };
+  points?: [number, number][];
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  shape?: StickyShape;
+  size?: StickySize;
+  text?: string;
+  width?: number;
+  dx?: number;
+  dy?: number;
+};
+
+export function bounds(o: BoundsTarget): [number, number, number, number] {
+  const dx = o.dx ?? 0;
+  const dy = o.dy ?? 0;
+  const d = o.data ?? o;
+  if (o.kind === "stroke") {
+    const pts = d.points ?? o.points ?? [];
+    if (!pts.length) return [dx, dy, dx, dy];
+    const xs = pts.map((p) => p[0] + dx);
+    const ys = pts.map((p) => p[1] + dy);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  }
+  const x = (d.x ?? o.x ?? 0) + dx;
+  const y = (d.y ?? o.y ?? 0) + dy;
+  if (o.kind === "image") {
+    const w = d.w ?? o.w ?? 150;
+    const h = d.h ?? o.h ?? 150;
+    return [x, y, x + w, y + h];
+  }
+  if (o.kind === "sticky") {
+    const shape = d.shape ?? o.shape ?? "rectangle";
+    const size = d.size ?? o.size ?? "medium";
+    const [w, h] = getStickyDimensions(shape, size);
+    return [x, y, x + w, y + h];
+  }
+  // text
+  const txt = d.text ?? o.text ?? "";
+  const w = Math.max(40, txt.length * 9);
+  const h = 24;
+  return [x, y, x + w, y + h];
+}
+
+export function hit(o: BoundsTarget, x: number, y: number, tol = 6): boolean {
+  const dx = o.dx ?? 0;
+  const dy = o.dy ?? 0;
+  const d = o.data ?? o;
+  if (o.kind === "stroke") {
+    const pts = d.points ?? o.points ?? [];
+    const strokeW = d.width ?? o.width ?? 3;
+    return pts.some((p) => Math.hypot(p[0] + dx - x, p[1] + dy - y) < tol + strokeW);
+  }
+  const [a, b, c, dCoord] = bounds(o);
+  return x >= a - tol && x <= c + tol && y >= b - tol && y <= dCoord + tol;
 }
