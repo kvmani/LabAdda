@@ -32,8 +32,8 @@
 .whiteboard {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 200px);
-  min-height: 420px;
+  height: calc(100vh - 180px);
+  min-height: 520px;
   position: relative;
 }
 .toolbar {
@@ -44,7 +44,14 @@
   padding: var(--space-2);
   background: var(--surface-card);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-top: none;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+.whiteboard > .toolbar:first-child {
+  border-top: 1px solid var(--line);
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
 }
 .tool {
   font: inherit;
@@ -201,27 +208,93 @@
 /* Whiteboard tabbed navigation (multiple boards per workspace & private) */
 .whiteboard-tabs {
   display: flex;
-  align-items: center;
-  gap: 2px;
+  align-items: flex-end;
+  gap: 4px;
   background: var(--surface-sunken);
-  padding: 6px 8px 0;
+  padding: 8px 12px 0;
+  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   border-top-left-radius: var(--radius-md);
   border-top-right-radius: var(--radius-md);
-  border: 1px solid var(--line);
-  border-bottom: none;
   overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  min-height: 44px;
 }
 
 .whiteboard-tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 8px;
+  padding: 8px 16px;
+  min-height: 36px;
   background: transparent;
   border: 1px solid transparent;
   border-bottom: none;
   border-top-left-radius: var(--radius-sm);
   border-top-right-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  position: relative;
+  margin-bottom: -1px;
+}
+
+.whiteboard-tab:hover:not(.whiteboard-tab--active) {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.whiteboard-tab--active {
+  background: var(--surface-card);
+  color: var(--accent);
+  font-weight: 600;
+  border-color: var(--line);
+  border-bottom: 2px solid var(--surface-card);
+  border-top: 3px solid var(--accent);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+  z-index: 2;
+}
+
+.whiteboard-tab span:first-child {
+  letter-spacing: 0.01em;
+}
+
+.whiteboard-tab__rename {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  opacity: 0.65;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.whiteboard-tab__rename:hover {
+  opacity: 1;
+  background: var(--surface-sunken);
+}
+
+.whiteboard-tab__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  margin-bottom: 4px;
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-muted);
@@ -230,50 +303,9 @@
   white-space: nowrap;
 }
 
-.whiteboard-tab:hover {
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.whiteboard-tab--active {
-  background: var(--surface-card);
-  color: var(--text);
-  font-weight: 600;
-  border-color: var(--line);
-  box-shadow: 0 -2px 0 0 var(--primary) inset;
-}
-
-.whiteboard-tab__rename {
-  opacity: 0.6;
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-.whiteboard-tab__rename:hover {
-  opacity: 1;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.whiteboard-tab__add {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: transparent;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: var(--text-muted);
-  cursor: pointer;
-  margin-left: 4px;
-}
-
 .whiteboard-tab__add:hover {
   background: var(--surface-card);
-  color: var(--primary);
+  color: var(--accent);
+  border-color: var(--accent);
   border-style: solid;
 }
