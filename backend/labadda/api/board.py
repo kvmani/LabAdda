@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -31,10 +32,11 @@ from ..config import Settings
 from ..deps import Actor, board_actor, current_actor, get_db, get_settings
 from ..errors import ApiError, Conflict, Forbidden, Invalid, NotFound
 from ..identity_locks import lock_identity
-from ..models import Asset, Board, BoardOp, Post, Workspace
+from ..models import Asset, Board, BoardOp, Post, Workspace, WorkspaceBoard
 from ..reservations import check_original_capacity
 from ..serialize import iso
 from ..storage import AssetStore
+from ..system_settings import get_max_whiteboards
 
 router = APIRouter(tags=["board"])
 MAX_POINTS = 4000
@@ -66,6 +68,20 @@ PNG_HEADERS = {
 }
 
 
+class BoardTitlePatch(BaseModel):
+    title: str = Field(min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_title_length(self):
+        t = self.title.strip()
+        # Default WhiteBoard_N is allowed; custom short names must be at most 10 characters
+        if re.match(r"^WhiteBoard_\d+$", t, re.IGNORECASE):
+            return self
+        if len(t) > 10:
+            raise ValueError("Board title must be at most 10 characters (or default WhiteBoard_N).")
+        return self
+
+
 class OpBody(BaseModel):
     op_id: str = Field(min_length=8, max_length=64)
     epoch: int
@@ -73,11 +89,13 @@ class OpBody(BaseModel):
     object_id: str | None = Field(default=None, max_length=64)
     payload: dict = Field(default_factory=dict)
     base_revision: int | None = None  # for move: object revision the client edited from
+    board_index: int = Field(default=0, ge=0, le=50)
 
 
 class RestoreBody(BaseModel):
     revision: int = Field(ge=0)
     reason: str | None = Field(default=None, max_length=500)
+    board_index: int = Field(default=0, ge=0, le=50)
 
 
 class Region(BaseModel):
@@ -95,6 +113,7 @@ class SnapshotBody(BaseModel):
     client_id: str = Field(min_length=8, max_length=64)
     # Required when the destination differs from the source: the destination ID the user confirmed.
     confirm_audience: uuid.UUID | None = None
+    board_index: int = Field(default=0, ge=0, le=50)
 
 
 def _hash(payload: dict) -> str:
@@ -105,6 +124,7 @@ def op_json(op: BoardOp) -> dict:
     return {
         "revision": op.revision,
         "epoch": op.epoch,
+        "board_index": getattr(op, "board_index", 0),
         "op_id": op.op_id,
         "actor_id": str(op.actor_id),
         "type": op.op_type,
@@ -114,14 +134,54 @@ def op_json(op: BoardOp) -> dict:
     }
 
 
-def _ensure_board(db: Session, workspace_id: uuid.UUID) -> Board:
+def _ensure_board(
+    db: Session, workspace_id: uuid.UUID, board_index: int = 0, title: str | None = None
+) -> Board | WorkspaceBoard:
     # A new board is empty, so its charges are trivially complete for epoch 1.
+    if board_index == 0:
+        default_title = title or "WhiteBoard_1"
+        db.execute(
+            insert(Board)
+            .values(
+                workspace_id=workspace_id,
+                title=default_title,
+                epoch=1,
+                revision=0,
+                base_revision=0,
+                charges_epoch=1,
+            )
+            .on_conflict_do_nothing(index_elements=["workspace_id"])
+        )
+        return db.scalar(select(Board).where(Board.workspace_id == workspace_id).with_for_update())
+    default_title = title or f"WhiteBoard_{board_index + 1}"
     db.execute(
-        insert(Board)
-        .values(workspace_id=workspace_id, epoch=1, revision=0, base_revision=0, charges_epoch=1)
-        .on_conflict_do_nothing(index_elements=["workspace_id"])
+        insert(WorkspaceBoard)
+        .values(
+            id=uuid.uuid4(),
+            workspace_id=workspace_id,
+            board_index=board_index,
+            title=default_title,
+            epoch=1,
+            revision=0,
+            base_revision=0,
+            charges_epoch=1,
+        )
+        .on_conflict_do_nothing(index_elements=["workspace_id", "board_index"])
     )
-    return db.scalar(select(Board).where(Board.workspace_id == workspace_id).with_for_update())
+    return db.scalar(
+        select(WorkspaceBoard)
+        .where(WorkspaceBoard.workspace_id == workspace_id, WorkspaceBoard.board_index == board_index)
+        .with_for_update()
+    )
+
+
+def _get_board(db: Session, workspace_id: uuid.UUID, board_index: int = 0) -> Board | WorkspaceBoard | None:
+    if board_index == 0:
+        return db.get(Board, workspace_id)
+    return db.scalar(
+        select(WorkspaceBoard)
+        .where(WorkspaceBoard.workspace_id == workspace_id, WorkspaceBoard.board_index == board_index)
+    )
 
 
 def _num(v, lo=-1e6, hi=1e6) -> float:
@@ -195,21 +255,32 @@ def get_board(
     workspace_id: uuid.UUID,
     epoch: int | None = None,
     after: int | None = None,
+    board_index: int = Query(default=0, ge=0, le=50),
     actor: Actor = Depends(board_actor),
     db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ):
     access = policy.require_read(db, actor.user, workspace_id)
-    board = db.get(Board, workspace_id)
-    current_epoch, revision, base = (board.epoch, board.revision, board.base_revision) if board else (1, 0, 0)
+    max_boards = get_max_whiteboards(db, settings)
+    if board_index < 0 or board_index >= max_boards:
+        raise Invalid("invalid_board_index", f"Board index must be between 0 and {max_boards - 1}.")
+    board = _get_board(db, workspace_id, board_index)
+    current_epoch, revision, base, title = (
+        (board.epoch, board.revision, board.base_revision, board.title)
+        if board
+        else (1, 0, 0, f"WhiteBoard_{board_index + 1}")
+    )
     # Replay is possible only within the epoch and above the compacted base.
     replay = epoch == current_epoch and after is not None and after >= base
     snapshot = None
     if not replay and base > 0:
-        snap = latest_snapshot(db, workspace_id, current_epoch, upto=base)
+        snap = latest_snapshot(db, workspace_id, current_epoch, board_index=board_index, upto=base)
         if snap is not None:
             snapshot = {"revision": snap.revision, "objects": snap.state}
-    ops = epoch_ops(db, workspace_id, current_epoch, after=after if replay else base)
+    ops = epoch_ops(db, workspace_id, current_epoch, board_index=board_index, after=after if replay else base)
     return {
+        "board_index": board_index,
+        "title": title,
         "epoch": current_epoch,
         "revision": revision,
         "base_revision": base,
@@ -219,6 +290,63 @@ def get_board(
         "can_write": access.can_write,
         "can_moderate": access.can_moderate and not actor.is_panel,
     }
+
+
+@router.get("/workspaces/{workspace_id}/boards")
+def list_boards(
+    workspace_id: uuid.UUID,
+    actor: Actor = Depends(board_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    policy.require_read(db, actor.user, workspace_id)
+    _ensure_board(db, workspace_id, 0)
+    main_board = db.get(Board, workspace_id)
+    secondaries = db.scalars(
+        select(WorkspaceBoard)
+        .where(WorkspaceBoard.workspace_id == workspace_id)
+        .order_by(WorkspaceBoard.board_index)
+    ).all()
+    boards = []
+    if main_board:
+        boards.append({
+            "board_index": 0,
+            "title": main_board.title,
+            "revision": main_board.revision,
+            "epoch": main_board.epoch,
+        })
+    for b in secondaries:
+        boards.append({
+            "board_index": b.board_index,
+            "title": b.title,
+            "revision": b.revision,
+            "epoch": b.epoch,
+        })
+    max_boards = get_max_whiteboards(db, settings)
+    return {
+        "boards": boards,
+        "max_whiteboards": max_boards,
+    }
+
+
+@router.patch("/workspaces/{workspace_id}/boards/{board_index}")
+def update_board_title(
+    workspace_id: uuid.UUID,
+    board_index: int,
+    body: BoardTitlePatch,
+    actor: Actor = Depends(board_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    policy.require_write(db, actor.user, workspace_id)
+    max_boards = get_max_whiteboards(db, settings)
+    if board_index < 0 or board_index >= max_boards:
+        raise Invalid("invalid_board_index", f"Board index must be between 0 and {max_boards - 1}.")
+    clean_title = body.title.strip() or f"WhiteBoard_{board_index + 1}"
+    board = _ensure_board(db, workspace_id, board_index, title=clean_title)
+    board.title = clean_title
+    db.commit()
+    return {"board_index": board.board_index, "title": board.title}
 
 
 @router.post("/workspaces/{workspace_id}/board/ops")
@@ -233,17 +361,23 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
     if actor.is_panel and body.type == "add" and (body.payload or {}).get("kind") == "image":
         # Shared panels have no file picker; images are placed from a desktop session.
         raise Forbidden("panel_not_allowed", "Images can be added from a desktop session.")
-    board = _ensure_board(db, workspace_id)  # row lock serializes sequencing per board
+    board_idx = getattr(body, "board_index", 0)
+    max_boards = get_max_whiteboards(db, get_settings(request))
+    if board_idx < 0 or board_idx >= max_boards:
+        raise Invalid("max_whiteboards_exceeded", f"Only {max_boards} whiteboards are allowed.")
+    board = _ensure_board(db, workspace_id, board_idx)  # row lock serializes sequencing per board
     intent = {
         "type": body.type,
         "object_id": body.object_id,
         "payload": body.payload,
         "base_revision": body.base_revision,
+        "board_index": board_idx,
     }
     intent_hash = _hash(intent)
     existing = db.scalar(
         select(BoardOp).where(
             BoardOp.workspace_id == workspace_id,
+            BoardOp.board_index == board_idx,
             BoardOp.epoch == body.epoch,
             BoardOp.actor_id == actor.id,
             BoardOp.op_id == body.op_id,
@@ -289,6 +423,7 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
     board.revision += 1
     op = BoardOp(
         workspace_id=workspace_id,
+        board_index=board_idx,
         epoch=board.epoch,
         revision=board.revision,
         op_id=body.op_id,
@@ -302,7 +437,7 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
     # Logical charge (DL-07) commits atomically with the operation.
     after = with_op(objects, op)
     if board.charges_epoch == board.epoch:
-        charge_board_object(db, workspace_id, object_id, after.get(object_id))
+        charge_board_object(db, workspace_id, object_id, after.get(object_id), board_index=board_idx)
     else:
         recharge_board(db, board, after)  # first write to a historical board completes its ledger
     base_revision = board.base_revision
@@ -311,7 +446,13 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
     state_cache.committed(workspace_id, base_revision, op)
     committed = op_json(op)
     request.app.state.hub.publish(
-        workspace_id, {"type": "board.op", "workspace_id": str(workspace_id), "op": committed}
+        workspace_id,
+        {
+            "type": "board.op",
+            "workspace_id": str(workspace_id),
+            "board_index": board_idx,
+            "op": committed,
+        },
     )
     return {"committed": committed, "duplicate": False}
 
@@ -327,7 +468,8 @@ def restore(
     """Start a new epoch holding the board as it was at ``revision`` (0 clears it). Stewards only."""
     policy.require_moderate(db, actor.user, workspace_id)
     policy.require_write(db, actor.user, workspace_id)
-    board = _ensure_board(db, workspace_id)
+    board_idx = getattr(body, "board_index", 0)
+    board = _ensure_board(db, workspace_id, board_idx)
     if body.revision > board.revision:
         raise Invalid("invalid_revision", "That revision does not exist yet.")
     objects = state_at(db, board, body.revision) if body.revision else {}
@@ -349,6 +491,7 @@ def restore(
         db.add(
             BoardOp(
                 workspace_id=workspace_id,
+                board_index=board_idx,
                 epoch=board.epoch,
                 revision=board.revision,
                 op_id=f"restore-{board.epoch}-{object_id}"[:64],
@@ -372,7 +515,13 @@ def restore(
     recharge_board(db, board, restored)
     db.commit()
     request.app.state.hub.publish(
-        workspace_id, {"type": "board.epoch", "workspace_id": str(workspace_id), "epoch": board.epoch}
+        workspace_id,
+        {
+            "type": "board.epoch",
+            "workspace_id": str(workspace_id),
+            "board_index": board_idx,
+            "epoch": board.epoch,
+        },
     )
     return {"epoch": board.epoch, "revision": board.revision}
 
@@ -394,8 +543,15 @@ def _image_loader(db: Session, store: AssetStore, workspace_id: uuid.UUID):
     return load
 
 
-def _render(db: Session, request: Request, workspace_id: uuid.UUID, revision: int, region: Region) -> bytes:
-    board = db.get(Board, workspace_id)
+def _render(
+    db: Session,
+    request: Request,
+    workspace_id: uuid.UUID,
+    revision: int,
+    region: Region,
+    board_index: int = 0,
+) -> bytes:
+    board = _get_board(db, workspace_id, board_index)
     if board is None or not 0 <= revision <= board.revision:
         raise Invalid("invalid_revision", "That revision does not exist.")
     objects = state_at(db, board, revision)
@@ -416,12 +572,13 @@ def render_preview(
     *,
     w: float = Query(gt=0),
     h: float = Query(gt=0),
+    board_index: int = Query(default=0, ge=0, le=50),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
     """PNG of a region at a committed revision, for the publish preview."""
     policy.require_read(db, actor.user, workspace_id)
-    png = _render(db, request, workspace_id, revision, Region(x=x, y=y, w=w, h=h))
+    png = _render(db, request, workspace_id, revision, Region(x=x, y=y, w=w, h=h), board_index=board_index)
     return Response(png, media_type="image/png", headers=PNG_HEADERS)
 
 
@@ -493,7 +650,8 @@ def publish_snapshot(  # noqa: PLR0915 — ordered authorization and revision ch
         raise Invalid(
             "confirmation_required", f"Confirm that everyone who can read {dest.name} will see this snapshot."
         )
-    png = _render(db, request, workspace_id, body.revision, body.region)
+    board_idx = getattr(body, "board_index", 0)
+    png = _render(db, request, workspace_id, body.revision, body.region, board_index=board_idx)
     check_original_capacity(db, identity, settings, len(png))
     store: AssetStore = request.app.state.assets
     stored = store.save(png, "image/png")

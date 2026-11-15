@@ -4,15 +4,16 @@ import uuid
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from .. import audit, people_export, people_profile, policy
 from .. import people_directory as directory
 from ..config import Settings
-from ..deps import Actor, current_actor, get_db, get_settings, require_console
-from ..errors import ApiError, NotFound
+from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, require_console
+from ..errors import ApiError, NotFound, Unauthenticated
+from ..models import User
 from ..people import StaffStatus
 
 router = APIRouter(prefix="/admin/people", tags=["people"])
@@ -27,9 +28,64 @@ def directory_filters(
     role: directory.DirectoryRole | None = None,
     sort: directory.DirectorySort = "name",
     descending: bool = False,
+    specialization: str = Query(default="", max_length=120),
+    designation: str = Query(default="", max_length=120),
 ) -> directory.DirectoryFilters:
     """Validate named filters once for directory and subsequent export reuse."""
-    return directory.DirectoryFilters(q, status, unit_id, include_children, role, sort, descending)
+    return directory.DirectoryFilters(
+        q, status, unit_id, include_children, role, sort, descending, specialization, designation
+    )
+
+
+directory_router = APIRouter(prefix="/people", tags=["people directory"])
+
+
+@directory_router.get("/directory")
+def public_directory(
+    request: Request,
+    filters: directory.DirectoryFilters = Depends(directory_filters),
+    limit: int = Query(default=50, ge=1, le=100),
+    cursor: str | None = Query(default=None, max_length=1024),
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Public staff directory query for all signed-in users on the intranet."""
+    if actor.is_panel or request.headers.get(PANEL_HEADER):
+        raise Unauthenticated()
+    result = directory.directory_page(db, filters, limit, cursor, scope=None)
+    user_ids = [uuid.UUID(p["id"]) for p in result["people"]]
+    users_by_id = (
+        {u.id: u for u in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+        if user_ids
+        else {}
+    )
+    people_with_contacts = []
+    for p in result["people"]:
+        u = users_by_id.get(uuid.UUID(p["id"]))
+        if u:
+            p = {
+                **p,
+                "contact_email": u.contact_email,
+                "contact_phone": u.contact_phone,
+                "extension": u.extension,
+                "mobile": u.mobile,
+                "alternate_email": u.alternate_email,
+            }
+        people_with_contacts.append(p)
+    return {"people": people_with_contacts, "next_cursor": result["next_cursor"]}
+
+
+@directory_router.get("/{person_id}")
+def public_person_profile(
+    person_id: uuid.UUID,
+    request: Request,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Read a colleague's directory details (contacts, designation, unit)."""
+    if actor.is_panel or request.headers.get(PANEL_HEADER):
+        raise Unauthenticated()
+    return people_profile.profile(db, person_id, scope=None)
 
 
 def refresh_authority(request: Request, db: Session) -> Actor:

@@ -22,6 +22,8 @@ import { HelpBoundary } from "./features/help/HelpBoundary";
 import { Home, Landing } from "./features/home/Home";
 import { clearBoardDraft } from "./features/personal-board/draft";
 import { PersonalBoard } from "./features/personal-board/PersonalBoard";
+import { Directory } from "./pages/Directory";
+import { CalendarPage } from "./pages/CalendarPage";
 
 const Admin = lazy(() => import("./pages/Admin"));
 const Help = lazy(() => import("./pages/Help"));
@@ -55,7 +57,9 @@ export function App() {
           <Route path="/activate" element={<Navigate to="/" replace />} />
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/directory" element={<Directory />} />
           <Route path="/preferences" element={<AlertPreferences />} />
           <Route path="/today" element={<Dashboard />} />
           <Route path="/my-tasks" element={<MyTasks />} />

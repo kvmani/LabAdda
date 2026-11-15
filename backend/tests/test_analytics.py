@@ -125,7 +125,8 @@ def test_counts_follow_the_site_time_zone(db_factory, settings, ids):
     points = {point["start"]: point["values"] for point in found["charts"]["features"]["points"]}
     assert points["2026-11-10"]["posts.created"] == 2
     assert points["2026-11-11"]["posts.created"] == 3
-    in_utc = summary(db_factory, settings, now=late)
+    utc = replace(settings, timezone="UTC")
+    in_utc = summary(db_factory, utc, now=late)
     assert {p["start"]: p["values"] for p in in_utc["charts"]["features"]["points"]}["2026-11-10"] == {
         **dict.fromkeys(FEATURE_METRICS, 0.0),
         "posts.created": 5.0,

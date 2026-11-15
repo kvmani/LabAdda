@@ -59,6 +59,9 @@ export function RailNav({ workspaces, currentId, operations, error }: RailNavPro
       <h2 className="shell-rail__heading">Personal</h2>
       <ul>
         <PersonalLink to="/today">My day</PersonalLink>
+        <PersonalLink to="/calendar">
+          <span className="shell-rail__name">Calendar</span>
+        </PersonalLink>
         <PersonalLink to="/my-tasks">My Tasks</PersonalLink>
         <PersonalLink to="/todos">
           <span className="shell-rail__name">My To-do Lists</span> <Tag>private</Tag>
@@ -69,6 +72,7 @@ export function RailNav({ workspaces, currentId, operations, error }: RailNavPro
         <PersonalLink to="/notes">
           <span className="shell-rail__name">My Notes</span> <Tag>private</Tag>
         </PersonalLink>
+        <PersonalLink to="/directory">Staff Directory</PersonalLink>
         <PersonalLink to="/preferences">Alert preferences</PersonalLink>
         <PersonalLink to="/usage">My storage usage</PersonalLink>
         {operations && <PersonalLink to="/operations">Operational observations</PersonalLink>}

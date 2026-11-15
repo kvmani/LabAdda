@@ -18,7 +18,10 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | Auth | `POST /auth/login`, `POST /auth/logout`, `GET /auth/session` | Login is rate limited per user and per client address. The session payload also carries `release`, `welcome_pending` (normal sessions only, until the caller dismisses the welcome) and `whats_new_pending` (welcome already dismissed and the caller has not seen this release's notes). |
 | | `POST /auth/activate` `{token, password}` | Redeems one-time activation or reset code (min. 10 characters). |
 | | `POST /auth/password` `{current_password, new_password}` | Revokes other sessions. |
-| My account | `GET /me/profile` | `{record, access}`: the caller's own staff record (same fields as the administrator profile, including contacts) and retained grants with upward-only inheritance. Read-only. |
+| My account | `GET /me/profile` | `{record, access}`: the caller's own staff record (same fields as the administrator profile, including contacts) and retained grants with upward-only inheritance. |
+| | `PATCH /me/profile` `{display_name?, designation?, specialization?, contact_phone?, mobile?, alternate_email?}` | Self-service profile updates. Up to 100 characters per field. Audited. |
+| | `POST /me/avatar` `{avatar_data}` | Upload self avatar as base64 data URI (JPEG/PNG/WebP, up to 500KB). |
+| | `DELETE /me/avatar` | Clear self avatar. |
 | | `POST /me/password` `{current_password, new_password}` | Normal session and CSRF. Rate limited per person (shares the sign-in window; `429 rate_limited`). `invalid_credentials` (audited with outcome `denied`), `weak_password` (min. 10 characters), `password_unchanged` (all `400`). Revokes every other session and closes their sockets (`session_ended`); keeps the caller's. Returns `{ok, sessions_ended}`; audited as `auth.password_changed` with the count. |
 | | `POST /me/welcome/dismiss` | H4, schema 0032. Normal session and CSRF; signed out and panel sessions get `401`. Stores `welcome_dismissed_at` for the caller, marks the running release's notes as seen, returns `{ok: true}`. Idempotent. |
 | | `POST /me/whats-new/seen` | H4. Same rules. Stores the server's current release as the caller's `whats_new_seen_release`; the client sends nothing, so it cannot claim another release. Returns `{ok: true}`. |
@@ -28,6 +31,8 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | | `GET /workspaces/{id}`, `GET /workspaces/{id}/members` | Detail includes readable ancestors. |
 | | `PATCH /workspaces/{id}/policy` `{posting_policy}` | Direct steward only. |
 | | `PUT /me/home` `{workspace_id}` | Must be a direct grant. |
+| Staff Directory | `GET /people/directory?q=&specialization=&designation=&unit_id=&sort=` | Public intranet staff directory for signed-in staff. Returns search matches with public contact details, specialization, and avatar. |
+| | `GET /people/{id}` | Public profile for a specific person for signed-in staff. |
 | Groups (S2.1) | `GET /directory?q=` | Active colleagues, names only. |
 | | `POST /groups` `{name, description, member_ids[]}` | Creator becomes steward. `group_limit`, `group_too_large`, `unknown_member`. |
 | | `PATCH /groups/{id}` `{name?, description?, archived?}` | Steward only. |
@@ -39,11 +44,19 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | | `GET /workspaces/{id}/upcoming`, `GET /workspaces/{id}/search?q=` | Scoped to the workspace only. |
 | Files | `POST /uploads` (multipart `file`), `DELETE /uploads/{id}` | PDF/PNG/JPEG by signature. Size, count and quota limits. |
 | | `GET /files/{id}`, `GET /files/{id}/preview` | Authorized per owning post; PDF as attachment; sanitized PNG preview. |
+| Calendar | `GET /calendar/sources` | Available calendar sources for caller: personal (`"personal"`), site (`"site"`), and accessible workspaces with roles, colors, and write permissions. |
+| | `GET /calendar/events?start=&end=&sources=&search=` | Query events in time window `[start, end]`. Resolves upward-only hierarchy for workspaces; strictly isolates personal events (admin blindness); includes site events for all active users. |
+| | `POST /calendar/events` `{scope_kind, workspace_id?, title, description?, location?, starts_at, ends_at, all_day, color?}` | Create calendar event. Validates scope rules (`site` needs admin/root steward; `workspace` needs write grant; `personal` sets owner to caller). |
+| | `GET /calendar/events/{id}` | Single event detail. 404 for out-of-scope or unauthorized. |
+| | `PATCH /calendar/events/{id}` `{title?, description?, location?, starts_at?, ends_at?, all_day?, color?}` | Update calendar event. Allowed for creator, workspace stewards, or site admins. |
+| | `DELETE /calendar/events/{id}` | Delete calendar event. Enforces permissions. |
 | Notes | `GET/POST /notes`, `GET/PUT/DELETE /notes/{id}`, `GET /notes/upcoming` | Owner only, including for administrators. |
 | Notifications | `GET /notifications`, `POST /notifications/{id}/open`, `POST /notifications/read-all` | Eligibility rechecked on list and open. |
 | Chat | `GET /workspaces/{id}/chat?before=\|after=&limit=`, `POST .../chat` `{body, client_id}`, `POST .../chat/read` `{seq}` | Cursor replay via `after`. |
-| Board | `GET /workspaces/{id}/board?epoch=&after=` | Replay since a revision (`reset: false`), or full state (`reset: true`): the compacted `snapshot` `{revision, objects}`, if any, plus later ops. Replay below `base_revision` falls back to full state. |
-| | `POST /workspaces/{id}/board/ops` `{op_id, epoch, type, object_id?, payload, base_revision?}` | `add` (stroke/text/sticky), `erase`, `move`, `undo` (own latest). `stale_epoch`, `stale_object`, `object_gone`. |
+| Board | `GET /workspaces/{id}/boards` | List whiteboard tabs for workspace `{boards:[{board_index, title}]}`. |
+| | `PATCH /workspaces/{id}/boards/{index}` `{title}` | Rename a whiteboard tab or create a tab up to the configured limit. |
+| | `GET /workspaces/{id}/board?board_index=&epoch=&after=` | Replay since a revision (`reset: false`), or full state (`reset: true`): the compacted `snapshot` `{revision, objects}`, if any, plus later ops. Replay below `base_revision` falls back to full state. |
+| | `POST /workspaces/{id}/board/ops` `{op_id, epoch, type, object_id?, payload, base_revision?, board_index?}` | `add` (stroke/text/sticky), `erase`, `move`, `undo` (own latest). `stale_epoch`, `stale_object`, `object_gone`. |
 | | `POST /workspaces/{id}/board/restore` `{revision, reason?}` | Steward. Starts a new epoch. `revision_compacted` if older than retained history and not a snapshot revision. |
 | | `add` with `payload.kind = "image"` `{x, y, w, h, asset_id}` | `asset_id` is the actor's provisional PNG/JPEG upload. It becomes owned by this board and readable by board readers only. |
 | | `GET /workspaces/{id}/board/render?revision=&x=&y=&w=&h=` | PNG of a region at a committed revision (publish preview). |
@@ -1154,13 +1167,26 @@ behaves for them exactly as for any member.
 ## Personal whiteboard
 
 `GET /me/whiteboard` returns `{revision, objects}` for the authenticated owner only (empty revision 0
-initially). `PUT /me/whiteboard` accepts `{revision, objects}`; objects are bounded strokes or sticky
-notes. Successful saves append a retained revision and return the new document. A repeated identical
-save against the preceding revision returns the existing result; different stale content returns
+initially). Accepts optional query param `?board_index=N` (defaults to 0). `GET /me/whiteboard/tabs`
+lists active tabs `[{board_index, title}]`. `PATCH /me/whiteboard/{index}/title` `{title}` updates the
+title of tab index N. `PUT /me/whiteboard` accepts `{revision, objects, board_index?}`; objects are
+bounded strokes or sticky notes. Successful saves append a retained revision and return the new document.
+A repeated identical save against the preceding revision returns the existing result; different stale content returns
 409 `stale_revision`. No caller-supplied owner or workspace is accepted. Other members and admins
 see only their own board; panel-intent and board sessions are denied (401). No shared socket,
 workspace search, notification, or analytics content path includes personal boards. At most 500
 objects, 20,000 points and 250,000 encoded bytes per save; 422 on invalid or oversized input.
+
+## Multi-board, Staff Directory & User Customization (schema 0041)
+
+Added in preparation for the intranet rollout:
+- Multi-tabbed whiteboards for both workspaces and personal whiteboards (default limit 5 per scope).
+- System settings store: `GET /admin/settings/whiteboards` and `PATCH /admin/settings/whiteboards` `{max_whiteboards_per_scope}`.
+- Model CSV template download: `GET /admin/changes/import/staff/template?format=csv` and `GET /admin/changes/import/staff/csv-template`.
+- Self-editable profile fields: `PATCH /me/profile` (`display_name`, `designation`, `specialization`, `contact_phone`, `mobile`, `alternate_email`), `POST /me/avatar`, `DELETE /me/avatar`.
+- Public intranet staff directory: `GET /people/directory?q=&specialization=&designation=&unit_id=&sort=` and `GET /people/{id}`. Contacts visible to authenticated colleagues on the intranet; administrator bulk user management remains strictly protected against contact data leaks.
+- Actionable error reporting and contextual diagnostic logging with request tracking.
+- Indian Standard Time (IST, `Asia/Kolkata`) default timezone across all display timestamps.
 
 ## Pilot · Feedback button (schema 0040)
 

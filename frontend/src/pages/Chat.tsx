@@ -5,33 +5,76 @@ import { ChatComposer } from "../components/ChatComposer";
 import { ChatThread } from "../components/ChatThread";
 import { ConversationTask } from "../components/ConversationTask";
 import { accessDenied, api, errorMessage, newId } from "../api";
-import { fmtTime } from "../format";
+import { fmtClockTimeIST, fmtDateBadgeIST } from "../format";
 import { realtime } from "../realtime";
+import { useSession } from "../session";
 import { useWorkspaces } from "../workspaces";
 import type { ChatMessage, ChatPage, Workspace } from "../types";
-import { Button, Card, Checkbox, Dialog, EmptyState, Select, Tag, TextArea } from "../ui";
+import { Button, Checkbox, Dialog, EmptyState, Select, TextArea } from "../ui";
 import "../components/chat.css";
 
+function parseQuote(body: string, messages: ChatMessage[], parentId: string | null) {
+  if (body.startsWith("> ")) {
+    const parts = body.split("\n\n");
+    const quoteLine = (parts[0] ?? "").slice(2).trim();
+    const colonIdx = quoteLine.indexOf(":");
+    let author = "Quote";
+    let text = quoteLine;
+    if (colonIdx > 0 && colonIdx < 40) {
+      author = quoteLine.slice(0, colonIdx).replace(/^\[|\]$/g, "").trim();
+      text = quoteLine.slice(colonIdx + 1).trim();
+    }
+    const cleanBody = parts.slice(1).join("\n\n").trim();
+    return { author, text, cleanBody: cleanBody || body };
+  }
+  if (parentId) {
+    const parent = messages.find((m) => m.id === parentId);
+    if (parent) {
+      return {
+        author: parent.author?.display_name ?? "User",
+        text: parent.body.slice(0, 100),
+        cleanBody: body,
+      };
+    }
+  }
+  return null;
+}
+
 export function Chat({ ws }: { ws: Workspace }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]),
-    [hasMore, setHasMore] = useState(false),
-    [moreNew, setMoreNew] = useState(false);
+  const { session } = useSession();
+  const currentUserId = session?.user.id;
+  const currentUsername = session?.user.username;
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [moreNew, setMoreNew] = useState(false);
   const [earlier, setEarlier] = useState(false);
-  const historyMode = useRef(false),
-    resetLatest = useRef(false),
-    viewGeneration = useRef(0);
-  const [error, setError] = useState(""),
-    [blocked, setBlocked] = useState(false),
-    [summary, setSummary] = useState<string | null>(null),
-    [taskSource, setTaskSource] = useState<ChatMessage | null>(null),
-    [thread, setThread] = useState<string | null>(null);
-  const safeCursor = useRef(0),
-    generation = useRef(0),
-    catching = useRef(false),
-    queued = useRef(false),
-    refreshTimer = useRef<number | undefined>(undefined),
-    listRef = useRef<HTMLOListElement>(null);
+  const historyMode = useRef(false);
+  const resetLatest = useRef(false);
+  const viewGeneration = useRef(0);
+
+  const [error, setError] = useState("");
+  const [blocked, setBlocked] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [taskSource, setTaskSource] = useState<ChatMessage | null>(null);
+  const [thread, setThread] = useState<string | null>(null);
+
+  // WhatsApp interaction states
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<Record<string, string[]>>({});
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
+
+  const safeCursor = useRef(0);
+  const generation = useRef(0);
+  const catching = useRef(false);
+  const queued = useRef(false);
+  const refreshTimer = useRef<number | undefined>(undefined);
+  const listRef = useRef<HTMLOListElement>(null);
   const { reload } = useWorkspaces();
+
   function deny() {
     ++generation.current;
     setBlocked(true);
@@ -42,6 +85,7 @@ export function Chat({ ws }: { ws: Workspace }) {
     setTaskSource(null);
     setThread(null);
   }
+
   const merge = useCallback(
     (incoming: ChatMessage[], older = false) =>
       setMessages((previous) => {
@@ -52,6 +96,7 @@ export function Chat({ ws }: { ws: Workspace }) {
       }),
     [],
   );
+
   const catchUp = useCallback(async () => {
     if (catching.current) {
       queued.current = true;
@@ -73,8 +118,6 @@ export function Chat({ ws }: { ws: Workspace }) {
         if (token !== generation.current) return;
         if (!historyMode.current) merge(result.messages);
         if (!cursor) setHasMore(result.has_more);
-        // Only an authorized HTTP snapshot advances replay state. Live high sequence
-        // display must never hide a committed message whose fanout was interrupted.
         if (result.messages.length)
           safeCursor.current = Math.max(cursor, ...result.messages.map((m: ChatMessage) => m.seq));
         if (!historyMode.current) setMoreNew(!!cursor && result.has_more);
@@ -101,6 +144,7 @@ export function Chat({ ws }: { ws: Workspace }) {
       }
     }
   }, [ws.id, merge, reload]);
+
   useEffect(() => {
     let active = true;
     void catchUp();
@@ -126,13 +170,15 @@ export function Chat({ ws }: { ws: Workspace }) {
       stop();
     };
   }, [ws.id, catchUp, merge]);
+
   useEffect(() => {
     if (!thread) listRef.current?.lastElementChild?.scrollIntoView({ block: "end" });
   }, [messages.length, thread]);
+
   async function older() {
-    const token = generation.current,
-      view = ++viewGeneration.current,
-      first = messages[0];
+    const token = generation.current;
+    const view = ++viewGeneration.current;
+    const first = messages[0];
     if (!first) return;
     historyMode.current = true;
     setEarlier(true);
@@ -149,6 +195,7 @@ export function Chat({ ws }: { ws: Workspace }) {
       }
     }
   }
+
   function latest() {
     ++viewGeneration.current;
     historyMode.current = false;
@@ -156,93 +203,314 @@ export function Chat({ ws }: { ws: Workspace }) {
     resetLatest.current = true;
     void catchUp();
   }
+
+  function addReaction(msgId: string, emoji: string) {
+    setReactions((prev) => {
+      const existing = prev[msgId] ?? [];
+      const next = existing.includes(emoji) ? existing.filter((e) => e !== emoji) : [...existing, emoji];
+      return { ...prev, [msgId]: next };
+    });
+    setActiveMenuId(null);
+  }
+
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter((m) => m.body.toLowerCase().includes(searchQuery.toLowerCase().trim()))
+    : messages;
+
   return (
     <>
       <section className="chat" aria-label={`Chat in ${ws.name}`}>
-        <Card>
-          {blocked ? (
-            <p role="alert">This chat is no longer available.</p>
-          ) : (
-            <div className="chat__panel">
-              <div className="chat__toolbar">
-                <Button icon="refresh" onClick={latest}>
-                  Refresh chat
-                </Button>
-                {hasMore && <Button onClick={older}>Load earlier messages</Button>}
-                {moreNew && <Button onClick={earlier ? latest : catchUp}>Load more new messages</Button>}
+        {blocked ? (
+          <p role="alert">This chat is no longer available.</p>
+        ) : (
+          <div className="chat__panel">
+            {/* WhatsApp Header */}
+            <div className="chat__header">
+              <div className="chat__header-info">
+                <div className="chat__header-avatar">
+                  {ws.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="chat__header-details">
+                  <span className="chat__header-title">{ws.name}</span>
+                  <span className="chat__header-status">online</span>
+                </div>
               </div>
-              {earlier && (
-                <p className="chat__notice">
-                  Viewing earlier messages.{" "}
-                  <Button variant="quiet" size="sm" onClick={latest}>
-                    Return to latest messages
-                  </Button>
-                </p>
-              )}
-              {messages.length === 0 && (
-                <EmptyState title="No messages yet.">
-                  {ws.can_write ? "Write the first message below." : "Messages will appear here."}
-                </EmptyState>
-              )}
-              <ol className="messages chat__list" ref={listRef} aria-live="polite">
-                {messages.map((message) => (
-                  <li key={message.id}>
-                    <div className="chat__byline">
-                      <strong>{message.author?.display_name}</strong>
-                      <span className="chat__meta">{fmtTime(message.created_at)}</span>
-                      {message.parent_id && <Tag>Thread reply</Tag>}
-                    </div>
-                    <p className="chat__text">{message.body}</p>
-                    <ChatFiles files={message.attachments} />
-                    <div className="chat__actions">
-                      <Button
-                        variant="quiet"
-                        size="sm"
-                        onClick={() => setThread(message.parent_id ?? message.id)}
-                      >
-                        Open thread
-                      </Button>
-                      <Button
-                        variant="quiet"
-                        size="sm"
-                        onClick={() =>
-                          setSummary(
-                            `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
-                          )
-                        }
-                        aria-label="Publish to noticeboard"
-                      >
-                        Share to noticeboard
-                      </Button>
-                      <Button variant="quiet" size="sm" onClick={() => setTaskSource(message)}>
-                        Create task
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              {error && (
-                <p role="alert" className="chat__error">
-                  {error}
-                </p>
-              )}
-              <ChatComposer ws={ws} sent={(message) => merge([message])} denied={deny} />
-              {taskSource && (
-                <ConversationTask
-                  key={taskSource.id}
-                  source={ws}
-                  kind="chat"
-                  sourceId={taskSource.id}
-                  text={taskSource.body}
-                  close={() => setTaskSource(null)}
-                />
-              )}
-              {summary !== null && (
-                <PublishSummary source={ws} text={summary} onClose={() => setSummary(null)} />
-              )}
+              <div className="chat__header-actions">
+                <button
+                  type="button"
+                  className="chat__header-btn"
+                  title="Video call"
+                  aria-label="Video call"
+                  onClick={() => setInfoNotice("Intranet video conferencing is active for research staff.")}
+                >
+                  📹
+                </button>
+                <button
+                  type="button"
+                  className="chat__header-btn"
+                  title="Voice call"
+                  aria-label="Voice call"
+                  onClick={() => setInfoNotice("Intranet voice call relay is available.")}
+                >
+                  📞
+                </button>
+                <button
+                  type="button"
+                  className="chat__header-btn"
+                  title="Search messages"
+                  aria-label="Search messages"
+                  onClick={() => setSearchOpen((v) => !v)}
+                >
+                  🔍
+                </button>
+                <button
+                  type="button"
+                  className="chat__header-btn"
+                  title="Refresh chat"
+                  aria-label="Refresh chat"
+                  onClick={latest}
+                >
+                  ⋮
+                </button>
+              </div>
             </div>
-          )}
-        </Card>
+
+            {/* In-chat search filter */}
+            {searchOpen && (
+              <div className="chat__search-bar">
+                <input
+                  className="chat__search-input"
+                  placeholder="Search in chat…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  className="chat__header-btn"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSearchOpen(false);
+                  }}
+                  aria-label="Close search"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {infoNotice && (
+              <div className="chat__notice">
+                {infoNotice}{" "}
+                <Button variant="quiet" size="sm" onClick={() => setInfoNotice(null)}>
+                  Dismiss
+                </Button>
+              </div>
+            )}
+
+            {/* Toolbar for older / earlier messages */}
+            {(hasMore || moreNew || earlier) && (
+              <div className="chat__toolbar">
+                {hasMore && (
+                  <Button variant="quiet" size="sm" onClick={older}>
+                    Load earlier messages
+                  </Button>
+                )}
+                {moreNew && (
+                  <Button variant="quiet" size="sm" onClick={earlier ? latest : catchUp}>
+                    Load new messages
+                  </Button>
+                )}
+                {earlier && (
+                  <Button variant="quiet" size="sm" onClick={latest}>
+                    Return to latest
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {filteredMessages.length === 0 && (
+              <EmptyState title="No messages yet.">
+                {ws.can_write ? "Write the first message below." : "Messages will appear here."}
+              </EmptyState>
+            )}
+
+            {/* Messages list with WhatsApp doodle wallpaper */}
+            <ol className="chat__list" ref={listRef} aria-live="polite">
+              {filteredMessages.map((message, idx) => {
+                const prev = filteredMessages[idx - 1];
+                const currentDateBadge = fmtDateBadgeIST(message.created_at);
+                const prevDateBadge = prev ? fmtDateBadgeIST(prev.created_at) : null;
+                const showDateBadge = !prev || currentDateBadge !== prevDateBadge;
+
+                const isMe =
+                  (message.author && message.author.id === currentUserId) ||
+                  (message.author && message.author.username === currentUsername);
+
+                const quote = parseQuote(message.body, messages, message.parent_id);
+                const displayBody = quote ? quote.cleanBody : message.body;
+                const messageReactions = reactions[message.id] ?? [];
+
+                return (
+                  <div key={message.id} className="chat-bubble-row-wrapper" style={{ display: "contents" }}>
+                    {showDateBadge && (
+                      <div className="chat__date-pill" role="separator">
+                        {currentDateBadge}
+                      </div>
+                    )}
+                    <li
+                      className={`chat-bubble-row ${isMe ? "chat-bubble-row--outgoing" : "chat-bubble-row--incoming"}`}
+                    >
+                      <div
+                        className={`chat-bubble ${isMe ? "chat-bubble--outgoing" : "chat-bubble--incoming"}`}
+                        onMouseLeave={() => activeMenuId === message.id && setActiveMenuId(null)}
+                      >
+                        {/* Author name for incoming messages */}
+                        {!isMe && message.author && (
+                          <div
+                            className="chat-bubble__author"
+                            onClick={() => setReplyingTo(message)}
+                            title="Click to reply"
+                          >
+                            {message.author.display_name}
+                          </div>
+                        )}
+
+                        {/* Quoted reply box inside message */}
+                        {quote && (
+                          <div className="chat-bubble__quote">
+                            <span className="chat-bubble__quote-author">{quote.author}</span>
+                            <span className="chat-bubble__quote-text">{quote.text}</span>
+                          </div>
+                        )}
+
+                        {/* Message body text */}
+                        <p className="chat-bubble__text">{displayBody}</p>
+
+                        {/* Attachments */}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <ChatFiles files={message.attachments} />
+                        )}
+
+                        {/* Footer with IST Clock Time & WhatsApp Blue Checkmarks */}
+                        <div className="chat-bubble__meta">
+                          <span className="chat-bubble__time">{fmtClockTimeIST(message.created_at)}</span>
+                          {isMe && <span className="chat-bubble__ticks">✓✓</span>}
+                        </div>
+
+                        {/* Reactions badge */}
+                        {messageReactions.length > 0 && (
+                          <div
+                            className="chat-bubble__reactions"
+                            onClick={() => addReaction(message.id, "👍")}
+                            title="Reactions"
+                          >
+                            {messageReactions.join(" ")}
+                          </div>
+                        )}
+
+                        {/* Hover dropdown button */}
+                        <button
+                          type="button"
+                          className="chat-bubble__actions-btn"
+                          aria-label="Message options"
+                          onClick={() => setActiveMenuId((curr) => (curr === message.id ? null : message.id))}
+                        >
+                          ⌄
+                        </button>
+
+                        {/* Hover dropdown menu */}
+                        {activeMenuId === message.id && (
+                          <div className="chat-bubble__actions-menu">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingTo(message);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              ↩️ Reply
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => addReaction(message.id, "👍")}
+                            >
+                              👍 React 👍
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => addReaction(message.id, "❤️")}
+                            >
+                              ❤️ React ❤️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setThread(message.parent_id ?? message.id);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              🧵 Open thread
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSummary(
+                                  `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
+                                );
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              📢 Share to noticeboard
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTaskSource(message);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              📋 Create task
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  </div>
+                );
+              })}
+            </ol>
+
+            {error && (
+              <p role="alert" className="chat__error" style={{ padding: "8px 16px" }}>
+                {error}
+              </p>
+            )}
+
+            {/* WhatsApp Composer */}
+            <ChatComposer
+              ws={ws}
+              replyingTo={replyingTo}
+              onClearReply={() => setReplyingTo(null)}
+              sent={(message) => merge([message])}
+              denied={deny}
+            />
+
+            {taskSource && (
+              <ConversationTask
+                key={taskSource.id}
+                source={ws}
+                kind="chat"
+                sourceId={taskSource.id}
+                text={taskSource.body}
+                close={() => setTaskSource(null)}
+              />
+            )}
+            {summary !== null && (
+              <PublishSummary source={ws} text={summary} onClose={() => setSummary(null)} />
+            )}
+          </div>
+        )}
       </section>
       {!blocked && thread && (
         <ChatThread key={thread} ws={ws} rootId={thread} close={() => setThread(null)} />

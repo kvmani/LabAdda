@@ -50,9 +50,10 @@ class Settings:
     asset_dir: Path = Path("var/assets")
     frontend_dist: Path | None = None
     status_dir: Path | None = None  # operator status files (backup-status.json), read-only here
-    timezone: str = "UTC"
+    timezone: str = "Asia/Kolkata"
     # True only when the operator chose the zone, so the setup checklist can tell it from the default.
     timezone_configured: bool = False
+    max_whiteboards_per_scope: int = 5
     session_idle_minutes: int = 120
     session_absolute_hours: int = 12
     activation_hours: int = 72
@@ -152,8 +153,9 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         asset_dir=Path(env("LABADDA_ASSET_DIR", "var/assets")),
         frontend_dist=Path(dist) if dist else (default_dist if default_dist.exists() else None),
         status_dir=Path(status_dir) if status_dir else None,
-        timezone=_timezone(env("LABADDA_TIMEZONE", "UTC")),
+        timezone=_timezone(env("LABADDA_TIMEZONE", "Asia/Kolkata")),
         timezone_configured=bool(env("LABADDA_TIMEZONE")),
+        max_whiteboards_per_scope=int(env("LABADDA_MAX_WHITEBOARDS_PER_SCOPE", "5")),
         session_idle_minutes=int(env("LABADDA_SESSION_IDLE_MINUTES", "120")),
         session_absolute_hours=int(env("LABADDA_SESSION_ABSOLUTE_HOURS", "12")),
         max_attachments=int(env("LABADDA_MAX_ATTACHMENTS", "5")),

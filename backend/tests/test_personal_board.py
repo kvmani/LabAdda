@@ -107,3 +107,63 @@ def test_oversized_documents_are_rejected_and_nothing_is_stored(as_user):
     big_text = [note("x" * 1000) for _ in range(500)]
     assert owner.put("/me/whiteboard", json={"revision": 0, "objects": big_text}).status_code == 422
     assert owner.get("/me/whiteboard").json() == {"revision": 0, "objects": []}
+
+
+def test_personal_tabbed_whiteboard(as_user):
+    """Personal whiteboard supports multiple tabbed boards with independent state."""
+    bharat = as_user("bharat")
+
+    # 1. Fetch tabs
+    tabs_res = bharat.get("/me/whiteboard/tabs")
+    assert tabs_res.status_code == 200
+    assert len(tabs_res.json()) >= 1
+
+    # 2. Update titles for Board 0 and Board 1 with short names (<= 10 chars)
+    r_t0 = bharat.patch("/me/whiteboard/0/title", json={"title": "Brainstorm"})
+    assert r_t0.status_code == 200
+    assert r_t0.json()["title"] == "Brainstorm"
+
+    r_t1 = bharat.patch("/me/whiteboard/1/title", json={"title": "Priorities"})
+    assert r_t1.status_code == 200
+    assert r_t1.json()["title"] == "Priorities"
+
+    # Custom names > 10 chars are rejected with 422
+    assert bharat.patch("/me/whiteboard/0/title", json={"title": "LongPersonalTitle"}).status_code == 422
+
+    # 3. Save objects to Board 1
+    sticky_id = str(uuid.uuid4())
+    b1_save = bharat.put(
+        "/me/whiteboard",
+        json={
+            "revision": 0,
+            "board_index": 1,
+            "objects": [
+                {
+                    "id": sticky_id,
+                    "kind": "sticky",
+                    "x": 100,
+                    "y": 100,
+                    "w": 140,
+                    "h": 140,
+                    "text": "Review SEM sample preparation",
+                    "color": "#fff",
+                }
+            ],
+        },
+    )
+    assert b1_save.status_code == 200
+    saved_b1 = b1_save.json()
+    assert saved_b1["revision"] == 1
+    assert saved_b1["board_index"] == 1
+
+    # 4. Verify Board 0 remains clean
+    b0 = bharat.get("/me/whiteboard?board_index=0").json()
+    assert b0["revision"] == 0
+    assert b0["objects"] == []
+
+    # 5. Verify Board 1 returns its saved object
+    b1 = bharat.get("/me/whiteboard?board_index=1").json()
+    assert b1["revision"] == 1
+    assert len(b1["objects"]) == 1
+    assert b1["objects"][0]["text"] == "Review SEM sample preparation"
+

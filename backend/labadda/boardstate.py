@@ -21,7 +21,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .errors import Invalid
-from .models import Board, BoardOp, BoardSnapshot
+from .models import Board, BoardOp, BoardSnapshot, WorkspaceBoard
 
 log = logging.getLogger("labadda.board")
 MAX_RENDER_PX = 1600
@@ -108,40 +108,51 @@ class StateCache:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._entries: dict[uuid.UUID, tuple[int, int, dict]] = {}
+        self._entries: dict[tuple[uuid.UUID, int], tuple[int, int, dict]] = {}
 
     def objects(self, db: Session, board: Board) -> dict[str, dict]:
         """Current state for a locked board row. Catches up incrementally when slightly behind."""
+        board_idx = getattr(board, "board_index", 0)
+        key = (board.workspace_id, board_idx)
         with self._lock:
-            entry = self._entries.get(board.workspace_id)
+            entry = self._entries.get(key)
         if entry and entry[0] == board.epoch and board.base_revision <= entry[1] <= board.revision:
             objects = entry[2]
             if entry[1] < board.revision:
                 objects = dict(objects)
-                for op in epoch_ops(db, board.workspace_id, board.epoch, after=entry[1], upto=board.revision):
+                for op in epoch_ops(
+                    db,
+                    board.workspace_id,
+                    board.epoch,
+                    board_index=board_idx,
+                    after=entry[1],
+                    upto=board.revision,
+                ):
                     _apply_copy(objects, op)
         else:
             objects = state_at(db, board)
-        self._store(board.workspace_id, board.epoch, board.revision, objects)
+        self._store(key, board.epoch, board.revision, objects)
         return objects
 
     def committed(self, workspace_id: uuid.UUID, base_revision: int, op: BoardOp) -> None:
         """Advance the cached state after ``op`` has committed (ignored unless it is the next revision)."""
+        board_idx = getattr(op, "board_index", 0)
+        key = (workspace_id, board_idx)
         with self._lock:
-            entry = self._entries.get(workspace_id)
+            entry = self._entries.get(key)
             if not entry or entry[0] != op.epoch or entry[1] != op.revision - 1:
                 return  # the next read catches up from the database
             objects = dict(entry[2])
             _apply_copy(objects, op)
-            self._entries[workspace_id] = (op.epoch, op.revision, objects)
+            self._entries[key] = (op.epoch, op.revision, objects)
 
-    def _store(self, workspace_id, epoch, revision, objects) -> None:
+    def _store(self, key: tuple[uuid.UUID, int], epoch, revision, objects) -> None:
         with self._lock:
-            current = self._entries.get(workspace_id)
+            current = self._entries.get(key)
             # Never move an entry backwards within the same epoch.
             if current and current[0] == epoch and current[1] > revision:
                 return
-            self._entries[workspace_id] = (epoch, revision, objects)
+            self._entries[key] = (epoch, revision, objects)
 
     def clear(self) -> None:
         with self._lock:
@@ -158,6 +169,7 @@ def undo_target(db: Session, board: Board, actor_id) -> BoardOp | None:
         select(BoardOp)
         .where(
             BoardOp.workspace_id == board.workspace_id,
+            BoardOp.board_index == getattr(board, "board_index", 0),
             BoardOp.epoch == board.epoch,
             BoardOp.revision > board.base_revision,
             BoardOp.actor_id == actor_id,
@@ -172,9 +184,13 @@ def undo_target(db: Session, board: Board, actor_id) -> BoardOp | None:
     return None
 
 
-def latest_snapshot(db: Session, workspace_id, epoch: int, upto: int | None = None) -> BoardSnapshot | None:
+def latest_snapshot(
+    db: Session, workspace_id, epoch: int, board_index: int = 0, upto: int | None = None
+) -> BoardSnapshot | None:
     stmt = select(BoardSnapshot).where(
-        BoardSnapshot.workspace_id == workspace_id, BoardSnapshot.epoch == epoch
+        BoardSnapshot.workspace_id == workspace_id,
+        BoardSnapshot.board_index == board_index,
+        BoardSnapshot.epoch == epoch,
     )
     if upto is not None:
         stmt = stmt.where(BoardSnapshot.revision <= upto)
@@ -182,10 +198,13 @@ def latest_snapshot(db: Session, workspace_id, epoch: int, upto: int | None = No
 
 
 def epoch_ops(
-    db: Session, workspace_id, epoch: int, after: int = 0, upto: int | None = None
+    db: Session, workspace_id, epoch: int, board_index: int = 0, after: int = 0, upto: int | None = None
 ) -> list[BoardOp]:
     stmt = select(BoardOp).where(
-        BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch, BoardOp.revision > after
+        BoardOp.workspace_id == workspace_id,
+        BoardOp.board_index == board_index,
+        BoardOp.epoch == epoch,
+        BoardOp.revision > after,
     )
     if upto is not None:
         stmt = stmt.where(BoardOp.revision <= upto)
@@ -195,12 +214,13 @@ def epoch_ops(
 def state_at(db: Session, board: Board, revision: int | None = None) -> dict[str, dict]:
     """Objects in the current epoch at ``revision`` (default: latest)."""
     target = board.revision if revision is None else revision
-    snap = latest_snapshot(db, board.workspace_id, board.epoch, upto=target)
+    board_idx = getattr(board, "board_index", 0)
+    snap = latest_snapshot(db, board.workspace_id, board.epoch, board_index=board_idx, upto=target)
     if target < board.base_revision and (snap is None or snap.revision != target):
         raise Invalid("revision_compacted", "That revision is too old to rebuild. Choose a more recent one.")
     base_rev = snap.revision if snap else 0
     return fold(
-        epoch_ops(db, board.workspace_id, board.epoch, after=base_rev, upto=target),
+        epoch_ops(db, board.workspace_id, board.epoch, board_index=board_idx, after=base_rev, upto=target),
         base=snap.state if snap else None,
     )
 
@@ -210,11 +230,21 @@ def compact(db: Session, board: Board, keep: int) -> int:
     new_base = board.revision - keep
     if new_base <= board.base_revision:
         return 0
+    board_idx = getattr(board, "board_index", 0)
     state = state_at(db, board, new_base)
-    db.add(BoardSnapshot(workspace_id=board.workspace_id, epoch=board.epoch, revision=new_base, state=state))
+    db.add(
+        BoardSnapshot(
+            workspace_id=board.workspace_id,
+            board_index=board_idx,
+            epoch=board.epoch,
+            revision=new_base,
+            state=state,
+        )
+    )
     removed = db.execute(
         delete(BoardOp).where(
             BoardOp.workspace_id == board.workspace_id,
+            BoardOp.board_index == board_idx,
             BoardOp.epoch == board.epoch,
             BoardOp.revision <= new_base,
         )
@@ -231,32 +261,78 @@ def compact_all(db: Session, threshold: int, keep: int) -> int:
     The board row is then locked only to recheck that epoch and base are unchanged and to write the
     snapshot. A board restored or compacted in between is skipped and retried on a later tick.
     """
-    candidates = db.execute(
-        select(Board.workspace_id, Board.epoch, Board.revision, Board.base_revision).where(
-            Board.revision - Board.base_revision > threshold
-        )
-    ).all()
+    candidates = [
+        (ws_id, 0, ep, rev, base)
+        for ws_id, ep, rev, base in db.execute(
+            select(Board.workspace_id, Board.epoch, Board.revision, Board.base_revision).where(
+                Board.revision - Board.base_revision > threshold
+            )
+        ).all()
+    ]
+    sec_candidates = [
+        (ws_id, b_idx, ep, rev, base)
+        for ws_id, b_idx, ep, rev, base in db.execute(
+            select(
+                WorkspaceBoard.workspace_id,
+                WorkspaceBoard.board_index,
+                WorkspaceBoard.epoch,
+                WorkspaceBoard.revision,
+                WorkspaceBoard.base_revision,
+            ).where(WorkspaceBoard.revision - WorkspaceBoard.base_revision > threshold)
+        ).all()
+    ]
+    all_candidates = candidates + sec_candidates
     db.commit()
     compacted = 0
-    for workspace_id, epoch, revision, base in candidates:
+    for workspace_id, board_index, epoch, revision, base in all_candidates:
         new_base = revision - keep
         if new_base <= base:
             continue
         started = time.perf_counter()
-        observed = Board(workspace_id=workspace_id, epoch=epoch, revision=revision, base_revision=base)
+        if board_index == 0:
+            observed = Board(
+                workspace_id=workspace_id,
+                epoch=epoch,
+                revision=revision,
+                base_revision=base,
+            )
+        else:
+            observed = WorkspaceBoard(
+                workspace_id=workspace_id,
+                board_index=board_index,
+                epoch=epoch,
+                revision=revision,
+                base_revision=base,
+            )
         state = state_at(db, observed, new_base)  # no lock held: reads only immutable history
         db.commit()
         folded = time.perf_counter()
-        board = db.scalar(
-            select(Board).where(Board.workspace_id == workspace_id).with_for_update(skip_locked=True)
-        )
+        if board_index == 0:
+            board = db.get(Board, workspace_id, with_for_update=True)
+        else:
+            board = db.scalar(
+                select(WorkspaceBoard)
+                .where(WorkspaceBoard.workspace_id == workspace_id, WorkspaceBoard.board_index == board_index)
+                .with_for_update(skip_locked=True)
+            )
         if board is None or board.epoch != epoch or board.base_revision != base:
             db.rollback()
             continue
-        db.add(BoardSnapshot(workspace_id=workspace_id, epoch=epoch, revision=new_base, state=state))
+        db.add(
+            BoardSnapshot(
+                workspace_id=workspace_id,
+                board_index=board_index,
+                epoch=epoch,
+                revision=new_base,
+                state=state,
+            )
+        )
         removed = db.execute(
             delete(BoardOp).where(
-                BoardOp.workspace_id == workspace_id, BoardOp.epoch == epoch, BoardOp.revision <= new_base
+                BoardOp.workspace_id == workspace_id,
+                BoardOp.board_index == board_index,
+                BoardOp.epoch == epoch,
+                BoardOp.revision <= new_base,
             )
         ).rowcount
         board.base_revision = new_base

@@ -428,3 +428,34 @@ def test_the_migration_refuses_to_discard_new_fields(as_user, settings):
         with Operations.context(context), pytest.raises(RuntimeError, match="discard"):
             module.downgrade()
     engine.dispose()
+
+
+def test_model_csv_template_download_and_preview(as_user):
+    """Model reference CSV template can be downloaded and previewed directly."""
+    admin = as_user("admin")
+
+    # Download CSV template
+    r_csv = admin.get("/admin/changes/import/staff/template?format=csv")
+    assert r_csv.status_code == 200
+    assert "text/csv" in r_csv.headers["content-type"]
+    assert "full_name,division,section,Emp No" in r_csv.text
+    assert "Ananya Iyer" in r_csv.text
+    assert "Surface Engineering Division" in r_csv.text
+
+    # Alternate endpoint
+    r_alt = admin.get("/admin/changes/import/staff/csv-template")
+    assert r_alt.status_code == 200
+    assert "text/csv" in r_alt.headers["content-type"]
+
+    # Preview the model CSV bytes via staff import preview endpoint
+    csv_bytes = r_csv.text.encode("utf-8")
+    r_prev = admin.client.post(
+        admin.url("/admin/changes/import/staff/preview"),
+        content=csv_bytes,
+        headers={"Content-Type": "text/csv", "X-CSRF-Token": admin.csrf},
+    )
+    assert r_prev.status_code == 200
+    preview_data = r_prev.json()
+    assert preview_data["total"] > 0
+    assert preview_data["errors"] == 0
+

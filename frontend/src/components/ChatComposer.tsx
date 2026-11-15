@@ -1,26 +1,31 @@
-import { useEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accessDenied, api, errorMessage, newId, outcomeUnknown } from "../api";
 import { useSession } from "../session";
 import { UploadRecovery, useUploadQueue } from "./UploadRecovery";
 import type { UploadedAsset } from "../uploads";
 import type { ChatMessage, Workspace } from "../types";
-import { Button, Field, TextInput } from "../ui";
+import { Button } from "../ui";
 import "./chat.css";
 
 type Intent = { body: string; client_id: string; parent_id: string | null; attachment_ids: string[] };
-type ComposerProps = {
+
+export type ComposerProps = {
   ws: Workspace;
   parentId?: string | null;
+  replyingTo?: ChatMessage | null;
+  onClearReply?: () => void;
   sent: (message: ChatMessage) => void;
   denied: () => void;
 };
 
-/** Sends one message; a retry after an unknown outcome reuses the same intent and client id. */
+const QUICK_EMOJIS = ["👍", "❤️", "😊", "😂", "🎉", "🚀", "👏", "🙏", "🔥", "💡"];
+
 function useChatSend(
-  { ws, parentId = null, sent, denied }: ComposerProps,
+  props: ComposerProps,
   files: UploadedAsset[],
   clearFiles: () => void,
 ) {
+  const { ws, parentId = null, replyingTo = null, onClearReply, sent, denied } = props;
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [unknown, setUnknown] = useState(false);
@@ -40,6 +45,7 @@ function useChatSend(
     setUnknown(false);
     setText("");
     clearFiles();
+    onClearReply?.();
   }
 
   async function submit(event: FormEvent, uploadsPending: boolean) {
@@ -50,10 +56,14 @@ function useChatSend(
     setBusy(true);
     setError("");
     try {
+      const author = replyingTo?.author?.display_name ?? "User";
+      const snippet = ((replyingTo?.body ?? "").split("\n")[0] ?? "").slice(0, 100);
+      const formattedBody = replyingTo ? `> [${author}]: ${snippet}\n\n${text}` : text;
+
       attempt.current ??= {
-        body: text,
+        body: formattedBody,
         client_id: newId("chat"),
-        parent_id: parentId,
+        parent_id: parentId ?? replyingTo?.parent_id ?? replyingTo?.id ?? null,
         attachment_ids: files.map((file) => file.id),
       };
       const message = await api<ChatMessage>(`/workspaces/${ws.id}/chat`, { body: attempt.current });
@@ -76,74 +86,33 @@ function useChatSend(
   return { text, setText, busy, unknown, error, setError, submit };
 }
 
-function AttachmentPicker({
-  files,
-  setFiles,
-  uploads,
-  setError,
-  disabled,
-}: {
-  files: UploadedAsset[];
-  setFiles: Dispatch<SetStateAction<UploadedAsset[]>>;
-  uploads: ReturnType<typeof useUploadQueue>;
-  setError: (message: string) => void;
-  disabled: boolean;
-}) {
+export function ChatComposer(props: ComposerProps) {
+  const { ws, parentId = null, replyingTo = null, onClearReply } = props;
+  const [files, setFiles] = useState<UploadedAsset[]>([]);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { session } = useSession();
   const maxFiles = session?.limits.max_attachments ?? 10;
-
-  function removeFile(file: UploadedAsset) {
-    setFiles((current) => current.filter((row) => row.id !== file.id));
-    api(`/uploads/${file.id}`, { method: "DELETE" }).catch(() =>
-      setError("File removed from the message. Check storage if its upload still appears."),
-    );
-  }
-
-  return (
-    <fieldset disabled={disabled} className="chat-composer__files">
-      <legend>Attachments</legend>
-      <Field label="Attach files">
-        {(control) => (
-          <input
-            {...control}
-            type="file"
-            multiple
-            accept="application/pdf,image/png,image/jpeg"
-            onChange={(event) => {
-              try {
-                uploads.queue.add(Array.from(event.target.files ?? []), maxFiles - files.length);
-              } catch (e: unknown) {
-                setError(errorMessage(e));
-              }
-              event.target.value = "";
-            }}
-          />
-        )}
-      </Field>
-      <ul>
-        {files.map((file) => (
-          <li key={file.id}>
-            <span>{file.display_name}</span>
-            <Button variant="quiet" size="sm" onClick={() => removeFile(file)}>
-              Remove file: {file.display_name}
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </fieldset>
-  );
-}
-
-export function ChatComposer(props: ComposerProps) {
-  const { ws, parentId = null } = props;
-  const [files, setFiles] = useState<UploadedAsset[]>([]);
-  const { session } = useSession();
   const uploads = useUploadQueue(session?.limits.max_attachment_bytes ?? 20 * 1048576, (asset) =>
     setFiles((previous) => [...previous, asset]),
   );
   const send = useChatSend(props, files, () => setFiles([]));
   const { busy, unknown } = send;
-  if (!ws.can_write) return <p className="chat__meta">Chat is read-only here.</p>;
+
+  if (!ws.can_write) return <p className="chat__meta" style={{ padding: "12px 16px" }}>Chat is read-only here.</p>;
+
+  function removeFile(file: UploadedAsset) {
+    setFiles((current) => current.filter((row) => row.id !== file.id));
+    api(`/uploads/${file.id}`, { method: "DELETE" }).catch(() =>
+      send.setError("File removed from the message. Check storage if its upload still appears."),
+    );
+  }
+
+  function insertEmoji(emoji: string) {
+    send.setText((prev) => prev + emoji);
+  }
+
+  const hasContent = send.text.trim().length > 0 || files.length > 0;
 
   return (
     <form
@@ -151,42 +120,145 @@ export function ChatComposer(props: ComposerProps) {
       onSubmit={(event) => send.submit(event, uploads.attempts.length > 0)}
       aria-label={parentId ? "Reply to thread" : "Send chat message"}
     >
-      <TextInput
-        label={parentId ? "Thread reply" : `Message ${ws.name}`}
-        value={send.text}
-        maxLength={4000}
-        disabled={busy || unknown}
-        onChange={(e) => send.setText(e.target.value)}
-      />
-      <AttachmentPicker
-        files={files}
-        setFiles={setFiles}
-        uploads={uploads}
-        setError={send.setError}
-        disabled={busy || unknown}
-      />
+      {/* Quoted reply preview */}
+      {replyingTo && (
+        <div className="chat-composer__quote-preview">
+          <div className="chat-composer__quote-preview-body">
+            <span className="chat-composer__quote-preview-author">
+              {replyingTo.author?.display_name ?? "User"}
+            </span>
+            <span className="chat-composer__quote-preview-text">{replyingTo.body}</span>
+          </div>
+          <button
+            type="button"
+            className="chat-composer__quote-dismiss"
+            onClick={onClearReply}
+            aria-label="Cancel reply"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Files list */}
+      {files.length > 0 && (
+        <div className="chat-composer__files">
+          {files.map((file) => (
+            <span key={file.id} className="chat-composer__file-tag">
+              📄 {file.display_name}
+              <Button variant="quiet" size="sm" onClick={() => removeFile(file)}>
+                ✕
+              </Button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Emoji bar */}
+      {showEmoji && (
+        <div className="chat-composer__emoji-bar">
+          {QUICK_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className="chat-composer__emoji-item"
+              onClick={() => insertEmoji(emoji)}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Main Composer Bar */}
+      <div className="chat-composer__bar">
+        {/* Attachment + button */}
+        <button
+          type="button"
+          className="chat-composer__btn"
+          title="Attach file"
+          aria-label="Attach file"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={busy || unknown}
+        >
+          ➕
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          accept="application/pdf,image/png,image/jpeg"
+          onChange={(event) => {
+            try {
+              uploads.queue.add(Array.from(event.target.files ?? []), maxFiles - files.length);
+            } catch (e: unknown) {
+              send.setError(errorMessage(e));
+            }
+            event.target.value = "";
+          }}
+        />
+
+        {/* Emoji toggle button */}
+        <button
+          type="button"
+          className="chat-composer__btn"
+          title="Insert emoji"
+          aria-label="Insert emoji"
+          onClick={() => setShowEmoji((v) => !v)}
+        >
+          😊
+        </button>
+
+        {/* Rounded Input Pill */}
+        <div className="chat-composer__input-wrapper">
+          <input
+            className="chat-composer__input"
+            placeholder={parentId ? "Reply to thread…" : "Type a message"}
+            value={send.text}
+            maxLength={4000}
+            disabled={busy || unknown}
+            onChange={(e) => send.setText(e.target.value)}
+            aria-label="Type a message"
+          />
+        </div>
+
+        {/* Send / Mic button */}
+        {hasContent ? (
+          <button
+            type="submit"
+            className="chat-composer__send-btn"
+            title="Send"
+            aria-label="Send message"
+            disabled={uploads.attempts.length > 0 || busy}
+          >
+            {busy ? "…" : "➤"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="chat-composer__btn"
+            title="Voice note"
+            aria-label="Voice note"
+            onClick={() => send.setText((t) => t + "🎙️ [Voice note] ")}
+          >
+            🎙️
+          </button>
+        )}
+      </div>
+
       <UploadRecovery queue={uploads.queue} />
+
       {send.error && (
-        <p className="chat__error" role="alert">
+        <p className="chat__error" role="alert" style={{ padding: "0 16px" }}>
           {send.error}
         </p>
       )}
       {unknown && (
-        <p role="status">
+        <p role="status" style={{ padding: "0 16px", fontSize: "12px", color: "var(--warn)" }}>
           Message outcome is unconfirmed. Retry the same message; its text and thread are kept unchanged.
         </p>
       )}
-      <div>
-        <Button
-          variant="primary"
-          type="submit"
-          disabled={uploads.attempts.length > 0}
-          busy={busy}
-          busyLabel="Sending…"
-        >
-          {unknown ? "Retry same message" : parentId ? "Send reply" : "Send"}
-        </Button>
-      </div>
     </form>
   );
 }

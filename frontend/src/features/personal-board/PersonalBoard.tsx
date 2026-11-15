@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "../../session";
-import { boardDraft, rememberBoard } from "./draft";
+import { rememberBoard } from "./draft";
 import { api, errorMessage, newId } from "../../api";
 import { API } from "../../config";
 import { Button, ErrorState, PageHeader, Skeleton } from "../../ui";
@@ -41,11 +41,51 @@ export function PersonalBoard() {
   }, []);
 
   const [document, setDocument] = useState<BoardDocument | null>(null);
+  const [boardIndex, setBoardIndex] = useState(0);
+  const [boardTabs, setBoardTabs] = useState<{ board_index: number; title: string }[]>([
+    { board_index: 0, title: "WhiteBoard_1" },
+  ]);
+  const [maxWhiteboards, setMaxWhiteboards] = useState(5);
   const [objects, setObjects] = useState<BoardObject[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    api<{ boards?: { board_index: number; title: string }[]; max_whiteboards?: number } | { board_index: number; title: string }[]>("/me/whiteboard/tabs")
+      .then((res) => {
+        const list = Array.isArray(res) ? res : res.boards ?? [];
+        if (list.length > 0) setBoardTabs(list);
+        if (!Array.isArray(res) && typeof res.max_whiteboards === "number") {
+          setMaxWhiteboards(res.max_whiteboards);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    api<BoardDocument>(`/me/whiteboard?board_index=${boardIndex}`)
+      .then((result) => {
+        if (active && mounted.current) {
+          setDocument(result);
+          setObjects(result.objects);
+          setDirty(false);
+        }
+      })
+      .catch((reason: unknown) => {
+        if (active) setError(errorMessage(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [boardIndex]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -90,39 +130,10 @@ export function PersonalBoard() {
   } | null>(null);
   const [, force] = useState(0);
 
-  // Load document or restore draft
-  useEffect(() => {
-    const savedDraft = boardDraft(draftKey);
-    if (savedDraft) {
-      setDocument(savedDraft.document);
-      setObjects(savedDraft.objects);
-      setDirty(true);
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    api<BoardDocument>("/me/whiteboard")
-      .then((result) => {
-        if (active && mounted.current) {
-          setDocument(result);
-          setObjects(result.objects);
-        }
-      })
-      .catch((reason: unknown) => {
-        if (active) setError(errorMessage(reason));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [draftKey]);
-
   // Persist draft in session
   useEffect(() => {
-    if (dirty && document) rememberBoard({ key: draftKey, document, objects });
-  }, [dirty, document, draftKey, objects]);
+    if (dirty && document) rememberBoard({ key: `${draftKey}:${boardIndex}`, document, objects });
+  }, [dirty, document, draftKey, boardIndex, objects]);
 
   // Warn before closing dirty tab
   useEffect(() => {
@@ -150,7 +161,7 @@ export function PersonalBoard() {
     try {
       const result = await api<BoardDocument>("/me/whiteboard", {
         method: "PUT",
-        body: { revision: document.revision, objects },
+        body: { revision: document.revision, objects, board_index: boardIndex },
       });
       if (!mounted.current) return;
       setDocument(result);
@@ -161,6 +172,46 @@ export function PersonalBoard() {
       setError(errorMessage(e));
     } finally {
       if (mounted.current) setBusy(false);
+    }
+  }
+
+  async function renameTab(idx: number, currentTitle: string) {
+    const title = window.prompt("Short board name (max 10 chars, or default WhiteBoard_N):", currentTitle);
+    if (!title || !title.trim() || title.trim() === currentTitle) return;
+    const clean = title.trim();
+    if (!clean.match(/^WhiteBoard_\d+$/i) && clean.length > 10) {
+      setError("Board name must be at most 10 characters (e.g. SiC Proj, AdminBoard).");
+      return;
+    }
+    try {
+      await api(`/me/whiteboard/${idx}/title`, {
+        method: "PATCH",
+        body: { title: clean },
+      });
+      setBoardTabs((prev) =>
+        prev.map((t) => (t.board_index === idx ? { ...t, title: clean } : t))
+      );
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+    }
+  }
+
+  async function addTab() {
+    if (boardTabs.length >= maxWhiteboards) {
+      setError(`Maximum ${maxWhiteboards} whiteboards allowed.`);
+      return;
+    }
+    const nextIdx = boardTabs.length;
+    const newTitle = `WhiteBoard_${nextIdx + 1}`;
+    try {
+      await api(`/me/whiteboard/${nextIdx}/title`, {
+        method: "PATCH",
+        body: { title: newTitle },
+      });
+      setBoardTabs((prev) => [...prev, { board_index: nextIdx, title: newTitle }]);
+      setBoardIndex(nextIdx);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
     }
   }
 
@@ -574,6 +625,49 @@ export function PersonalBoard() {
       )}
 
       <section className="whiteboard" aria-label="Personal whiteboard canvas">
+        <div className="whiteboard-tabs" role="tablist" aria-label="Personal whiteboard tabs">
+          {boardTabs.map((tab) => (
+            <button
+              key={tab.board_index}
+              type="button"
+              role="tab"
+              aria-selected={boardIndex === tab.board_index}
+              className={`whiteboard-tab ${boardIndex === tab.board_index ? "whiteboard-tab--active" : ""}`}
+              onClick={() => setBoardIndex(tab.board_index)}
+            >
+              <span>{tab.title}</span>
+              <span
+                role="button"
+                tabIndex={0}
+                className="whiteboard-tab__rename"
+                title="Rename board"
+                aria-label={`Rename ${tab.title}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void renameTab(tab.board_index, tab.title);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.stopPropagation();
+                    void renameTab(tab.board_index, tab.title);
+                  }
+                }}
+              >
+                ✏️
+              </span>
+            </button>
+          ))}
+          {boardTabs.length < 5 && (
+            <button
+              type="button"
+              className="whiteboard-tab__add"
+              onClick={() => void addTab()}
+              title="Add a new whiteboard tab"
+            >
+              ＋ Add Board
+            </button>
+          )}
+        </div>
         <WhiteboardToolbar
           tool={tool}
           onSelectTool={setTool}

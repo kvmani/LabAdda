@@ -53,6 +53,15 @@ export async function downloadTemplate(): Promise<void> {
   URL.revokeObjectURL(link.href);
 }
 
+export async function downloadCsvTemplate(): Promise<void> {
+  const blob = await api<Blob>("/admin/changes/import/staff/template?format=csv", { responseType: "blob" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "staff-import-reference.csv";
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 /** Plain words for a failed review or apply; the chosen file is kept so the person can retry. */
 export function describeFailure(error: unknown): string {
   if (errorStatus(error) === 409)

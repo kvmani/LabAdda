@@ -19,6 +19,7 @@ def downgrade_legacy(config: Config, revision: str) -> None:
             db.execute(text("DELETE FROM activity_days"))
             db.execute(text("DELETE FROM metric_samples"))
             db.execute(text("DELETE FROM ops_events"))
+            db.execute(text("UPDATE workspaces SET code = NULL"))
             db.execute(
                 text("""
                 UPDATE users SET employee_no=NULL, designation=NULL, contact_email=NULL,

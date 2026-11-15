@@ -17,6 +17,8 @@ from ..security import login_limiter, utcnow, verify_password
 from ..serialize import iso
 from .governance import lock_authority
 
+from ..system_settings import get_max_whiteboards
+
 router = APIRouter(tags=["capabilities"])
 console_settings = require_console("settings")
 
@@ -33,12 +35,17 @@ def require_usage_reader(actor: Actor = Depends(current_actor), db: Session = De
 
 
 @router.get("/capabilities")
-def own_capabilities(actor: Actor = Depends(current_actor), db: Session = Depends(get_db)):
+def own_capabilities(
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     return {
         "usage.read": can_read_usage(db, actor),
         "policy.draft": actor.user.is_admin,
         "identity.admin": actor.user.is_admin,
         "unit.admin": policy.is_unit_admin(db, actor.user),
+        "max_whiteboards": get_max_whiteboards(db, settings),
     }
 
 

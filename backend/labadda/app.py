@@ -62,6 +62,9 @@ from .api import (
     audit as audit_api,
 )
 from .api import (
+    calendar as calendar_api,
+)
+from .api import (
     health as health_api,
 )
 from .api import (
@@ -151,17 +154,66 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.health = sampler
 
     @app.exception_handler(ApiError)
-    async def api_error(_: Request, exc: ApiError):
+    async def api_error(request: Request, exc: ApiError):
+        log.warning(
+            json.dumps(
+                {
+                    "event": "api_error",
+                    "code": exc.code,
+                    "message": exc.message,
+                    "status": exc.status,
+                    "path": request.url.path,
+                    "method": request.method,
+                    "request_id": request.headers.get("x-request-id", "-"),
+                }
+            )
+        )
         return JSONResponse({"error": {"code": exc.code, "message": exc.message}}, status_code=exc.status)
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error(_: Request, exc: RequestValidationError):
+    async def validation_error(request: Request, exc: RequestValidationError):
         fields = [
             {"field": ".".join(str(p) for p in e["loc"][1:]), "message": e["msg"]} for e in exc.errors()
         ]
+        log.warning(
+            json.dumps(
+                {
+                    "event": "validation_error",
+                    "path": request.url.path,
+                    "method": request.method,
+                    "request_id": request.headers.get("x-request-id", "-"),
+                    "fields": fields,
+                }
+            )
+        )
         return JSONResponse(
             {"error": {"code": "invalid", "message": "Some fields are invalid.", "fields": fields}},
             status_code=422,
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception(request: Request, exc: Exception):
+        log.error(
+            json.dumps(
+                {
+                    "event": "unhandled_exception",
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                    "path": request.url.path,
+                    "method": request.method,
+                    "request_id": request.headers.get("x-request-id", "-"),
+                }
+            ),
+            exc_info=True,
+        )
+        return JSONResponse(
+            {
+                "error": {
+                    "code": "internal_error",
+                    "message": "Something went wrong while processing your request. Please try again or contact support if the issue persists.",
+                }
+            },
+            status_code=500,
         )
 
     @app.middleware("http")
@@ -229,8 +281,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         board,
         panel,
         me,
+        calendar_api,
     ):
         api.include_router(module.router)
+    api.include_router(people.directory_router)
     app.include_router(api)
 
     base = settings.base_path

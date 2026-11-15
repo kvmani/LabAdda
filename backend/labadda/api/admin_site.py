@@ -16,11 +16,17 @@ from ..deps import PANEL_HEADER, Actor, current_actor, get_db, get_settings, req
 from ..errors import Invalid, Unauthenticated
 from ..security import utcnow
 from ..settings_report import settings_groups
+from ..system_settings import get_max_whiteboards, set_setting
 
 router = APIRouter(tags=["admin"])
 console_backups = require_console("backups")
 console_settings = require_console("settings", admin_only=True)
 console_broadcast = require_console("broadcast", admin_only=True)
+
+
+class WhiteboardConfigBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    max_whiteboards_per_scope: int = Field(ge=1, le=20)
 
 
 class BroadcastBody(BaseModel):
@@ -56,6 +62,31 @@ def backups_status(_: Actor = Depends(console_backups), settings: Settings = Dep
 @router.get("/admin/settings")
 def read_settings(_: Actor = Depends(console_settings), settings: Settings = Depends(get_settings)):
     return {"groups": settings_groups(settings)}
+
+
+@router.get("/admin/settings/whiteboards")
+def get_whiteboards_config(
+    _: Actor = Depends(console_settings),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    return {"max_whiteboards_per_scope": get_max_whiteboards(db, settings)}
+
+
+@router.patch("/admin/settings/whiteboards")
+def update_whiteboards_config(
+    body: WhiteboardConfigBody,
+    actor: Actor = Depends(console_settings),
+    db: Session = Depends(get_db),
+):
+    set_setting(
+        db,
+        "max_whiteboards_per_scope",
+        str(body.max_whiteboards_per_scope),
+        "Maximum number of whiteboards allowed per scope/workspace",
+        user_id=actor.user.id,
+    )
+    return {"max_whiteboards_per_scope": body.max_whiteboards_per_scope}
 
 
 @router.get("/admin/broadcasts")

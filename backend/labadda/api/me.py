@@ -3,7 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,11 +23,50 @@ from ..security import (
 
 router = APIRouter(prefix="/me", tags=["me"])
 
+VALID_AVATAR_PREFIXES = (
+    "data:image/png;base64,",
+    "data:image/jpeg;base64,",
+    "data:image/jpg;base64,",
+    "data:image/webp;base64,",
+    "data:image/gif;base64,",
+)
+
 
 class PasswordChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     current_password: str = Field(min_length=1, max_length=256)
     new_password: str = Field(min_length=1, max_length=256)
+
+
+class ProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    display_name: str | None = Field(default=None, max_length=120)
+    contact_phone: str | None = Field(default=None, max_length=64)
+    mobile: str | None = Field(default=None, max_length=64)
+    alternate_email: str | None = Field(default=None, max_length=254)
+    designation: str | None = Field(default=None, max_length=120)
+    specialization: str | None = Field(default=None, max_length=512)
+    avatar_data: str | None = Field(default=None, max_length=500_000)
+
+    @model_validator(mode="after")
+    def validate_avatar_data(self):
+        if self.avatar_data:
+            data = self.avatar_data.strip()
+            if not any(data.startswith(p) for p in VALID_AVATAR_PREFIXES):
+                raise ValueError("Avatar must be a valid image data URI (PNG, JPEG, WebP, or GIF).")
+        return self
+
+
+class AvatarUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    avatar_data: str = Field(max_length=500_000)
+
+    @model_validator(mode="after")
+    def validate_avatar_data(self):
+        data = self.avatar_data.strip()
+        if not any(data.startswith(p) for p in VALID_AVATAR_PREFIXES):
+            raise ValueError("Avatar must be a valid image data URI (PNG, JPEG, WebP, or GIF).")
+        return self
 
 
 def own_actor(request: Request, db: Session = Depends(get_db)) -> Actor:
@@ -40,6 +79,70 @@ def own_actor(request: Request, db: Session = Depends(get_db)) -> Actor:
 @router.get("/profile")
 def get_profile(actor: Actor = Depends(own_actor), db: Session = Depends(get_db)) -> dict:
     return account.own_profile(db, actor.user.id)
+
+
+@router.patch("/profile")
+def update_profile(
+    body: ProfileUpdate,
+    actor: Actor = Depends(own_actor),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Allow a user to self-edit profile fields: phone, mobile, alternate email, designation, specialization, avatar."""
+    user = db.get(User, actor.user.id, with_for_update=True)
+    if user is None:
+        raise NotFound()
+
+    fields_set = body.model_fields_set
+    if "display_name" in fields_set:
+        val = (body.display_name or "").strip()
+        user.display_name = val if val else user.username
+    if "contact_phone" in fields_set:
+        user.contact_phone = (body.contact_phone or "").strip() or None
+    if "mobile" in fields_set:
+        user.mobile = (body.mobile or "").strip() or None
+    if "alternate_email" in fields_set:
+        user.alternate_email = (body.alternate_email or "").strip() or None
+    if "designation" in fields_set:
+        user.designation = (body.designation or "").strip() or None
+    if "specialization" in fields_set:
+        user.specialization = (body.specialization or "").strip() or None
+    if "avatar_data" in fields_set:
+        user.avatar_data = body.avatar_data or None
+
+    user.revision += 1
+    db.commit()
+    return account.own_profile(db, user.id)
+
+
+@router.post("/avatar")
+def upload_avatar(
+    body: AvatarUpdate,
+    actor: Actor = Depends(own_actor),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Upload or update profile picture."""
+    user = db.get(User, actor.user.id, with_for_update=True)
+    if user is None:
+        raise NotFound()
+    user.avatar_data = body.avatar_data
+    user.revision += 1
+    db.commit()
+    return {"ok": True, "avatar_data": user.avatar_data}
+
+
+@router.delete("/avatar")
+def remove_avatar(
+    actor: Actor = Depends(own_actor),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Remove user's profile picture."""
+    user = db.get(User, actor.user.id, with_for_update=True)
+    if user is None:
+        raise NotFound()
+    user.avatar_data = None
+    user.revision += 1
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/password")

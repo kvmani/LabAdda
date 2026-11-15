@@ -74,6 +74,10 @@ class User(Base):
     contact_phone: Mapped[str | None] = mapped_column(String(64))
     extension: Mapped[str | None] = mapped_column(String(32))
     residence_phone: Mapped[str | None] = mapped_column(String(64))
+    mobile: Mapped[str | None] = mapped_column(String(64))
+    alternate_email: Mapped[str | None] = mapped_column(String(254))
+    specialization: Mapped[str | None] = mapped_column(Text)
+    avatar_data: Mapped[str | None] = mapped_column(Text)
     # Set when an administrator chose the first password: sign-in works, but only the change form does.
     must_change_password: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
@@ -491,12 +495,38 @@ class Board(Base):
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workspaces.id"), primary_key=True
     )
+    title: Mapped[str] = mapped_column(String(64), nullable=False, default="Board 1", server_default="Board 1")
     epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     # Operations at or below this revision live only in board_snapshots.
     base_revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0", default=0)
     # Epoch whose board-object charges are complete; null or older means "unknown" (DL-07).
     charges_epoch: Mapped[int | None] = mapped_column(Integer)
+
+    @property
+    def board_index(self) -> int:
+        return 0
+
+
+class WorkspaceBoard(Base):
+    """Secondary whiteboards (board_index >= 1) for a workspace."""
+
+    __tablename__ = "workspace_boards"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    board_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(64), nullable=False, default="Board 2", server_default="Board 2")
+    epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    base_revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0", default=0)
+    charges_epoch: Mapped[int | None] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "board_index", name="uq_workspace_boards_index"),
+    )
 
 
 class BoardSnapshot(Base):
@@ -505,6 +535,7 @@ class BoardSnapshot(Base):
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workspaces.id"), primary_key=True
     )
+    board_index: Mapped[int] = mapped_column(Integer, primary_key=True, default=0, server_default="0")
     epoch: Mapped[int] = mapped_column(Integer, primary_key=True)
     revision: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     state: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -518,6 +549,7 @@ class BoardOp(Base):
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False
     )
+    board_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     epoch: Mapped[int] = mapped_column(Integer, nullable=False)
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
     op_id: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -529,8 +561,10 @@ class BoardOp(Base):
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (
-        UniqueConstraint("workspace_id", "epoch", "actor_id", "op_id", name="uq_board_op_identity"),
-        UniqueConstraint("workspace_id", "revision", name="uq_board_op_revision"),
+        UniqueConstraint(
+            "workspace_id", "board_index", "epoch", "actor_id", "op_id", name="uq_board_op_identity"
+        ),
+        UniqueConstraint("workspace_id", "board_index", "revision", name="uq_board_op_revision"),
         CheckConstraint("op_type in ('add','erase','undo','move')", name="ck_board_op_type"),
     )
 
@@ -1013,6 +1047,61 @@ class PersonalBoardRevision(Base):
 
     __tablename__ = "personal_board_revisions"
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    board_index: Mapped[int] = mapped_column(Integer, primary_key=True, default=0, server_default="0")
     revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(64), nullable=False, default="Board 1", server_default="Board 1")
     objects: Mapped[list] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = _created()
+
+
+class SystemSetting(Base):
+    """Global system configuration managed in-app by administrators."""
+
+    __tablename__ = "system_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255))
+    updated_at: Mapped[datetime] = _created()
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+
+
+class CalendarEvent(Base):
+    """Event scheduled at site, workspace, or personal scope."""
+
+    __tablename__ = "calendar_events"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    scope_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True
+    )
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(140), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    location: Mapped[str | None] = mapped_column(String(140))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    color: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = _created()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint("scope_kind in ('site','workspace','personal')", name="ck_calendar_events_scope"),
+        CheckConstraint("starts_at <= ends_at", name="ck_calendar_events_dates"),
+        Index("ix_calendar_events_time", "starts_at", "ends_at"),
+        Index("ix_calendar_events_workspace", "workspace_id", "starts_at"),
+        Index("ix_calendar_events_owner", "owner_id", "starts_at"),
+        Index("ix_calendar_events_scope", "scope_kind", "starts_at"),
+    )
+

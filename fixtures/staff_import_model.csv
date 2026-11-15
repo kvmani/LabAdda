@@ -1,0 +1,11 @@
+full_name,division,section,Emp No,email,Extension,Group,Residence Phone,username,Password,is_active,role
+Ananya Iyer,Surface Engineering Division,Thin Films Section,00123,ananya.iyer@domain.in,4417,Materials Group,,ananya.iyer,,TRUE,member
+Bharat Kulkarni,Surface Engineering Division,Thin Films Section,00124,bharat.kulkarni@domain.in,4418,Materials Group,,bharat.kulkarni,,TRUE,member
+Chitra Nair,Surface Engineering Division,,00125,chitra.nair@domain.in,4419,Materials Group,,chitra.nair,,TRUE,member
+Deepak Joshi,Propulsion Division,Aerodynamics Section,00126,deepak.joshi@domain.in,4420,Aeronautics Group,,deepak.joshi,,TRUE,member
+Esha Sen,Propulsion Division,Combustion Section,00127,esha.sen@domain.in,4421,Aeronautics Group,,esha.sen,,TRUE,member
+Girish Hegde,Electronics Division,Sensors Section,00128,girish.hegde@domain.in,4422,Avionics Group,,girish.hegde,,TRUE,member
+Hema Malini,Electronics Division,Control Systems Section,00129,hema.malini@domain.in,4423,Avionics Group,,hema.malini,,TRUE,member
+Indira Varma,,,00130,indira.varma@domain.in,4424,Administration,,indira.varma,,TRUE,member
+Kavita Raman,Surface Engineering Division,Coatings Section,00131,kavita.raman@domain.in,4425,Materials Group,,kavita.raman,,TRUE,member
+Vikram Sarabhai,,,00100,vikram.sarabhai@domain.in,4400,Administration,,vikram.sarabhai,,TRUE,admin

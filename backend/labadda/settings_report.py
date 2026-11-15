@@ -107,6 +107,12 @@ GROUPS = (
                 "seconds",
                 "How long a one-time pairing code works.",
             ),
+            Row(
+                "max_whiteboards_per_scope",
+                "Maximum whiteboards per scope",
+                "boards",
+                "Allowed number of tabbed whiteboards per workspace or private board.",
+            ),
         ),
     ),
     Group(

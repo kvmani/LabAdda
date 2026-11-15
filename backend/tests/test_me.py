@@ -165,3 +165,60 @@ def test_agent_label(agent, label):
     from labadda.security import agent_label
 
     assert agent_label(agent) == label
+
+
+def test_self_edit_profile_and_avatar(as_user):
+    bharat = as_user("bharat")
+    # Update profile fields
+    res = bharat.patch(
+        "/me/profile",
+        json={
+            "display_name": "Dr. Bharat Kulkarni",
+            "mobile": "9876543210",
+            "alternate_email": "bharat.kulkarni@external.org",
+            "designation": "Principal Scientist",
+            "specialization": "Thin Films, Surface Coating, Nanomaterials",
+        },
+    )
+    assert res.status_code == 200
+    rec = res.json()["record"]
+    assert rec["display_name"] == "Dr. Bharat Kulkarni"
+    assert rec["mobile"] == "9876543210"
+    assert rec["alternate_email"] == "bharat.kulkarni@external.org"
+    assert rec["designation"] == "Principal Scientist"
+    assert rec["specialization"] == "Thin Films, Surface Coating, Nanomaterials"
+
+    # Upload avatar
+    avatar_uri = (
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    )
+    r_av = bharat.post("/me/avatar", json={"avatar_data": avatar_uri})
+    assert r_av.status_code == 200
+    assert r_av.json()["avatar_data"] == avatar_uri
+
+    # Verify profile contains avatar
+    prof = bharat.get("/me/profile").json()["record"]
+    assert prof["avatar_data"] == avatar_uri
+
+    # Public directory shows updated details
+    chitra = as_user("chitra")
+    dir_res = chitra.get("/people/directory?q=Nanomaterials")
+    assert dir_res.status_code == 200
+    found = [p for p in dir_res.json()["people"] if p["username"] == "bharat"]
+    assert len(found) == 1
+    assert found[0]["display_name"] == "Dr. Bharat Kulkarni"
+    assert found[0]["mobile"] == "9876543210"
+    assert found[0]["alternate_email"] == "bharat.kulkarni@external.org"
+
+    # Delete avatar
+    r_del = bharat.delete("/me/avatar")
+    assert r_del.status_code == 200
+    prof_after = bharat.get("/me/profile").json()["record"]
+    assert prof_after["avatar_data"] is None
+
+    # Invalid avatar data format rejected
+    bad_payload = {"avatar_data": "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="}
+    assert bharat.post("/me/avatar", json=bad_payload).status_code == 422
+    assert bharat.post("/me/avatar", json={"avatar_data": "not-an-image"}).status_code == 422
+

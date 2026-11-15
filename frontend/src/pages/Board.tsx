@@ -206,6 +206,11 @@ export function Board({
     void placeImage(asset);
   });
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
+  const [boardIndex, setBoardIndex] = useState(0);
+  const [boardTabs, setBoardTabs] = useState<{ board_index: number; title: string }[]>([
+    { board_index: 0, title: "WhiteBoard_1" },
+  ]);
+  const [maxWhiteboards, setMaxWhiteboards] = useState(5);
   const [showList, setShowList] = useState(false);
   const [presence, setPresence] = useState<{ id: string; display_name: string }[]>([]);
   const pending = useRef<PendingOp[]>([]);
@@ -217,11 +222,28 @@ export function Board({
   const [, force] = useState(0);
   const objects = fold(ops, base);
 
+  useEffect(() => {
+    api<{ boards?: { board_index: number; title: string }[]; max_whiteboards?: number } | { board_index: number; title: string }[]>(
+      `/workspaces/${ws.id}/boards`,
+    )
+      .then((res) => {
+        const list = Array.isArray(res) ? res : res.boards ?? [];
+        if (list.length > 0) setBoardTabs(list);
+        if (!Array.isArray(res) && typeof res.max_whiteboards === "number") {
+          setMaxWhiteboards(res.max_whiteboards);
+        }
+      })
+      .catch(() => undefined);
+  }, [ws.id]);
+
   const load = useCallback(
     async (full = false) => {
-      const r = await api<BoardState>(`/workspaces/${ws.id}/board`, {
-        params: full ? {} : { epoch: state.current.epoch, after: state.current.revision },
-      });
+      const params: Record<string, string | number> = { board_index: boardIndex };
+      if (!full) {
+        params.epoch = state.current.epoch;
+        params.after = state.current.revision;
+      }
+      const r = await api<BoardState>(`/workspaces/${ws.id}/board`, { params });
       // A reset response starts from the compacted snapshot (if any) plus later operations.
       if (r.reset) setBase(r.snapshot?.objects ?? null);
       setOps((prev) => {
@@ -239,11 +261,13 @@ export function Board({
       });
       setEpoch(r.epoch);
     },
-    [ws.id],
+    [ws.id, boardIndex],
   );
 
   const apply = useCallback(
     (op: BoardOp) => {
+      const opIdx = (op as { board_index?: number }).board_index ?? 0;
+      if (opIdx !== boardIndex) return;
       previews.current.delete(op.object_id);
       setOps((prev) => {
         if (op.epoch !== state.current.epoch || prev.some((o) => o.revision === op.revision)) return prev;
@@ -254,7 +278,7 @@ export function Board({
         return next;
       });
     },
-    [load],
+    [load, boardIndex],
   );
 
   const flush = useCallback(async () => {
@@ -266,7 +290,7 @@ export function Board({
         const op = pending.current[0];
         try {
           const r = await api<{ committed: BoardOp; duplicate: boolean }>(`/workspaces/${ws.id}/board/ops`, {
-            body: op,
+            body: { ...op, board_index: boardIndex },
           });
           apply(r.committed);
           pending.current.shift();
@@ -287,12 +311,60 @@ export function Board({
     } finally {
       flushing.current = false;
     }
-  }, [ws.id, apply, load]);
+  }, [ws.id, apply, load, boardIndex]);
 
   const submit = (op: Omit<PendingOp, "op_id" | "epoch">) => {
     pending.current.push({ op_id: newId("op"), epoch: state.current.epoch, ...op });
     void flush();
   };
+
+  useEffect(() => {
+    state.current = { revision: 0, epoch: 1 };
+    setOps([]);
+    setBase(null);
+    pending.current = [];
+    load(true).catch((e) => setMessage(errorMessage(e)));
+  }, [boardIndex, load]);
+
+  async function renameBoard(idx: number, currentTitle: string) {
+    const title = window.prompt("Short board name (max 10 chars, or default WhiteBoard_N):", currentTitle);
+    if (!title || !title.trim() || title.trim() === currentTitle) return;
+    const clean = title.trim();
+    if (!clean.match(/^WhiteBoard_\d+$/i) && clean.length > 10) {
+      setMessage("Board name must be at most 10 characters (e.g. SiC Proj, AdminBoard).");
+      return;
+    }
+    try {
+      await api(`/workspaces/${ws.id}/boards/${idx}`, {
+        method: "PATCH",
+        body: { title: clean },
+      });
+      setBoardTabs((prev) =>
+        prev.map((t) => (t.board_index === idx ? { ...t, title: clean } : t))
+      );
+    } catch (e: unknown) {
+      setMessage(errorMessage(e));
+    }
+  }
+
+  async function addBoard() {
+    if (boardTabs.length >= maxWhiteboards) {
+      setMessage(`Maximum ${maxWhiteboards} whiteboards allowed.`);
+      return;
+    }
+    const nextIdx = boardTabs.length;
+    const newTitle = `WhiteBoard_${nextIdx + 1}`;
+    try {
+      await api(`/workspaces/${ws.id}/boards/${nextIdx}`, {
+        method: "PATCH",
+        body: { title: newTitle },
+      });
+      setBoardTabs((prev) => [...prev, { board_index: nextIdx, title: newTitle }]);
+      setBoardIndex(nextIdx);
+    } catch (e: unknown) {
+      setMessage(errorMessage(e));
+    }
+  }
 
   useEffect(() => {
     load(true).catch((e) => setMessage(errorMessage(e)));
@@ -698,6 +770,51 @@ export function Board({
             </div>
           )}
         </Dialog>
+        <div className="whiteboard-tabs" role="tablist" aria-label="Whiteboard tabs">
+          {boardTabs.map((tab) => (
+            <button
+              key={tab.board_index}
+              type="button"
+              role="tab"
+              aria-selected={boardIndex === tab.board_index}
+              className={`whiteboard-tab ${boardIndex === tab.board_index ? "whiteboard-tab--active" : ""}`}
+              onClick={() => setBoardIndex(tab.board_index)}
+            >
+              <span>{tab.title}</span>
+              {ws.can_write && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="whiteboard-tab__rename"
+                  title="Rename board"
+                  aria-label={`Rename ${tab.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void renameBoard(tab.board_index, tab.title);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.stopPropagation();
+                      void renameBoard(tab.board_index, tab.title);
+                    }
+                  }}
+                >
+                  ✏️
+                </span>
+              )}
+            </button>
+          ))}
+          {ws.can_write && boardTabs.length < 5 && (
+            <button
+              type="button"
+              className="whiteboard-tab__add"
+              onClick={() => void addBoard()}
+              title="Add a new whiteboard tab"
+            >
+              ＋ Add Board
+            </button>
+          )}
+        </div>
         <div className="toolbar" role="toolbar" aria-label="Drawing tools">
           {(["select", "pen", "eraser", "text", "sticky", "pan"] as Tool[]).map((t) => (
             <button

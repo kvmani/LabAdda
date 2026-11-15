@@ -9,6 +9,7 @@ import {
   applyFile,
   describeFailure,
   downloadTemplate,
+  downloadCsvTemplate,
   reviewFile,
   typeOf,
   type StaffReport,
@@ -178,6 +179,13 @@ export function ExcelImportDialog({ onClose, onDenied, onDone }: Props) {
       fail(error);
     }
   }
+  async function csvTemplate() {
+    try {
+      await downloadCsvTemplate();
+    } catch (error: unknown) {
+      fail(error);
+    }
+  }
 
   const saved = phase === "saved";
   const busy = phase === "saving";
@@ -226,7 +234,10 @@ export function ExcelImportDialog({ onClose, onDenied, onDone }: Props) {
           <Rules />
           <div className="people-actions">
             <Button icon="download" onClick={() => void template()}>
-              Download the Excel template
+              Download Excel template
+            </Button>
+            <Button icon="download" onClick={() => void csvTemplate()}>
+              Download Model CSV Template
             </Button>
             <Button
               variant={report ? "secondary" : "primary"}
@@ -234,7 +245,7 @@ export function ExcelImportDialog({ onClose, onDenied, onDone }: Props) {
               busyLabel="Reading file…"
               onClick={() => input.current?.click()}
             >
-              {report ? "Choose a different file" : "Choose an Excel file"}
+              {report ? "Choose a different file" : "Choose an Excel or CSV file"}
             </Button>
             <input
               ref={input}

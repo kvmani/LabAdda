@@ -45,31 +45,119 @@ async def _read_sheet(request: Request) -> bytes:
 
 
 @router.get("/template")
-def template(request: Request, actor: Actor = Depends(console_people_admin)) -> Response:
-    """The exact headers and one fictional example row, as an Excel workbook."""
+def template(
+    request: Request,
+    format: str = "xlsx",
+    actor: Actor = Depends(console_people_admin),
+) -> Response:
+    """The exact headers and fictional example rows, as an Excel workbook or CSV file."""
     domain = get_settings(request).email_domain or "domain.in"
-    example = [
-        "Ananya Iyer",
-        "Surface Engineering Division",
-        "Thin Films Section",
-        "00123",
-        f"ananya.iyer@{domain}",
-        "4417",
-        "Materials Group",
-        "",
-        "ananya.iyer",
-        "",
-        "TRUE",
-        "member",
+    examples = [
+        [
+            "Ananya Iyer",
+            "Surface Engineering Division",
+            "Thin Films Section",
+            "00123",
+            f"ananya.iyer@{domain}",
+            "4417",
+            "Materials Group",
+            "",
+            "ananya.iyer",
+            "",
+            "TRUE",
+            "member",
+        ],
+        [
+            "Bharat Kulkarni",
+            "Surface Engineering Division",
+            "Thin Films Section",
+            "00124",
+            f"bharat.kulkarni@{domain}",
+            "4418",
+            "Materials Group",
+            "",
+            "bharat.kulkarni",
+            "",
+            "TRUE",
+            "member",
+        ],
+        [
+            "Chitra Nair",
+            "Surface Engineering Division",
+            "",
+            "00125",
+            f"chitra.nair@{domain}",
+            "4419",
+            "Materials Group",
+            "",
+            "chitra.nair",
+            "",
+            "TRUE",
+            "member",
+        ],
+        [
+            "Deepak Joshi",
+            "Propulsion Division",
+            "Aerodynamics Section",
+            "00126",
+            f"deepak.joshi@{domain}",
+            "4420",
+            "Aeronautics Group",
+            "",
+            "deepak.joshi",
+            "",
+            "TRUE",
+            "member",
+        ],
+        [
+            "Vikram Sarabhai",
+            "",
+            "",
+            "00100",
+            f"vikram.sarabhai@{domain}",
+            "4400",
+            "Administration",
+            "",
+            "vikram.sarabhai",
+            "",
+            "TRUE",
+            "admin",
+        ],
     ]
+    if format.lower() == "csv":
+        import csv
+        import io
+
+        out = io.StringIO()
+        writer = csv.writer(out, lineterminator="\r\n")
+        writer.writerow(list(staff_sheet.HEADERS))
+        for row in examples:
+            writer.writerow(row)
+        return Response(
+            out.getvalue().encode("utf-8"),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": 'attachment; filename="staff-import-reference.csv"',
+                "Cache-Control": "no-store",
+            },
+        )
     return Response(
-        xlsx.write_rows([list(staff_sheet.HEADERS), example]),
+        xlsx.write_rows([list(staff_sheet.HEADERS)] + examples),
         media_type=SHEET_TYPES[0],
         headers={
             "Content-Disposition": 'attachment; filename="staff-import-template.xlsx"',
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.get("/template.csv")
+@router.get("/csv-template")
+def csv_template(
+    request: Request,
+    actor: Actor = Depends(console_people_admin),
+) -> Response:
+    return template(request, format="csv", actor=actor)
 
 
 @router.post("/preview")

@@ -175,3 +175,46 @@ def test_database_failure_is_unavailable_not_an_empty_directory(as_user):
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "people_unavailable"
     assert "private" not in response.text
+
+
+def test_public_staff_directory_advanced_search(as_user):
+    """Staff directory supports search across general query, specialization keywords, and designation."""
+    bharat = as_user("bharat")
+    chitra = as_user("chitra")
+
+    # Update Bharat's profile fields
+    bharat.patch(
+        "/me/profile",
+        json={
+            "display_name": "Dr. Bharat Kulkarni",
+            "designation": "Principal Scientist",
+            "specialization": "Sputtering, Nanocoatings, Tribology",
+            "mobile": "9876543210",
+        },
+    )
+
+    # Search by specialization keyword
+    res_spec = chitra.get("/people/directory?specialization=Tribology")
+    assert res_spec.status_code == 200
+    people = res_spec.json()["people"]
+    usernames = [p["username"] for p in people]
+    assert "bharat" in usernames
+    bharat_item = next(p for p in people if p["username"] == "bharat")
+    assert bharat_item["display_name"] == "Dr. Bharat Kulkarni"
+    assert bharat_item["mobile"] == "9876543210"
+
+    # Search by designation
+    res_desig = chitra.get("/people/directory?designation=Principal+Scientist")
+    assert res_desig.status_code == 200
+    desig_usernames = [p["username"] for p in res_desig.json()["people"]]
+    assert "bharat" in desig_usernames
+
+    # General query search matches mobile number or keywords
+    res_q = chitra.get("/people/directory?q=9876543210")
+    assert res_q.status_code == 200
+    assert any(p["username"] == "bharat" for p in res_q.json()["people"])
+
+    # Panel sessions are denied
+    assert chitra.get("/people/directory", headers={"X-LabAdda-Panel": "1"}).status_code == 401
+
+

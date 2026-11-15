@@ -37,11 +37,13 @@ def board_object_bytes(kind: str, data: dict) -> int:
     return len(canonical.encode("utf-8"))
 
 
-def board_key(workspace_id: uuid.UUID, object_id: str) -> str:
-    return f"{workspace_id}:{object_id}"
+def board_key(workspace_id: uuid.UUID, object_id: str, board_index: int = 0) -> str:
+    return f"{workspace_id}:{board_index}:{object_id}" if board_index > 0 else f"{workspace_id}:{object_id}"
 
 
-def expected_board_rows(workspace_id: uuid.UUID, objects: dict[str, dict]) -> dict[str, tuple]:
+def expected_board_rows(
+    workspace_id: uuid.UUID, objects: dict[str, dict], board_index: int = 0
+) -> dict[str, tuple]:
     """Ledger rows (key -> (user_id, bytes)) implied by a folded board state."""
     rows = {}
     for oid, obj in objects.items():
@@ -54,13 +56,18 @@ def expected_board_rows(workspace_id: uuid.UUID, objects: dict[str, dict]) -> di
             author_uuid = uuid.UUID(author)
         except (ValueError, TypeError):
             continue
-        rows[board_key(workspace_id, oid)] = (author_uuid, board_object_bytes(obj["kind"], obj["data"]))
+        rows[board_key(workspace_id, oid, board_index)] = (
+            author_uuid,
+            board_object_bytes(obj["kind"], obj["data"]),
+        )
     return rows
 
 
-def charge_board_object(db: Session, workspace_id: uuid.UUID, object_id: str, obj: dict | None) -> None:
+def charge_board_object(
+    db: Session, workspace_id: uuid.UUID, object_id: str, obj: dict | None, board_index: int = 0
+) -> None:
     """Upsert one object's charge, or remove it when the object is not alive."""
-    key = board_key(workspace_id, object_id)
+    key = board_key(workspace_id, object_id, board_index)
     if obj is None or not obj.get("alive", True) or not obj.get("author"):
         db.execute(
             delete(ContentCharge).where(
@@ -96,6 +103,7 @@ def recharge_board(db: Session, board: Board, objects: dict[str, dict]) -> None:
 
     Caller holds the board row lock, so no other writer interleaves.
     """
+    board_idx = getattr(board, "board_index", 0)
     db.execute(
         delete(ContentCharge).where(
             ContentCharge.item_type == "board_object", ContentCharge.workspace_id == board.workspace_id
@@ -111,7 +119,7 @@ def recharge_board(db: Session, board: Board, objects: dict[str, dict]) -> None:
             "state": "live",
             "bytes": size,
         }
-        for key, (user_id, size) in expected_board_rows(board.workspace_id, objects).items()
+        for key, (user_id, size) in expected_board_rows(board.workspace_id, objects, board_idx).items()
     ]
     if rows:
         db.execute(insert(ContentCharge).values(rows))

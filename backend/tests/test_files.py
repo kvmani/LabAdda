@@ -109,3 +109,20 @@ def test_discard_own_provisional_only(as_user):
     a = upload(bharat, "d.pdf", PDF, "application/pdf").json()
     assert as_user("asha").delete(f"/uploads/{a['id']}").status_code == 404
     assert bharat.delete(f"/uploads/{a['id']}").status_code == 200
+
+
+def test_upload_size_limit_friendly_error(as_user):
+    """File upload size exceedance returns informative and actionable error message."""
+    bharat = as_user("bharat")
+    oversized = b"x" * (21 * 1024 * 1024)
+    r = bharat.client.post(
+        bharat.url("/uploads"),
+        files={"file": ("large_sample.pdf", oversized, "application/pdf")},
+        headers={"X-CSRF-Token": bharat.csrf},
+    )
+    assert r.status_code == 422
+    err = r.json()["error"]
+    assert err["code"] == "file_too_large"
+    assert "Error: File too large to upload; max upload size permitted is 20MB" in err["message"]
+    assert "Please select a smaller file." in err["message"]
+

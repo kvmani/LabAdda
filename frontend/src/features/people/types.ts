@@ -21,12 +21,23 @@ export type Person = {
   home_unit: { id: string; name: string; level?: UnitLevel } | null;
   last_seen_on: string | null;
   positions: HeldPosition[];
+  specialization?: string | null;
+  avatar_data?: string | null;
+  mobile?: string | null;
+  alternate_email?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  extension?: string | null;
 };
 export type StaffRecord = Person & {
   contact_email: string | null;
   contact_phone: string | null;
   extension: string | null;
   residence_phone: string | null;
+  mobile?: string | null;
+  alternate_email?: string | null;
+  specialization?: string | null;
+  avatar_data?: string | null;
   status_effective_on: string | null;
   expected_return_on: string | null;
   joined_on: string | null;

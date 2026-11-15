@@ -197,3 +197,83 @@
   padding: 2px 8px;
   font-size: var(--text-sm);
 }
+
+/* Whiteboard tabbed navigation (multiple boards per workspace & private) */
+.whiteboard-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-sunken);
+  padding: 6px 8px 0;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  overflow-x: auto;
+}
+
+.whiteboard-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.whiteboard-tab:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.whiteboard-tab--active {
+  background: var(--surface-card);
+  color: var(--text);
+  font-weight: 600;
+  border-color: var(--line);
+  box-shadow: 0 -2px 0 0 var(--primary) inset;
+}
+
+.whiteboard-tab__rename {
+  opacity: 0.6;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.whiteboard-tab__rename:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.whiteboard-tab__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.whiteboard-tab__add:hover {
+  background: var(--surface-card);
+  color: var(--primary);
+  border-style: solid;
+}

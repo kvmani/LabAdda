@@ -37,6 +37,8 @@ class DirectoryFilters:
     role: DirectoryRole | None = None
     sort: DirectorySort = "name"
     descending: bool = False
+    specialization: str = ""
+    designation: str = ""
 
 
 def _unit_ids(db: Session, filters: DirectoryFilters, scope: Scope) -> set[uuid.UUID] | None:
@@ -69,10 +71,26 @@ def directory_query(db: Session, filters: DirectoryFilters, scope: Scope = None)
             or_(
                 *(
                     column.ilike("%" + pattern + "%", escape="\\")
-                    for column in (User.display_name, User.username, User.employee_no)
+                    for column in (
+                        User.display_name,
+                        User.username,
+                        User.employee_no,
+                        User.designation,
+                        User.specialization,
+                        User.contact_email,
+                        User.alternate_email,
+                        User.contact_phone,
+                        User.mobile,
+                    )
                 )
             )
         )
+    if filters.specialization.strip():
+        spec_pattern = filters.specialization.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(User.specialization.ilike("%" + spec_pattern + "%", escape="\\"))
+    if filters.designation.strip():
+        desig_pattern = filters.designation.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(User.designation.ilike("%" + desig_pattern + "%", escape="\\"))
     if filters.status is not None:
         query = query.where(User.status == filters.status)
     if scope is not None:
@@ -105,6 +123,8 @@ def person_json(person: User, unit: Workspace | None) -> dict:
         "sign_in_enabled": person.is_active and not person.must_set_password,
         "home_unit": {"id": str(unit.id), "name": unit.name, "level": unit.level} if unit else None,
         "last_seen_on": person.last_seen_on.isoformat() if person.last_seen_on else None,
+        "specialization": person.specialization,
+        "avatar_data": person.avatar_data,
     }
 
 
