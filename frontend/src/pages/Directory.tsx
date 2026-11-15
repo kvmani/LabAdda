@@ -85,11 +85,7 @@ export function Directory() {
           </div>
 
           <div className="directory-advanced-toggle">
-            <Button
-              variant="quiet"
-              size="sm"
-              onClick={() => setShowAdvanced((v) => !v)}
-            >
+            <Button variant="quiet" size="sm" onClick={() => setShowAdvanced((v) => !v)}>
               {showAdvanced ? "▲ Hide advanced search" : "▼ Advanced search options"}
             </Button>
           </div>
@@ -109,8 +105,14 @@ export function Directory() {
                 onChange={(e) => setDesignation(e.target.value)}
               />
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <label style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Sort by</label>
+                <label
+                  htmlFor="dir-sort-by"
+                  style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}
+                >
+                  Sort by
+                </label>
                 <select
+                  id="dir-sort-by"
                   className="ui-input"
                   value={sort}
                   onChange={(e) => setSort(e.target.value as "name" | "username" | "employee_no")}
@@ -129,7 +131,9 @@ export function Directory() {
           )}
 
           <p className="directory-count">
-            {loading ? "Searching staff directory…" : `Found ${people.length} ${people.length === 1 ? "colleague" : "colleagues"}`}
+            {loading
+              ? "Searching staff directory…"
+              : `Found ${people.length} ${people.length === 1 ? "colleague" : "colleagues"}`}
           </p>
         </Card>
       </div>

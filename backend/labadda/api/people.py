@@ -55,15 +55,13 @@ def public_directory(
     result = directory.directory_page(db, filters, limit, cursor, scope=None)
     user_ids = [uuid.UUID(p["id"]) for p in result["people"]]
     users_by_id = (
-        {u.id: u for u in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
-        if user_ids
-        else {}
+        {u.id: u for u in db.scalars(select(User).where(User.id.in_(user_ids))).all()} if user_ids else {}
     )
     people_with_contacts = []
     for p in result["people"]:
         u = users_by_id.get(uuid.UUID(p["id"]))
-        if u:
-            p = {
+        person_item = (
+            {
                 **p,
                 "contact_email": u.contact_email,
                 "contact_phone": u.contact_phone,
@@ -71,7 +69,10 @@ def public_directory(
                 "mobile": u.mobile,
                 "alternate_email": u.alternate_email,
             }
-        people_with_contacts.append(p)
+            if u
+            else p
+        )
+        people_with_contacts.append(person_item)
     return {"people": people_with_contacts, "next_cursor": result["next_cursor"]}
 
 

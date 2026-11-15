@@ -5,7 +5,10 @@ export function setSiteTimeZone(tz: string | undefined) {
   siteTimeZone = tz || "Asia/Kolkata";
 }
 
-export function fmtTime(iso: string | null | undefined, tz: string | undefined = siteTimeZone || "Asia/Kolkata"): string {
+export function fmtTime(
+  iso: string | null | undefined,
+  tz: string | undefined = siteTimeZone || "Asia/Kolkata",
+): string {
   if (!iso) return "";
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -27,7 +30,9 @@ export function fmtClockTimeIST(iso: string | null | undefined, tz = siteTimeZon
       minute: "2-digit",
       hour12: true,
       timeZone: tz,
-    }).format(new Date(iso)).toLowerCase();
+    })
+      .format(new Date(iso))
+      .toLowerCase();
   } catch {
     return "";
   }
@@ -38,7 +43,12 @@ export function fmtDateBadgeIST(iso: string | null | undefined, tz = siteTimeZon
   if (!iso) return "";
   const d = new Date(iso);
   const now = new Date();
-  const fmtOptions: Intl.DateTimeFormatOptions = { timeZone: tz, year: "numeric", month: "numeric", day: "numeric" };
+  const fmtOptions: Intl.DateTimeFormatOptions = {
+    timeZone: tz,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  };
   try {
     const dStr = new Intl.DateTimeFormat("en-IN", fmtOptions).format(d);
     const nowStr = new Intl.DateTimeFormat("en-IN", fmtOptions).format(now);

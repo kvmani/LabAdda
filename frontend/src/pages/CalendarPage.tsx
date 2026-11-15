@@ -1,11 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import {
-  CalendarEvent,
-  CalendarSource,
-  CalendarViewMode,
-  EventFormData,
-} from "../features/calendar/types";
+import { CalendarEvent, CalendarSource, CalendarViewMode, EventFormData } from "../features/calendar/types";
 import { CalendarSidebar } from "../features/calendar/CalendarSidebar";
 import { MonthView } from "../features/calendar/MonthView";
 import { WeekDayView } from "../features/calendar/WeekDayView";
@@ -302,9 +297,7 @@ export const CalendarPage: React.FC = () => {
             />
           )}
 
-          {viewMode === "agenda" && (
-            <AgendaView events={events} onSelectEvent={handleOpenEdit} />
-          )}
+          {viewMode === "agenda" && <AgendaView events={events} onSelectEvent={handleOpenEdit} />}
         </main>
       </div>
 

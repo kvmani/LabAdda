@@ -36,9 +36,7 @@ export const WeekDayView: React.FC<Props> = ({
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
   const isSameDay = (d1: Date, d2: Date) =>
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+    d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
   const today = new Date();
 
@@ -58,7 +56,13 @@ export const WeekDayView: React.FC<Props> = ({
   return (
     <div className="cal-time-grid-container">
       {/* Week/Day Header */}
-      <div style={{ display: "flex", borderBottom: "1px solid var(--border, #e5e7eb)", background: "var(--surface, #fafafa)" }}>
+      <div
+        style={{
+          display: "flex",
+          borderBottom: "1px solid var(--border, #e5e7eb)",
+          background: "var(--surface, #fafafa)",
+        }}
+      >
         <div style={{ width: 60, flexShrink: 0, borderRight: "1px solid var(--border, #e5e7eb)" }} />
         <div style={{ display: "flex", flex: 1 }}>
           {days.map((day, idx) => {
@@ -144,9 +148,11 @@ export const WeekDayView: React.FC<Props> = ({
             return (
               <div key={colIdx} className="cal-time-col">
                 {hours.map((h) => (
-                  <div
+                  <button
+                    type="button"
                     key={h}
                     className="cal-time-col-slot"
+                    aria-label={`Slot at ${h}:00`}
                     onClick={() => onCreateEventSlot(day, h)}
                   />
                 ))}
@@ -164,7 +170,8 @@ export const WeekDayView: React.FC<Props> = ({
                   const color = ev.color || "#1565c0";
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={ev.id}
                       className="cal-time-event-block"
                       style={{
@@ -182,11 +189,9 @@ export const WeekDayView: React.FC<Props> = ({
                         {fmtClockTimeIST(ev.starts_at)} - {fmtClockTimeIST(ev.ends_at)}
                       </div>
                       {ev.location && (
-                        <div style={{ fontSize: "0.75rem", opacity: 0.85 }}>
-                          📍 {ev.location}
-                        </div>
+                        <div style={{ fontSize: "0.75rem", opacity: 0.85 }}>📍 {ev.location}</div>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>

@@ -7,7 +7,10 @@
 export function formatSalutationName(displayName?: string): string {
   if (!displayName || !displayName.trim()) return "colleague";
   const parts = displayName.trim().split(/\s+/);
-  if (parts.length >= 2 && (parts[0] === "Dr." || parts[0] === "Prof." || parts[0] === "Shri" || parts[0] === "Smt.")) {
+  if (
+    parts.length >= 2 &&
+    (parts[0] === "Dr." || parts[0] === "Prof." || parts[0] === "Shri" || parts[0] === "Smt.")
+  ) {
     return `${parts[0]} ${parts[1]}`;
   }
   return parts[0] || "colleague";

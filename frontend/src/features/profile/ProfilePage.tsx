@@ -2,7 +2,17 @@ import { useRef, useState, type FormEvent } from "react";
 import { api, errorMessage } from "../../api";
 import { BASE } from "../../config";
 import { useSession } from "../../session";
-import { Button, Card, Dialog, EmptyState, ErrorState, Field, PageHeader, Skeleton, TextInput } from "../../ui";
+import {
+  Button,
+  Card,
+  Dialog,
+  EmptyState,
+  ErrorState,
+  Field,
+  PageHeader,
+  Skeleton,
+  TextInput,
+} from "../../ui";
 import { calendarDate } from "../people/model";
 import type { StaffRecord } from "../people/types";
 import { usePeopleData } from "../people/usePeopleData";
@@ -13,18 +23,12 @@ import "./profile.css";
 
 const noop = () => undefined;
 
-function AvatarRow({
-  person,
-  onRefresh,
-}: {
-  person: StaffRecord;
-  onRefresh: () => void;
-}) {
+function AvatarRow({ person, onRefresh }: { person: StaffRecord; onRefresh: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -69,15 +73,9 @@ function AvatarRow({
   return (
     <div className="profile-avatar-row">
       {person.avatar_data ? (
-        <img
-          src={person.avatar_data}
-          alt={person.display_name}
-          className="profile-avatar"
-        />
+        <img src={person.avatar_data} alt={person.display_name} className="profile-avatar" />
       ) : (
-        <div className="profile-avatar">
-          {person.display_name.slice(0, 2).toUpperCase()}
-        </div>
+        <div className="profile-avatar">{person.display_name.slice(0, 2).toUpperCase()}</div>
       )}
       <div className="profile-avatar-actions">
         <input
@@ -87,21 +85,11 @@ function AvatarRow({
           hidden
           onChange={handleFile}
         />
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={busy}
-          onClick={() => fileInputRef.current?.click()}
-        >
+        <Button variant="secondary" size="sm" disabled={busy} onClick={() => fileInputRef.current?.click()}>
           {busy ? "Uploading…" : person.avatar_data ? "Change photo" : "Upload photo"}
         </Button>
         {person.avatar_data && (
-          <Button
-            variant="quiet"
-            size="sm"
-            disabled={busy}
-            onClick={removeAvatar}
-          >
+          <Button variant="quiet" size="sm" disabled={busy} onClick={removeAvatar}>
             Remove photo
           </Button>
         )}

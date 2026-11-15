@@ -1,7 +1,9 @@
 """Seed rich simulated calendar events for November 2026."""
 
+import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from labadda.config import get_settings
 from labadda.db import session_factory
 from labadda.models import CalendarEvent, User, Workspace
@@ -17,7 +19,7 @@ asha = db.query(User).filter(User.username == "asha").first()
 
 if not bharat or not admin:
     print("Users not found")
-    exit(1)
+    sys.exit(1)
 
 # Find workspaces
 sed = db.query(Workspace).filter(Workspace.name.ilike("%Surface Engineering%")).first()
@@ -41,8 +43,8 @@ simulated_events = [
         "title": "National Science Day Planning Seminar",
         "description": "Annual keynote address and research presentation coordination across divisions.",
         "location": "Dr. Raman Auditorium",
-        "starts_at": datetime(2026, 11, 16, 9, 30, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 16, 12, 30, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 16, 9, 30, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 16, 12, 30, tzinfo=UTC),
         "all_day": False,
         "color": "#1565c0",
     },
@@ -54,8 +56,8 @@ simulated_events = [
         "title": "Air-Gap Network & Server Maintenance Window",
         "description": "Scheduled offline backup and hardware integrity inspection.",
         "location": "Main Server Room",
-        "starts_at": datetime(2026, 11, 22, 0, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 22, 23, 59, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 22, 0, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 22, 23, 59, tzinfo=UTC),
         "all_day": True,
         "color": "#c62828",
     },
@@ -67,12 +69,11 @@ simulated_events = [
         "title": "Director's All-Hands Institute Address",
         "description": "Quarterly achievements review and upcoming project roadmap release.",
         "location": "Auditorium & Virtual Stream",
-        "starts_at": datetime(2026, 11, 27, 15, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 27, 16, 30, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 27, 15, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 27, 16, 30, tzinfo=UTC),
         "all_day": False,
         "color": "#1565c0",
     },
-
     # 2. Division events (Surface Engineering Division)
     {
         "scope_kind": "workspace",
@@ -82,8 +83,8 @@ simulated_events = [
         "title": "SED Monthly Progress & Milestone Review",
         "description": "Review progress reports from Thin Films and Corrosion sections.",
         "location": "SED Conference Hall 2B",
-        "starts_at": datetime(2026, 11, 18, 14, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 18, 16, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 18, 14, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 18, 16, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#6a1b9a",
     },
@@ -95,12 +96,11 @@ simulated_events = [
         "title": "Division Budget & Capital Equipment Allocation",
         "description": "Finalize allocation for high-vacuum deposition system upgrades.",
         "location": "Division Head Office",
-        "starts_at": datetime(2026, 11, 25, 11, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 25, 13, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 25, 11, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 25, 13, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#6a1b9a",
     },
-
     # 3. Section events (Thin Films Section)
     {
         "scope_kind": "workspace",
@@ -110,8 +110,8 @@ simulated_events = [
         "title": "PVD Chamber Target Alignment & Calibration",
         "description": "Calibrate magnetron sputtering sources for titanium nitride coatings.",
         "location": "Thin Films Lab 104",
-        "starts_at": datetime(2026, 11, 17, 10, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 17, 12, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 17, 10, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 17, 12, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#00838f",
     },
@@ -123,8 +123,8 @@ simulated_events = [
         "title": "Weekly Section Scrum & XRD Sample Dispatch",
         "description": "Weekly status update on wafer batches sent for X-ray diffraction.",
         "location": "Section Discussion Room",
-        "starts_at": datetime(2026, 11, 20, 11, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 20, 12, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 20, 11, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 20, 12, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#00838f",
     },
@@ -136,12 +136,11 @@ simulated_events = [
         "title": "Chamber Bake-Out & Ultra-High Vacuum Check",
         "description": "Overnight bake-out cycle to reach 10^-8 Torr baseline.",
         "location": "Vacuum Rig A",
-        "starts_at": datetime(2026, 11, 24, 16, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 24, 18, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 24, 16, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 24, 18, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#00838f",
     },
-
     # 4. Project Tejas
     {
         "scope_kind": "workspace",
@@ -151,12 +150,11 @@ simulated_events = [
         "title": "Tejas Pilot Milestone 2 Flight Test Review",
         "description": "Thermal barrier coating integrity under cyclic high-temperature simulation.",
         "location": "Project Tejas War Room",
-        "starts_at": datetime(2026, 11, 19, 14, 30, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 19, 17, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 19, 14, 30, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 19, 17, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#ef6c00",
     },
-
     # 5. Collaborative Group (Microscopy Journal Club)
     {
         "scope_kind": "workspace",
@@ -166,12 +164,11 @@ simulated_events = [
         "title": "Journal Club: In-situ HRTEM of Grain Growth",
         "description": "Discussion led by Dr. Bharat on atomic-scale observation of grain boundaries.",
         "location": "Library Seminar Room 1",
-        "starts_at": datetime(2026, 11, 21, 15, 30, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 21, 17, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 21, 15, 30, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 21, 17, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#2e7d32",
     },
-
     # 6. Bharat's Personal Calendar (strictly private)
     {
         "scope_kind": "personal",
@@ -181,8 +178,8 @@ simulated_events = [
         "title": "Draft SiC Thin Films Manuscript for Journal",
         "description": "Focus time: complete results and discussion section on hardness tests.",
         "location": "Cabin 12",
-        "starts_at": datetime(2026, 11, 17, 14, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 17, 16, 30, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 17, 14, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 17, 16, 30, tzinfo=UTC),
         "all_day": False,
         "color": "#d81b60",
     },
@@ -194,8 +191,8 @@ simulated_events = [
         "title": "One-on-One Technical Mentoring with Anish",
         "description": "Review Python data processing script for XRD peak deconvolution.",
         "location": "Office Bench 3",
-        "starts_at": datetime(2026, 11, 18, 11, 0, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 18, 12, 0, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 18, 11, 0, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 18, 12, 0, tzinfo=UTC),
         "all_day": False,
         "color": "#d81b60",
     },
@@ -207,8 +204,8 @@ simulated_events = [
         "title": "Prepare Presentation Slides for Monday Rollout",
         "description": "Finalize feature walkthrough deck and simulated lab screenshots.",
         "location": "Work Desk",
-        "starts_at": datetime(2026, 11, 23, 9, 30, tzinfo=timezone.utc),
-        "ends_at": datetime(2026, 11, 23, 11, 30, tzinfo=timezone.utc),
+        "starts_at": datetime(2026, 11, 23, 9, 30, tzinfo=UTC),
+        "ends_at": datetime(2026, 11, 23, 11, 30, tzinfo=UTC),
         "all_day": False,
         "color": "#d81b60",
     },

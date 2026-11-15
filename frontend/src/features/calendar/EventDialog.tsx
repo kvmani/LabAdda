@@ -1,38 +1,33 @@
-import React, { useState } from "react";
-import { CalendarEvent, CalendarScopeKind, CalendarSource, EventFormData } from "./types";
+import React, { useState, useEffect } from "react";
+import type { CalendarEvent, CalendarScopeKind, CalendarSource, EventFormData } from "./types";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: EventFormData) => Promise<void>;
-  onDelete?: (eventId: string) => Promise<void>;
-  event: CalendarEvent | null;
+  onSave: (eventData: EventFormData) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+  event?: CalendarEvent | null;
   defaultDate?: Date;
   sources: CalendarSource[];
 };
 
 const PALETTE = [
-  "#d81b60", // Rose
-  "#1565c0", // Navy
-  "#00838f", // Teal
+  "#1565c0", // Royal Blue
   "#2e7d32", // Forest Green
-  "#ef6c00", // Orange
+  "#d81b60", // Rose
+  "#e65100", // Dark Amber
+  "#00838f", // Deep Cyan
   "#6a1b9a", // Deep Purple
   "#c62828", // Crimson
   "#455a64", // Slate
 ];
 
-export const EventDialog: React.FC<Props> = ({
-  isOpen,
-  onClose,
-  onSave,
-  onDelete,
-  event,
-  defaultDate,
-  sources,
-}) => {
-  if (!isOpen) return null;
+export const EventDialog: React.FC<Props> = (props) => {
+  if (!props.isOpen) return null;
+  return <EventForm {...props} />;
+};
 
+function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: Props) {
   const formatDateYMD = (d: Date) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -46,12 +41,8 @@ export const EventDialog: React.FC<Props> = ({
     return `${hours}:${minutes}`;
   };
 
-  const initStartDate = event
-    ? new Date(event.starts_at)
-    : defaultDate || new Date();
-  const initEndDate = event
-    ? new Date(event.ends_at)
-    : new Date(initStartDate.getTime() + 60 * 60 * 1000);
+  const initStartDate = event ? new Date(event.starts_at) : defaultDate || new Date();
+  const initEndDate = event ? new Date(event.ends_at) : new Date(initStartDate.getTime() + 60 * 60 * 1000);
 
   const [title, setTitle] = useState(event ? event.title : "");
   const [description, setDescription] = useState(event?.description || "");
@@ -68,13 +59,24 @@ export const EventDialog: React.FC<Props> = ({
   const [workspaceId, setWorkspaceId] = useState<string>(
     event?.workspace_id ||
       sources.find((s) => s.kind !== "personal" && s.kind !== "site" && s.can_write)?.id ||
-      ""
+      "",
   );
 
-  const initialColor = event?.color || sources.find((s) => s.id === (scopeKind === "workspace" ? workspaceId : scopeKind))?.color || "#1565c0";
+  const initialColor =
+    event?.color ||
+    sources.find((s) => s.id === (scopeKind === "workspace" ? workspaceId : scopeKind))?.color ||
+    "#1565c0";
   const [color, setColor] = useState(initialColor);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const writableSources = sources.filter((s) => s.can_write);
 
@@ -140,37 +142,55 @@ export const EventDialog: React.FC<Props> = ({
   };
 
   return (
-    <div className="cal-modal-backdrop" onClick={onClose}>
-      <div className="cal-modal-card" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="cal-modal-backdrop"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="cal-modal-card" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">
         <div className="cal-modal-header">
-          <h3>{event ? "Edit Event" : "Create Event"}</h3>
-          <button className="cal-modal-close-btn" onClick={onClose}>✕</button>
+          <h3 id="cal-modal-title">{event ? "Edit Event" : "Create Event"}</h3>
+          <button type="button" className="cal-modal-close-btn" onClick={onClose} aria-label="Close dialog">
+            ✕
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="cal-modal-body">
             {errorMsg && (
-              <div style={{ color: "#dc2626", background: "#fef2f2", padding: "8px 12px", borderRadius: 6, fontSize: "0.85rem" }}>
+              <div
+                style={{
+                  color: "#dc2626",
+                  background: "#fef2f2",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  fontSize: "0.85rem",
+                }}
+                role="alert"
+              >
                 {errorMsg}
               </div>
             )}
 
             <div className="cal-form-group">
-              <label>Event Title</label>
+              <label htmlFor="cal-event-title">Event Title</label>
               <input
+                id="cal-event-title"
                 className="cal-input"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Add title (e.g., Weekly Lab Review, Seminar)"
-                autoFocus
                 required
               />
             </div>
 
             <div className="cal-form-group">
-              <label>Calendar / Target Scope</label>
+              <label htmlFor="cal-scope-select">Calendar / Target Scope</label>
               <select
+                id="cal-scope-select"
                 className="cal-select"
                 value={scopeKind === "workspace" ? workspaceId : scopeKind}
                 onChange={handleScopeChange}
@@ -178,15 +198,25 @@ export const EventDialog: React.FC<Props> = ({
               >
                 {writableSources.map((src) => (
                   <option key={src.id} value={src.id}>
-                    {src.title} ({src.kind === "personal" ? "Private" : src.kind === "site" ? "Site" : src.level || src.kind})
+                    {src.title} (
+                    {src.kind === "personal"
+                      ? "Private"
+                      : src.kind === "site"
+                        ? "Site"
+                        : src.level || src.kind}
+                    )
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="cal-form-group">
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <label
+                htmlFor="cal-all-day-check"
+                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+              >
                 <input
+                  id="cal-all-day-check"
                   type="checkbox"
                   checked={allDay}
                   onChange={(e) => setAllDay(e.target.checked)}
@@ -197,8 +227,9 @@ export const EventDialog: React.FC<Props> = ({
 
             <div className="cal-form-row">
               <div className="cal-form-group">
-                <label>Start Date</label>
+                <label htmlFor="cal-start-date">Start Date</label>
                 <input
+                  id="cal-start-date"
                   className="cal-input"
                   type="date"
                   value={startDate}
@@ -208,8 +239,9 @@ export const EventDialog: React.FC<Props> = ({
               </div>
               {!allDay && (
                 <div className="cal-form-group">
-                  <label>Start Time (IST)</label>
+                  <label htmlFor="cal-start-time">Start Time (IST)</label>
                   <input
+                    id="cal-start-time"
                     className="cal-input"
                     type="time"
                     value={startTime}
@@ -222,8 +254,9 @@ export const EventDialog: React.FC<Props> = ({
 
             <div className="cal-form-row">
               <div className="cal-form-group">
-                <label>End Date</label>
+                <label htmlFor="cal-end-date">End Date</label>
                 <input
+                  id="cal-end-date"
                   className="cal-input"
                   type="date"
                   value={endDate}
@@ -233,8 +266,9 @@ export const EventDialog: React.FC<Props> = ({
               </div>
               {!allDay && (
                 <div className="cal-form-group">
-                  <label>End Time (IST)</label>
+                  <label htmlFor="cal-end-time">End Time (IST)</label>
                   <input
+                    id="cal-end-time"
                     className="cal-input"
                     type="time"
                     value={endTime}
@@ -246,8 +280,9 @@ export const EventDialog: React.FC<Props> = ({
             </div>
 
             <div className="cal-form-group">
-              <label>Location / Venue</label>
+              <label htmlFor="cal-location">Location / Venue</label>
               <input
+                id="cal-location"
                 className="cal-input"
                 type="text"
                 value={location}
@@ -257,8 +292,9 @@ export const EventDialog: React.FC<Props> = ({
             </div>
 
             <div className="cal-form-group">
-              <label>Description</label>
+              <label htmlFor="cal-description">Description</label>
               <textarea
+                id="cal-description"
                 className="cal-textarea"
                 rows={3}
                 value={description}
@@ -268,11 +304,13 @@ export const EventDialog: React.FC<Props> = ({
             </div>
 
             <div className="cal-form-group">
-              <label>Color</label>
-              <div className="cal-color-picker-row">
+              <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--text-muted)" }}>Color</span>
+              <div className="cal-color-picker-row" role="group" aria-label="Event color choices">
                 {PALETTE.map((c) => (
-                  <span
+                  <button
                     key={c}
+                    type="button"
+                    aria-label={`Select color ${c}`}
                     className={`cal-color-swatch ${color === c ? "active" : ""}`}
                     style={{ backgroundColor: c }}
                     onClick={() => setColor(c)}
@@ -284,29 +322,17 @@ export const EventDialog: React.FC<Props> = ({
 
           <div className="cal-modal-footer">
             {event && event.can_delete && onDelete ? (
-              <button
-                type="button"
-                className="cal-btn-danger"
-                onClick={handleDelete}
-                disabled={saving}
-              >
+              <button type="button" className="cal-btn-danger" onClick={handleDelete} disabled={saving}>
                 Delete
               </button>
-            ) : <div />}
+            ) : (
+              <div />
+            )}
             <div className="cal-modal-actions-right">
-              <button
-                type="button"
-                className="cal-btn-secondary"
-                onClick={onClose}
-                disabled={saving}
-              >
+              <button type="button" className="cal-btn-secondary" onClick={onClose} disabled={saving}>
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="cal-btn-primary"
-                disabled={saving}
-              >
+              <button type="submit" className="cal-btn-primary" disabled={saving}>
                 {saving ? "Saving..." : "Save"}
               </button>
             </div>
@@ -315,4 +341,4 @@ export const EventDialog: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+}

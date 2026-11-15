@@ -53,9 +53,12 @@ export function PersonalBoard() {
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    api<{ boards?: { board_index: number; title: string }[]; max_whiteboards?: number } | { board_index: number; title: string }[]>("/me/whiteboard/tabs")
+    api<
+      | { boards?: { board_index: number; title: string }[]; max_whiteboards?: number }
+      | { board_index: number; title: string }[]
+    >("/me/whiteboard/tabs")
       .then((res) => {
-        const list = Array.isArray(res) ? res : res.boards ?? [];
+        const list = Array.isArray(res) ? res : (res.boards ?? []);
         if (list.length > 0) setBoardTabs(list);
         if (!Array.isArray(res) && typeof res.max_whiteboards === "number") {
           setMaxWhiteboards(res.max_whiteboards);
@@ -188,9 +191,7 @@ export function PersonalBoard() {
         method: "PATCH",
         body: { title: clean },
       });
-      setBoardTabs((prev) =>
-        prev.map((t) => (t.board_index === idx ? { ...t, title: clean } : t))
-      );
+      setBoardTabs((prev) => prev.map((t) => (t.board_index === idx ? { ...t, title: clean } : t)));
     } catch (e: unknown) {
       setError(errorMessage(e));
     }

@@ -77,9 +77,7 @@ export const CalendarSidebar: React.FC<Props> = ({
 
   const today = new Date();
   const isSameDay = (d1: Date, d2: Date) =>
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+    d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
   const monthLabel = new Intl.DateTimeFormat("en-IN", {
     month: "long",
@@ -98,13 +96,19 @@ export const CalendarSidebar: React.FC<Props> = ({
         <div className="cal-mini-header">
           <span>{monthLabel}</span>
           <div>
-            <button className="cal-nav-arrow" onClick={prevMiniMonth}>‹</button>
-            <button className="cal-nav-arrow" onClick={nextMiniMonth}>›</button>
+            <button className="cal-nav-arrow" onClick={prevMiniMonth}>
+              ‹
+            </button>
+            <button className="cal-nav-arrow" onClick={nextMiniMonth}>
+              ›
+            </button>
           </div>
         </div>
         <div className="cal-mini-grid">
           {["S", "M", "T", "W", "T", "F", "S"].map((name, i) => (
-            <div key={i} className="cal-mini-dayname">{name}</div>
+            <div key={i} className="cal-mini-dayname">
+              {name}
+            </div>
           ))}
           {miniDays.map((item, idx) => {
             const isToday = isSameDay(item.date, today);
@@ -115,11 +119,7 @@ export const CalendarSidebar: React.FC<Props> = ({
             if (isSelected) cls += " selected";
 
             return (
-              <button
-                key={idx}
-                className={cls}
-                onClick={() => onSelectDate(item.date)}
-              >
+              <button key={idx} className={cls} onClick={() => onSelectDate(item.date)}>
                 {item.dayNum}
               </button>
             );
@@ -132,11 +132,8 @@ export const CalendarSidebar: React.FC<Props> = ({
         <h4 className="cal-layers-title">My Calendars</h4>
         {sources.map((src) => {
           const checked = selectedSources.has(src.id);
-          const badgeText = src.kind === "personal"
-            ? "Private"
-            : src.kind === "site"
-            ? "Site"
-            : src.level || src.kind;
+          const badgeText =
+            src.kind === "personal" ? "Private" : src.kind === "site" ? "Site" : src.level || src.kind;
 
           return (
             <label
@@ -150,10 +147,7 @@ export const CalendarSidebar: React.FC<Props> = ({
                 checked={checked}
                 onChange={() => onToggleSource(src.id)}
               />
-              <span
-                className="cal-layer-dot"
-                style={{ backgroundColor: src.color }}
-              />
+              <span className="cal-layer-dot" style={{ backgroundColor: src.color }} />
               <span className="cal-layer-label" title={src.title}>
                 {src.title}
               </span>

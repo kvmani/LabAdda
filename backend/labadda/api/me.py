@@ -87,7 +87,9 @@ def update_profile(
     actor: Actor = Depends(own_actor),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Allow a user to self-edit profile fields: phone, mobile, alternate email, designation, specialization, avatar."""
+    """Allow a user to self-edit profile fields: phone, mobile, alternate email,
+    designation, specialization, avatar.
+    """
     user = db.get(User, actor.user.id, with_for_update=True)
     if user is None:
         raise NotFound()

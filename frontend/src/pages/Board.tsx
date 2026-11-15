@@ -223,11 +223,12 @@ export function Board({
   const objects = fold(ops, base);
 
   useEffect(() => {
-    api<{ boards?: { board_index: number; title: string }[]; max_whiteboards?: number } | { board_index: number; title: string }[]>(
-      `/workspaces/${ws.id}/boards`,
-    )
+    api<
+      | { boards?: { board_index: number; title: string }[]; max_whiteboards?: number }
+      | { board_index: number; title: string }[]
+    >(`/workspaces/${ws.id}/boards`)
       .then((res) => {
-        const list = Array.isArray(res) ? res : res.boards ?? [];
+        const list = Array.isArray(res) ? res : (res.boards ?? []);
         if (list.length > 0) setBoardTabs(list);
         if (!Array.isArray(res) && typeof res.max_whiteboards === "number") {
           setMaxWhiteboards(res.max_whiteboards);
@@ -339,9 +340,7 @@ export function Board({
         method: "PATCH",
         body: { title: clean },
       });
-      setBoardTabs((prev) =>
-        prev.map((t) => (t.board_index === idx ? { ...t, title: clean } : t))
-      );
+      setBoardTabs((prev) => prev.map((t) => (t.board_index === idx ? { ...t, title: clean } : t)));
     } catch (e: unknown) {
       setMessage(errorMessage(e));
     }

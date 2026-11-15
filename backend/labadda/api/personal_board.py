@@ -5,9 +5,9 @@ import re
 import uuid
 from typing import Literal
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-import sqlalchemy as sa
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

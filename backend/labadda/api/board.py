@@ -179,8 +179,9 @@ def _get_board(db: Session, workspace_id: uuid.UUID, board_index: int = 0) -> Bo
     if board_index == 0:
         return db.get(Board, workspace_id)
     return db.scalar(
-        select(WorkspaceBoard)
-        .where(WorkspaceBoard.workspace_id == workspace_id, WorkspaceBoard.board_index == board_index)
+        select(WorkspaceBoard).where(
+            WorkspaceBoard.workspace_id == workspace_id, WorkspaceBoard.board_index == board_index
+        )
     )
 
 
@@ -253,6 +254,7 @@ def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: d
 @router.get("/workspaces/{workspace_id}/board")
 def get_board(
     workspace_id: uuid.UUID,
+    *,
     epoch: int | None = None,
     after: int | None = None,
     board_index: int = Query(default=0, ge=0, le=50),
@@ -309,19 +311,23 @@ def list_boards(
     ).all()
     boards = []
     if main_board:
-        boards.append({
-            "board_index": 0,
-            "title": main_board.title,
-            "revision": main_board.revision,
-            "epoch": main_board.epoch,
-        })
+        boards.append(
+            {
+                "board_index": 0,
+                "title": main_board.title,
+                "revision": main_board.revision,
+                "epoch": main_board.epoch,
+            }
+        )
     for b in secondaries:
-        boards.append({
-            "board_index": b.board_index,
-            "title": b.title,
-            "revision": b.revision,
-            "epoch": b.epoch,
-        })
+        boards.append(
+            {
+                "board_index": b.board_index,
+                "title": b.title,
+                "revision": b.revision,
+                "epoch": b.epoch,
+            }
+        )
     max_boards = get_max_whiteboards(db, settings)
     return {
         "boards": boards,
@@ -333,6 +339,7 @@ def list_boards(
 def update_board_title(
     workspace_id: uuid.UUID,
     board_index: int,
+    *,
     body: BoardTitlePatch,
     actor: Actor = Depends(board_actor),
     db: Session = Depends(get_db),
@@ -549,6 +556,7 @@ def _render(
     workspace_id: uuid.UUID,
     revision: int,
     region: Region,
+    *,
     board_index: int = 0,
 ) -> bytes:
     board = _get_board(db, workspace_id, board_index)

@@ -20,11 +20,7 @@ export type ComposerProps = {
 
 const QUICK_EMOJIS = ["👍", "❤️", "😊", "😂", "🎉", "🚀", "👏", "🙏", "🔥", "💡"];
 
-function useChatSend(
-  props: ComposerProps,
-  files: UploadedAsset[],
-  clearFiles: () => void,
-) {
+function useChatSend(props: ComposerProps, files: UploadedAsset[], clearFiles: () => void) {
   const { ws, parentId = null, replyingTo = null, onClearReply, sent, denied } = props;
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -99,7 +95,12 @@ export function ChatComposer(props: ComposerProps) {
   const send = useChatSend(props, files, () => setFiles([]));
   const { busy, unknown } = send;
 
-  if (!ws.can_write) return <p className="chat__meta" style={{ padding: "12px 16px" }}>Chat is read-only here.</p>;
+  if (!ws.can_write)
+    return (
+      <p className="chat__meta" style={{ padding: "12px 16px" }}>
+        Chat is read-only here.
+      </p>
+    );
 
   function removeFile(file: UploadedAsset) {
     setFiles((current) => current.filter((row) => row.id !== file.id));

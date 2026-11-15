@@ -21,7 +21,10 @@ function parseQuote(body: string, messages: ChatMessage[], parentId: string | nu
     let author = "Quote";
     let text = quoteLine;
     if (colonIdx > 0 && colonIdx < 40) {
-      author = quoteLine.slice(0, colonIdx).replace(/^\[|\]$/g, "").trim();
+      author = quoteLine
+        .slice(0, colonIdx)
+        .replace(/^\[|\]$/g, "")
+        .trim();
       text = quoteLine.slice(colonIdx + 1).trim();
     }
     const cleanBody = parts.slice(1).join("\n\n").trim();
@@ -227,9 +230,7 @@ export function Chat({ ws }: { ws: Workspace }) {
             {/* WhatsApp Header */}
             <div className="chat__header">
               <div className="chat__header-info">
-                <div className="chat__header-avatar">
-                  {ws.name.slice(0, 2).toUpperCase()}
-                </div>
+                <div className="chat__header-avatar">{ws.name.slice(0, 2).toUpperCase()}</div>
                 <div className="chat__header-details">
                   <span className="chat__header-title">{ws.name}</span>
                   <span className="chat__header-status">online</span>
@@ -283,7 +284,6 @@ export function Chat({ ws }: { ws: Workspace }) {
                   placeholder="Search in chat…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  autoFocus
                 />
                 <button
                   type="button"
@@ -367,13 +367,14 @@ export function Chat({ ws }: { ws: Workspace }) {
                       >
                         {/* Author name for incoming messages */}
                         {!isMe && message.author && (
-                          <div
+                          <button
+                            type="button"
                             className="chat-bubble__author"
                             onClick={() => setReplyingTo(message)}
                             title="Click to reply"
                           >
                             {message.author.display_name}
-                          </div>
+                          </button>
                         )}
 
                         {/* Quoted reply box inside message */}
@@ -400,13 +401,14 @@ export function Chat({ ws }: { ws: Workspace }) {
 
                         {/* Reactions badge */}
                         {messageReactions.length > 0 && (
-                          <div
+                          <button
+                            type="button"
                             className="chat-bubble__reactions"
                             onClick={() => addReaction(message.id, "👍")}
                             title="Reactions"
                           >
                             {messageReactions.join(" ")}
-                          </div>
+                          </button>
                         )}
 
                         {/* Hover dropdown button */}
@@ -431,16 +433,10 @@ export function Chat({ ws }: { ws: Workspace }) {
                             >
                               ↩️ Reply
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => addReaction(message.id, "👍")}
-                            >
+                            <button type="button" onClick={() => addReaction(message.id, "👍")}>
                               👍 React 👍
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => addReaction(message.id, "❤️")}
-                            >
+                            <button type="button" onClick={() => addReaction(message.id, "❤️")}>
                               ❤️ React ❤️
                             </button>
                             <button

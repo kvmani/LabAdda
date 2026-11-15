@@ -21,9 +21,7 @@ Official administrative approvals, circulars, sanction orders, confidential docu
 LabAdda is open to all researchers, technical officers, and team members across our laboratory units, divisions, sections, and projects. Its usage is expected to grow naturally over time as more colleagues try it out, find it helpful in their day-to-day work, and invite their project peers to collaborate.
 
 ### What kind of information should I put on LabAdda?
-**Keep LabAdda strictly for non-sensitive, daily collaboration.** 
-- **Great for:** Brainstorming hypotheses, sketching ideas on whiteboards, coordinating equipment availability, planning experiment tasks, scheduling meeting dates, and sharing non-sensitive discussion notes.
-- **Do not upload:** Classified project data, confidential lab results, patent-sensitive formulations, personnel grievance details, or financial accounts.
+**LabAdda is no place for any sensitive or official data.** It is simply a digital form of your lab's whiteboard. Put only those things here which you would normally write or sketch on a physical whiteboard in your lab or office—such as brainstorming hypotheses, sketching discussion diagrams, coordinating equipment availability, and planning day-to-day next steps. All sensitive, confidential, and official records belong on designated official institutional channels.
 
 ### Can administrators read my private notes, chats, or whiteboards?
 **No.** LabAdda is built with strict **administrator content blindness**. Site and unit administrators have access only to operational metadata (such as account lists, storage quotas, and server health status). They cannot see your message texts, personal note contents, private task descriptions, or whiteboard sketches.

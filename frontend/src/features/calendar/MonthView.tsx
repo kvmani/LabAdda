@@ -9,12 +9,7 @@ type Props = {
   onCreateEventOnDate: (date: Date) => void;
 };
 
-export const MonthView: React.FC<Props> = ({
-  activeDate,
-  events,
-  onSelectEvent,
-  onCreateEventOnDate,
-}) => {
+export const MonthView: React.FC<Props> = ({ activeDate, events, onSelectEvent, onCreateEventOnDate }) => {
   const year = activeDate.getFullYear();
   const month = activeDate.getMonth();
 
@@ -55,9 +50,7 @@ export const MonthView: React.FC<Props> = ({
 
   const today = new Date();
   const isSameDay = (d1: Date, d2: Date) =>
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+    d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
   // Helper to check if event falls on a date
   const getEventsForDate = (cellDate: Date) => {
@@ -95,12 +88,17 @@ export const MonthView: React.FC<Props> = ({
             <div
               key={idx}
               className={cellClass}
+              role="button"
+              tabIndex={0}
               onClick={() => onCreateEventOnDate(cell.date)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  onCreateEventOnDate(cell.date);
+                }
+              }}
             >
               <div className="cal-month-cell-header">
-                <span className={`cal-month-daynum ${isToday ? "today" : ""}`}>
-                  {cell.dayNum}
-                </span>
+                <span className={`cal-month-daynum ${isToday ? "today" : ""}`}>{cell.dayNum}</span>
               </div>
 
               {visibleEvents.map((ev) => {
@@ -117,9 +115,7 @@ export const MonthView: React.FC<Props> = ({
                     title={`${ev.title}${ev.location ? ` (${ev.location})` : ""}`}
                   >
                     {!ev.all_day && (
-                      <span className="cal-event-chip-time">
-                        {fmtClockTimeIST(ev.starts_at)}
-                      </span>
+                      <span className="cal-event-chip-time">{fmtClockTimeIST(ev.starts_at)}</span>
                     )}
                     <span>{ev.title}</span>
                   </button>

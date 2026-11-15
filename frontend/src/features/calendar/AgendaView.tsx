@@ -12,7 +12,9 @@ export const AgendaView: React.FC<Props> = ({ events, onSelectEvent }) => {
     return (
       <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted, #6b7280)" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 500 }}>No upcoming events scheduled</p>
-        <p style={{ fontSize: "0.875rem" }}>Click "Create" in the sidebar to schedule your first meeting or activity.</p>
+        <p style={{ fontSize: "0.875rem" }}>
+          Click "Create" in the sidebar to schedule your first meeting or activity.
+        </p>
       </div>
     );
   }
@@ -54,16 +56,14 @@ export const AgendaView: React.FC<Props> = ({ events, onSelectEvent }) => {
                 : `${fmtClockTimeIST(ev.starts_at)} - ${fmtClockTimeIST(ev.ends_at)}`;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={ev.id}
                   className="cal-agenda-item"
                   onClick={() => onSelectEvent(ev)}
                 >
                   <div className="cal-agenda-time">{timeStr}</div>
-                  <div
-                    className="cal-agenda-color-pill"
-                    style={{ backgroundColor: color }}
-                  />
+                  <div className="cal-agenda-color-pill" style={{ backgroundColor: color }} />
                   <div className="cal-agenda-details">
                     <span className="cal-agenda-item-title">{ev.title}</span>
                     <div className="cal-agenda-meta">
@@ -79,7 +79,7 @@ export const AgendaView: React.FC<Props> = ({ events, onSelectEvent }) => {
                       </p>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

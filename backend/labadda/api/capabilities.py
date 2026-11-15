@@ -15,9 +15,8 @@ from ..errors import Forbidden, Invalid, NotFound, TooMany
 from ..models import UsageReaderGrant, User
 from ..security import login_limiter, utcnow, verify_password
 from ..serialize import iso
-from .governance import lock_authority
-
 from ..system_settings import get_max_whiteboards
+from .governance import lock_authority
 
 router = APIRouter(tags=["capabilities"])
 console_settings = require_console("settings")

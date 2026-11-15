@@ -49,7 +49,8 @@ async def _read_limited(upload: UploadFile, limit: int) -> bytes:
             limit_mb = limit // (1024 * 1024)
             raise Invalid(
                 "file_too_large",
-                f"Error: File too large to upload; max upload size permitted is {limit_mb}MB. Please select a smaller file.",
+                f"Error: File too large to upload; max upload size permitted is {limit_mb}MB. "
+                "Please select a smaller file.",
             )
         chunks.append(chunk)
     if total == 0:

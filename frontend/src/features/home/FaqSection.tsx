@@ -16,15 +16,15 @@ export const FAQ_ITEMS: FaqItem[] = [
     answer: (
       <>
         <p>
-          <strong>No.</strong> LabAdda is <strong>not an official platform</strong> of our organisation.
-          It started as a small, informal internal experiment designed to make day-to-day scientific
+          <strong>No.</strong> LabAdda is <strong>not an official platform</strong> of our organisation. It
+          started as a small, informal internal experiment designed to make day-to-day scientific
           communication, brainstorming, whiteboard sketching, and team task coordination faster and simpler
           without bureaucratic friction.
         </p>
         <p>
           All official administrative sanctions, office circulars, procurement approvals, personnel records,
-          and statutory documentation must continue to flow through our organisation's designated official
-          ERP and intranet portals.
+          and statutory documentation must continue to flow through our organisation's designated official ERP
+          and intranet portals.
         </p>
       </>
     ),
@@ -49,14 +49,12 @@ export const FAQ_ITEMS: FaqItem[] = [
     answer: (
       <>
         <p>
-          <strong>Please keep LabAdda strictly for non-sensitive, daily collaboration.</strong>
+          <strong>LabAdda is no place for any sensitive or official data.</strong>
         </p>
         <p>
-          While the platform operates exclusively on our isolated intranet with strict access controls, it
-          is <strong>not approved for classified, confidential, patent-sensitive, or restricted national
-          research data</strong>. Think of LabAdda like your lab's physical whiteboard or coffee-table
-          notepad: ideal for exploring hypotheses, discussing literature, planning experiments, and tracking
-          next steps.
+          It is simply a digital form of your lab's whiteboard. You should put only those things here which
+          you would normally write or sketch on a physical whiteboard in your lab or office—such as informal
+          ideas, discussion diagrams, meeting reminders, equipment scheduling notes, and quick next steps.
         </p>
       </>
     ),
@@ -68,10 +66,10 @@ export const FAQ_ITEMS: FaqItem[] = [
     answer: (
       <>
         <p>
-          <strong>No.</strong> LabAdda enforces <strong>strict administrator content blindness</strong>.
-          Site administrators and unit administrators manage user accounts, storage quotas, and system
-          health—they can <strong>never</strong> see your message text, personal note contents, private task
-          descriptions, or whiteboard drawings.
+          <strong>No.</strong> LabAdda enforces <strong>strict administrator content blindness</strong>. Site
+          administrators and unit administrators manage user accounts, storage quotas, and system health—they
+          can <strong>never</strong> see your message text, personal note contents, private task descriptions,
+          or whiteboard drawings.
         </p>
         <p>
           Your personal tools (<em>My Whiteboard</em>, <em>My Notes</em>, <em>My Day</em>, and{" "}
@@ -103,8 +101,8 @@ export const FAQ_ITEMS: FaqItem[] = [
       <p>
         The central <Link to="/calendar">Calendar</Link> layers schedules into a single unified view:
         site-wide institutional seminars and holidays for everyone, division and section events for unit
-        members, project milestones for project teams, and personal reminders strictly for you. All dates
-        and times follow Indian Standard Time (IST).
+        members, project milestones for project teams, and personal reminders strictly for you. All dates and
+        times follow Indian Standard Time (IST).
       </p>
     ),
   },
