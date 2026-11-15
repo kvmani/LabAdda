@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { BASE } from "../../config";
 import { useSession } from "../../session";
@@ -6,6 +7,8 @@ import { Skeleton } from "../../ui";
 import { Login } from "../../pages/Login";
 import { BuildFooter } from "../shell/BuildFooter";
 import { Brand } from "./Brand";
+import { getDynamicGreeting } from "./greetings";
+import { FaqSection } from "./FaqSection";
 import "./home.css";
 
 /** Public welcome page; only fictional research artwork is visible before sign-in. */
@@ -60,6 +63,9 @@ export function Landing() {
           <p>Capture next steps, assign work and follow progress.</p>
         </article>
       </section>
+      <div style={{ maxWidth: "var(--landing-width)", margin: "0 auto", padding: "0 var(--space-6)" }}>
+        <FaqSection defaultOpenId="official-platform" />
+      </div>
       <Login next="/" embedded />
       <footer>
         <p>People, ideas and lab work.</p>
@@ -73,10 +79,17 @@ export function Landing() {
 export function Home() {
   const { session } = useSession();
   const { workspaces, loading } = useWorkspaces();
+  const greeting = useMemo(
+    () => getDynamicGreeting(session?.user.display_name),
+    [session?.user.display_name],
+  );
+
   return (
     <main className="member-home">
-      <h1>Welcome, {session?.user.display_name}</h1>
-      <p>Your personal space and your team’s work, together.</p>
+      <div className="home-welcome">
+        <h1 className="home-welcome__greeting">{greeting}</h1>
+        <p className="home-welcome__sub">Your personal space and your team’s work, together.</p>
+      </div>
 
       <section className="home-guidance" aria-label="Welcome and collaboration guidelines">
         <div className="home-guidance__header">
@@ -150,6 +163,8 @@ export function Home() {
           </div>
         )}
       </section>
+
+      <FaqSection />
     </main>
   );
 }
