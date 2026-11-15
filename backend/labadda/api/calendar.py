@@ -120,9 +120,7 @@ def _can_manage_site(db: Session, actor: Actor) -> bool:
     return grants.get(root_ws.id) == "steward"
 
 
-def _can_manage_event(
-    db: Session, actor: Actor, event: CalendarEvent
-) -> tuple[bool, bool]:
+def _can_manage_event(db: Session, actor: Actor, event: CalendarEvent) -> tuple[bool, bool]:
     if event.scope_kind == "personal":
         is_owner = event.owner_id == actor.user.id
         return (is_owner, is_owner)
@@ -178,9 +176,7 @@ def get_sources(
         return sources
 
     workspaces = db.scalars(
-        select(Workspace)
-        .where(Workspace.id.in_(list(readable_map.keys())))
-        .order_by(Workspace.name.asc())
+        select(Workspace).where(Workspace.id.in_(list(readable_map.keys()))).order_by(Workspace.name.asc())
     ).all()
 
     for ws in workspaces:
@@ -235,15 +231,13 @@ def get_events(
     scope_clauses = []
     if include_personal:
         scope_clauses.append(
-            (CalendarEvent.scope_kind == "personal")
-            & (CalendarEvent.owner_id == actor.user.id)
+            (CalendarEvent.scope_kind == "personal") & (CalendarEvent.owner_id == actor.user.id)
         )
     if include_site:
         scope_clauses.append(CalendarEvent.scope_kind == "site")
     if selected_ws_ids:
         scope_clauses.append(
-            (CalendarEvent.scope_kind == "workspace")
-            & (CalendarEvent.workspace_id.in_(selected_ws_ids))
+            (CalendarEvent.scope_kind == "workspace") & (CalendarEvent.workspace_id.in_(selected_ws_ids))
         )
 
     if not scope_clauses:
@@ -269,14 +263,8 @@ def get_events(
     user_ids = {e.created_by for e in events}
     ws_ids = {e.workspace_id for e in events if e.workspace_id is not None}
 
-    user_map = {
-        u.id: u.display_name
-        for u in db.scalars(select(User).where(User.id.in_(user_ids)))
-    }
-    ws_map = {
-        w.id: w.name
-        for w in db.scalars(select(Workspace).where(Workspace.id.in_(ws_ids)))
-    }
+    user_map = {u.id: u.display_name for u in db.scalars(select(User).where(User.id.in_(user_ids)))}
+    ws_map = {w.id: w.name for w in db.scalars(select(Workspace).where(Workspace.id.in_(ws_ids)))}
 
     result = []
     for ev in events:

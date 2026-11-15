@@ -216,5 +216,3 @@ def test_public_staff_directory_advanced_search(as_user):
 
     # Panel sessions are denied
     assert chitra.get("/people/directory", headers={"X-LabAdda-Panel": "1"}).status_code == 401
-
-

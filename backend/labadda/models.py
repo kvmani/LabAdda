@@ -495,7 +495,9 @@ class Board(Base):
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workspaces.id"), primary_key=True
     )
-    title: Mapped[str] = mapped_column(String(64), nullable=False, default="Board 1", server_default="Board 1")
+    title: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="Board 1", server_default="Board 1"
+    )
     epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     # Operations at or below this revision live only in board_snapshots.
@@ -518,15 +520,15 @@ class WorkspaceBoard(Base):
         UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
     board_index: Mapped[int] = mapped_column(Integer, nullable=False)
-    title: Mapped[str] = mapped_column(String(64), nullable=False, default="Board 2", server_default="Board 2")
+    title: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="Board 2", server_default="Board 2"
+    )
     epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     base_revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0", default=0)
     charges_epoch: Mapped[int | None] = mapped_column(Integer)
 
-    __table_args__ = (
-        UniqueConstraint("workspace_id", "board_index", name="uq_workspace_boards_index"),
-    )
+    __table_args__ = (UniqueConstraint("workspace_id", "board_index", name="uq_workspace_boards_index"),)
 
 
 class BoardSnapshot(Base):
@@ -1049,7 +1051,9 @@ class PersonalBoardRevision(Base):
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
     board_index: Mapped[int] = mapped_column(Integer, primary_key=True, default=0, server_default="0")
     revision: Mapped[int] = mapped_column(Integer, primary_key=True)
-    title: Mapped[str] = mapped_column(String(64), nullable=False, default="Board 1", server_default="Board 1")
+    title: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="Board 1", server_default="Board 1"
+    )
     objects: Mapped[list] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = _created()
 
@@ -1104,4 +1108,3 @@ class CalendarEvent(Base):
         Index("ix_calendar_events_owner", "owner_id", "starts_at"),
         Index("ix_calendar_events_scope", "scope_kind", "starts_at"),
     )
-

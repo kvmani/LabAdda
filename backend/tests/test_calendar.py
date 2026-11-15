@@ -45,9 +45,7 @@ def test_personal_calendar_isolation_and_admin_blindness(as_user, ids):
     assert any(e["id"] == event_id for e in b_events)
 
     # 3. Chitra (another normal user) cannot see it in range query
-    r_chitra_list = chitra.get(
-        "/calendar/events?start=2026-11-20T00:00:00Z&end=2026-11-20T23:59:59Z"
-    )
+    r_chitra_list = chitra.get("/calendar/events?start=2026-11-20T00:00:00Z&end=2026-11-20T23:59:59Z")
     assert r_chitra_list.status_code == 200
     assert not any(e["id"] == event_id for e in r_chitra_list.json())
 
@@ -57,9 +55,7 @@ def test_personal_calendar_isolation_and_admin_blindness(as_user, ids):
     assert chitra.delete(f"/calendar/events/{event_id}").status_code == 404
 
     # 5. ADMIN BLINDNESS: Administrator cannot see it in range query or single fetch
-    r_admin_list = admin.get(
-        "/calendar/events?start=2026-11-20T00:00:00Z&end=2026-11-20T23:59:59Z"
-    )
+    r_admin_list = admin.get("/calendar/events?start=2026-11-20T00:00:00Z&end=2026-11-20T23:59:59Z")
     assert r_admin_list.status_code == 200
     assert not any(e["id"] == event_id for e in r_admin_list.json())
 
@@ -86,7 +82,7 @@ def test_personal_calendar_isolation_and_admin_blindness(as_user, ids):
 def test_hierarchy_and_upward_only_calendar_events(as_user, ids):
     """Section members see Division events; Division-only members cannot see Section events."""
     bharat = as_user("bharat")  # in section_a
-    deepa = as_user("deepa")    # steward in division (parent of section_a)
+    deepa = as_user("deepa")  # steward in division (parent of section_a)
     chitra = as_user("chitra")  # in section_b (sibling of section_a)
 
     sec_a_id = ids["workspaces"]["section_a"]
@@ -122,18 +118,14 @@ def test_hierarchy_and_upward_only_calendar_events(as_user, ids):
 
     # 3. Range query by Bharat (in Section A):
     # Upward inheritance: Bharat sees Section A event AND Division event!
-    b_events = bharat.get(
-        "/calendar/events?start=2026-11-21T00:00:00Z&end=2026-11-21T23:59:59Z"
-    ).json()
+    b_events = bharat.get("/calendar/events?start=2026-11-21T00:00:00Z&end=2026-11-21T23:59:59Z").json()
     b_ev_ids = {e["id"] for e in b_events}
     assert sec_ev_id in b_ev_ids
     assert div_ev_id in b_ev_ids
 
     # 4. Range query by Deepa (in Division only):
     # Hierarchy is upward-only: Deepa sees Division event, but NOT Section A event!
-    d_events = deepa.get(
-        "/calendar/events?start=2026-11-21T00:00:00Z&end=2026-11-21T23:59:59Z"
-    ).json()
+    d_events = deepa.get("/calendar/events?start=2026-11-21T00:00:00Z&end=2026-11-21T23:59:59Z").json()
     d_ev_ids = {e["id"] for e in d_events}
     assert div_ev_id in d_ev_ids
     assert sec_ev_id not in d_ev_ids
@@ -142,9 +134,7 @@ def test_hierarchy_and_upward_only_calendar_events(as_user, ids):
 
     # 5. Range query by Chitra (in sibling Section B):
     # Sibling privacy: Chitra sees Division event, but NOT Section A event!
-    c_events = chitra.get(
-        "/calendar/events?start=2026-11-21T00:00:00Z&end=2026-11-21T23:59:59Z"
-    ).json()
+    c_events = chitra.get("/calendar/events?start=2026-11-21T00:00:00Z&end=2026-11-21T23:59:59Z").json()
     c_ev_ids = {e["id"] for e in c_events}
     assert div_ev_id in c_ev_ids
     assert sec_ev_id not in c_ev_ids
@@ -190,9 +180,7 @@ def test_site_wide_events_and_permission_gate(as_user, ids):
 
     # 3. All users (Bharat, Esha) see the site-wide event in range query
     for client in (bharat, esha):
-        events = client.get(
-            "/calendar/events?start=2026-11-25T00:00:00Z&end=2026-11-25T23:59:59Z"
-        ).json()
+        events = client.get("/calendar/events?start=2026-11-25T00:00:00Z&end=2026-11-25T23:59:59Z").json()
         assert any(e["id"] == site_ev_id for e in events)
 
     # 4. Sources filter: sources=site returns it; sources=personal excludes it
@@ -234,9 +222,7 @@ def test_date_range_and_sources_query(as_user, ids):
     ).json()
 
     # Query range covering Nov 22 only
-    r_range = bharat.get(
-        "/calendar/events?start=2026-11-22T00:00:00Z&end=2026-11-22T23:59:59Z"
-    ).json()
+    r_range = bharat.get("/calendar/events?start=2026-11-22T00:00:00Z&end=2026-11-22T23:59:59Z").json()
     ids_in_range = {e["id"] for e in r_range}
     assert ev22["id"] in ids_in_range
     assert ev24["id"] not in ids_in_range

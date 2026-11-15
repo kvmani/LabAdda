@@ -221,4 +221,3 @@ def test_self_edit_profile_and_avatar(as_user):
     bad_payload = {"avatar_data": "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="}
     assert bharat.post("/me/avatar", json=bad_payload).status_code == 422
     assert bharat.post("/me/avatar", json={"avatar_data": "not-an-image"}).status_code == 422
-

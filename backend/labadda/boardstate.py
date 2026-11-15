@@ -198,7 +198,7 @@ def latest_snapshot(
 
 
 def epoch_ops(
-    db: Session, workspace_id, epoch: int, board_index: int = 0, after: int = 0, upto: int | None = None
+    db: Session, workspace_id, epoch: int, *, board_index: int = 0, after: int = 0, upto: int | None = None
 ) -> list[BoardOp]:
     stmt = select(BoardOp).where(
         BoardOp.workspace_id == workspace_id,

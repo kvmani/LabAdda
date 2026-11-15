@@ -458,4 +458,3 @@ def test_model_csv_template_download_and_preview(as_user):
     preview_data = r_prev.json()
     assert preview_data["total"] > 0
     assert preview_data["errors"] == 0
-

@@ -125,4 +125,3 @@ def test_upload_size_limit_friendly_error(as_user):
     assert err["code"] == "file_too_large"
     assert "Error: File too large to upload; max upload size permitted is 20MB" in err["message"]
     assert "Please select a smaller file." in err["message"]
-

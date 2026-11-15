@@ -86,10 +86,14 @@ def directory_query(db: Session, filters: DirectoryFilters, scope: Scope = None)
             )
         )
     if filters.specialization.strip():
-        spec_pattern = filters.specialization.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        spec_pattern = (
+            filters.specialization.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
         query = query.where(User.specialization.ilike("%" + spec_pattern + "%", escape="\\"))
     if filters.designation.strip():
-        desig_pattern = filters.designation.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        desig_pattern = (
+            filters.designation.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
         query = query.where(User.designation.ilike("%" + desig_pattern + "%", escape="\\"))
     if filters.status is not None:
         query = query.where(User.status == filters.status)

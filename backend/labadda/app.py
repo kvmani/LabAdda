@@ -88,7 +88,7 @@ def expected_schema_head() -> str:
     return ScriptDirectory.from_config(cfg).get_current_head()
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 — application factory registers routers & middleware
     settings = settings or get_settings()
     factory = session_factory(settings.database_url)
     store = AssetStore(settings.asset_dir)
@@ -210,7 +210,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {
                 "error": {
                     "code": "internal_error",
-                    "message": "Something went wrong while processing your request. Please try again or contact support if the issue persists.",
+                    "message": (
+                        "Something went wrong while processing your request. "
+                        "Please try again or contact support if the issue persists."
+                    ),
                 }
             },
             status_code=500,

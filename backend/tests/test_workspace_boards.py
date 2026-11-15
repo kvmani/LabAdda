@@ -122,4 +122,3 @@ def test_board_index_boundary_validation(as_user, ids):
     r_neg = bharat.patch(f"/workspaces/{ws_id}/boards/-1", json={"title": "Negative"})
     assert r_neg.status_code in (404, 422)
     assert bharat.get(f"/workspaces/{ws_id}/board?board_index=-1").status_code == 422
-

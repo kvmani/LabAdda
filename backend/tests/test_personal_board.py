@@ -166,4 +166,3 @@ def test_personal_tabbed_whiteboard(as_user):
     assert b1["revision"] == 1
     assert len(b1["objects"]) == 1
     assert b1["objects"][0]["text"] == "Review SEM sample preparation"
-

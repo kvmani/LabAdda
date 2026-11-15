@@ -12,3 +12,7 @@ var/
 e2e/node_modules/
 
 frontend/src/features/help/generated/
+*.pptx
+docs/presentation_assets/
+docs/whiteboard_assets/
+

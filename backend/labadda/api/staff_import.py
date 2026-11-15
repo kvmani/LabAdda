@@ -1,5 +1,7 @@
 """Administrator-only Excel staff import: review a sheet, then apply it all or not at all."""
 
+import csv
+import io
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -125,9 +127,6 @@ def template(
         ],
     ]
     if format.lower() == "csv":
-        import csv
-        import io
-
         out = io.StringIO()
         writer = csv.writer(out, lineterminator="\r\n")
         writer.writerow(list(staff_sheet.HEADERS))
@@ -142,7 +141,7 @@ def template(
             },
         )
     return Response(
-        xlsx.write_rows([list(staff_sheet.HEADERS)] + examples),
+        xlsx.write_rows([list(staff_sheet.HEADERS), *examples]),
         media_type=SHEET_TYPES[0],
         headers={
             "Content-Disposition": 'attachment; filename="staff-import-template.xlsx"',

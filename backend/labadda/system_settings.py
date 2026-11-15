@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import uuid
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import Settings
