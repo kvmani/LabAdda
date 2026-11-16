@@ -27,6 +27,11 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
     assert shutil.which("pg_dump") and shutil.which("pg_restore"), "PostgreSQL 16 clients required"
     workspace = ids["workspaces"]["section_a"]
     bharat = as_user("bharat")
+    delegation = as_user("asha").post(
+        f"/workspaces/{workspace}/delegations",
+        json={"user_id": ids["users"]["bharat"], "reason": "Preserve representation during migration"},
+    )
+    assert delegation.status_code == 201
     pdf = b"%PDF-1.4\nSynthetic recovery document\n%%EOF"
     upload = bharat.post(
         "/uploads",
@@ -257,6 +262,11 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
             person = db.get(User, ids["users"]["bharat"])
             blocked_leave = db.get(User, ids["users"]["farhan"])
             assert blocked_leave.status == "on_leave" and not blocked_leave.is_active
+            from labadda.models import ContributionDelegation
+
+            recovered_grant = db.get(ContributionDelegation, uuid.UUID(delegation.json()["id"]))
+            assert recovered_grant.user_id == person.id
+            assert recovered_grant.revoked_at is None
             assert person.employee_no == "NM-100"
             assert person.designation == "Research Officer"
             assert person.contact_email == "bharat@research.example"

@@ -63,7 +63,7 @@ export function Noticeboard({ ws }: { ws: Workspace }) {
         {!feed && !error && <Skeleton lines={4} label="Loading posts…" />}
         {empty && (
           <EmptyState title={`No posts yet in ${ws.name}.`}>
-            {ws.can_write ? "Start the conversation above." : "Posts will appear here."}
+            {ws.can_contribute ? "Start the conversation above." : "Posts will appear here."}
           </EmptyState>
         )}
         {feed && !empty && (

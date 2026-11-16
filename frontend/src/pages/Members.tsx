@@ -1,3 +1,4 @@
+import { RepresentativeDelegations } from "../features/whiteboard/RepresentativeDelegations";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, errorMessage } from "../api";
@@ -163,11 +164,13 @@ export function Members({ ws }: { ws: Workspace }) {
   ];
   return (
     <section className="members">
+      {ws.kind === "org" && ws.can_moderate && <RepresentativeDelegations ws={ws} />}
       <Card title={isGroup ? "Group members" : `Direct members of ${ws.name}`}>
         <div className="members__stack">
           {!isGroup && ws.kind === "org" && (
             <p className="members__muted">
-              Members of sub-units can also read and post here as inherited members.
+              Members of sub-units can read here. Immediate child stewards and delegated representatives can
+              contribute.
             </p>
           )}
           {isGroup && (

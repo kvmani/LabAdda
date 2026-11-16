@@ -39,3 +39,14 @@ New members see the whole history of the group at once. A person you remove stop
 
 - [What a steward does](what-a-steward-does.md)
 - [Handing over stewardship](handing-over-stewardship.md)
+
+### Unit representatives
+
+For organisation units, open **Members** and find **Unit representatives**. Direct members
+contribute in their own unit. Stewards also represent their unit at its immediate parent.
+To nominate another colleague, enter a reason, choose an active member of your unit or its
+sub-units, optionally choose an expiry, and select **Appoint representative**. Review the
+confirmation. This grants contributions at the immediate parent only, never moderation.
+Either the source unit steward or the parent steward can **Revoke representation** with a
+reason. Leaving the represented subtree ends the appointment. Expired appointments do not
+permit contributions. Existing content remains readable under normal membership rules.

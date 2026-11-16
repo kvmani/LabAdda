@@ -13,7 +13,7 @@ An organizational workspace is a node with an immutable ID, display name, nullab
 | Actor in the target workspace | Read content | Post, reply, draw, chat | Pin, issue official notice, moderate, restore |
 | --- | --- | --- | --- |
 | Direct member | Yes | Yes under the workspace posting policy | No |
-| Direct member or steward in a descendant | Yes, as an inherited member | Yes under the workspace posting policy | No, unless also a direct steward in the target |
+| Direct member or steward in a descendant | Yes, as an inherited member | Shared board, chat and posts: only an immediate child steward or current delegate; tasks/calendar retain existing policy | No, unless also a direct steward in the target |
 | Direct steward | Yes | Yes | Yes, in the target only |
 | Org administrator without a content grant | No | No | No. Can administer identities and the tree with audit |
 | Member of only a sibling, ancestor, or unrelated project or group | No | No | No |
@@ -324,3 +324,5 @@ touch-panel layout or any access rule.
 code. Formatting and lint gates, typed interfaces, size limits, the denial matrix for every
 endpoint, and synchronized contracts, help and plan status are part of the definition of done.
 T70 in TESTING.md is the release gate.
+
+Owner-approved representative contribution rules and implementation progress: [guide](docs/development/representative-posting.md).

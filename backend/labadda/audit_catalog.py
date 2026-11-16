@@ -45,6 +45,8 @@ CATALOG: dict[str, Entry] = {
     "tree.move": Entry("organisation", "{actor} moved {unit} to a different place in the organisation."),
     "workspace.archive": Entry("organisation", "{actor} archived {unit}."),
     "workspace.unarchive": Entry("organisation", "{actor} restored {unit} from the archive."),
+    "contribution.appoint": Entry("organisation", "{actor} appointed a unit representative."),
+    "contribution.revoke": Entry("organisation", "{actor} revoked a unit representative."),
     "workspace.posting_policy": Entry("organisation", "{actor} changed who may post in {unit}."),
     "group.create": Entry("organisation", "{actor} created {unit}."),
     "group.archive": Entry("organisation", "{actor} archived {unit}."),

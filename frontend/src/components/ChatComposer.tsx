@@ -46,7 +46,7 @@ function useChatSend(props: ComposerProps, files: UploadedAsset[], clearFiles: (
 
   async function submit(event: FormEvent, uploadsPending: boolean) {
     event.preventDefault();
-    if (busy || !ws.can_write || uploadsPending || (!text.trim() && !files.length)) return;
+    if (busy || !ws.can_contribute || uploadsPending || (!text.trim() && !files.length)) return;
     generation.current += 1;
     const token = generation.current;
     setBusy(true);
@@ -95,10 +95,10 @@ export function ChatComposer(props: ComposerProps) {
   const send = useChatSend(props, files, () => setFiles([]));
   const { busy, unknown } = send;
 
-  if (!ws.can_write)
+  if (!ws.can_contribute)
     return (
       <p className="chat__meta" style={{ padding: "12px 16px" }}>
-        Chat is read-only here.
+        You can view chat. Contributions are limited to unit representatives or stewards.
       </p>
     );
 

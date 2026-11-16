@@ -21,6 +21,7 @@ export type Workspace = {
   role: "member" | "steward" | null;
   inherited: boolean;
   can_write: boolean;
+  can_contribute: boolean;
   can_moderate: boolean;
   unread_chat: number;
 };

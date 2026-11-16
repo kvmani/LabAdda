@@ -64,7 +64,7 @@ export function WhiteboardToolbar({
 }: Props) {
   return (
     <div className="toolbar" role="toolbar" aria-label="Whiteboard tools">
-      {TOOLS.map((t) => (
+      {TOOLS.filter((t) => canWrite || t.id === "pan").map((t) => (
         <button
           key={t.id}
           type="button"

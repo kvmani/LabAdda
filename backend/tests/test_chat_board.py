@@ -86,6 +86,15 @@ def test_board_ops_retry_conflict_and_replay(as_user, ids):
 def test_undo_is_own_only_and_erase_is_distinct(as_user, ids):
     bharat, asha = as_user("bharat"), as_user("asha")
     w = ws(ids)
+    # Cross-author erasure requires stewardship; undo still targets only one's own operations.
+    assert (
+        as_user("admin")
+        .put(
+            f"/admin/workspaces/{w}/memberships", json={"user_id": ids["users"]["bharat"], "role": "steward"}
+        )
+        .status_code
+        == 200
+    )
     bharat.post(f"/workspaces/{w}/board/ops", json=stroke("op-bharat-001", "bharat-stroke"))
     asha.post(f"/workspaces/{w}/board/ops", json=stroke("op-ash-001", "asha-stroke"))
     # Bharat erases Asha's stroke (a distinct mutation).

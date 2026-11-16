@@ -29,7 +29,7 @@ New messages appear on their own. Thread replies also appear in the main stream,
 - If new messages do not appear, choose **Refresh chat**.
 - To read older messages, choose **Load earlier messages**. While you do, new messages wait; choose **Return to latest messages** to go back.
 - If a message may not have been sent, the button changes to **Retry same message**. Choose it rather than typing the message again, so it is not sent twice.
-- If you see **Chat is read-only here.**, you can read but not write in this workspace.
+- If you see **You can view chat. Contributions are limited to unit representatives or stewards.**, you can read but not write in this workspace.
 - Sharing to a different workspace asks you to tick a box first, because more people will see the text.
 
 ## Related

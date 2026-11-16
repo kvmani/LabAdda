@@ -57,6 +57,7 @@ export function WorkspaceView() {
   }, [
     workspaceId,
     listed?.role,
+    listed?.can_contribute,
     listed?.archived,
     listed?.posting_policy,
     listed?.name,
@@ -74,7 +75,11 @@ export function WorkspaceView() {
       </div>
     );
   if (!detail) return <Skeleton lines={5} label="Loading workspace…" />;
-  const ws: Workspace = { ...detail, unread_chat: listed?.unread_chat ?? 0 };
+  const ws: Workspace = {
+    ...detail,
+    can_contribute: listed?.can_contribute ?? detail.can_contribute,
+    unread_chat: listed?.unread_chat ?? 0,
+  };
   const tabs = TABS.map(([id, label]) => ({
     id,
     label: id === "chat" && ws.unread_chat > 0 ? `${label} (${ws.unread_chat} new)` : label,
@@ -88,6 +93,12 @@ export function WorkspaceView() {
         title={ws.name}
         scope={`${kindLabel(ws.kind)} · ${accessLabel(ws)}${ws.description ? ` — ${ws.description}` : ""}`}
       />
+      {!ws.can_contribute && ws.can_write && (
+        <p role="status">
+          You can view this space. Contributions are limited to unit representatives. Contact your unit
+          steward through the Members tab.
+        </p>
+      )}
       <Tabs
         label="Workspace features"
         tabs={tabs}

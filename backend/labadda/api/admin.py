@@ -269,6 +269,7 @@ def update_workspace(
         _validate_parent(db, ws.kind, body.parent_id, self_id=ws.id)
         before = ws.parent_id
         ws.parent_id = body.parent_id
+        memberships.revoke_invalid_delegations(db, actor=actor.user, reason=body.reason)
         audit.record(
             db,
             actor=actor.user,

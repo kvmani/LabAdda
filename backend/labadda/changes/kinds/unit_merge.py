@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ... import positions
+from ... import memberships, positions
 from ...config import Settings
 from ...models import Membership, User, Workspace
 from ..actions import Action, end_position, set_role
@@ -35,6 +35,7 @@ def _blockers(db: Session, source: Workspace, target: Workspace, parents: dict) 
 def _reparent(child: Workspace, source: Workspace, target: Workspace) -> Action:
     def run(db: Session, actor: User, reason: str) -> None:
         child.parent_id = target.id
+        memberships.revoke_invalid_delegations(db, actor=actor, reason=reason)
 
     before = units.unit_state(child, source)
     after = {**before, "parent": target.name, "parent_id": str(target.id)}

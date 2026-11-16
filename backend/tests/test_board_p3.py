@@ -70,6 +70,14 @@ def test_embed_image_and_scope(as_user, ids):
         == 422
     )
     div = ws(ids, "division")
+    # Asset reuse is tested after explicitly granting the new parent contribution right.
+    assert (
+        asha.post(
+            f"/workspaces/{ws(ids)}/delegations",
+            json={"user_id": ids["users"]["bharat"], "reason": "Represent section in division"},
+        ).status_code
+        == 201
+    )
     assert (
         bharat.post(
             f"/workspaces/{div}/board/ops", json=image_op("op-bharat-img2", "img-2", asset)
@@ -166,6 +174,15 @@ def test_snapshot_same_workspace_is_fixed_copy(as_user, ids):
 def test_parent_publish_needs_confirmation_and_is_target_owned(as_user, ids):
     bharat = as_user("bharat")
     src, div = ws(ids), ws(ids, "division")
+    assert (
+        as_user("asha")
+        .post(
+            f"/workspaces/{src}/delegations",
+            json={"user_id": ids["users"]["bharat"], "reason": "Publish section summary at division"},
+        )
+        .status_code
+        == 201
+    )
     dests = bharat.get(f"/workspaces/{src}/board/snapshot-destinations").json()["destinations"]
     assert [d["name"] for d in dests][:2] == ["Thin Films Section", "Surface Engineering Division"]
     rev = bharat.post(f"/workspaces/{src}/board/ops", json=stroke("op-bharat-001", "s1")).json()["committed"][

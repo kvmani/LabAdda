@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from ... import memberships
 from ...config import Settings
 from ...models import User
 from ..actions import Action
@@ -43,6 +44,7 @@ def _draft(db: Session, request: UnitMove, settings: Settings) -> units.UnitDraf
 
     def run(db: Session, actor: User, reason: str) -> None:
         unit.parent_id = target.id
+        memberships.revoke_invalid_delegations(db, actor=actor, reason=reason)
 
     before = units.unit_state(unit, old_parent)
     after_state = {**before, "parent": target.name, "parent_id": str(target.id)}

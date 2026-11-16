@@ -1252,3 +1252,34 @@ to all normal sessions and managed by site admins/root stewards. Out-of-scope ev
 404; visible but disallowed changes return 403. Dates require a time zone; invalid bounds/schema are
 422. The browser displays its local time zone. Cancelled records and snapshot receipts survive backup
 and restore; migrations refuse downgrades that would discard retained safety history.
+
+## Representative contributions
+
+Whiteboard, noticeboard and chat writes require a current contribution grant, separately from
+reading and task/calendar writes. See [policy and progress](development/representative-posting.md).
+Workspace JSON adds `can_contribute`. Hidden resources remain 404; a reader without contribution
+permission receives 403 `representative_required`. Existing archive/read-only errors take precedence.
+
+### Unit representative appointments
+
+- `GET /workspaces/{id}/delegations`: selected unit steward only. Returns `delegations`
+  (id, user brief, source_id, destination_id, expires_at, revision), eligible active
+  `candidates` and nullable parent `destination_id`. Candidate search uses `search` (0–120
+  characters), at most 100 candidates; appointment pagination uses `offset` (>=0),
+  at most 100 appointments and `has_more`. Multiple people may represent each source unit.
+- `POST /workspaces/{source_id}/delegations`: source steward only; JSON `user_id`, optional
+  future timezone-aware `expires_at`, `reason` (3–500 characters). Returns appointment, 201.
+  422 `invalid_source`, `invalid_expiry`, `invalid_representative`; 409 `already_delegated`.
+- `POST /workspaces/{id}/delegations/{grant_id}/revoke`: source or destination steward only;
+  JSON `revision` (>=1), `reason` (3–500 characters). Returns `revoked`, next `revision`.
+  409 `stale_revision`; foreign appointment 404; non-steward reader 403 `steward_required`.
+
+Appointments and revocations are audited in the same transaction. Live connections are
+revalidated after commit. Delegates receive no moderation authority. These endpoints reject
+board-only sessions and unknown request fields.
+
+Board and panel JSON `can_write` describes contribution permission; workspace JSON keeps
+`can_write` for task/calendar policy and adds `can_contribute` for shared boards, posts and
+chat. Socket `access_changed` triggers a workspace refresh; current permissions are checked
+again for every write and live preview. Expiry is enforced immediately by the server and
+refreshed in visible browser tabs at most 30 seconds later.

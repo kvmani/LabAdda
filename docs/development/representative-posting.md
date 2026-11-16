@@ -51,3 +51,21 @@ Next: push checkpoint 2 authorization code and tests, then apply and qualify the
 editing/font slice prepared outside the repository. No live Windows or office instance
 has been changed. Keep the current pilot running its existing version until a backed-up
 upgrade is scheduled.
+
+### Checkpoint 2: representative policy and management
+
+Authorization slice ready to push: HTTP and both socket permission paths, multi-person
+appointments, revocation/expiry and permanent invalidation, audited authority changes,
+author/current-steward board mutations including undo, panel isolation, hidden controls and
+stale-response guards. API, specification and in-app help updated. Independent different-model
+reviewer `representative_final_review` (GPT-6 Astra) found no remaining authorization findings
+after fixes. Backend 1,710 passed/one optional skip; explicit real recovery passed; frontend
+250 passed plus lint/types/build; existing browser 75/75 and new representative browser 16/16.
+Additional demoted-steward undo regression passed after the full run.
+
+Remaining board slice: bundled fonts and server image rendering, selection/dragging and
+keyboard movement/edit controls on shared and private boards, font/size persistence and
+validation, tests/help/browser checks. Prepared and separately tested in
+`/tmp/labadda-board-validation` (baseline originals `/tmp/labadda-board-base`); apply only
+changed source/assets after comparing against the baseline, never copy temporary proxy or
+configuration files. Final combined `scripts/verify.sh --e2e` is still required.

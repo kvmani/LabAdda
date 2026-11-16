@@ -20,7 +20,7 @@ Sometimes a workspace should be kept for reading only, for example while a proje
 
 ## What happens next
 
-When posting is closed, members still read everything but see **Posting is limited to stewards in this workspace.** and chat says it is read-only. Stewards can still post. In an archived group nobody can post, chat, draw or add tasks, and everything stays readable. The workspace is marked **Archived** in the left-hand list.
+When posting is closed, members still read everything but see **Posting is limited to unit representatives or stewards in this workspace.** and chat says it is read-only. Stewards can still post. In an archived group nobody can post, chat, draw or add tasks, and everything stays readable. The workspace is marked **Archived** in the left-hand list.
 
 ## If something goes wrong
 

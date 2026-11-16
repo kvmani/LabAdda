@@ -139,7 +139,7 @@ function hit(o: Obj, x: number, y: number, tol: number): boolean {
 
 /** Whiteboard. With ``panel`` set it runs as a board-only touch panel: no images, publishing or restore. */
 export function Board({
-  ws,
+  ws: workspace,
   userId,
   panel = false,
   onActivity,
@@ -151,6 +151,9 @@ export function Board({
   onActivity?: () => void;
   maxUploadBytes?: number;
 }) {
+  const [serverCanContribute, setServerCanContribute] = useState(workspace.can_contribute);
+  const ws = { ...workspace, can_contribute: workspace.can_contribute && serverCanContribute };
+  useEffect(() => setServerCanContribute(workspace.can_contribute), [workspace.can_contribute]);
   const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [taskContext, setTaskContext] = useState<{ epoch: number; revision: number } | null>(null);
@@ -204,7 +207,7 @@ export function Board({
       })
       .catch(() => undefined);
   }, [ws.id, panel]);
-  const [save, setSave] = useState<SaveState>(ws.can_write ? "Saved" : "Read-only");
+  const [save, setSave] = useState<SaveState>(ws.can_contribute ? "Saved" : "Read-only");
   const [message, setMessage] = useState<string | null>(null);
   const uploads = useUploadQueue(maxUploadBytes, (asset) => {
     void placeImage(asset);
@@ -263,6 +266,7 @@ export function Board({
       }
       const r = await api<BoardState>(`/workspaces/${ws.id}/board`, { params });
       if (!alive.current || activeScope.current !== scope || sequence !== loadSequence.current) return;
+      setServerCanContribute(r.can_write);
       if (r.epoch < state.current.epoch) return;
       // A reset response starts from the compacted snapshot (if any) plus later operations.
       if (r.reset) setBase(r.snapshot?.objects ?? null);
@@ -421,7 +425,7 @@ export function Board({
         else if (ev.stroke) previews.current.set(ev.preview_id, ev.stroke);
         force((n) => n + 1);
       } else if (ev.type === "presence") setPresence(ev.users);
-      else if (ev.type === "subscribed") {
+      else if (ev.type === "subscribed" || ev.type === "access_changed") {
         previews.current.clear(); // disconnect discards uncommitted remote previews
         load()
           .then(flush)
@@ -526,7 +530,7 @@ export function Board({
       setSelection({ x, y, w: 0, h: 0 });
       return;
     }
-    if (!ws.can_write) return;
+    if (!ws.can_contribute) return;
     if (tool === "image") return;
     if (tool === "select" || tool === "sticky" || tool === "text") {
       const target = [...objects.entries()]
@@ -534,6 +538,10 @@ export function Board({
         .find(([, o]) => o.alive && hit(o, x, y, 6 / view.scale));
       if (target) {
         const [targetId, targetObj] = target;
+        if (targetObj.author !== userId && !ws.can_moderate) {
+          setMessage("Only the author or a steward can change this item.");
+          return;
+        }
         if (targetObj.kind === "sticky") {
           setEditingSticky({
             id: targetId,
@@ -583,7 +591,8 @@ export function Board({
       const target = [...objects.entries()]
         .reverse()
         .find(([, o]) => o.alive && hit(o, x, y, 8 / view.scale));
-      if (target) submit({ type: "erase", object_id: target[0] });
+      if (target && (target[1].author === userId || ws.can_moderate))
+        submit({ type: "erase", object_id: target[0] });
     }
   }
 
@@ -823,7 +832,7 @@ export function Board({
             tabs={boardTabs}
             selected={boardIndex}
             label="Whiteboard tabs"
-            canWrite={ws.can_write}
+            canWrite={ws.can_contribute}
             maximum={maxWhiteboards}
             onSelect={switchBoard}
             onRename={(index, title) => void renameBoard(index, title)}
@@ -831,28 +840,30 @@ export function Board({
           />
         )}
         <div className="toolbar" role="toolbar" aria-label="Drawing tools">
-          {(["select", "pen", "eraser", "text", "sticky", "pan"] as Tool[]).map((t) => (
-            <button
-              key={t}
-              className={"tool" + (tool === t ? " active" : "")}
-              aria-pressed={tool === t}
-              onClick={() => setTool(t)}
-              disabled={!ws.can_write && t !== "pan"}
-            >
-              {t === "select"
-                ? "↖ Select"
-                : t === "pen"
-                  ? "✏️ Draw"
-                  : t === "eraser"
-                    ? "🧽 Eraser"
-                    : t === "text"
-                      ? "🔤 Text"
-                      : t === "sticky"
-                        ? "🗒 Sticky"
-                        : "✋ Pan"}
-            </button>
-          ))}
-          {tool === "pen" && (
+          {(["select", "pen", "eraser", "text", "sticky", "pan"] as Tool[])
+            .filter((t) => ws.can_contribute || t === "pan")
+            .map((t) => (
+              <button
+                key={t}
+                className={"tool" + (tool === t ? " active" : "")}
+                aria-pressed={tool === t}
+                onClick={() => setTool(t)}
+                disabled={!ws.can_contribute && t !== "pan"}
+              >
+                {t === "select"
+                  ? "↖ Select"
+                  : t === "pen"
+                    ? "✏️ Draw"
+                    : t === "eraser"
+                      ? "🧽 Eraser"
+                      : t === "text"
+                        ? "🔤 Text"
+                        : t === "sticky"
+                          ? "🗒 Sticky"
+                          : "✋ Pan"}
+              </button>
+            ))}
+          {ws.can_contribute && tool === "pen" && (
             <span className="tool-group" role="radiogroup" aria-label="Drawing tools">
               {(
                 [
@@ -878,12 +889,12 @@ export function Board({
               ))}
             </span>
           )}
-          {!panel && (
+          {!panel && ws.can_contribute && (
             <>
               <button
                 className="tool"
                 onClick={() => fileRef.current?.click()}
-                disabled={!ws.can_write || uploads.attempts.length > 0}
+                disabled={!ws.can_contribute || uploads.attempts.length > 0}
               >
                 🖼 Image
               </button>
@@ -914,7 +925,7 @@ export function Board({
               </button>
             </>
           )}
-          {tool === "sticky" && (
+          {ws.can_contribute && tool === "sticky" && (
             <>
               <span className="tool-group" role="radiogroup" aria-label="Sticky note shape">
                 {STICKY_SHAPES.map((s) => (
@@ -948,22 +959,30 @@ export function Board({
               </span>
             </>
           )}
-          <span className="swatches" role="radiogroup" aria-label="Colour">
-            {(tool === "sticky" ? STICKY_COLORS : PEN_COLORS).map((c) => (
-              <button
-                key={c}
-                role="radio"
-                aria-checked={(tool === "sticky" ? stickyColor : color) === c}
-                aria-label={`Colour ${c}`}
-                className={"swatch" + ((tool === "sticky" ? stickyColor : color) === c ? " active" : "")}
-                style={{ background: c }}
-                onClick={() => (tool === "sticky" ? setStickyColor(c) : setColor(c))}
-              />
-            ))}
-          </span>
-          <button className="tool" onClick={() => submit({ type: "undo" })} disabled={!ws.can_write || !mine}>
-            ↶ Undo mine
-          </button>
+          {ws.can_contribute && (
+            <span className="swatches" role="radiogroup" aria-label="Colour">
+              {(tool === "sticky" ? STICKY_COLORS : PEN_COLORS).map((c) => (
+                <button
+                  key={c}
+                  role="radio"
+                  aria-checked={(tool === "sticky" ? stickyColor : color) === c}
+                  aria-label={`Colour ${c}`}
+                  className={"swatch" + ((tool === "sticky" ? stickyColor : color) === c ? " active" : "")}
+                  style={{ background: c }}
+                  onClick={() => (tool === "sticky" ? setStickyColor(c) : setColor(c))}
+                />
+              ))}
+            </span>
+          )}
+          {ws.can_contribute && (
+            <button
+              className="tool"
+              onClick={() => submit({ type: "undo" })}
+              disabled={!ws.can_contribute || !mine}
+            >
+              ↶ Undo mine
+            </button>
+          )}
           <button
             className="tool"
             onClick={() => setView((v) => ({ ...v, scale: Math.min(4, v.scale * 1.25) }))}
@@ -984,7 +1003,7 @@ export function Board({
           <button className="tool" onClick={() => setShowList((v) => !v)} aria-expanded={showList}>
             List view
           </button>
-          {!panel && ws.can_moderate && ws.can_write && (
+          {!panel && ws.can_moderate && ws.can_contribute && (
             <button className="tool" onClick={restore}>
               Restore…
             </button>
@@ -1081,7 +1100,7 @@ export function Board({
                     {typed.map(([id, o]) => (
                       <li key={id}>
                         {o.kind === "sticky" ? "Sticky" : "Text"}: {o.data.text}
-                        {ws.can_write && (
+                        {ws.can_contribute && (o.author === userId || ws.can_moderate) && (
                           <Button
                             variant="quiet"
                             size="sm"

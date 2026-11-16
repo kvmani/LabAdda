@@ -170,6 +170,7 @@ function PanelBoard({ session, onEnd }: { session: PanelSession; onEnd: (why: st
     role: "member",
     inherited: false,
     can_write: session.workspace.can_write,
+    can_contribute: session.workspace.can_write,
     can_moderate: false,
     unread_chat: 0,
   };

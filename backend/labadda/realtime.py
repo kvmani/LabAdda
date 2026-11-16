@@ -119,7 +119,7 @@ class Hub:
                 access = policy.resolve(db, user, ws_id)
                 if access is not None:
                     readable.add(ws_id)
-                    if access.can_write:
+                    if access.can_contribute:
                         writable.add(ws_id)
             return True, readable, writable
 
@@ -167,11 +167,7 @@ class Hub:
             }
             workspace = db.get(Workspace, workspace_id)
             readers = policy.eligible_reader_ids(db, workspace) if workspace is not None else set()
-            stewards = {
-                uid
-                for uid, role in policy.direct_grants_for_workspace(db, workspace_id).items()
-                if role == "steward"
-            }
+            contributors = policy.contribution_user_ids(db, workspace) if workspace else set()
             result = {}
             for conn in conns:
                 sess = sessions.get(conn.session_id)
@@ -179,11 +175,7 @@ class Hub:
                     result[conn] = (False, False, False)
                     continue
                 readable = conn.user_id in readers  # eligible readers are already active users
-                writable = (
-                    readable
-                    and not workspace.archived
-                    and (workspace.posting_policy == "open" or conn.user_id in stewards)
-                )
+                writable = readable and conn.user_id in contributors
                 result[conn] = (True, readable, writable)
             return result
 

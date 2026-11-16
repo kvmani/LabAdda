@@ -178,7 +178,7 @@ def create_post(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    access = policy.require_write(db, actor.user, workspace_id)
+    access = policy.require_contribute(db, actor.user, workspace_id)
     if body.kind not in ("discussion", "official"):
         raise Invalid("invalid_kind", "Kind must be discussion or official.")
     if body.kind == "official" and not access.can_moderate:
@@ -253,7 +253,7 @@ def reply(
     parent, _ = _load_post(db, actor, post_id)
     if parent.parent_id is not None:
         raise Invalid("nested_reply", "Reply to the original post.")
-    access = policy.require_write(db, actor.user, parent.workspace_id)
+    access = policy.require_contribute(db, actor.user, parent.workspace_id)
     existing = _existing_by_client_id(
         db, actor, body.client_id, parent.workspace_id, body.body, parent_id=parent.id
     )
@@ -295,7 +295,7 @@ def edit_post(
     settings: Settings = Depends(get_settings),
 ):
     post, _ = _load_post(db, actor, post_id)
-    access = policy.require_write(db, actor.user, post.workspace_id)
+    access = policy.require_contribute(db, actor.user, post.workspace_id)
     if post.author_id != actor.id:
         raise Forbidden("author_required", "Only the author can edit this post.")
     if body.body is not None:
@@ -324,7 +324,7 @@ def delete_post(
     post, access = _load_post(db, actor, post_id)
     is_author = post.author_id == actor.id
     if is_author:
-        policy.require_write(db, actor.user, post.workspace_id)
+        policy.require_contribute(db, actor.user, post.workspace_id)
     elif not access.can_moderate:
         raise Forbidden("author_required", "Only the author or a steward can remove this post.")
     elif not reason or not reason.strip():

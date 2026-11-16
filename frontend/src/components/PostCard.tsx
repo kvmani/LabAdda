@@ -103,12 +103,12 @@ export function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; o
                 {post.pinned ? "Unpin" : "Pin"}
               </Button>
             )}
-            {post.can_edit && ws.can_write && (
+            {post.can_edit && ws.can_contribute && (
               <Button variant="quiet" size="sm" onClick={() => setEditing(true)}>
                 Edit
               </Button>
             )}
-            {post.can_remove && (
+            {post.can_remove && (ws.can_contribute || ws.can_moderate) && (
               <Button
                 variant="quiet"
                 size="sm"
@@ -189,7 +189,7 @@ export function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; o
               <li key={r.id}>
                 <strong>{r.author?.display_name}</strong>{" "}
                 <span className="post-card__meta">{fmtTime(r.created_at)}</span>
-                {r.can_remove && (
+                {r.can_remove && (ws.can_contribute || ws.can_moderate) && (
                   <Button
                     variant="quiet"
                     size="sm"
@@ -203,7 +203,7 @@ export function PostCard({ post, ws, onChanged }: { post: Post; ws: Workspace; o
             ))}
           </ul>
         )}
-        {ws.can_write && (
+        {ws.can_contribute && (
           <form className="post-card__reply" onSubmit={sendReply}>
             <TextInput
               label="Reply"

@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from . import audit, policy, positions
 from .errors import Conflict
-from .models import Membership, User
+from .models import ContributionDelegation, Membership, User
+from .security import utcnow
 
 STEWARD_LOCK = 7_310_001  # advisory-lock namespace for last-steward checks
 ADMIN_LOCK = 7_310_002
@@ -128,8 +129,34 @@ def remove_membership(
         before=m.role,
     )
     db.flush()
+    revoke_invalid_delegations(db, actor=actor, reason=reason)
     return True
 
 
 def readable_now(db: Session, user: User, workspace_id: uuid.UUID) -> bool:
     return policy.can_read(db, user, workspace_id)
+
+
+def revoke_invalid_delegations(db: Session, *, actor: User, reason: str | None) -> None:
+    """Permanently end representation when its original membership or parent is lost."""
+    db.flush()
+    grants = db.scalars(
+        select(ContributionDelegation).where(ContributionDelegation.revoked_at.is_(None)).with_for_update()
+    ).all()
+    invalid_ids = policy.invalid_delegation_ids(db, grants)
+    for grant in grants:
+        if grant.id not in invalid_ids:
+            continue
+        grant.revoked_at = utcnow()
+        grant.revision += 1
+        audit.record(
+            db,
+            actor=actor,
+            action="contribution.revoke",
+            scope_type="workspace",
+            scope_id=grant.source_id,
+            target_id=grant.user_id,
+            reason=reason,
+            before={"destination_id": str(grant.destination_id)},
+            after=None,
+        )

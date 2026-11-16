@@ -56,6 +56,7 @@ def workspace_json(ws: Workspace, access: Access | None = None) -> dict:
             role=access.direct_role,
             inherited=access.inherited,
             can_write=access.can_write,
+            can_contribute=access.can_contribute,
             can_moderate=access.can_moderate,
         )
     return data

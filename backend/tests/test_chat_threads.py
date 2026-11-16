@@ -44,6 +44,23 @@ def test_reply_stream_retry_and_bounded_thread(as_user, ids):
 )
 def test_thread_scope_and_parent_spoofing(as_user, ids, scope, allowed, denied):
     ws = ids["workspaces"][scope]
+    # Reach parent-ID validation with explicit contribution rights under the new policy.
+    admin = as_user("admin")
+    if scope == "division":
+        for name in ("bharat", allowed):
+            assert (
+                admin.put(
+                    f"/admin/workspaces/{ws}/memberships", json={"user_id": ids["users"][name]}
+                ).status_code
+                == 200
+            )
+    assert (
+        admin.put(
+            f"/admin/workspaces/{ids['workspaces']['root']}/memberships",
+            json={"user_id": ids["users"]["bharat"]},
+        ).status_code
+        == 200
+    )
     api = as_user("bharat")
     root = post(api, ws).json()
     path = f"/workspaces/{ws}/chat/{root['id']}/replies"

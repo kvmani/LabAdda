@@ -74,13 +74,13 @@ export function PostComposer({ ws, onPosted }: { ws: Workspace; onPosted: () => 
     }
   }
 
-  if (!ws.can_write) {
+  if (!ws.can_contribute) {
     return (
       <Card>
         <p className="composer__audience">
           {ws.archived
             ? "This workspace is archived. Content stays readable but no one can post."
-            : "Posting is limited to stewards in this workspace."}
+            : "Posting is limited to unit representatives or stewards in this workspace."}
         </p>
       </Card>
     );

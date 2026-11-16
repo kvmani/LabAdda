@@ -39,6 +39,7 @@ describe("workspace tree order", () => {
     role: null,
     inherited: true,
     can_write: true,
+    can_contribute: true,
     can_moderate: false,
     unread_chat: 0,
   });

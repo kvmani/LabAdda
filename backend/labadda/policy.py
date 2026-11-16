@@ -20,11 +20,11 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, text
 from sqlalchemy.orm import Session
 
 from .errors import Forbidden, NotFound
-from .models import Membership, UnitAdminGrant, UsageReaderGrant, User, Workspace
+from .models import ContributionDelegation, Membership, UnitAdminGrant, UsageReaderGrant, User, Workspace
 from .security import utcnow
 
 type Scope = frozenset[uuid.UUID] | None  # a unit administrator's units; None means no limit
@@ -37,6 +37,7 @@ class Access:
     can_read: bool
     can_write: bool
     can_moderate: bool
+    can_contribute: bool = False
 
     @property
     def inherited(self) -> bool:
@@ -97,7 +98,14 @@ def resolve(db: Session, user: User, workspace_id: uuid.UUID) -> Access | None:
     role = readable[ws.id]
     steward = role == "steward"
     writable = not ws.archived and (ws.posting_policy == "open" or steward)
-    return Access(workspace=ws, direct_role=role, can_read=True, can_write=writable, can_moderate=steward)
+    return Access(
+        workspace=ws,
+        direct_role=role,
+        can_read=True,
+        can_write=writable,
+        can_moderate=steward,
+        can_contribute=writable and user.id in contribution_user_ids(db, ws),
+    )
 
 
 def require_read(db: Session, user: User, workspace_id: uuid.UUID) -> Access:
@@ -244,3 +252,78 @@ def console_sections(db: Session, user: User) -> tuple[str, ...]:
     if is_unit_admin(db, user):
         granted |= set(UNIT_ADMIN_SECTIONS)
     return tuple(section for section in CONSOLE_SECTIONS if section in granted)
+
+
+def contribution_user_ids(db: Session, workspace: Workspace) -> set[uuid.UUID]:
+    """Current contributors, with direct membership and one-level representation only."""
+    if workspace.archived:
+        return set()
+    direct = direct_grants_for_workspace(db, workspace.id)
+    allowed = {uid for uid, role in direct.items() if role == "steward"}
+    if workspace.posting_policy != "open":
+        return allowed & eligible_reader_ids(db, workspace)
+    allowed.update(direct)
+    if workspace.kind == "org":
+        parents = _org_parents(db)
+        children = {uid for uid, parent in parents.items() if parent == workspace.id}
+        allowed.update(
+            db.scalars(
+                select(Membership.user_id).where(
+                    Membership.workspace_id.in_(children), Membership.role == "steward"
+                )
+            )
+        )
+        grants = db.scalars(
+            select(ContributionDelegation).where(
+                ContributionDelegation.destination_id == workspace.id,
+                ContributionDelegation.source_id.in_(children),
+                ContributionDelegation.revoked_at.is_(None),
+                or_(
+                    ContributionDelegation.expires_at.is_(None), ContributionDelegation.expires_at > utcnow()
+                ),
+            )
+        ).all()
+        if grants:
+            memberships = db.execute(
+                select(Membership.user_id, Membership.workspace_id).where(
+                    Membership.user_id.in_({grant.user_id for grant in grants})
+                )
+            ).all()
+            for grant in grants:
+                if any(
+                    uid == grant.user_id
+                    and (unit == grant.source_id or grant.source_id in ancestors(parents, unit))
+                    for uid, unit in memberships
+                ):
+                    allowed.add(grant.user_id)
+    return allowed & eligible_reader_ids(db, workspace)
+
+
+def require_contribute(db: Session, user: User, workspace_id: uuid.UUID) -> Access:
+    """Keep existing visibility and posting restrictions before applying representation."""
+    db.execute(text("LOCK TABLE workspaces, memberships, contribution_delegations IN SHARE MODE"))
+    db.expire_all()
+    access = require_write(db, user, workspace_id)
+    if user.id not in contribution_user_ids(db, access.workspace):
+        raise Forbidden("representative_required", "Contributions are limited to unit representatives.")
+    return access
+
+
+def invalid_delegation_ids(db: Session, grants: list[ContributionDelegation]) -> set[uuid.UUID]:
+    """Find departed representatives and moved sources without per-appointment queries."""
+    parents = _org_parents(db)
+    memberships = db.execute(
+        select(Membership.user_id, Membership.workspace_id).where(
+            Membership.user_id.in_({grant.user_id for grant in grants})
+        )
+    ).all()
+    branches: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for user_id, unit_id in memberships:
+        if unit_id in parents:
+            branches.setdefault(user_id, set()).update([unit_id, *ancestors(parents, unit_id)])
+    return {
+        grant.id
+        for grant in grants
+        if parents.get(grant.source_id) != grant.destination_id
+        or grant.source_id not in branches.get(grant.user_id, set())
+    }

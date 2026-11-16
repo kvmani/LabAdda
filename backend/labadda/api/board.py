@@ -289,7 +289,7 @@ def get_board(
         "reset": not replay,
         "snapshot": snapshot,
         "ops": [op_json(o) for o in ops],
-        "can_write": access.can_write,
+        "can_write": access.can_contribute,
         "can_moderate": access.can_moderate and not actor.is_panel,
     }
 
@@ -345,7 +345,7 @@ def update_board_title(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    policy.require_write(db, actor.user, workspace_id)
+    policy.require_contribute(db, actor.user, workspace_id)
     max_boards = get_max_whiteboards(db, settings)
     if board_index < 0 or board_index >= max_boards:
         raise Invalid("invalid_board_index", f"Board index must be between 0 and {max_boards - 1}.")
@@ -364,7 +364,7 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
     actor: Actor = Depends(board_actor),
     db: Session = Depends(get_db),
 ):
-    access = policy.require_write(db, actor.user, workspace_id)
+    access = policy.require_contribute(db, actor.user, workspace_id)
     if actor.is_panel and body.type == "add" and (body.payload or {}).get("kind") == "image":
         # Shared panels have no file picker; images are placed from a desktop session.
         raise Forbidden("panel_not_allowed", "Images can be added from a desktop session.")
@@ -410,6 +410,8 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
         obj = objects.get(object_id or "")
         if obj is None or not obj["alive"]:
             raise Conflict("object_gone", "That item was already removed.")
+        if obj["author"] != str(actor.id) and not access.can_moderate:
+            raise Forbidden("author_required", "Only the author or a steward can change this item.")
         if body.base_revision is None or obj["rev"] != body.base_revision:
             raise Conflict("stale_object", "Someone else changed this item first. Your edit was not applied.")
         if obj["kind"] not in ("sticky", "text"):
@@ -422,6 +424,8 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
         obj = objects.get(body.object_id or "")
         if obj is None or not obj["alive"]:
             raise Conflict("object_gone", "That item was already removed.")
+        if obj["author"] != str(actor.id) and not access.can_moderate:
+            raise Forbidden("author_required", "Only the author or a steward can change this item.")
         if body.type == "move":
             if body.base_revision is not None and obj["rev"] > body.base_revision:
                 raise Conflict("stale_object", "Someone else changed this item first.")
@@ -435,6 +439,9 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
         if target is None:
             raise Conflict("nothing_to_undo", "You have nothing to undo on this board.")
         object_id = target.object_id
+        obj = objects.get(object_id or "")
+        if obj is not None and obj["author"] != str(actor.id) and not access.can_moderate:
+            raise Forbidden("author_required", "Only the author or a steward can change this item.")
         payload = {"target_revision": target.revision, "target_type": target.op_type}
         if target.op_type == "update":
             obj = objects.get(object_id or "")
@@ -492,7 +499,7 @@ def restore(
 ):
     """Start a new epoch holding the board as it was at ``revision`` (0 clears it). Stewards only."""
     policy.require_moderate(db, actor.user, workspace_id)
-    policy.require_write(db, actor.user, workspace_id)
+    policy.require_contribute(db, actor.user, workspace_id)
     board_idx = getattr(body, "board_index", 0)
     board = _ensure_board(db, workspace_id, board_idx)
     if body.revision > board.revision:
@@ -617,7 +624,7 @@ def snapshot_destinations(db: Session, actor: Actor, source: Workspace) -> list[
         )
         for anc in policy.ancestors(parents, source.id):
             access = policy.resolve(db, actor.user, anc)
-            if access is not None and access.can_write:
+            if access is not None and access.can_contribute:
                 out.append(access.workspace)
     return out
 
@@ -634,7 +641,7 @@ def list_destinations(
                 "id": str(w.id),
                 "name": w.name,
                 "same_workspace": w.id == workspace_id,
-                "can_write": policy.resolve(db, actor.user, w.id).can_write,
+                "can_write": policy.resolve(db, actor.user, w.id).can_contribute,
             }
             for w in dests
         ]
@@ -673,7 +680,7 @@ def publish_snapshot(  # noqa: PLR0915 — ordered authorization and revision ch
     allowed = {w.id for w in snapshot_destinations(db, actor, source)}
     if body.destination_id not in allowed:
         raise NotFound()
-    dest = policy.require_write(db, actor.user, body.destination_id).workspace
+    dest = policy.require_contribute(db, actor.user, body.destination_id).workspace
     if dest.id not in (source.id, body.confirm_audience):
         raise Invalid(
             "confirmation_required", f"Confirm that everyone who can read {dest.name} will see this snapshot."

@@ -100,7 +100,8 @@ def send(
     db: Session = Depends(get_db),
 ):
     user = _actor(request, actor, db, True)
-    access = _scope(db, user, workspace_id, True)
+    _scope(db, user, workspace_id, True)
+    access = policy.require_contribute(db, user, workspace_id)
     # Serialize allocation/commit per workspace; other authors cannot commit a
     # higher stream sequence while an earlier message is still uncommitted.
     db.execute(select(Workspace.id).where(Workspace.id == workspace_id).with_for_update(key_share=True))

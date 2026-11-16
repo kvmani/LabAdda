@@ -155,7 +155,7 @@ def _session_json(db: Session, user: User, sess: AuthSession, settings: Settings
         "workspace": {
             "id": str(access.workspace.id),
             "name": access.workspace.name,
-            "can_write": access.can_write,
+            "can_write": access.can_contribute,
             "archived": access.workspace.archived,
         },
         "csrf_token": sess.csrf_token,

@@ -12,7 +12,7 @@ The noticeboard is where a workspace shares news, questions and announcements. E
 
 ## Before you start
 
-You need to be a member of the workspace. If you see **Posting is limited to stewards in this workspace.** or a note that the workspace is archived, you can read the noticeboard but not post. Ask a steward if you need to write there.
+You need to be a member of the workspace. If you see **Posting is limited to unit representatives or stewards in this workspace.** or a note that the workspace is archived, you can read the noticeboard but not post. Ask a steward if you need to write there.
 
 ## Steps
 

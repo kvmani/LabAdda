@@ -216,6 +216,28 @@ async function run(base) {
     check(true, `${tag}: reconnecting session caught up to revision 2`);
     await chitra.page.screenshot({ path: join(shots, `${tag}-board.png`) });
 
+    // Parent publication now requires explicit representation from the source unit.
+    const representativeSteward = await signIn(browser, base, "asha");
+    const appointment = await representativeSteward.page.evaluate(
+      async ({ base, sectionA }) => {
+        const session = await (await fetch(`${base}/api/v1/auth/session`)).json();
+        const members = await (await fetch(`${base}/api/v1/workspaces/${sectionA}/members`)).json();
+        return (
+          await fetch(`${base}/api/v1/workspaces/${sectionA}/delegations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrf_token },
+            body: JSON.stringify({
+              user_id: members.members.find((person) => person.username === "bharat").id,
+              reason: "Publish section results at division",
+            }),
+          })
+        ).status;
+      },
+      { base, sectionA },
+    );
+    check(appointment === 201, `${tag}: section steward delegates parent publication`);
+    await representativeSteward.ctx.close();
+
     // P3: place an image, then publish a region snapshot from the section board to the parent division.
     await bharat.page.goto(`${origin}${base}/w/${sectionA}/board`);
     await bharat.page.getByRole("status").filter({ hasText: "Saved" }).waitFor();

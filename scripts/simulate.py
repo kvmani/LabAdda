@@ -23,6 +23,7 @@ PROFILES = {
     "quick": ("chat-attachments", "alert-preferences"),
     "full": (
         "personal-board",
+        "representative-posting",
         "admin-console",
         "people",
         "flows",

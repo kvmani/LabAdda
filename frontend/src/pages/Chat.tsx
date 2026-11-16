@@ -331,7 +331,7 @@ export function Chat({ ws }: { ws: Workspace }) {
 
             {filteredMessages.length === 0 && (
               <EmptyState title="No messages yet.">
-                {ws.can_write ? "Write the first message below." : "Messages will appear here."}
+                {ws.can_contribute ? "Write the first message below." : "Messages will appear here."}
               </EmptyState>
             )}
 
@@ -370,7 +370,7 @@ export function Chat({ ws }: { ws: Workspace }) {
                           <button
                             type="button"
                             className="chat-bubble__author"
-                            onClick={() => setReplyingTo(message)}
+                            onClick={() => ws.can_contribute && setReplyingTo(message)}
                             title="Click to reply"
                           >
                             {message.author.display_name}
@@ -402,7 +402,7 @@ export function Chat({ ws }: { ws: Workspace }) {
                         </div>
 
                         {/* Reactions badge */}
-                        {messageReactions.length > 0 && (
+                        {ws.can_contribute && messageReactions.length > 0 && (
                           <button
                             type="button"
                             className="chat-bubble__reactions"
@@ -414,17 +414,21 @@ export function Chat({ ws }: { ws: Workspace }) {
                         )}
 
                         {/* Hover dropdown button */}
-                        <button
-                          type="button"
-                          className="chat-bubble__actions-btn"
-                          aria-label="Message options"
-                          onClick={() => setActiveMenuId((curr) => (curr === message.id ? null : message.id))}
-                        >
-                          ⌄
-                        </button>
+                        {ws.can_contribute && (
+                          <button
+                            type="button"
+                            className="chat-bubble__actions-btn"
+                            aria-label="Message options"
+                            onClick={() =>
+                              setActiveMenuId((curr) => (curr === message.id ? null : message.id))
+                            }
+                          >
+                            ⌄
+                          </button>
+                        )}
 
                         {/* Hover dropdown menu */}
-                        {activeMenuId === message.id && (
+                        {ws.can_contribute && activeMenuId === message.id && (
                           <div className="chat-bubble__actions-menu">
                             <button
                               type="button"
@@ -519,7 +523,7 @@ export function Chat({ ws }: { ws: Workspace }) {
 
 function PublishSummary({ source, text, onClose }: { source: Workspace; text: string; onClose: () => void }) {
   const { workspaces } = useWorkspaces();
-  const targets = workspaces.filter((w) => w.can_write);
+  const targets = workspaces.filter((w) => w.can_contribute);
   const [dest, setDest] = useState(source.id);
   const [body, setBody] = useState(text);
   const [confirmed, setConfirmed] = useState(false);
