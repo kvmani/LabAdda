@@ -76,11 +76,12 @@ def save(path: Path, report: dict):
         target.flush()
         os.fsync(target.fileno())
     os.replace(temporary, path)
-    fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+    if hasattr(os, "O_DIRECTORY"):
+        fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
 
 def environment(out: Path, *, tls=False) -> dict:

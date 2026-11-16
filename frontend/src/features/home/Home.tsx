@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../../api";
 import { BASE } from "../../config";
+import { fmtTime } from "../../format";
 import { useSession } from "../../session";
 import { useWorkspaces } from "../../workspaces";
 import { Skeleton } from "../../ui";
@@ -9,7 +11,19 @@ import { BuildFooter } from "../shell/BuildFooter";
 import { Brand } from "./Brand";
 import { getDynamicGreeting } from "./greetings";
 import { FaqSection } from "./FaqSection";
+import { useDashboardOverview, type Work } from "./useDashboardOverview";
+import type { CalendarEvent } from "../calendar/types";
 import "./home.css";
+
+type PersonalNote = {
+  id: string;
+  title: string;
+  body: string;
+  due_at: string | null;
+  remind_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 /** Public welcome page; only fictional research artwork is visible before sign-in. */
 export function Landing() {
@@ -75,96 +89,510 @@ export function Landing() {
   );
 }
 
-/** Useful personal tools alongside actual current-access workspace links. */
+function dueBadge(dueDate: string | null, today: string) {
+  if (!dueDate) return null;
+  if (dueDate < today) {
+    return <span className="wb-badge wb-badge--overdue">Overdue ({dueDate})</span>;
+  }
+  if (dueDate === today) {
+    return <span className="wb-badge wb-badge--due-today">Due today</span>;
+  }
+  return <span className="wb-badge wb-badge--due">Due {dueDate}</span>;
+}
+
+function priorityBadge(priority: string) {
+  if (priority === "high") {
+    return <span className="wb-badge wb-badge--priority-high">High</span>;
+  }
+  if (priority === "medium") {
+    return <span className="wb-badge wb-badge--priority-medium">Medium</span>;
+  }
+  return <span className="wb-badge wb-badge--priority-low">Low</span>;
+}
+
+function formatEventTime(startsAt: string, endsAt: string, timezone: string): string {
+  const start = fmtTime(startsAt, timezone);
+  const end = fmtTime(endsAt, timezone);
+  return `${start} – ${end}`;
+}
+
+/** Variation 1: Personal Workbench First Home Page */
 export function Home() {
   const { session } = useSession();
-  const { workspaces, loading } = useWorkspaces();
+  const { workspaces, loading: workspacesLoading } = useWorkspaces();
+  const { data: dashData, loading: dashLoading } = useDashboardOverview();
+
+  const [notes, setNotes] = useState<PersonalNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [quickNoteTitle, setQuickNoteTitle] = useState("");
+  const [quickNoteSaving, setQuickNoteSaving] = useState(false);
+  const [quickNoteSuccess, setQuickNoteSuccess] = useState(false);
+
+  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
+  const [showGuidelines, setShowGuidelines] = useState(false);
+
   const greeting = useMemo(
     () => getDynamicGreeting(session?.user.display_name),
     [session?.user.display_name],
   );
 
-  return (
-    <main className="member-home">
-      <div className="home-welcome">
-        <h1 className="home-welcome__greeting">{greeting}</h1>
-        <p className="home-welcome__sub">Your personal space and your team’s work, together.</p>
-      </div>
+  const todayFormatted = useMemo(() => {
+    return new Intl.DateTimeFormat("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+  }, []);
 
-      <section className="home-guidance" aria-label="Welcome and collaboration guidelines">
-        <div className="home-guidance__header">
-          <span className="home-guidance__icon" aria-hidden="true">
-            🤝
-          </span>
-          <div>
-            <h2>Welcome to LabAdda</h2>
-            <p className="home-guidance__tagline">
-              A friendly space for ideas, teamwork, and getting things done together.
+  // Fetch recent personal notes
+  const loadNotes = useCallback(async () => {
+    setNotesLoading(true);
+    try {
+      const res = await api<{ notes: PersonalNote[] }>("/notes");
+      setNotes((res.notes || []).slice(0, 4));
+    } catch {
+      // Notes fallback
+    } finally {
+      setNotesLoading(false);
+    }
+  }, []);
+
+  // Fetch today's calendar events
+  const loadTodayEvents = useCallback(async () => {
+    setEventsLoading(true);
+    try {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+      const events = await api<CalendarEvent[]>("/calendar/events", {
+        params: { start, end },
+      });
+      setTodayEvents(events || []);
+    } catch {
+      // Events fallback
+    } finally {
+      setEventsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadNotes();
+    void loadTodayEvents();
+  }, [loadNotes, loadTodayEvents]);
+
+  async function handleQuickNote(e: FormEvent) {
+    e.preventDefault();
+    const title = quickNoteTitle.trim();
+    if (!title) return;
+    setQuickNoteSaving(true);
+    try {
+      const created = await api<PersonalNote>("/notes", {
+        body: { title, body: "" },
+      });
+      setNotes((prev) => [created, ...prev.filter((n) => n.id !== created.id)].slice(0, 4));
+      setQuickNoteTitle("");
+      setQuickNoteSuccess(true);
+      setTimeout(() => setQuickNoteSuccess(false), 3000);
+    } catch {
+      // Ignore note error
+    } finally {
+      setQuickNoteSaving(false);
+    }
+  }
+
+  const tasks: Work[] = dashData?.tasks || [];
+  const todayStr = dashData?.today || new Date().toISOString().slice(0, 10);
+  const timezone = dashData?.timezone || "Asia/Kolkata";
+
+  return (
+    <main className="wb-home" tabIndex={-1}>
+      {/* 1. Collegiate Hero Greeting & Personal Status Bar */}
+      <section className="wb-hero" aria-label="Welcome and today's summary">
+        <div className="wb-hero__main">
+          <div className="wb-hero__greeting-container">
+            <h1 className="wb-hero__greeting">{greeting}</h1>
+            <p className="wb-hero__date">
+              <span className="wb-hero__date-icon" aria-hidden="true">📅</span> {todayFormatted}
+              <span className="wb-hero__separator" aria-hidden="true">·</span>
+              <span>Intranet Lab Workspace</span>
             </p>
           </div>
+          <div className="wb-hero__actions">
+            <Link to="/whiteboard" className="wb-hero__cta-btn">
+              <span className="wb-hero__cta-icon" aria-hidden="true">🎨</span>
+              <span>Open My Whiteboard</span>
+            </Link>
+          </div>
         </div>
-        <p className="home-guidance__intro">
-          LabAdda is here to help all of us collaborate actively, share ideas easily, and stay productive
-          across our teams and projects.
-        </p>
-        <ul className="home-guidance__list">
-          <li>
-            <strong>No sensitive data:</strong> While maximum care has been taken to ensure privacy and
-            security within our internal network, LabAdda is not a place for any sensitive data or
-            confidential information. Please use official designated channels for sensitive matters.
-          </li>
-          <li>
-            <strong>Keep files light and relevant:</strong> Please upload only necessary work-related files
-            and images. Avoiding very large files and unnecessary content keeps the server fast and reliable
-            for all colleagues.
-          </li>
-          <li>
-            <strong>Friendly teamwork and good etiquette:</strong> We do our best work when we support each
-            other. Please follow good professional ethics, communicate with kindness and courtesy, and keep
-            all discussions constructive.
-          </li>
-        </ul>
+
+        {/* Quick status summary chips */}
+        <div className="wb-hero__stats" role="region" aria-label="Quick counts">
+          <Link to="/my-tasks" className="wb-stat-chip">
+            <span className="wb-stat-chip__icon" aria-hidden="true">📋</span>
+            <span className="wb-stat-chip__count">{tasks.length}</span>
+            <span className="wb-stat-chip__label">Active Tasks</span>
+          </Link>
+          <Link to="/calendar" className="wb-stat-chip">
+            <span className="wb-stat-chip__icon" aria-hidden="true">🗓️</span>
+            <span className="wb-stat-chip__count">{todayEvents.length}</span>
+            <span className="wb-stat-chip__label">Today’s Events</span>
+          </Link>
+          <Link to="/notes" className="wb-stat-chip">
+            <span className="wb-stat-chip__icon" aria-hidden="true">📝</span>
+            <span className="wb-stat-chip__count">{notes.length}</span>
+            <span className="wb-stat-chip__label">Private Notes</span>
+          </Link>
+          <a href="#workspaces" className="wb-stat-chip">
+            <span className="wb-stat-chip__icon" aria-hidden="true">🏢</span>
+            <span className="wb-stat-chip__count">{workspaces.length}</span>
+            <span className="wb-stat-chip__label">Workspaces</span>
+          </a>
+        </div>
       </section>
 
-      <section className="home-cards" aria-label="Your tools">
-        <Link to="/whiteboard">
-          <h2>My Whiteboard</h2>
-          <p>Only you · Sketch and collect sticky notes.</p>
-          <span>Open your board →</span>
-        </Link>
-        <Link to="/notes">
-          <h2>My Notes</h2>
-          <p>Only you · Keep personal notes and reminders.</p>
-          <span>Open your notes →</span>
-        </Link>
-        <Link to="/today">
-          <h2>My day</h2>
-          <p>Follow your tasks, deadlines and updates.</p>
-          <span>See your day →</span>
-        </Link>
-      </section>
-      <section aria-label="Team spaces">
-        <h2>Your team spaces</h2>
-        {loading ? (
-          <Skeleton label="Loading workspaces" />
-        ) : !workspaces.length ? (
-          <p>
-            You are not a member of any workspace. Ask an administrator, or{" "}
-            <Link to="/groups/new">Create a group</Link>.
-          </p>
-        ) : (
-          <div className="home-cards">
-            {workspaces.map((workspace) => (
-              <Link key={workspace.id} to={`/w/${workspace.id}/noticeboard`}>
-                <h3>{workspace.name}</h3>
-                <p>Shared notices, drawing, chat and tasks →</p>
-              </Link>
-            ))}
+      {/* 2. Collapsible Lab Collaboration Guidelines */}
+      <section className="wb-guidance" aria-label="LabAdda collaboration guidelines">
+        <div className="wb-guidance__bar">
+          <div className="wb-guidance__summary">
+            <span className="wb-guidance__icon" aria-hidden="true">🤝</span>
+            <div>
+              <strong className="wb-guidance__title">LabAdda Guidelines:</strong>
+              <span className="wb-guidance__teaser"> Digital lab whiteboard · Zero sensitive data · Lightweight files · Constructive teamwork</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="wb-guidance__toggle-btn"
+            onClick={() => setShowGuidelines((prev) => !prev)}
+            aria-expanded={showGuidelines}
+          >
+            {showGuidelines ? "Hide guidelines ▲" : "Read guidelines ▼"}
+          </button>
+        </div>
+
+        {showGuidelines && (
+          <div className="wb-guidance__body">
+            <p className="wb-guidance__intro">
+              LabAdda is our internal digital whiteboard experiment designed for effortless day-to-day collaboration:
+            </p>
+            <ul className="wb-guidance__list">
+              <li>
+                <strong>Digital whiteboard for the lab:</strong> This is an informal, collaborative workspace for day-to-day lab ideas and quick drafts. It is not an official organizational reporting platform.
+              </li>
+              <li>
+                <strong>No sensitive or official data:</strong> LabAdda is strictly for informal lab ideas, sketches, and task tracking. Never upload classified, sensitive, or official organizational records here.
+              </li>
+              <li>
+                <strong>Keep files light and relevant:</strong> Upload only necessary work-related diagrams and references. Avoiding huge attachments keeps our local intranet server fast and responsive.
+              </li>
+              <li>
+                <strong>Warm and constructive etiquette:</strong> We thrive on mutual respect. Communicate with warmth, professional courtesy, and constructive suggestions.
+              </li>
+            </ul>
           </div>
         )}
       </section>
 
-      <FaqSection />
+      {/* 3. Whiteboard Hero Banner (Top Personal Feature) */}
+      <section className="wb-whiteboard-banner" aria-label="My Whiteboard Quick Access">
+        <div className="wb-whiteboard-banner__content">
+          <div className="wb-whiteboard-banner__tag">Private Thinking Space</div>
+          <h2 className="wb-whiteboard-banner__title">My Whiteboard</h2>
+          <p className="wb-whiteboard-banner__desc">
+            Your personal, persistent canvas for brainstorming, freehand sketching, chemical structures, and sticky notes. Everything here is strictly private to you.
+          </p>
+          <div className="wb-whiteboard-banner__actions">
+            <Link to="/whiteboard" className="ui-button ui-button--primary ui-button--md">
+              Open Canvas →
+            </Link>
+            <Link to="/calendar" className="ui-button ui-button--secondary ui-button--md">
+              View Calendar
+            </Link>
+          </div>
+        </div>
+        <div className="wb-whiteboard-banner__illustration" aria-hidden="true">
+          <div className="wb-canvas-preview">
+            <div className="wb-canvas-preview__sticky wb-canvas-preview__sticky--yellow">
+              <span>💡 Experiment notes</span>
+            </div>
+            <div className="wb-canvas-preview__sticky wb-canvas-preview__sticky--cyan">
+              <span>🔬 Coating trial α</span>
+            </div>
+            <div className="wb-canvas-preview__curve">
+              <svg viewBox="0 0 120 40" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M5 30 C 35 5, 80 35, 115 10" />
+              </svg>
+            </div>
+            <div className="wb-canvas-preview__badge">Personal · Auto-saved</div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Responsive 2-Column Personal Workbench Grid */}
+      <div className="wb-grid">
+        {/* LEFT COLUMN: Tasks & Calendar Agenda */}
+        <div className="wb-grid__col wb-grid__col--main">
+          {/* Card: Active Tasks & Today's Deadlines */}
+          <section className="wb-card" aria-label="Active tasks and deadlines">
+            <div className="wb-card__header">
+              <div>
+                <h2 className="wb-card__title">
+                  <span className="wb-card__icon" aria-hidden="true">📋</span>
+                  <span>My Tasks & Deadlines</span>
+                </h2>
+                <p className="wb-card__subtitle">Active work assigned to you or in your private lists</p>
+              </div>
+              <Link to="/my-tasks" className="wb-card__link">
+                View all ({tasks.length}) →
+              </Link>
+            </div>
+
+            <div className="wb-card__body">
+              {dashLoading ? (
+                <Skeleton label="Loading your tasks" />
+              ) : tasks.length === 0 ? (
+                <div className="wb-empty">
+                  <p className="wb-empty__text">No pending tasks for today. You’re all caught up!</p>
+                  <Link to="/todos" className="ui-button ui-button--secondary ui-button--sm">
+                    + Create a task
+                  </Link>
+                </div>
+              ) : (
+                <ul className="wb-task-list">
+                  {tasks.map((task) => (
+                    <li key={task.id} className="wb-task-item">
+                      <div className="wb-task-item__content">
+                        <Link
+                          to={task.workspace_id ? `/w/${task.workspace_id}/todos` : "/todos"}
+                          className="wb-task-item__title"
+                        >
+                          {task.title}
+                        </Link>
+                        <div className="wb-task-item__meta">
+                          {priorityBadge(task.priority)}
+                          {dueBadge(task.due_date, todayStr)}
+                          <span className="wb-task-item__space">
+                            {task.workspace_name ? (
+                              <Link to={`/w/${task.workspace_id}/todos`}>{task.workspace_name}</Link>
+                            ) : (
+                              "Private list"
+                            )}
+                            {" · "}
+                            {task.list_title}
+                          </span>
+                        </div>
+                      </div>
+                      <Link
+                        to={task.workspace_id ? `/w/${task.workspace_id}/todos` : "/todos"}
+                        className="wb-task-item__action"
+                        aria-label={`Open task: ${task.title}`}
+                      >
+                        Open →
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          {/* Card: Today's Schedule & Events */}
+          <section className="wb-card" aria-label="Today's schedule">
+            <div className="wb-card__header">
+              <div>
+                <h2 className="wb-card__title">
+                  <span className="wb-card__icon" aria-hidden="true">🗓️</span>
+                  <span>Today’s Schedule</span>
+                </h2>
+                <p className="wb-card__subtitle">Seminars, meetings and deadlines for {todayFormatted}</p>
+              </div>
+              <Link to="/calendar" className="wb-card__link">
+                Open Calendar →
+              </Link>
+            </div>
+
+            <div className="wb-card__body">
+              {eventsLoading ? (
+                <Skeleton label="Loading today's schedule" />
+              ) : todayEvents.length === 0 ? (
+                <div className="wb-empty">
+                  <p className="wb-empty__text">No events or meetings scheduled for today.</p>
+                  <Link to="/calendar" className="ui-button ui-button--secondary ui-button--sm">
+                    + Schedule an event
+                  </Link>
+                </div>
+              ) : (
+                <ul className="wb-event-list">
+                  {todayEvents.map((ev) => (
+                    <li key={ev.id} className="wb-event-item">
+                      <div className="wb-event-item__time-box">
+                        <span className="wb-event-item__time">
+                          {ev.all_day ? "All Day" : formatEventTime(ev.starts_at, ev.ends_at, timezone)}
+                        </span>
+                      </div>
+                      <div className="wb-event-item__details">
+                        <h3 className="wb-event-item__title">{ev.title}</h3>
+                        <p className="wb-event-item__meta">
+                          {ev.location && (
+                            <span className="wb-event-item__loc">
+                              📍 {ev.location}
+                              <span className="wb-hero__separator" aria-hidden="true">·</span>
+                            </span>
+                          )}
+                          <span className="wb-badge wb-badge--scope">
+                            {ev.scope_kind === "site"
+                              ? "Site-wide"
+                              : ev.workspace_name || "Workspace"}
+                          </span>
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* RIGHT COLUMN: Quick Notes & Team Workspaces */}
+        <div className="wb-grid__col wb-grid__col--side">
+          {/* Card: Quick Notes & Personal Scratchpad */}
+          <section className="wb-card" aria-label="My Notes and quick jot">
+            <div className="wb-card__header">
+              <div>
+                <h2 className="wb-card__title">
+                  <span className="wb-card__icon" aria-hidden="true">📝</span>
+                  <span>My Notes</span>
+                </h2>
+                <p className="wb-card__subtitle">Private reminders and lab thoughts</p>
+              </div>
+              <Link to="/notes" className="wb-card__link">
+                All notes →
+              </Link>
+            </div>
+
+            <div className="wb-card__body">
+              {/* Quick Jot input form */}
+              <form onSubmit={handleQuickNote} className="wb-quick-note-form">
+                <label htmlFor="quick-note-input" className="wb-sr-only">
+                  Quick note or reminder
+                </label>
+                <div className="wb-quick-note-input-row">
+                  <input
+                    id="quick-note-input"
+                    type="text"
+                    className="wb-quick-note-input"
+                    placeholder="Jot a quick note or reminder..."
+                    value={quickNoteTitle}
+                    onChange={(e) => setQuickNoteTitle(e.target.value)}
+                    maxLength={200}
+                    disabled={quickNoteSaving}
+                  />
+                  <button
+                    type="submit"
+                    className="wb-quick-note-btn"
+                    disabled={quickNoteSaving || !quickNoteTitle.trim()}
+                    aria-label="Add note"
+                  >
+                    {quickNoteSaving ? "..." : "+ Jot"}
+                  </button>
+                </div>
+                {quickNoteSuccess && (
+                  <p className="wb-quick-note-feedback" role="status">
+                    ✓ Saved to your private notes!
+                  </p>
+                )}
+              </form>
+
+              {/* Recent notes list */}
+              {notesLoading ? (
+                <Skeleton label="Loading notes" />
+              ) : notes.length === 0 ? (
+                <div className="wb-empty wb-empty--compact">
+                  <p className="wb-empty__text">No notes yet. Jot down an idea above!</p>
+                </div>
+              ) : (
+                <ul className="wb-note-list">
+                  {notes.map((note) => (
+                    <li key={note.id} className="wb-note-item">
+                      <Link to="/notes" className="wb-note-item__link">
+                        <strong className="wb-note-item__title">{note.title || "Untitled note"}</strong>
+                        {note.body && <p className="wb-note-item__body">{note.body}</p>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          {/* Card: Accessible Team Spaces */}
+          <section id="workspaces" className="wb-card" aria-label="Your team workspaces">
+            <div className="wb-card__header">
+              <div>
+                <h2 className="wb-card__title">
+                  <span className="wb-card__icon" aria-hidden="true">🏢</span>
+                  <span>Your Team Spaces</span>
+                </h2>
+                <p className="wb-card__subtitle">Divisions, sections, projects & groups</p>
+              </div>
+              <Link to="/groups/new" className="wb-card__link">
+                + New group
+              </Link>
+            </div>
+
+            <div className="wb-card__body">
+              {workspacesLoading ? (
+                <Skeleton label="Loading team spaces" />
+              ) : workspaces.length === 0 ? (
+                <div className="wb-empty wb-empty--compact">
+                  <p className="wb-empty__text">You are not a member of any workspace yet.</p>
+                  <Link to="/groups/new" className="ui-button ui-button--secondary ui-button--sm">
+                    Create a group
+                  </Link>
+                </div>
+              ) : (
+                <ul className="wb-space-list">
+                  {workspaces.map((ws) => (
+                    <li key={ws.id} className="wb-space-item">
+                      <div className="wb-space-item__main">
+                        <Link to={`/w/${ws.id}/noticeboard`} className="wb-space-item__name">
+                          {ws.name}
+                        </Link>
+                      </div>
+                      <div className="wb-space-item__quick-nav">
+                        <Link to={`/w/${ws.id}/noticeboard`} title="Noticeboard">
+                          Noticeboard
+                        </Link>
+                        <span>·</span>
+                        <Link to={`/w/${ws.id}/whiteboard`} title="Whiteboard">
+                          Board
+                        </Link>
+                        <span>·</span>
+                        <Link to={`/w/${ws.id}/chat`} title="Chat">
+                          Chat
+                        </Link>
+                        <span>·</span>
+                        <Link to={`/w/${ws.id}/todos`} title="Tasks">
+                          Tasks
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* 5. Comprehensive FAQ Accordion */}
+      <section className="wb-faq-container" aria-label="Frequently Asked Questions">
+        <FaqSection />
+      </section>
     </main>
   );
 }

@@ -25,6 +25,6 @@ def evaluate(ctx: Context, reading: DiskReading) -> Result:
 def check(ctx: Context) -> Result:
     try:
         reading = ctx.disk(ctx.settings.asset_dir)
-    except OSError:
+    except (OSError, AttributeError):
         return make(ctx, "unknown", None, "bytes", "The file storage volume could not be measured.")
     return evaluate(ctx, reading)

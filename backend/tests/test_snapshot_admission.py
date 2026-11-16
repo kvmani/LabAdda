@@ -142,7 +142,13 @@ def test_expiry_during_snapshot_storage_prevents_publish(as_user, ids, app, db_f
 def test_asset_publication_syncs_new_directory_ancestry(tmp_path, monkeypatch):
     import os
     import stat
+    import sys
     from pathlib import Path
+
+    import pytest
+
+    if sys.platform == "win32" or not Path("/proc").exists():
+        pytest.skip("/proc/self/fd requires Linux procfs")
 
     from labadda.storage import AssetStore
 

@@ -5,7 +5,10 @@ Standard library only.
 
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 import json
 import os
 import stat
@@ -17,6 +20,8 @@ import operations
 
 
 def sync_directory(path: Path):
+    if not hasattr(os, "O_DIRECTORY"):
+        return
     fd = os.open(path, os.O_DIRECTORY | os.O_RDONLY)
     try:
         os.fsync(fd)
@@ -27,7 +32,9 @@ def sync_directory(path: Path):
 def private_directory(path: Path):
     path.mkdir(mode=0o700, exist_ok=True)
     info = path.lstat()
-    if not stat.S_ISDIR(info.st_mode) or info.st_mode & 0o077 or info.st_uid != os.geteuid():
+    if hasattr(os, "geteuid") and (
+        not stat.S_ISDIR(info.st_mode) or info.st_mode & 0o077 or info.st_uid != os.geteuid()
+    ):
         raise operations.OperationsError(
             "Operator state/backup directory must be private and owned by this operator"
         )
@@ -37,7 +44,10 @@ def private_directory(path: Path):
 def locked(root: Path):
     state = root / "operations"
     private_directory(state)
-    fd = os.open(state / "lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    if fcntl is None:
+        yield state
+        return
+    fd = os.open(state / "lock", os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
     try:
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)

@@ -37,7 +37,7 @@ def status_directory(value: str | None) -> Path | None:
     info = directory.lstat() if directory.exists() or directory.is_symlink() else None
     if info is None or not stat.S_ISDIR(info.st_mode):
         raise operations.OperationsError("LABADDA_STATUS_DIR must be an existing real directory")
-    if info.st_mode & 0o022 or info.st_uid not in (0, os.geteuid()):
+    if hasattr(os, "geteuid") and (info.st_mode & 0o022 or info.st_uid not in (0, os.geteuid())):
         raise operations.OperationsError(
             "Status directory must be operator-owned and not group/world writable"
         )
@@ -120,9 +120,10 @@ def apply_retention(backup_root: Path, plan: dict) -> dict:
     """Delete exactly the backups the plan lists, oldest first, then flush the directory."""
     for name in sorted(plan["remove"]):
         shutil.rmtree(backup_root / name)
-    descriptor = os.open(backup_root, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+    if hasattr(os, "O_DIRECTORY"):
+        descriptor = os.open(backup_root, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
     return {**plan, "applied": True}

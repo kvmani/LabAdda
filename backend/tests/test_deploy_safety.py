@@ -9,6 +9,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def shell(tmp_path, script):
+    import pytest
+
+    if not Path("/bin/bash").exists():
+        pytest.skip("/bin/bash is required for deployment shell tests")
     return subprocess.run(  # noqa: S603 — fixed repository shell scripts and synthetic scratch paths only
         ["/bin/bash", "-c", script],
         env={**os.environ, "LABADDA_ROOT_PREFIX": str(tmp_path), "LABADDA_PYTHON312": "python3"},

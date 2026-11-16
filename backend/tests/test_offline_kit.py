@@ -53,6 +53,10 @@ def fake_archive(tmp_path, version="9.9.9-test"):
 
 
 def run(*args, **kwargs):
+    import shutil
+
+    if not shutil.which(args[0]):
+        pytest.skip(f"{args[0]} is required for this check")
     return subprocess.run(args, check=False, capture_output=True, **kwargs)  # noqa: S603
 
 
@@ -134,6 +138,8 @@ def test_missing_tool_in_archive_is_refused(tmp_path):
 
 
 def test_every_kit_script_is_valid_bash():
+    if sys.platform == "win32":
+        pytest.skip("POSIX bash script validation requires Linux")
     for path in [*DEPLOY.glob("*.sh"), *DEPLOY.glob("lib/*.sh"), SCRIPTS / "make-offline-kit.sh"]:
         assert run("bash", "-n", str(path)).returncode == 0, path
     for name in kit.LAUNCHERS:

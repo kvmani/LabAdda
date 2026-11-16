@@ -13,7 +13,8 @@ if not hasattr(os, "statvfs"):
             f_bavail=usage.free,
             f_frsize=1,
             f_blocks=usage.total,
-            f_favail=None,
+            f_favail=1_000_000,
+            f_files=1_000_000,
         )
 
     os.statvfs = _statvfs
