@@ -16,8 +16,8 @@ Administrators can open it, and so can people who have been given read-only oper
 
 ## Steps
 
-1. Open **Administration**. The top row presents **360-degree Key Performance Indicators**: Staff Adoption %, Collaboration Items velocity, Content Storage Footprint, and Open Operational Events.
-2. Read the **Cockpit Views** using the navigation tabs:
+1. Open **Administration**. The top row presents key performance indicators: staff adoption, collaboration items, content storage, and open system events.
+2. Switch between views using the navigation tabs:
    - **360° Overview**: View overall system health, items needing attention, most active research collaboration hubs, operational tiles, and 7-day activity charts.
    - **Usage Trends & Popularity**: Review collaboration tool distribution (notices, chat, and tasks) and peak laboratory hours.
    - **Bottlenecks & SLA**: Identify top disk storage consuming workspaces, research units or projects needing steward leadership, and intranet response time percentiles.

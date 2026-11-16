@@ -25,7 +25,7 @@ Whatever you choose stays open until you choose something else. Your place in ea
 ## If something goes wrong
 
 - If a workspace you expect is missing from the list, you have not been added to it. Ask the steward of that workspace to add you.
-- If the page says **No workspaces yet**, you have not been added to any workspace. Ask an administrator, or choose **Create a group** to start one with colleagues.
+- If the page says **No workspaces yet**, you have not been added to any workspace. Ask an administrator, or choose **New group** to start one with colleagues.
 - If the top bar says **Offline**, your connection to the server has dropped. Check your network cable or Wi-Fi. LabAdda reconnects by itself.
 
 ## Related
