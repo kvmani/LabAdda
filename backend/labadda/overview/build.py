@@ -12,6 +12,7 @@ from ..config import Settings
 from ..health.types import worst
 from ..serialize import iso
 from . import attention, tiles
+from .cockpit import build_cockpit_analytics
 
 
 def build_overview(db: Session, settings: Settings, health_items: list[dict], *, now: datetime) -> dict:
@@ -40,4 +41,5 @@ def build_overview(db: Session, settings: Settings, health_items: list[dict], *,
         "attention": entries,
         "tiles": tiles.build_tiles(db, settings, window, summary, health=health, now=now),
         "charts": tiles.build_charts(db, window, summary),
+        "cockpit": build_cockpit_analytics(db, settings, now=now),
     }

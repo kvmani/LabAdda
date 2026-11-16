@@ -1,4 +1,6 @@
-/* Overview: overall band, attention list, tile row and two charts. */
+/* Overview & 360° Cockpit Styles */
+
+/* 1. Overall banner */
 .overview-overall {
   display: flex;
   flex-wrap: wrap;
@@ -37,6 +39,8 @@
   background: var(--warn-soft);
   color: var(--text);
 }
+
+/* 2. Attention entries */
 .overview-attention {
   display: grid;
   gap: var(--space-3);
@@ -70,11 +74,13 @@
   flex-wrap: wrap;
   gap: var(--space-4);
 }
+
+/* 3. Operational Tiles & Charts */
 .overview-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
   gap: var(--space-4);
-  margin: 0;
+  margin: var(--space-4) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -90,7 +96,665 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
   gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 .overview-charts section {
   min-width: 0;
+}
+
+/* ==========================================================================
+   4. 360° Cockpit KPI Cards
+   ========================================================================== */
+.cockpit-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.cockpit-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cockpit-kpi-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+}
+.cockpit-kpi-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cockpit-kpi-card__icon {
+  font-size: 1.25rem;
+}
+.cockpit-kpi-card__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.cockpit-kpi-card__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+.cockpit-kpi-card__unit {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.cockpit-kpi-card__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  margin-top: auto;
+}
+.cockpit-kpi-card__note {
+  color: var(--text-muted);
+}
+.cockpit-kpi-card__link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  margin-inline-start: auto;
+}
+.cockpit-kpi-card__link:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   5. Cockpit Badges
+   ========================================================================== */
+.cockpit-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.cockpit-badge--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.cockpit-badge--info {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.cockpit-badge--warn,
+.cockpit-badge--warning {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.cockpit-badge--critical,
+.cockpit-badge--error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.cockpit-badge--org {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.cockpit-badge--project {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.cockpit-badge--group {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* ==========================================================================
+   6. Navigation Tabs
+   ========================================================================== */
+.cockpit-tabs-nav {
+  margin: var(--space-4) 0;
+  border-bottom: 2px solid var(--line);
+}
+.cockpit-tabs {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.cockpit-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  margin-bottom: -2px;
+}
+.cockpit-tab-btn:hover {
+  color: var(--text);
+  background: var(--surface-sunken);
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
+}
+.cockpit-tab-btn--active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: transparent;
+}
+.cockpit-tab-btn--active:hover {
+  background: transparent;
+}
+.cockpit-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 9999px;
+  background: var(--warn);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.cockpit-tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: fadeIn 0.2s ease-in-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   7. Popular Workspaces Leaderboard
+   ========================================================================== */
+.popular-workspaces-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.popular-ws-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
+}
+.popular-ws-card:hover {
+  background: var(--surface-sunken);
+}
+.popular-ws-card__rank {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 2.2rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+.popular-ws-card__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.popular-ws-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.popular-ws-card__name {
+  font-weight: 650;
+  font-size: var(--text-base);
+  color: var(--text);
+  text-decoration: none;
+}
+.popular-ws-card__name:hover {
+  text-decoration: underline;
+  color: var(--primary);
+}
+.popular-ws-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.popular-ws-card__steward-status {
+  font-weight: 500;
+}
+.popular-ws-card__total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 4rem;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.popular-ws-card__total-count {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+}
+.popular-ws-card__total-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ==========================================================================
+   8. Bottlenecks & SLA Panels
+   ========================================================================== */
+.bottlenecks-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.cockpit-panel {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.cockpit-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-3);
+}
+.cockpit-panel__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cockpit-panel__subtitle {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.cockpit-panel__action-link {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cockpit-panel__action-link:hover {
+  text-decoration: underline;
+}
+.cockpit-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Storage consumption bars */
+.storage-bottleneck-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.storage-bottleneck-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.storage-bottleneck-item__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-sm);
+}
+.storage-bottleneck-item__name {
+  font-weight: 600;
+}
+.storage-bottleneck-item__size {
+  color: var(--text-muted);
+  font-family: monospace;
+  font-size: var(--text-xs);
+}
+.storage-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--surface-sunken);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.storage-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, #6366f1 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Governance item cards */
+.governance-bottlenecks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.gov-item {
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.gov-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+.gov-item__btn {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  color: var(--primary);
+  text-decoration: none;
+}
+.gov-item__btn:hover {
+  text-decoration: underline;
+}
+.gov-item__desc {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* Performance latency row */
+.perf-summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--space-3);
+}
+.perf-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.perf-card__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.perf-card__val {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Remediation Guidance List */
+.remediation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.remediation-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}
+.remediation-item__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.remediation-item__component {
+  font-size: var(--text-xs);
+  font-family: monospace;
+  color: var(--text-muted);
+}
+.remediation-item__summary {
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+.remediation-item__advice {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+  padding-inline-start: var(--space-2);
+  border-inline-start: 2px solid var(--line);
+}
+.remediation-item__advice-label {
+  font-weight: 650;
+  color: var(--text);
+}
+
+/* ==========================================================================
+   9. Usage Patterns View
+   ========================================================================== */
+.usage-patterns-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.feature-patterns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.feature-pattern-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}
+.feature-pattern-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.feature-pattern-card__icon {
+  font-size: 1.5rem;
+}
+.feature-pattern-card__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+.feature-pattern-card__role {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.feature-pattern-card__stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: auto;
+}
+.feature-pattern-card__count {
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+.feature-pattern-card__pct {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.pattern-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--surface-sunken);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pattern-bar__fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+}
+.peak-hours-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.peak-hours-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.peak-hours-card__icon {
+  font-size: 1.5rem;
+}
+.peak-hours-card__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+.peak-hours-card__desc {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   10. Action & Diagnostic Guides Grid
+   ========================================================================== */
+.diagnostic-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.diagnostic-guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}
+.diagnostic-guide-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.diagnostic-guide-card__head h4 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+.diagnostic-guide-card__icon {
+  font-size: 1.25rem;
+}
+.diagnostic-guide-card p {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+  flex: 1 1 auto;
+}
+.diagnostic-guide-card__link {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+  margin-top: var(--space-2);
+}
+.diagnostic-guide-card__link:hover {
+  text-decoration: underline;
+}
+.open-events-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.open-events-section__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Common helpers */
+.cockpit-separator {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.cockpit-muted {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.cockpit-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin: 0;
+}
+.cockpit-banner {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.cockpit-banner--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
 }

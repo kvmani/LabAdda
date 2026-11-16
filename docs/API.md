@@ -896,6 +896,11 @@ this period, previous period`; UTF-8 with BOM, formula-escaped; suppressed figur
 than 5", missing ones "not measured"). Audited as `analytics.export` (period words and row
 count) before delivery.
 
+`GET /admin/analytics/cockpit` — 200 360-degree telemetry and bottleneck discovery payload
+`{generated_at, timezone, kpis, popular_workspaces, bottlenecks, usage_patterns}`. Metadata-only,
+runs within statement bound, provides high-level KPIs, popular collaboration hubs, storage and
+governance bottlenecks, and plain-English remedial guidance for administrators.
+
 ## A7 · Backups page, settings and broadcasts (AD-10, AD-11)
 
 All errors use the common envelope. Board-only sessions get 401 on every route here.
@@ -995,6 +1000,14 @@ is rechecked after reading. 200:
 - `charts.activity` `{state, points[{day, state, value}]}` (people active per day, as on the
   Activity page) and `charts.response_time` `{state, unit: "ms", points[{day, state, value}]}`
   (the slowest hourly 95th percentile of each day). Missing days are `unknown` with `value: null`.
+- `cockpit`: 360-degree cockpit analytics `{generated_at, timezone, kpis, popular_workspaces,
+  bottlenecks, usage_patterns}`. `kpis`: `{total_accounts, active_accounts, adoption_rate,
+  total_workspaces, workspaces_by_kind, total_collaboration_items, total_storage_bytes,
+  total_storage_formatted, open_events_count, events_by_severity}`. `popular_workspaces[]`:
+  ranked active workspaces `{id, name, kind, description, members_count, has_steward,
+  total_items, posts_count, chats_count, tasks_count}`. `bottlenecks`: storage consumers,
+  governance steward vacancies, performance p95 SLA, reliability open event guidance.
+  `usage_patterns`: `{feature_distribution[], peak_summary}`.
 
 ## P6 staff list import and bulk changes
 

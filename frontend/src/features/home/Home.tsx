@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { BASE } from "../../config";
 import { fmtTime } from "../../format";
@@ -11,6 +11,8 @@ import { BuildFooter } from "../shell/BuildFooter";
 import { Brand } from "./Brand";
 import { getDynamicGreeting } from "./greetings";
 import { FaqSection } from "./FaqSection";
+import { getDailySpark } from "./sparks";
+import { ShortcutsModal } from "./ShortcutsModal";
 import { useDashboardOverview, type Work } from "./useDashboardOverview";
 import type { CalendarEvent } from "../calendar/types";
 import "./home.css";
@@ -24,6 +26,25 @@ type PersonalNote = {
   created_at: string;
   updated_at: string;
 };
+
+type FullTask = {
+  id: string;
+  title: string;
+  description: string;
+  due_date: string | null;
+  priority: string;
+  checklist: { title?: string; text?: string; done: boolean }[];
+  revision: number;
+  done: boolean;
+  status: string;
+};
+
+const NOTE_TAGS = [
+  { label: "Idea", icon: "💡", prefix: "[Idea] " },
+  { label: "Experiment", icon: "🔬", prefix: "[Experiment] " },
+  { label: "Reminder", icon: "📌", prefix: "[Reminder] " },
+  { label: "Paper", icon: "📖", prefix: "[Paper] " },
+];
 
 /** Public welcome page; only fictional research artwork is visible before sign-in. */
 export function Landing() {
@@ -116,8 +137,9 @@ function formatEventTime(startsAt: string, endsAt: string, timezone: string): st
   return `${start} – ${end}`;
 }
 
-/** Variation 1: Personal Workbench First Home Page */
+/** Solidified Variation 1: Personal Workbench First Home Page */
 export function Home() {
+  const navigate = useNavigate();
   const { session } = useSession();
   const { workspaces, loading: workspacesLoading } = useWorkspaces();
   const { data: dashData, loading: dashLoading } = useDashboardOverview();
@@ -127,11 +149,24 @@ export function Home() {
   const [quickNoteTitle, setQuickNoteTitle] = useState("");
   const [quickNoteSaving, setQuickNoteSaving] = useState(false);
   const [quickNoteSuccess, setQuickNoteSuccess] = useState(false);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
   const [showGuidelines, setShowGuidelines] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [sparkOffset, setSparkOffset] = useState(0);
+
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
+  const [taskNotice, setTaskNotice] = useState<{ id: string; title: string; listId: string } | null>(null);
+
+  const [spaceFilter, setSpaceFilter] = useState<"all" | "org" | "project" | "group">("all");
+  const [spaceSearch, setSpaceSearch] = useState("");
+
+  const noteInputRef = useRef<HTMLInputElement>(null);
+
+  const spark = useMemo(() => getDailySpark(sparkOffset), [sparkOffset]);
 
   const greeting = useMemo(
     () => getDynamicGreeting(session?.user.display_name),
@@ -183,6 +218,46 @@ export function Home() {
     void loadTodayEvents();
   }, [loadNotes, loadTodayEvents]);
 
+  // Global keyboard shortcuts on Home page
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+
+      if (e.key === "?" && !isInput) {
+        e.preventDefault();
+        setShowShortcuts((prev) => !prev);
+      } else if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === "n" || e.key === "N") {
+          e.preventDefault();
+          noteInputRef.current?.focus();
+        } else if (e.key === "w" || e.key === "W") {
+          e.preventDefault();
+          navigate("/whiteboard");
+        } else if (e.key === "t" || e.key === "T") {
+          e.preventDefault();
+          navigate("/my-tasks");
+        } else if (e.key === "c" || e.key === "C") {
+          e.preventDefault();
+          navigate("/calendar");
+        } else if (e.key === "o" || e.key === "O") {
+          e.preventDefault();
+          navigate("/notes");
+        } else if (e.key === "s" || e.key === "S") {
+          e.preventDefault();
+          setSparkOffset((prev) => prev + 1);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [navigate]);
+
   async function handleQuickNote(e: FormEvent) {
     e.preventDefault();
     const title = quickNoteTitle.trim();
@@ -194,6 +269,7 @@ export function Home() {
       });
       setNotes((prev) => [created, ...prev.filter((n) => n.id !== created.id)].slice(0, 4));
       setQuickNoteTitle("");
+      setActiveTag(null);
       setQuickNoteSuccess(true);
       setTimeout(() => setQuickNoteSuccess(false), 3000);
     } catch {
@@ -203,9 +279,113 @@ export function Home() {
     }
   }
 
+  function handleTagClick(prefix: string, tagLabel: string) {
+    if (activeTag === tagLabel) {
+      setActiveTag(null);
+      if (quickNoteTitle.startsWith(prefix)) {
+        setQuickNoteTitle(quickNoteTitle.slice(prefix.length));
+      }
+    } else {
+      setActiveTag(tagLabel);
+      let cleaned = quickNoteTitle;
+      for (const t of NOTE_TAGS) {
+        if (cleaned.startsWith(t.prefix)) {
+          cleaned = cleaned.slice(t.prefix.length);
+        }
+      }
+      setQuickNoteTitle(prefix + cleaned);
+    }
+    noteInputRef.current?.focus();
+  }
+
+  async function toggleTaskComplete(task: Work) {
+    if (completedTaskIds.has(task.id)) return;
+    // Optimistic completion
+    setCompletedTaskIds((prev) => new Set(prev).add(task.id));
+    setTaskNotice({ id: task.id, title: task.title, listId: task.list_id });
+
+    try {
+      const full = await api<FullTask>(`/todos/lists/${task.list_id}/tasks/${task.id}`);
+      await api(`/todos/lists/${task.list_id}/tasks/${task.id}`, {
+        method: "PUT",
+        body: {
+          title: full.title,
+          description: full.description || "",
+          due_date: full.due_date,
+          priority: full.priority,
+          checklist: (full.checklist || []).map((c) => ({
+            title: c.title || c.text || "Item",
+            done: !!c.done,
+          })),
+          revision: full.revision,
+          done: true,
+          status: "done",
+        },
+      });
+    } catch {
+      // Revert if API fails
+      setCompletedTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
+      setTaskNotice(null);
+    }
+  }
+
+  async function undoTaskComplete() {
+    if (!taskNotice) return;
+    const { id, listId } = taskNotice;
+    setCompletedTaskIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setTaskNotice(null);
+
+    try {
+      const full = await api<FullTask>(`/todos/lists/${listId}/tasks/${id}`);
+      await api(`/todos/lists/${listId}/tasks/${id}`, {
+        method: "PUT",
+        body: {
+          title: full.title,
+          description: full.description || "",
+          due_date: full.due_date,
+          priority: full.priority,
+          checklist: (full.checklist || []).map((c) => ({
+            title: c.title || c.text || "Item",
+            done: !!c.done,
+          })),
+          revision: full.revision,
+          done: false,
+          status: "todo",
+        },
+      });
+    } catch {
+      // Revert silently
+    }
+  }
+
   const tasks: Work[] = dashData?.tasks || [];
+  const activeTasks = tasks.filter((t) => !completedTaskIds.has(t.id));
   const todayStr = dashData?.today || new Date().toISOString().slice(0, 10);
   const timezone = dashData?.timezone || "Asia/Kolkata";
+
+  // Filtered workspaces
+  const filteredWorkspaces = useMemo(() => {
+    return workspaces.filter((ws) => {
+      if (spaceFilter !== "all" && ws.kind !== spaceFilter) return false;
+      if (spaceSearch.trim()) {
+        const query = spaceSearch.toLowerCase();
+        return ws.name.toLowerCase().includes(query) || (ws.description || "").toLowerCase().includes(query);
+      }
+      return true;
+    });
+  }, [workspaces, spaceFilter, spaceSearch]);
+
+  const orgCount = workspaces.filter((w) => w.kind === "org").length;
+  const projectCount = workspaces.filter((w) => w.kind === "project").length;
+  const groupCount = workspaces.filter((w) => w.kind === "group").length;
 
   return (
     <main className="wb-home" tabIndex={-1}>
@@ -215,9 +395,13 @@ export function Home() {
           <div className="wb-hero__greeting-container">
             <h1 className="wb-hero__greeting">{greeting}</h1>
             <p className="wb-hero__date">
-              <span className="wb-hero__date-icon" aria-hidden="true">📅</span> {todayFormatted}
+              <span className="wb-hero__date-icon" aria-hidden="true">📅</span>
+              <span>{todayFormatted}</span>
               <span className="wb-hero__separator" aria-hidden="true">·</span>
-              <span>Intranet Lab Workspace</span>
+              <span className="wb-airgap-pill">
+                <span className="wb-airgap-pill__dot" aria-hidden="true" />
+                Air-gapped Lab Intranet
+              </span>
             </p>
           </div>
           <div className="wb-hero__actions">
@@ -228,11 +412,11 @@ export function Home() {
           </div>
         </div>
 
-        {/* Quick status summary chips */}
-        <div className="wb-hero__stats" role="region" aria-label="Quick counts">
+        {/* Quick status summary chips & Shortcuts button */}
+        <div className="wb-hero__stats" role="region" aria-label="Quick counts and tools">
           <Link to="/my-tasks" className="wb-stat-chip">
             <span className="wb-stat-chip__icon" aria-hidden="true">📋</span>
-            <span className="wb-stat-chip__count">{tasks.length}</span>
+            <span className="wb-stat-chip__count">{activeTasks.length}</span>
             <span className="wb-stat-chip__label">Active Tasks</span>
           </Link>
           <Link to="/calendar" className="wb-stat-chip">
@@ -250,10 +434,44 @@ export function Home() {
             <span className="wb-stat-chip__count">{workspaces.length}</span>
             <span className="wb-stat-chip__label">Workspaces</span>
           </a>
+          <button
+            type="button"
+            className="wb-stat-chip wb-stat-chip--shortcuts"
+            onClick={() => setShowShortcuts(true)}
+            aria-label="Open keyboard shortcuts cheat-sheet (Press ?)"
+          >
+            <span className="wb-stat-chip__icon" aria-hidden="true">⌨️</span>
+            <span className="wb-stat-chip__label">Shortcuts <kbd>?</kbd></span>
+          </button>
         </div>
       </section>
 
-      {/* 2. Collapsible Lab Collaboration Guidelines */}
+      {/* 2. Daily Research Spark / Scientific Inspiration */}
+      <section className="wb-spark-banner" aria-label="Daily scientific inspiration">
+        <div className="wb-spark-banner__left">
+          <span className="wb-spark-banner__tag">
+            <span aria-hidden="true">🔬</span> Research Spark
+          </span>
+          <blockquote className="wb-spark-banner__quote">
+            “{spark.quote}”
+            <footer className="wb-spark-banner__author">
+              — <strong>{spark.author}</strong>
+              {spark.context && <span className="wb-spark-banner__context"> · {spark.context}</span>}
+            </footer>
+          </blockquote>
+        </div>
+        <button
+          type="button"
+          className="wb-spark-banner__btn"
+          onClick={() => setSparkOffset((prev) => prev + 1)}
+          title="Cycle to another research spark (Press S)"
+          aria-label="Cycle to another research spark"
+        >
+          ✨ Another spark
+        </button>
+      </section>
+
+      {/* 3. Collapsible Lab Collaboration Guidelines */}
       <section className="wb-guidance" aria-label="LabAdda collaboration guidelines">
         <div className="wb-guidance__bar">
           <div className="wb-guidance__summary">
@@ -296,7 +514,7 @@ export function Home() {
         )}
       </section>
 
-      {/* 3. Whiteboard Hero Banner (Top Personal Feature) */}
+      {/* 4. Whiteboard Hero Banner (Top Personal Feature) */}
       <section className="wb-whiteboard-banner" aria-label="My Whiteboard Quick Access">
         <div className="wb-whiteboard-banner__content">
           <div className="wb-whiteboard-banner__tag">Private Thinking Space</div>
@@ -310,6 +528,19 @@ export function Home() {
             </Link>
             <Link to="/calendar" className="ui-button ui-button--secondary ui-button--md">
               View Calendar
+            </Link>
+          </div>
+          {/* Quick template triggers */}
+          <div className="wb-whiteboard-banner__templates" aria-label="Whiteboard quick launch templates">
+            <span className="wb-whiteboard-banner__templates-label">Quick start:</span>
+            <Link to="/whiteboard" className="wb-template-pill" title="Open blank whiteboard">
+              🎨 Blank Canvas
+            </Link>
+            <Link to="/whiteboard" className="wb-template-pill" title="Start with sticky notes">
+              📝 Sticky Notes
+            </Link>
+            <Link to="/whiteboard" className="wb-template-pill" title="Draw flowchart or reaction">
+              📊 Flow & Diagram
             </Link>
           </div>
         </div>
@@ -331,11 +562,11 @@ export function Home() {
         </div>
       </section>
 
-      {/* 4. Responsive 2-Column Personal Workbench Grid */}
+      {/* 5. Responsive 2-Column Personal Workbench Grid */}
       <div className="wb-grid">
         {/* LEFT COLUMN: Tasks & Calendar Agenda */}
         <div className="wb-grid__col wb-grid__col--main">
-          {/* Card: Active Tasks & Today's Deadlines */}
+          {/* Card: Active Tasks & Today's Deadlines with Inline Completion */}
           <section className="wb-card" aria-label="Active tasks and deadlines">
             <div className="wb-card__header">
               <div>
@@ -343,57 +574,79 @@ export function Home() {
                   <span className="wb-card__icon" aria-hidden="true">📋</span>
                   <span>My Tasks & Deadlines</span>
                 </h2>
-                <p className="wb-card__subtitle">Active work assigned to you or in your private lists</p>
+                <p className="wb-card__subtitle">Click checkbox to mark complete · Synced with team lists</p>
               </div>
               <Link to="/my-tasks" className="wb-card__link">
-                View all ({tasks.length}) →
+                View all ({activeTasks.length}) →
               </Link>
             </div>
 
             <div className="wb-card__body">
+              {/* Task Completed Feedback Toast */}
+              {taskNotice && (
+                <div className="wb-task-toast" role="status">
+                  <span>✓ <strong>{taskNotice.title}</strong> marked as completed!</span>
+                  <button type="button" className="wb-task-toast__undo" onClick={undoTaskComplete}>
+                    Undo
+                  </button>
+                </div>
+              )}
+
               {dashLoading ? (
                 <Skeleton label="Loading your tasks" />
-              ) : tasks.length === 0 ? (
+              ) : activeTasks.length === 0 ? (
                 <div className="wb-empty">
-                  <p className="wb-empty__text">No pending tasks for today. You’re all caught up!</p>
+                  <p className="wb-empty__text">🎉 No pending tasks for today. You’re all caught up!</p>
                   <Link to="/todos" className="ui-button ui-button--secondary ui-button--sm">
                     + Create a task
                   </Link>
                 </div>
               ) : (
                 <ul className="wb-task-list">
-                  {tasks.map((task) => (
-                    <li key={task.id} className="wb-task-item">
-                      <div className="wb-task-item__content">
+                  {activeTasks.map((task) => {
+                    const isDone = completedTaskIds.has(task.id);
+                    return (
+                      <li key={task.id} className={`wb-task-item ${isDone ? "wb-task-item--done" : ""}`}>
+                        <button
+                          type="button"
+                          className="wb-task-checkbox"
+                          onClick={() => toggleTaskComplete(task)}
+                          title="Mark task as completed"
+                          aria-label={`Mark task completed: ${task.title}`}
+                        >
+                          <span className="wb-task-checkbox__mark" aria-hidden="true">✓</span>
+                        </button>
+                        <div className="wb-task-item__content">
+                          <Link
+                            to={task.workspace_id ? `/w/${task.workspace_id}/todos` : "/todos"}
+                            className="wb-task-item__title"
+                          >
+                            {task.title}
+                          </Link>
+                          <div className="wb-task-item__meta">
+                            {priorityBadge(task.priority)}
+                            {dueBadge(task.due_date, todayStr)}
+                            <span className="wb-task-item__space">
+                              {task.workspace_name ? (
+                                <Link to={`/w/${task.workspace_id}/todos`}>{task.workspace_name}</Link>
+                              ) : (
+                                "Private list"
+                              )}
+                              {" · "}
+                              {task.list_title}
+                            </span>
+                          </div>
+                        </div>
                         <Link
                           to={task.workspace_id ? `/w/${task.workspace_id}/todos` : "/todos"}
-                          className="wb-task-item__title"
+                          className="wb-task-item__action"
+                          aria-label={`Open task: ${task.title}`}
                         >
-                          {task.title}
+                          Open →
                         </Link>
-                        <div className="wb-task-item__meta">
-                          {priorityBadge(task.priority)}
-                          {dueBadge(task.due_date, todayStr)}
-                          <span className="wb-task-item__space">
-                            {task.workspace_name ? (
-                              <Link to={`/w/${task.workspace_id}/todos`}>{task.workspace_name}</Link>
-                            ) : (
-                              "Private list"
-                            )}
-                            {" · "}
-                            {task.list_title}
-                          </span>
-                        </div>
-                      </div>
-                      <Link
-                        to={task.workspace_id ? `/w/${task.workspace_id}/todos` : "/todos"}
-                        className="wb-task-item__action"
-                        aria-label={`Open task: ${task.title}`}
-                      >
-                        Open →
-                      </Link>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -459,7 +712,7 @@ export function Home() {
 
         {/* RIGHT COLUMN: Quick Notes & Team Workspaces */}
         <div className="wb-grid__col wb-grid__col--side">
-          {/* Card: Quick Notes & Personal Scratchpad */}
+          {/* Card: Quick Notes & Personal Scratchpad with Category Tags */}
           <section className="wb-card" aria-label="My Notes and quick jot">
             <div className="wb-card__header">
               <div>
@@ -467,7 +720,7 @@ export function Home() {
                   <span className="wb-card__icon" aria-hidden="true">📝</span>
                   <span>My Notes</span>
                 </h2>
-                <p className="wb-card__subtitle">Private reminders and lab thoughts</p>
+                <p className="wb-card__subtitle">Private reminders · Press N to jot quickly</p>
               </div>
               <Link to="/notes" className="wb-card__link">
                 All notes →
@@ -475,6 +728,24 @@ export function Home() {
             </div>
 
             <div className="wb-card__body">
+              {/* Quick Tag Pills */}
+              <div className="wb-tag-pills" role="region" aria-label="Note category tags">
+                {NOTE_TAGS.map((tag) => {
+                  const isSelected = activeTag === tag.label;
+                  return (
+                    <button
+                      key={tag.label}
+                      type="button"
+                      className={`wb-tag-pill ${isSelected ? "wb-tag-pill--selected" : ""}`}
+                      onClick={() => handleTagClick(tag.prefix, tag.label)}
+                      title={`Add ${tag.label} prefix`}
+                    >
+                      <span aria-hidden="true">{tag.icon}</span> {tag.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Quick Jot input form */}
               <form onSubmit={handleQuickNote} className="wb-quick-note-form">
                 <label htmlFor="quick-note-input" className="wb-sr-only">
@@ -482,10 +753,11 @@ export function Home() {
                 </label>
                 <div className="wb-quick-note-input-row">
                   <input
+                    ref={noteInputRef}
                     id="quick-note-input"
                     type="text"
                     className="wb-quick-note-input"
-                    placeholder="Jot a quick note or reminder..."
+                    placeholder="Jot a quick note or reminder... (Press Enter)"
                     value={quickNoteTitle}
                     onChange={(e) => setQuickNoteTitle(e.target.value)}
                     maxLength={200}
@@ -529,7 +801,7 @@ export function Home() {
             </div>
           </section>
 
-          {/* Card: Accessible Team Spaces */}
+          {/* Card: Accessible Team Spaces with Filters & Search */}
           <section id="workspaces" className="wb-card" aria-label="Your team workspaces">
             <div className="wb-card__header">
               <div>
@@ -545,21 +817,96 @@ export function Home() {
             </div>
 
             <div className="wb-card__body">
+              {/* Space category filters */}
+              <div className="wb-space-filters" role="tablist" aria-label="Workspace filters">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={spaceFilter === "all"}
+                  className={`wb-space-filter-btn ${spaceFilter === "all" ? "wb-space-filter-btn--active" : ""}`}
+                  onClick={() => setSpaceFilter("all")}
+                >
+                  All ({workspaces.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={spaceFilter === "org"}
+                  className={`wb-space-filter-btn ${spaceFilter === "org" ? "wb-space-filter-btn--active" : ""}`}
+                  onClick={() => setSpaceFilter("org")}
+                >
+                  Units ({orgCount})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={spaceFilter === "project"}
+                  className={`wb-space-filter-btn ${spaceFilter === "project" ? "wb-space-filter-btn--active" : ""}`}
+                  onClick={() => setSpaceFilter("project")}
+                >
+                  Projects ({projectCount})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={spaceFilter === "group"}
+                  className={`wb-space-filter-btn ${spaceFilter === "group" ? "wb-space-filter-btn--active" : ""}`}
+                  onClick={() => setSpaceFilter("group")}
+                >
+                  Groups ({groupCount})
+                </button>
+              </div>
+
+              {/* Search filter if workspaces > 3 */}
+              {workspaces.length > 3 && (
+                <div className="wb-space-search-box">
+                  <input
+                    type="search"
+                    className="wb-space-search-input"
+                    placeholder="Filter spaces by name..."
+                    value={spaceSearch}
+                    onChange={(e) => setSpaceSearch(e.target.value)}
+                    aria-label="Filter workspaces by name"
+                  />
+                  {spaceSearch && (
+                    <button
+                      type="button"
+                      className="wb-space-search-clear"
+                      onClick={() => setSpaceSearch("")}
+                      aria-label="Clear space search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+
               {workspacesLoading ? (
                 <Skeleton label="Loading team spaces" />
-              ) : workspaces.length === 0 ? (
+              ) : filteredWorkspaces.length === 0 ? (
                 <div className="wb-empty wb-empty--compact">
-                  <p className="wb-empty__text">You are not a member of any workspace yet.</p>
-                  <Link to="/groups/new" className="ui-button ui-button--secondary ui-button--sm">
-                    Create a group
-                  </Link>
+                  <p className="wb-empty__text">
+                    {spaceSearch ? "No spaces match your filter." : "No spaces in this category."}
+                  </p>
+                  {spaceSearch && (
+                    <button
+                      type="button"
+                      className="ui-button ui-button--quiet ui-button--sm"
+                      onClick={() => setSpaceSearch("")}
+                    >
+                      Clear search
+                    </button>
+                  )}
                 </div>
               ) : (
                 <ul className="wb-space-list">
-                  {workspaces.map((ws) => (
+                  {filteredWorkspaces.map((ws) => (
                     <li key={ws.id} className="wb-space-item">
                       <div className="wb-space-item__main">
                         <Link to={`/w/${ws.id}/noticeboard`} className="wb-space-item__name">
+                          {ws.kind === "project" && <span className="wb-space-kind-icon" aria-hidden="true">🚀 </span>}
+                          {ws.kind === "group" && <span className="wb-space-kind-icon" aria-hidden="true">👥 </span>}
+                          {ws.kind === "org" && <span className="wb-space-kind-icon" aria-hidden="true">🏢 </span>}
                           {ws.name}
                         </Link>
                       </div>
@@ -589,10 +936,13 @@ export function Home() {
         </div>
       </div>
 
-      {/* 5. Comprehensive FAQ Accordion */}
+      {/* 6. Comprehensive FAQ Accordion */}
       <section className="wb-faq-container" aria-label="Frequently Asked Questions">
         <FaqSection />
       </section>
+
+      {/* 7. Keyboard Shortcuts Modal */}
+      <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </main>
   );
 }

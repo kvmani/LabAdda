@@ -16,11 +16,13 @@ Administrators can open it, and so can people who have been given read-only oper
 
 ## Steps
 
-1. Open **Administration**. The coloured band at the top is the overall state: the worst of the system checks. **Unknown** means some checks have no figures yet, so the site is not confirmed healthy.
-2. Read **Needs attention**. It lists the most serious item first. Each entry has an **Open** link to the page where you can deal with it, and **What to do** when there is a guide. If nothing needs attention the page says so plainly.
-3. Read the six tiles: people active today, people signed in now, live connections, storage used, last backup and open events. Choose a tile's name to open the page behind the figure. The small line shows the last seven days.
-4. Read the two charts: people active each day, and the slowest response time of each day.
-5. Choose **Check now** to read everything again.
+1. Open **Administration**. The top row presents **360-degree Key Performance Indicators**: Staff Adoption %, Collaboration Items velocity, Content Storage Footprint, and Open Operational Events.
+2. Read the **Cockpit Views** using the navigation tabs:
+   - **360° Overview**: View overall system health, items needing attention, most active research collaboration hubs, operational tiles, and 7-day activity charts.
+   - **Usage Trends & Popularity**: Review collaboration tool distribution (notices, chat, and tasks) and peak laboratory hours.
+   - **Bottlenecks & SLA**: Identify top disk storage consuming workspaces, research units or projects needing steward leadership, and intranet response time percentiles.
+   - **Action & Diagnostics**: Get proactive, plain-English guidance and step-by-step remediation advice for open system events.
+3. Choose **Check now** at any time to refresh all metrics immediately.
 
 ## What happens next
 

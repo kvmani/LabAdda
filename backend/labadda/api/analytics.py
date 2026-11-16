@@ -14,6 +14,7 @@ from ..analytics import export
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, require_console
 from ..errors import ApiError
+from ..overview.cockpit import build_cockpit_analytics
 from ..security import utcnow
 
 router = APIRouter(prefix="/admin/analytics", tags=["analytics"])
@@ -70,6 +71,22 @@ def units(
     settings: Settings = Depends(get_settings),
 ) -> dict:
     return _read(request, db, settings, "units", period)
+
+
+@router.get("/cockpit")
+def cockpit(
+    request: Request,
+    actor: Actor = Depends(console_activity),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    try:
+        payload = build_cockpit_analytics(db, settings, now=utcnow())
+        refresh_authority(request, db)
+        return payload
+    except DBAPIError:
+        db.rollback()
+        raise ApiError(*UNAVAILABLE, status=503) from None
 
 
 @router.get("/export.csv")

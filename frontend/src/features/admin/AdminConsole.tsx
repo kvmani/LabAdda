@@ -84,6 +84,7 @@ export function AdminConsole() {
             }
           />
         ))}
+        <Route path="overview" element={<OverviewPage />} />
         <Route path="help/setup" element={<SetupChecklist />} />
         <Route path="people/basic" element={<Basic area="people" />} />
         <Route path="org/basic" element={<Basic area="org" />} />
