@@ -3,7 +3,7 @@ title: Your private whiteboard
 summary: Draw and arrange sticky notes in a board that only you can access.
 audience: everyone
 screen: /whiteboard
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 ## What this is for
@@ -18,9 +18,12 @@ administrators cannot read it. It is separate from shared workspace whiteboards 
 3. Choose **Sticky** and click on the canvas to place a note.
 4. Choose **Select** to choose a note and edit its text, shape, size or colour, or drag to position it.
 5. Choose **Save** and wait for the saved status before leaving.
-6. Use **Undo** to remove the most recently added object from your draft.
+6. Use the board tabs to keep separate drawings; unsaved work stays in its own tab.
+7. Use **Undo** to remove the most recently added object from your draft.
 
 ## What happens next
+
+Images can be uploaded to team boards. Personal boards currently support drawings, text and sticky notes.
 
 The saved board is available when you sign in again. Saves retain earlier revisions on the
 server. No team notifications or shared-board events include your private content.

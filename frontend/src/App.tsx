@@ -20,7 +20,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { HelpBoundary } from "./features/help/HelpBoundary";
 
 import { Home, Landing } from "./features/home/Home";
-import { clearBoardDraft } from "./features/personal-board/draft";
+import { clearBoardDraft, hasBoardDrafts } from "./features/personal-board/draft";
 import { PersonalBoard } from "./features/personal-board/PersonalBoard";
 import { Directory } from "./pages/Directory";
 import { CalendarPage } from "./pages/CalendarPage";
@@ -34,6 +34,13 @@ export function App() {
   useEffect(() => {
     if (!session) clearBoardDraft();
   }, [session]);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (hasBoardDrafts()) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
   if (loading) return <Skeleton label="Loading LabAdda…" lines={3} />;
   if (!session) {
     return (

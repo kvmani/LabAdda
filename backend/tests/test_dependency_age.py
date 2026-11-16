@@ -121,3 +121,31 @@ def test_mirror_environment_pins_the_index_and_refuses_the_public_one(monkeypatc
             release.mirror_environment(bad, None)
     monkeypatch.setenv("LABADDA_ALLOW_PUBLIC_INDEX", "1")
     assert release.mirror_environment("https://pypi.org/simple", None)["PIP_INDEX_URL"]
+
+
+def test_age_approvals_are_exact_and_expire_without_exempting_unknown_metadata(tmp_path):
+    (tmp_path / "deploy").mkdir()
+    path = tmp_path / "deploy/dependency-age-exceptions.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "exceptions": [
+                    {
+                        "index": "pypi",
+                        "name": "fixture",
+                        "version": "1.0",
+                        "approved_on": "2026-11-01",
+                        "expires_on": "2026-11-15",
+                        "reason": "Fictional owner-approved security fix",
+                    }
+                ],
+            }
+        )
+    )
+    current = datetime(2026, 11, 10, tzinfo=UTC)
+    assert age.approved_exceptions(tmp_path, current) == {("pypi", "fixture", "1.0")}
+    assert ("pypi", "fixture", "2.0") not in age.approved_exceptions(tmp_path, current)
+    assert age.approved_exceptions(tmp_path, current + timedelta(days=10)) == set()
+    # Approval lookup does not alter the checker: unavailable metadata is still unknown.
+    assert age.check({"pypi": [("fixture", "1.0")]}, fake_index({}), now=current, min_days=30)[1]

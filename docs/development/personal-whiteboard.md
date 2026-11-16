@@ -14,10 +14,12 @@ access. It has no shared socket, export, search, notification or analytics conte
 
 The client explicitly saves a bounded document of strokes and colored sticky notes. Notes can
 be edited, dragged or positioned with keyboard/buttons. Failed saves keep drafts, conflicts require
-review and saved reload confirms before discarding local changes. Reload/closing warns about
+review of the latest saved board. Reload/closing warns about
 unsaved work. In-app navigation preserves drafts in memory for the current tab/session, cleared
 on sign-out or identity change; private content is never cached in browser storage. Old revisions are retained, not pruned. The API
-limits each document to 500 objects, 20,000 points and 250,000 encoded bytes; this is not full
+supports separate board-index drafts with non-destructive stale-save cleanup. Image upload is unavailable until an owner-private asset lifecycle exists. Keyboard controls and the board-item list provide note/text alternatives to the canvas.
+
+The API limits each document to 500 objects, 20,000 points and 250,000 encoded bytes; this is not full
 storage quota enforcement. Background tab synchronization and cross-device live collaboration
 are intentionally outside the private-board workflow.
 

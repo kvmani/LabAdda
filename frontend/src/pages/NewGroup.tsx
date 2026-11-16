@@ -98,7 +98,7 @@ export function NewGroup() {
         },
       });
       await reload();
-      if (token === generation.current) navigate(`/w/${ws.id}/${conversation ? "chat" : "noticeboard"}`);
+      if (token === generation.current) void navigate(`/w/${ws.id}/${conversation ? "chat" : "noticeboard"}`);
     } catch (err: unknown) {
       if (token === generation.current) {
         setError(errorMessage(err));

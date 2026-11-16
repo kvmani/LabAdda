@@ -28,7 +28,10 @@ check_mode "$KIT"
 VERSION=$(kit_field "$KIT" release)
 CURRENT=$(current_version)
 [[ $CURRENT != none ]] || die "No active release found; run install.sh."
-if [[ $VERSION == "$CURRENT" ]]; then ok "release $VERSION is already running; nothing to do."; exit 0; fi
+if [[ $VERSION == "$CURRENT" ]]; then
+  assert_release_identity "$INSTANCE_ROOT/current/manifest.json" "$KIT/MANIFEST.json"
+  ok "identical release $VERSION is already running; nothing to do."; exit 0
+fi
 say "    Running now: $CURRENT   New: $VERSION"
 
 step_tools

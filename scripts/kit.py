@@ -109,7 +109,7 @@ def extract_tools(archive: Path, target: Path) -> None:
     with tarfile.open(archive, "r:gz") as tar:
         names = {m.name for m in tar.getmembers()}
         for name in tar.getmembers():
-            if name.name.startswith("deploy/"):
+            if name.name.startswith(("deploy/", "docs/")):
                 wanted[name.name] = name.name
         missing = sorted(set(wanted) - names)
         if missing:
@@ -180,6 +180,15 @@ def build(
             (work / name).chmod(0o755)
         shutil.copytree(root / "deploy/lib", work / "lib")
         shutil.copyfile(root / "docs/ROLLOUT-INTRANET.md", work / "READ-ME-FIRST.md")
+        office_guide = root / "docs/OFFICE-PILOT-2026-11-16.md"
+        if office_guide.is_file():
+            office_text = office_guide.read_text().replace("(../deploy/office-pilot/", "(office-pilot/")
+            for name in ("RECOVERY.md", "RELEASES.md"):
+                office_text = office_text.replace(f"({name})", f"(tools/docs/{name})")
+            (work / "OFFICE-PILOT-2026-11-16.md").write_text(office_text)
+        office_templates = root / "deploy/office-pilot"
+        if office_templates.is_dir():
+            shutil.copytree(office_templates, work / "office-pilot")
         if offline and not skip_debs:
             fetch_debs(package_closure(package_names(root)), work / "os-packages")
         shutil.rmtree(work / "build", ignore_errors=True)

@@ -1,0 +1,27 @@
+# LabAdda pilot on the Ubuntu 24.04 server already running project_management_software.
+# Copy outside the release, edit every domain.xx.in placeholder, chmod 0600.
+# Comments must occupy their own lines; do not add inline comments or shell substitutions.
+SITE_TITLE=LabAdda
+# Separate DNS name pointing to the existing office server; preserve all PM nginx sites.
+HOSTNAME_=labadda.domain.xx.in
+TIMEZONE_=Asia/Kolkata
+EMAIL_DOMAIN=domain.xx.in
+# Actual operator mailbox/list that receives feedback; create/approve it before enabling mail.
+FEEDBACK_EMAIL=labadda-operators@domain.xx.in
+# REPLACE HOST at rollout. Port 25 / no TLS / no login are provisional, matching the
+# sanitized PM deployment example. Confirm with IT and test actual delivery.
+SMTP_RELAY=smtp.domain.xx.in:25
+SMTP_FROM=admin.labadda@domain.xx.in
+SMTP_STARTTLS=false
+SMTP_USER=none
+# Only used in mirror mode; offline-kit mode installs the included Python wheels.
+# REPLACE with the actual internal Python index. Keep certificate verification enabled.
+PIP_INDEX_URL=https://pypi.domain.xx.in/simple
+PIP_TRUSTED_HOST=
+# Candidate port: PM uses 8000/8001/8002 and 4173/4174/4175. Verify 8100 is free.
+PORT=8100
+SERVICE_USER=labadda
+RUN_SCHEDULER=true
+# New LabAdda account, not the PM login. Activation code prints once; transfer privately.
+ADMIN_USER=labaddaadmin
+ADMIN_NAME=LabAdda Administrator

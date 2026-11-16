@@ -183,6 +183,27 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
         ).status_code
         == 200
     )
+    snapshot = bharat.post(
+        f"/workspaces/{workspace}/board/snapshots",
+        json={
+            "revision": board_context["revision"],
+            "region": {"x": 0, "y": 0, "w": 200, "h": 120},
+            "destination_id": workspace,
+            "summary": "Recovery snapshot receipt",
+            "client_id": uuid.uuid4().hex,
+        },
+    )
+    assert snapshot.status_code == 201, snapshot.text
+    calendar = bharat.post(
+        "/calendar/events",
+        json={
+            "scope_kind": "personal",
+            "title": "Recovery tensile review",
+            "starts_at": "2026-11-16T09:00:00Z",
+            "ends_at": "2026-11-16T10:00:00Z",
+        },
+    ).json()
+    assert bharat.delete(f"/calendar/events/{calendar['id']}?revision=1").status_code == 200
     bundle = tmp_path / "backup"
     from datetime import date
 
@@ -244,6 +265,21 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
             assert person.expected_return_on == date(2026, 12, 1)
             assert person.revision == 7
             assert person.last_seen_on == staff_seen
+        from sqlalchemy.orm import Session
+
+        from labadda.models import CalendarEvent, Post
+
+        recovered_engine = create_engine(target_url)
+        try:
+            with Session(recovered_engine) as recovered_db:
+                recovered_event = recovered_db.get(CalendarEvent, uuid.UUID(calendar["id"]))
+                receipt = recovered_db.get(Post, uuid.UUID(snapshot.json()["post_id"]))
+                assert len(receipt.source_request_digest) == 64
+                assert recovered_event.title == "Recovery tensile review"
+                assert recovered_event.revision == 2 and recovered_event.cancelled_at is not None
+        finally:
+            recovered_engine.dispose()
+
         restored = replace(settings, database_url=target_url, asset_dir=target_assets)
         with TestClient(create_app(restored)) as client:
             client.cookies.update(old_cookies)

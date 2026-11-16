@@ -1,0 +1,8 @@
+# Install as /etc/systemd/system/labadda-backup@main.timer.d/office-schedule.conf.
+# PROVISIONAL time: confirm the PM/host backups do not overlap before enabling.
+# LabAdda briefly closes during backup; tell the pilot group the agreed window.
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* 03:40:00 Asia/Kolkata
+RandomizedDelaySec=0
+Persistent=true

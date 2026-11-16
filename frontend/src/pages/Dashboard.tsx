@@ -230,7 +230,7 @@ export function Dashboard() {
       const result = await api<OpenedNotification>(`/notifications/${id}/open`, { method: "POST" });
       if (!isCurrent()) return;
       const link = result.link;
-      navigate(link.view === "notes" ? "/notes" : `/w/${link.workspace_id}/${link.view}`);
+      void navigate(link.view === "notes" ? "/notes" : `/w/${link.workspace_id}/${link.view}`);
     } catch (e: unknown) {
       if (isCurrent()) setError(errorMessage(e));
     }

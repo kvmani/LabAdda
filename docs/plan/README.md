@@ -24,7 +24,7 @@ outside groups, e-mail delivery, multi-site federation (P6).
 
 ## Status at a glance
 
-Last updated: 2026-11-13 (all of tracks A, H and U done; P1–P6 done, P7 awaiting owner decisions; Q3 partial; pilot rehearsal passed locally). Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-15 (all of tracks A, H and U done; P1–P6 done, P7 awaiting owner decisions; Q3 partial; pilot rehearsal passed locally). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |
@@ -38,8 +38,9 @@ remaining effort, and are estimates — the package table below is the precise r
 | Code uniformity and quality gates | 7 % | 82 % | Rest of the readable rewrite (Q3), module splits (Q4) |
 | **Overall toward v1.0** | 100 % | **≈ 91 %** | |
 
-The delivered foundation includes 37 migrations and 220 frontend unit tests; the full backend
-suite and `scripts/verify.sh` pass on main. Browser checks run at root and under the prefix
+The delivered foundation now includes multiple/private whiteboards and calendar events. The office
+pilot review and precise validation evidence are recorded in [the current review](../PILOT-REVIEW-2026-11-15.md);
+site acceptance remains outstanding. Browser checks run at root and under the prefix
 (`scripts/e2e-all.sh`). Thirty-client TLS workload rehearsals and offline release, install,
 backup, restore and upgrade are verified locally; see [the pilot runbook](../PILOT-RUNBOOK.md).
 

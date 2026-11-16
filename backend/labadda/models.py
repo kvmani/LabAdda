@@ -350,6 +350,7 @@ class Post(Base):
         UUID(as_uuid=True), ForeignKey("workspaces.id", name="fk_posts_source_workspace")
     )
     source_revision: Mapped[int | None] = mapped_column(BigInteger)
+    source_request_digest: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = _created()
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -567,7 +568,7 @@ class BoardOp(Base):
             "workspace_id", "board_index", "epoch", "actor_id", "op_id", name="uq_board_op_identity"
         ),
         UniqueConstraint("workspace_id", "board_index", "revision", name="uq_board_op_revision"),
-        CheckConstraint("op_type in ('add','erase','undo','move')", name="ck_board_op_type"),
+        CheckConstraint("op_type in ('add','erase','undo','move','update')", name="ck_board_op_type"),
     )
 
 
@@ -711,6 +712,7 @@ class ContentCharge(Base):
     item_key: Mapped[str] = mapped_column(String(200), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"))
+    board_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     method: Mapped[str] = mapped_column(String(32), nullable=False)
     state: Mapped[str] = mapped_column(String(16), nullable=False)
     bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -1088,6 +1090,8 @@ class CalendarEvent(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     title: Mapped[str] = mapped_column(String(140), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(String(140))

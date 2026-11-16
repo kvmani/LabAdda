@@ -160,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("--feedback", "--smtp-relay", "--smtp-from", "--smtp-user", "--smtp-password-file"):
         env.add_argument(name, default="")
     env.add_argument("--smtp-starttls", action="store_true")
+    env.add_argument("--run-scheduler", choices=("true", "false"), default="true")
     stat = sub.add_parser("status")
     stat.add_argument("--status-dir", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -181,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
                 domain=args.domain,
                 db_url=args.database_url,
             )
+            values["LABADDA_RUN_SCHEDULER"] = args.run_scheduler
             values |= smtp_settings(
                 args.smtp_relay, args.feedback, args.smtp_from,
                 starttls=args.smtp_starttls, user=args.smtp_user, password_file=args.smtp_password_file,

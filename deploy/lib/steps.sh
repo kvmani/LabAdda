@@ -5,11 +5,14 @@ REQUIRED_DEBS=(postgresql-16 postgresql-client-16 nginx python3.12-venv openssl)
 
 step_os_packages() {
   step "Operating system packages ($MODE mode)"
-  local missing=() p work
+  local missing=() p
   for p in "${REQUIRED_DEBS[@]}"; do
     dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed" || missing+=("$p")
   done
   if ((${#missing[@]} == 0)); then ok "already installed: ${REQUIRED_DEBS[*]}"; return 0; fi
+  if (( ${SKIP_OS_PACKAGES:-0} )); then
+    die "Required OS packages are missing: ${missing[*]}. Install them from the signed internal apt mirror first."
+  fi
   if [[ $MODE == mirror ]]; then
     # apt uses the sources configured on this server (the office mirror); nothing is added or bypassed.
     if ((DRY_RUN)); then
@@ -23,23 +26,8 @@ step_os_packages() {
     ok "installed from the mirror: ${missing[*]}"
     return 0
   fi
-  [[ -f $KIT/os-packages/Packages.gz ]] || die "The kit has no os-packages folder; rebuild the kit with make-offline-kit.sh."
-  work=$(mktemp -d)
-  mkdir -p "$work/lists/partial" "$work/cache/archives/partial"
-  printf 'deb [trusted=yes] file:%s ./\n' "$KIT/os-packages" >"$work/kit.list"
-  local apt=(apt-get -o "Dir::Etc::SourceList=$work/kit.list" -o Dir::Etc::SourceParts=/dev/null
-    -o "Dir::State::Lists=$work/lists" -o "Dir::Cache=$work/cache" -o Acquire::Languages=none
-    -o Acquire::AllowInsecureRepositories=true -o APT::Get::AllowUnauthenticated=true)
-  say "    needed: ${missing[*]}"
-  "${apt[@]}" -qq update >/dev/null 2>&1 || die "Could not read the kit's package list (os-packages/Packages.gz)."
-  "${apt[@]}" -s -y --no-install-recommends install "${missing[@]}" >"$work/plan.txt" 2>&1 \
-    || { cat "$work/plan.txt" >&2; die "The kit cannot satisfy the packages above. Rebuild it on Ubuntu 24.04 with make-offline-kit.sh."; }
-  ok "the kit can install: $(grep -c '^Inst ' "$work/plan.txt") package(s)"
-  if ((DRY_RUN)); then rm -rf "$work"; return 0; fi
-  [[ ${SKIP_OS_PACKAGES:-0} -eq 1 ]] && { warn "skipping the install on request"; rm -rf "$work"; return 0; }
-  DEBIAN_FRONTEND=noninteractive "${apt[@]}" -y --no-install-recommends install "${missing[@]}" >/dev/null
-  rm -rf "$work"
-  ok "installed: ${missing[*]}"
+  die "OS packages must be preinstalled from the signed internal apt mirror. The kit's unsigned apt pool is not used."
+
 }
 
 step_service_user() {
@@ -109,7 +97,7 @@ step_config() {
   [[ ${SMTP_STARTTLS:-false} != true ]] || smtp+=(--smtp-starttls)
   if [[ -f $ENV_FILE ]]; then ok "$ENV_FILE exists and is kept (edit it by hand to change settings)"
   else
-    $helper env-file "${smtp[@]}" --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" \
+    $helper env-file "${smtp[@]}" --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" --run-scheduler "${RUN_SCHEDULER:-true}" \
       --domain "$EMAIL_DOMAIN" --database-url "$url" --example "$TOOLS_DIR/deploy/labadda.env.example" \
       | write_file 0600 root:root "$ENV_FILE"
   fi
@@ -127,7 +115,10 @@ step_release() {
   step "Application release $VERSION"
   local archive="$KIT/release/labadda-$VERSION.tar.gz" digest
   digest=$(cut -d' ' -f1 "$archive.sha256" 2>/dev/null || cut -d' ' -f1 "${archive%.gz}.gz.sha256")
-  if [[ -d $INSTANCE_ROOT/releases/$VERSION ]]; then ok "already installed"; return 0; fi
+  if [[ -d $INSTANCE_ROOT/releases/$VERSION ]]; then
+    assert_release_identity "$INSTANCE_ROOT/releases/$VERSION/manifest.json" "$KIT/MANIFEST.json"
+    ok "identical release already installed"; return 0
+  fi
   local mirror=()
   if [[ $MODE == mirror ]]; then mirror=(--index-url "$PIP_INDEX_URL"); [[ -z $PIP_TRUSTED_HOST ]] || mirror+=(--trusted-host "$PIP_TRUSTED_HOST"); fi
   run "$PYTHON" "$TOOLS_DIR/scripts/release.py" install "$archive" --sha256 "$digest" --instance "$INSTANCE_ROOT" "${mirror[@]}" >/dev/null
@@ -173,7 +164,7 @@ step_render_units() {
   install -m 0644 "$TOOLS_DIR/deploy/systemd/labadda-backup@.timer" "$SYSTEMD_DIR/"
   if ((NO_NGINX)); then ok "web server site skipped on request"; else
     install -d "$NGINX_DIR/conf.d"; install -m 0644 "$out/nginx.conf" "$NGINX_DIR/conf.d/labadda-$SITE.conf"
-    rm -f "$NGINX_DIR/sites-enabled/default"
+    # Other applications may own the default site on this shared server.
     nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}" >/dev/null 2>&1 \
       || { nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}"; die "nginx rejected the generated site file."; }
     ok "nginx accepts the site file"
@@ -192,7 +183,10 @@ step_initialize() {
   if [[ -L $INSTANCE_ROOT/current ]]; then ok "already activated ($(current_version))"; return 0; fi
   if ((DRY_RUN)); then say "    [dry-run] would migrate (or restore), then activate release $VERSION"; return 0; fi
   if [[ -n ${RESTORE_BUNDLE:-} ]]; then
-    rm -rf "$INSTANCE_ROOT/assets"
+    [[ ! -L $INSTANCE_ROOT/assets ]] || die "Restore refuses a symlink asset target."
+    if [[ -d $INSTANCE_ROOT/assets ]]; then
+      rmdir "$INSTANCE_ROOT/assets" || die "Restore refuses nonempty assets; retained files were not changed."
+    fi
     with_env "$PYTHON" "$TOOLS_DIR/scripts/commission.py" --site "$SITE_JSON" restore --candidate "$VERSION" \
       --bundle "$RESTORE_BUNDLE" --manifest-sha256 "$RESTORE_SHA" --apply --isolated-target >/dev/null
     chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTANCE_ROOT/assets"; chmod 0700 "$INSTANCE_ROOT/assets"
@@ -235,8 +229,8 @@ step_backup_and_doctor() {
   step "First backup and doctor"
   if ((DRY_RUN)); then say "    [dry-run] would take the first backup, enable the nightly timer and run the doctor"; return 0; fi
   lifecycle backup --unattended --apply --external-writers-stopped --resume-after-backup >/dev/null \
-    && ok "first backup taken and verified" || warn "the first backup failed; run labadda-backup-now and read its message"
+    && ok "first backup taken and verified" || die "First backup failed. Do not admit users; run labadda-backup-now and read its message."
   if ((NO_TIMER)); then ok "nightly timer skipped on request"; else "$SYSTEMCTL" enable --now "labadda-backup@$SITE.timer" >/dev/null; fi
   ( cd "$INSTANCE_ROOT/current/backend" && "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) \
-    || warn "the doctor reported problems above; fix them from the top and run: labadda-status"
+    || die "Doctor failed. Do not admit users; fix the reported problems and run labadda-status."
 }

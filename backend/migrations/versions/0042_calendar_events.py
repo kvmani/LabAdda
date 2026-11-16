@@ -14,7 +14,9 @@ def upgrade():
         "calendar_events",
         sa.Column("id", sa.UUID(), primary_key=True),
         sa.Column("scope_kind", sa.String(32), nullable=False),
-        sa.Column("workspace_id", sa.UUID(), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True),
+        sa.Column(
+            "workspace_id", sa.UUID(), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True
+        ),
         sa.Column("owner_id", sa.UUID(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=True),
         sa.Column("created_by", sa.UUID(), sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
         sa.Column("title", sa.String(140), nullable=False),
@@ -26,7 +28,9 @@ def upgrade():
         sa.Column("color", sa.String(32), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.CheckConstraint("scope_kind IN ('site', 'workspace', 'personal')", name="ck_calendar_events_scope"),
+        sa.CheckConstraint(
+            "scope_kind IN ('site', 'workspace', 'personal')", name="ck_calendar_events_scope"
+        ),
         sa.CheckConstraint("starts_at <= ends_at", name="ck_calendar_events_dates"),
     )
 

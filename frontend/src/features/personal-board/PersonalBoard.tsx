@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "../../session";
-import { rememberBoard } from "./draft";
-import { api, errorMessage, newId } from "../../api";
+import { boardDraft, clearSavedBoard, rememberBoard } from "./draft";
+import { api, errorMessage } from "../../api";
 import { API } from "../../config";
 import { Button, ErrorState, PageHeader, Skeleton } from "../../ui";
 import {
+  BoardTabs,
   STICKY_COLORS,
   PEN_COLORS,
   getStickyDimensions,
@@ -42,6 +43,9 @@ export function PersonalBoard() {
 
   const [document, setDocument] = useState<BoardDocument | null>(null);
   const [boardIndex, setBoardIndex] = useState(0);
+  const activeBoard = useRef(0);
+  activeBoard.current = boardIndex;
+  const [loadedIndex, setLoadedIndex] = useState<number | null>(null);
   const [boardTabs, setBoardTabs] = useState<{ board_index: number; title: string }[]>([
     { board_index: 0, title: "WhiteBoard_1" },
   ]);
@@ -69,29 +73,46 @@ export function PersonalBoard() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    const cached = boardDraft(`${draftKey}:${boardIndex}`);
     setError("");
-    api<BoardDocument>(`/me/whiteboard?board_index=${boardIndex}`)
-      .then((result) => {
-        if (active && mounted.current) {
+    setBusy(false);
+    setEditingSticky(null);
+    setEditingText(null);
+    setCreatingStickyAt(null);
+    setCreatingTextAt(null);
+    drawing.current = null;
+    shapeDrawing.current = null;
+    draggingObj.current = null;
+    if (cached) {
+      setDocument(cached.document);
+      setObjects(cached.objects);
+      setDirty(true);
+      setLoadedIndex(boardIndex);
+      setLoading(false);
+    } else {
+      setDocument(null);
+      setLoading(true);
+      api<BoardDocument>(`/me/whiteboard?board_index=${boardIndex}`)
+        .then((result) => {
+          if (!active || !mounted.current) return;
           setDocument(result);
           setObjects(result.objects);
           setDirty(false);
-        }
-      })
-      .catch((reason: unknown) => {
-        if (active) setError(errorMessage(reason));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+          setLoadedIndex(boardIndex);
+        })
+        .catch((reason: unknown) => {
+          if (active) setError(errorMessage(reason));
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }
     return () => {
       active = false;
     };
-  }, [boardIndex]);
+  }, [boardIndex, draftKey]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const images = useRef(new Map<string, HTMLImageElement>());
 
   const [tool, setTool] = useState<WhiteboardTool>("pen");
@@ -135,19 +156,12 @@ export function PersonalBoard() {
 
   // Persist draft in session
   useEffect(() => {
-    if (dirty && document) rememberBoard({ key: `${draftKey}:${boardIndex}`, document, objects });
-  }, [dirty, document, draftKey, boardIndex, objects]);
-
-  // Warn before closing dirty tab
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (dirty) event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+    if (dirty && document && loadedIndex === boardIndex)
+      rememberBoard({ key: `${draftKey}:${loadedIndex}`, document, objects });
+  }, [dirty, document, draftKey, boardIndex, loadedIndex, objects]);
 
   function changeObjects(next: BoardObject[]) {
+    if (busy || loadedIndex !== boardIndex) return;
     if (next.length > 500) {
       setError("This board has reached its 500-object limit.");
       return;
@@ -158,7 +172,9 @@ export function PersonalBoard() {
   }
 
   async function save() {
-    if (!document) return;
+    if (!document || loadedIndex !== boardIndex) return;
+    const index = boardIndex;
+    const key = `${draftKey}:${index}`;
     setBusy(true);
     setError("");
     try {
@@ -166,16 +182,29 @@ export function PersonalBoard() {
         method: "PUT",
         body: { revision: document.revision, objects, board_index: boardIndex },
       });
-      if (!mounted.current) return;
+      clearSavedBoard(key, objects);
+      if (!mounted.current || activeBoard.current !== index) return;
       setDocument(result);
       setObjects(result.objects);
       setDirty(false);
     } catch (e: unknown) {
-      if (!mounted.current) return;
+      if (!mounted.current || activeBoard.current !== index) return;
       setError(errorMessage(e));
     } finally {
-      if (mounted.current) setBusy(false);
+      if (mounted.current && activeBoard.current === index) setBusy(false);
     }
+  }
+
+  function switchBoard(index: number) {
+    if (busy) {
+      setError("Wait for this board to finish saving before switching boards.");
+      return;
+    }
+    if (dirty && document && loadedIndex === boardIndex) {
+      rememberBoard({ key: `${draftKey}:${boardIndex}`, document, objects });
+    }
+    activeBoard.current = index;
+    setBoardIndex(index);
   }
 
   async function renameTab(idx: number, currentTitle: string) {
@@ -210,7 +239,7 @@ export function PersonalBoard() {
         body: { title: newTitle },
       });
       setBoardTabs((prev) => [...prev, { board_index: nextIdx, title: newTitle }]);
-      setBoardIndex(nextIdx);
+      switchBoard(nextIdx);
     } catch (e: unknown) {
       setError(errorMessage(e));
     }
@@ -392,7 +421,7 @@ export function PersonalBoard() {
       (e.target as Element).setPointerCapture(e.pointerId);
       if (["line", "arrow", "rect", "circle"].includes(drawMode)) {
         shapeDrawing.current = {
-          id: newId("s"),
+          id: crypto.randomUUID(),
           start: [x, y],
           points: [
             [x, y],
@@ -400,7 +429,7 @@ export function PersonalBoard() {
           ],
         };
       } else {
-        drawing.current = { id: newId("s"), points: [[x, y]], last: 0 };
+        drawing.current = { id: crypto.randomUUID(), points: [[x, y]], last: 0 };
       }
       return;
     }
@@ -537,7 +566,7 @@ export function PersonalBoard() {
       changeObjects([
         ...objects,
         {
-          id: newId("k"),
+          id: crypto.randomUUID(),
           kind: "sticky",
           x: Math.min(820, Math.max(0, x)),
           y: Math.min(480, Math.max(0, y)),
@@ -562,7 +591,7 @@ export function PersonalBoard() {
       changeObjects([
         ...objects,
         {
-          id: newId("t"),
+          id: crypto.randomUUID(),
           kind: "text",
           x: Math.min(900, Math.max(0, x)),
           y: Math.min(560, Math.max(0, y)),
@@ -576,40 +605,8 @@ export function PersonalBoard() {
     }
   }
 
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await api<{ id: string; url: string; preview_url?: string }>("/files/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const [cx, cy] = [400, 250];
-      changeObjects([
-        ...objects,
-        {
-          id: newId("i"),
-          kind: "image",
-          x: cx,
-          y: cy,
-          w: 200,
-          h: 150,
-          asset_id: res.id,
-          preview_url: res.preview_url ?? res.url,
-          color: "#9aa5b1",
-          author: userName,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-    } catch (err: unknown) {
-      setError(errorMessage(err));
-    }
-    e.target.value = "";
-  }
-
-  if (loading) return <Skeleton label="Loading your private whiteboard…" lines={5} />;
+  if (loading || (loadedIndex !== boardIndex && !error))
+    return <Skeleton label="Loading your private whiteboard…" lines={5} />;
   if (error && !document) return <ErrorState title="Failed to load your whiteboard" message={error} />;
 
   return (
@@ -626,48 +623,23 @@ export function PersonalBoard() {
       )}
 
       <section className="whiteboard" aria-label="Personal whiteboard canvas">
-        <div className="whiteboard-tabs" role="tablist" aria-label="Personal whiteboard tabs">
-          {boardTabs.map((tab) => (
-            <button
-              key={tab.board_index}
-              type="button"
-              role="tab"
-              aria-selected={boardIndex === tab.board_index}
-              className={`whiteboard-tab ${boardIndex === tab.board_index ? "whiteboard-tab--active" : ""}`}
-              onClick={() => setBoardIndex(tab.board_index)}
-            >
-              <span>{tab.title}</span>
-              <span
-                role="button"
-                tabIndex={0}
-                className="whiteboard-tab__rename"
-                title="Rename board"
-                aria-label={`Rename ${tab.title}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void renameTab(tab.board_index, tab.title);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.stopPropagation();
-                    void renameTab(tab.board_index, tab.title);
-                  }
-                }}
-              >
-                ✏️
-              </span>
-            </button>
-          ))}
-          {boardTabs.length < 5 && (
-            <button
-              type="button"
-              className="whiteboard-tab__add"
-              onClick={() => void addTab()}
-              title="Add a new whiteboard tab"
-            >
-              ＋ Add Board
-            </button>
-          )}
+        <BoardTabs
+          tabs={boardTabs}
+          selected={boardIndex}
+          label="Personal whiteboard tabs"
+          canWrite={!busy}
+          maximum={maxWhiteboards}
+          onSelect={switchBoard}
+          onRename={(index, title) => void renameTab(index, title)}
+          onAdd={() => void addTab()}
+        />
+        <div className="personal-board__actions">
+          <Button size="sm" disabled={busy} onClick={() => setCreatingStickyAt([40, 40])}>
+            Add sticky note
+          </Button>
+          <Button size="sm" disabled={busy} onClick={() => setCreatingTextAt([40, 180])}>
+            Add text label
+          </Button>
         </div>
         <WhiteboardToolbar
           tool={tool}
@@ -686,7 +658,6 @@ export function PersonalBoard() {
           canUndo={objects.length > 0}
           onUndo={undo}
           onFit={fit}
-          onUploadImage={() => fileRef.current?.click()}
           saveState={busy ? "Saving…" : dirty ? "Unsaved changes" : "Saved"}
           saveStateOk={!dirty}
         >
@@ -701,15 +672,6 @@ export function PersonalBoard() {
           </Button>
         </WhiteboardToolbar>
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/png,image/jpeg"
-          hidden
-          aria-label="Image to place on whiteboard"
-          onChange={handleImageUpload}
-        />
-
         <canvas
           ref={canvasRef}
           className={"canvas" + (tool === "pan" ? " tool-pan" : "")}
@@ -723,6 +685,68 @@ export function PersonalBoard() {
           aria-label="Whiteboard drawing surface"
         />
 
+        <details>
+          <summary>Board items ({objects.length})</summary>
+          <ul>
+            {objects.map((object, index) => (
+              <li key={object.id}>
+                {object.kind === "sticky" || object.kind === "text" ? (
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => {
+                      if (object.kind === "sticky")
+                        setEditingSticky({
+                          id: object.id,
+                          config: {
+                            text: object.text ?? "",
+                            color: object.color,
+                            shape: object.shape ?? "rectangle",
+                            size: object.size ?? "medium",
+                          },
+                        });
+                      else setEditingText({ id: object.id, text: object.text ?? "", color: object.color });
+                    }}
+                  >
+                    {object.text || `Item ${index + 1}`}
+                  </Button>
+                ) : (
+                  <span>Drawing {index + 1}</span>
+                )}
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  aria-label={`Move item ${index + 1} right`}
+                  onClick={() =>
+                    changeObjects(
+                      objects.map((item) => {
+                        if (item.id !== object.id) return item;
+                        if (item.kind === "stroke")
+                          return {
+                            ...item,
+                            points: item.points?.map(
+                              ([x, y]) => [Math.min(1000, x + 10), y] as [number, number],
+                            ),
+                          };
+                        return { ...item, x: Math.min(1000, (item.x ?? 0) + 10) };
+                      }),
+                    )
+                  }
+                >
+                  Move right
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  aria-label={`Erase item ${index + 1}`}
+                  onClick={() => changeObjects(objects.filter((item) => item.id !== object.id))}
+                >
+                  Erase
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </details>
         <WhiteboardHoverTooltip data={hoverTooltip} />
       </section>
 

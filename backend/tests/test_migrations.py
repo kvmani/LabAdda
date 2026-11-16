@@ -71,3 +71,21 @@ def test_single_root_and_flat_spaces(db_factory, ids):
                 {"p": ids["workspaces"]["root"]},
             )
         db.rollback()
+
+
+def test_calendar_safety_downgrade_refuses_retained_events(as_user, migrated):
+    client = as_user("asha")
+    created = client.post(
+        "/calendar/events",
+        json={
+            "scope_kind": "personal",
+            "title": "Retained calendar fixture",
+            "starts_at": "2026-11-16T09:00:00Z",
+            "ends_at": "2026-11-16T10:00:00Z",
+        },
+    )
+    assert created.status_code == 200
+    with pytest.raises(RuntimeError, match="revision and cancellation"):
+        command.downgrade(alembic_config(migrated), "0042")
+    command.upgrade(alembic_config(migrated), "head")
+    assert client.get(f"/calendar/events/{created.json()['id']}").json()["revision"] == 1

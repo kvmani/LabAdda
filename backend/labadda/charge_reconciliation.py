@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from . import audit
 from .boardstate import state_at
 from .charges import BOARD_METHOD, TEXT_METHOD, expected_board_rows
-from .models import Board, ContentCharge, StorageInspection
+from .models import Board, ContentCharge, StorageInspection, WorkspaceBoard
 from .security import utcnow
 
 PLAN_VERSION = 1
@@ -101,8 +101,9 @@ def _apply(db: Session, correction: list) -> None:
             )
         )
         return
-    _, item_type, key, user, workspace, state, size, method = correction
+    _, item_type, key, user, workspace, state, size, method, *scope = correction
     values = {
+        "board_index": scope[0] if scope else 0,
         "item_type": item_type,
         "item_key": key,
         "user_id": uuid.UUID(user),
@@ -243,6 +244,14 @@ def reconcile_content_charges(  # noqa: PLR0912, PLR0915 — single ordered pass
             summary["more_boards"] = len(boards) > max_boards
             boards = boards[:max_boards]
             summary["next_after_board"] = str(boards[-1].workspace_id) if summary["more_boards"] else None
+            secondary_query = (
+                select(WorkspaceBoard)
+                .where(WorkspaceBoard.workspace_id.in_([board.workspace_id for board in boards]))
+                .order_by(WorkspaceBoard.workspace_id, WorkspaceBoard.board_index)
+            )
+            if apply:
+                secondary_query = secondary_query.with_for_update()
+            boards = [*boards, *db.scalars(secondary_query).all()]
             for board in boards:
                 budget()
                 objects = state_at(db, board)
@@ -252,7 +261,9 @@ def reconcile_content_charges(  # noqa: PLR0912, PLR0915 — single ordered pass
                 summary["checked_boards"] += 1
                 expected_rows = {
                     key: (user, board.workspace_id, "live", size, BOARD_METHOD)
-                    for key, (user, size) in expected_board_rows(board.workspace_id, objects).items()
+                    for key, (user, size) in expected_board_rows(
+                        board.workspace_id, objects, getattr(board, "board_index", 0)
+                    ).items()
                 }
                 ledger_rows = {
                     r.item_key: (r.user_id, r.workspace_id, r.state, int(r.bytes), r.method)
@@ -260,6 +271,7 @@ def reconcile_content_charges(  # noqa: PLR0912, PLR0915 — single ordered pass
                         select(ContentCharge).where(
                             ContentCharge.item_type == "board_object",
                             ContentCharge.workspace_id == board.workspace_id,
+                            ContentCharge.board_index == getattr(board, "board_index", 0),
                         )
                     )
                 }
@@ -267,9 +279,19 @@ def reconcile_content_charges(  # noqa: PLR0912, PLR0915 — single ordered pass
                     code = _issue_code(expected_rows.get(key), ledger_rows.get(key))
                     if code:
                         issue("board_object", key, code)
-                        corrections.append([code, *_correction("board_object", key, expected_rows.get(key))])
+                        correction = _correction("board_object", key, expected_rows.get(key))
+                        if correction[0] == "upsert":
+                            correction.append(getattr(board, "board_index", 0))
+                        corrections.append([code, *correction])
                 if board.charges_epoch != board.epoch:
-                    completions.append([str(board.workspace_id), board.epoch, board.revision])
+                    completions.append(
+                        [
+                            str(board.workspace_id),
+                            board.epoch,
+                            board.revision,
+                            getattr(board, "board_index", 0),
+                        ]
+                    )
 
             # Board-object charges whose workspace has no board row at all (bounded sample).
             if not after_board:
@@ -309,9 +331,9 @@ def reconcile_content_charges(  # noqa: PLR0912, PLR0915 — single ordered pass
                     raise ReconciliationStopped("plan_changed")
                 for _code, *correction in corrections:
                     _apply(db, correction)
-                by_id = {str(b.workspace_id): b for b in boards}
-                for workspace, epoch, _revision in completions:
-                    by_id[workspace].charges_epoch = epoch
+                by_id = {(str(b.workspace_id), getattr(b, "board_index", 0)): b for b in boards}
+                for workspace, epoch, _revision, board_index in completions:
+                    by_id[workspace, board_index].charges_epoch = epoch
                 summary["applied_count"] = len(corrections) + len(completions)
             summary["state"] = "applied" if apply else "dry_run"
             receipt = db.get(StorageInspection, receipt_id, with_for_update=True)

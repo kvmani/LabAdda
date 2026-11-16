@@ -7,7 +7,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-ALL=(personal-board accessibility admin-console alert-preferences audit capabilities capacity-proposals chat-attachments
+ALL=(personal-board pilot-safety accessibility admin-console alert-preferences audit capabilities capacity-proposals chat-attachments
   chat-threads collaboration-review console-activity console-backups console-broadcast console-health console-overview
   content-charges dashboard feedback flows governance help inspection-view inventory-jobs org-chart people
   people-authority people-changes people-import people-import-excel people-scheduled preview-observations
@@ -54,7 +54,7 @@ jobs_fixture() {
 invoke() { # origin and synthetic flags differ between suites; everything else takes an output folder
   local s=$1 shots="$OUT/$1"
   case $s in
-    personal-board) LABADDA_E2E_SHOTS="$shots" node_suite personal-board ;;
+    personal-board|pilot-safety) LABADDA_E2E_SHOTS="$shots" node_suite "$s" ;;
     flows) node_suite flows ;;
     accessibility|content-charges|governance|upload-receipts|upload-recovery-ui)
       node_suite "$s" "$ORIGIN" "$shots" ;;

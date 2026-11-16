@@ -147,7 +147,12 @@ export function ChatComposer(props: ComposerProps) {
           {files.map((file) => (
             <span key={file.id} className="chat-composer__file-tag">
               📄 {file.display_name}
-              <Button variant="quiet" size="sm" onClick={() => removeFile(file)}>
+              <Button
+                variant="quiet"
+                size="sm"
+                aria-label={`Remove file ${file.display_name}`}
+                onClick={() => removeFile(file)}
+              >
                 ✕
               </Button>
             </span>
@@ -177,8 +182,8 @@ export function ChatComposer(props: ComposerProps) {
         <button
           type="button"
           className="chat-composer__btn"
-          title="Attach file"
-          aria-label="Attach file"
+          title="Attach files"
+          aria-label="Attach files"
           onClick={() => fileInputRef.current?.click()}
           disabled={busy || unknown}
         >
@@ -220,32 +225,19 @@ export function ChatComposer(props: ComposerProps) {
             maxLength={4000}
             disabled={busy || unknown}
             onChange={(e) => send.setText(e.target.value)}
-            aria-label="Type a message"
+            aria-label={parentId ? "Thread reply" : `Message ${ws.name}`}
           />
         </div>
 
-        {/* Send / Mic button */}
-        {hasContent ? (
-          <button
-            type="submit"
-            className="chat-composer__send-btn"
-            title="Send"
-            aria-label="Send message"
-            disabled={uploads.attempts.length > 0 || busy}
-          >
-            {busy ? "…" : "➤"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="chat-composer__btn"
-            title="Voice note"
-            aria-label="Voice note"
-            onClick={() => send.setText((t) => t + "🎙️ [Voice note] ")}
-          >
-            🎙️
-          </button>
-        )}
+        <button
+          type="submit"
+          className="chat-composer__send-btn"
+          title={unknown ? "Retry same message" : parentId ? "Send reply" : "Send"}
+          aria-label={unknown ? "Retry same message" : parentId ? "Send reply" : "Send"}
+          disabled={!hasContent || uploads.attempts.length > 0 || busy}
+        >
+          {busy ? "…" : unknown ? "Retry same message" : "➤"}
+        </button>
       </div>
 
       <UploadRecovery queue={uploads.queue} />

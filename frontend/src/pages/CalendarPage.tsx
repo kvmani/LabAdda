@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { api } from "../api";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { api, errorMessage } from "../api";
 import { CalendarEvent, CalendarSource, CalendarViewMode, EventFormData } from "../features/calendar/types";
 import { CalendarSidebar } from "../features/calendar/CalendarSidebar";
 import { MonthView } from "../features/calendar/MonthView";
@@ -16,6 +16,8 @@ export const CalendarPage: React.FC = () => {
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const generation = useRef(0);
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -29,7 +31,7 @@ export const CalendarPage: React.FC = () => {
         setSources(data);
         setSelectedSources(new Set(data.map((s) => s.id)));
       })
-      .catch((err) => console.error("Failed to load calendar sources:", err));
+      .catch((err: unknown) => setLoadError(errorMessage(err)));
   }, []);
 
   // 2. Compute date range for current view
@@ -70,8 +72,10 @@ export const CalendarPage: React.FC = () => {
 
   // 3. Load events
   const loadEvents = useCallback(() => {
+    const token = ++generation.current;
     if (selectedSources.size === 0) {
       setEvents([]);
+      setLoading(false);
       return;
     }
     const { start, end } = computeRange();
@@ -82,14 +86,27 @@ export const CalendarPage: React.FC = () => {
     }
 
     setLoading(true);
+    setLoadError("");
     api<CalendarEvent[]>(url)
-      .then((data) => setEvents(data))
-      .catch((err) => console.error("Failed to load calendar events:", err))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (token === generation.current) setEvents(data);
+      })
+      .catch((err: unknown) => {
+        if (token === generation.current) {
+          setEvents([]);
+          setLoadError(errorMessage(err));
+        }
+      })
+      .finally(() => {
+        if (token === generation.current) setLoading(false);
+      });
   }, [computeRange, selectedSources, search]);
 
   useEffect(() => {
     loadEvents();
+    return () => {
+      generation.current += 1;
+    };
   }, [loadEvents]);
 
   // Navigation handlers
@@ -163,6 +180,7 @@ export const CalendarPage: React.FC = () => {
       await api(`/calendar/events/${formData.id}`, {
         method: "PATCH",
         body: {
+          revision: formData.revision,
           title: formData.title,
           description: formData.description,
           location: formData.location,
@@ -193,12 +211,13 @@ export const CalendarPage: React.FC = () => {
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    await api(`/calendar/events/${eventId}`, { method: "DELETE" });
+    await api(`/calendar/events/${eventId}?revision=${editingEvent?.revision}`, { method: "DELETE" });
     loadEvents();
   };
 
   return (
     <div className="cal-container">
+      {loadError && <p role="alert">{loadError}</p>}
       {/* Top Header Bar */}
       <header className="cal-topbar">
         <div className="cal-topbar-left">

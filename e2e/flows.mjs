@@ -72,7 +72,7 @@ async function run(base) {
     );
     const buildLine = await bharat.page.getByTestId("build-line").textContent();
     check(
-      /^Version 0\.0\.1 beta · commit ([0-9a-f]{7}|unknown)( · \d{4}-\d{2}-\d{2})?$/.test(buildLine ?? ""),
+      /^Version 0\.0\.2 beta · commit ([0-9a-f]{7}|unknown)( · \d{4}-\d{2}-\d{2})?$/.test(buildLine ?? ""),
       `${tag}: shell footer names version, commit and date`,
     );
     check(
@@ -164,7 +164,7 @@ async function run(base) {
     await chitra.page.getByRole("button", { name: "Send" }).click();
     try {
       await bharat.page
-        .locator(".messages")
+        .getByRole("list", { name: "Chat messages" })
         .getByText("Spectra uploaded to the share")
         .waitFor({ timeout: 5000 });
     } catch (e) {

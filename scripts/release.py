@@ -188,6 +188,8 @@ def build(
                 "scripts/install_helpers.py",
                 "scripts/kit.py",
                 "docs/ROLLOUT-INTRANET.md",
+                "docs/OFFICE-PILOT-2026-11-16.md",
+                "docs/PILOT-REVIEW-2026-11-15.md",
                 "docs/COMMISSIONING.md",
                 "docs/OPERATOR-QUICKSTART.md",
                 "docs/PILOT-RUNBOOK.md",

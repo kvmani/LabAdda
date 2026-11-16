@@ -149,3 +149,13 @@ def as_user(make_client):
         return cache[username]
 
     return _get
+
+
+@pytest.fixture
+def legacy_unit_codes(ids, db_factory):
+    """Isolate older downgrade guards from newer fixture-only chosen unit codes."""
+    from sqlalchemy import text
+
+    with db_factory() as db:
+        db.execute(text("update workspaces set code = null"))
+        db.commit()

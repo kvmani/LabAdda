@@ -21,6 +21,9 @@ async def relay_preview(hub: Hub, conn: Connection, workspace_id: uuid.UUID, mes
         or len(json.dumps(message.get("stroke", {}))) > MAX_PREVIEW_BYTES
     ):
         return
+    board_index = message.get("board_index", 0)
+    if type(board_index) is not int or not 0 <= board_index <= 50:
+        return
     generation = conn.subscription_generations.get(workspace_id, 0)
     ok, readable, writable = await asyncio.to_thread(hub._check, conn, {workspace_id})
     if (
@@ -41,6 +44,7 @@ async def relay_preview(hub: Hub, conn: Connection, workspace_id: uuid.UUID, mes
     conn.writable.add(workspace_id)
     event = {
         "type": "board.preview",
+        "board_index": board_index,
         "workspace_id": str(workspace_id),
         "actor_id": str(conn.user_id),
         "stroke": message.get("stroke"),

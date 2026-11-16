@@ -10,11 +10,13 @@ type Destination = { id: string; name: string; same_workspace: boolean };
 
 export function PublishSnapshot({
   ws,
+  boardIndex,
   region,
   revision,
   onClose,
 }: {
   ws: Workspace;
+  boardIndex: number;
   region: Region;
   revision: number;
   onClose: (done: boolean) => void;
@@ -33,7 +35,7 @@ export function PublishSnapshot({
     w: Math.max(1, Math.round(region.w)),
     h: Math.max(1, Math.round(region.h)),
   };
-  const preview = `${API}/workspaces/${ws.id}/board/render?revision=${revision}&x=${r.x}&y=${r.y}&w=${r.w}&h=${r.h}`;
+  const preview = `${API}/workspaces/${ws.id}/board/render?board_index=${boardIndex}&revision=${revision}&x=${r.x}&y=${r.y}&w=${r.w}&h=${r.h}`;
   const target = dests.find((d) => d.id === dest);
   const broader = dest !== ws.id;
 
@@ -50,6 +52,7 @@ export function PublishSnapshot({
       await api(`/workspaces/${ws.id}/board/snapshots`, {
         body: {
           revision,
+          board_index: boardIndex,
           region: r,
           destination_id: dest,
           summary,

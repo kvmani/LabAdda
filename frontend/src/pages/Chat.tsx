@@ -323,7 +323,7 @@ export function Chat({ ws }: { ws: Workspace }) {
                 )}
                 {earlier && (
                   <Button variant="quiet" size="sm" onClick={latest}>
-                    Return to latest
+                    Return to latest messages
                   </Button>
                 )}
               </div>
@@ -336,7 +336,7 @@ export function Chat({ ws }: { ws: Workspace }) {
             )}
 
             {/* Messages list with WhatsApp doodle wallpaper */}
-            <ol className="chat__list" ref={listRef} aria-live="polite">
+            <ol className="chat__list" ref={listRef} aria-live="polite" aria-label="Chat messages">
               {filteredMessages.map((message, idx) => {
                 const prev = filteredMessages[idx - 1];
                 const currentDateBadge = fmtDateBadgeIST(message.created_at);
@@ -376,6 +376,8 @@ export function Chat({ ws }: { ws: Workspace }) {
                             {message.author.display_name}
                           </button>
                         )}
+
+                        {message.parent_id && <span className="chat__meta">Thread reply</span>}
 
                         {/* Quoted reply box inside message */}
                         {quote && (

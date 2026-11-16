@@ -44,8 +44,8 @@ export function Notifications({ onClose, onChange }: { onClose: () => void; onCh
       const opened = await api<OpenedNotification>(`/notifications/${item.id}/open`, { method: "POST" });
       const link = opened.link;
       onClose();
-      if (link.view === "notes") navigate("/notes");
-      else navigate(`/w/${link.workspace_id}/${link.view}`);
+      if (link.view === "notes") void navigate("/notes");
+      else void navigate(`/w/${link.workspace_id}/${link.view}`);
     } catch (e: unknown) {
       setError(errorCode(e) === "not_found" ? "That item is no longer available to you." : errorMessage(e));
       void load();

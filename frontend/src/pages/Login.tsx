@@ -25,7 +25,7 @@ export function Login({ next, embedded = false }: { next: string; embedded?: boo
     setError(null);
     try {
       await signIn(username, password);
-      navigate(next && next !== "/login" ? next : "/", { replace: true });
+      void navigate(next && next !== "/login" ? next : "/", { replace: true });
     } catch (err: unknown) {
       setError(errorMessage(err));
     } finally {
@@ -97,7 +97,7 @@ export function Activate() {
     if (password !== confirm) return setError("Passwords do not match.");
     try {
       await activate(token.trim(), password);
-      navigate("/", { replace: true });
+      void navigate("/", { replace: true });
     } catch (err: unknown) {
       setError(errorMessage(err));
     }

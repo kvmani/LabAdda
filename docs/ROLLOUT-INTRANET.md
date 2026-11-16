@@ -9,8 +9,8 @@ The office server can reach the office's **local mirrors** for Ubuntu packages (
 but not the internet. So the standard path is a **small bundle** (about 40 MB: the application with its
 ready-built web pages, the install scripts, this guide and a manifest). The server installs PostgreSQL, nginx and
 the other operating-system packages with apt from the mirror, and the Python packages from the Python mirror, each
-at the exact version LabAdda was tested with. The server needs no Node or npm. If a server has no mirror at all, use
-the [offline kit](#appendix-a-offline-kit-no-mirror). Background rules: [deployment](DEPLOYMENT.md),
+at the exact version LabAdda was tested with. The server needs no Node or npm. For bundled Python wheels, use
+the [offline kit](#appendix-a-local-python-wheels-os-prerequisites-preinstalled). Background rules: [deployment](DEPLOYMENT.md),
 [recovery](RECOVERY.md), [pilot runbook](PILOT-RUNBOOK.md).
 
 ## 1. Before the day
@@ -182,11 +182,15 @@ closed). With a certificate from your own authority give `--ca-file` to `install
 server), otherwise the doctor reports "certificate is not trusted" and scheduled backups cannot confirm the secure
 address.
 
-## Appendix A: offline kit (no mirror)
+## Appendix A: local Python wheels (OS prerequisites preinstalled)
 
-Only for a server that cannot reach any mirror. On the build machine run
-`scripts/make-offline-kit.sh ~/kits` (needs `dpkg-dev`); it makes `labadda-<version>-offline-kit`, about 140 MB, which
-also holds the Python packages and the `.deb` files for PostgreSQL 16, nginx and python3.12-venv with their
-dependencies as a small local package repository. Carry it in as in section 3 and run
-`sudo bash install.sh --offline-kit` (and `sudo bash upgrade.sh --offline-kit` later). Everything else in this guide is
-the same. The kit is checked file by file (`SHA256SUMS`) before anything is installed.
+Build with `scripts/make-offline-kit.sh ~/kits` on the matching Ubuntu 24.04 build host.
+The kit carries the exact Python wheels, frontend, licences and package inventory. Before installation,
+preinstall PostgreSQL 16, nginx, Python 3.12 venv, OpenSSL and CA certificates from the office's
+**signed internal apt mirror**, or another approved signed OS package source. The installer refuses
+missing OS packages in offline mode rather than trusting an unsigned local repository.
+
+Carry the verified kit to the server and run `sudo bash install.sh --offline-kit --skip-os-packages`
+(and `sudo bash upgrade.sh --offline-kit` later). Python installation uses only bundled wheels;
+no public internet or npm is needed. See the [office pilot procedure](OFFICE-PILOT-2026-11-16.md)
+for co-host preflight, example settings, mail and recovery gates.

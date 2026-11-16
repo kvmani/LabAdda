@@ -56,7 +56,7 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 | Board | `GET /workspaces/{id}/boards` | List whiteboard tabs for workspace `{boards:[{board_index, title}]}`. |
 | | `PATCH /workspaces/{id}/boards/{index}` `{title}` | Rename a whiteboard tab or create a tab up to the configured limit. |
 | | `GET /workspaces/{id}/board?board_index=&epoch=&after=` | Replay since a revision (`reset: false`), or full state (`reset: true`): the compacted `snapshot` `{revision, objects}`, if any, plus later ops. Replay below `base_revision` falls back to full state. |
-| | `POST /workspaces/{id}/board/ops` `{op_id, epoch, type, object_id?, payload, base_revision?, board_index?}` | `add` (stroke/text/sticky), `erase`, `move`, `undo` (own latest). `stale_epoch`, `stale_object`, `object_gone`. |
+| | `POST /workspaces/{id}/board/ops` `{op_id, epoch, type, object_id?, payload, base_revision?, board_index?}` | `add` (stroke/text/sticky), `update` (sticky/text, required expected `base_revision`), `erase`, `move`, `undo` (own latest). `stale_epoch`, `stale_object`, `object_gone`. |
 | | `POST /workspaces/{id}/board/restore` `{revision, reason?}` | Steward. Starts a new epoch. `revision_compacted` if older than retained history and not a snapshot revision. |
 | | `add` with `payload.kind = "image"` `{x, y, w, h, asset_id}` | `asset_id` is the actor's provisional PNG/JPEG upload. It becomes owned by this board and readable by board readers only. |
 | | `GET /workspaces/{id}/board/render?revision=&x=&y=&w=&h=` | PNG of a region at a committed revision (publish preview). |
@@ -74,7 +74,7 @@ All endpoints are same-origin JSON under `<base>/api/v1/`. The socket is `<base>
 
 ## Socket messages
 
-Client to server: `subscribe` / `unsubscribe` `{workspace_id}`, `board.preview` `{workspace_id, preview_id, stroke, done?}` (transient, bounded, writers only), and `ping`.
+Client to server: `subscribe` / `unsubscribe` `{workspace_id}`, `board.preview` `{workspace_id, board_index?, preview_id, stroke, done?}` (transient, bounded, writers only), and `ping`.
 
 Server to client: `hello`, `subscribed`, `subscribe_failed` (unknown and forbidden look the same), `presence`, `chat.message`, `noticeboard.changed`, `board.op`, `board.epoch`, `board.preview`, `revoked` (subscription dropped after an access change), `access_changed`, and `session_ended` (socket then closes with code 4401). Every delivery, including transient previews and presence, rechecks the recipient's current session and access. Previews also recheck the sender's current session and write permission; stale subscription decisions are discarded. Logout, activation/reset and password changes trigger socket revalidation after commit. After `subscribed`, clients catch up missed committed state through the API.
 
@@ -1216,3 +1216,39 @@ Errors: `empty_message`, `message_too_long`, `invalid_message`, `invalid_categor
 members get 403; signed-out and board-only get 401. No socket messages.
 E-mail status per message: `queued` (retried after 1, 5, 15, 60, 240 minutes), `sent`, `failed`
 with a plain reason. System health gains the item `feedback_mail`.
+
+
+## Pilot board and calendar safety (0.0.2-beta)
+
+Board operations, restore, render, snapshot publication, epoch events and previews carry the selected
+`board_index` (default 0). Clients ignore previews/epoch events from another board. Atomic `update`
+accepts an existing live sticky/text `object_id`, its required exact `base_revision`, and validated
+`payload.data`. It preserves the original author and position offsets. A rejected edit leaves the
+old object intact. Undo carries `previous_data` and refuses to undo an update after another edit.
+Snapshot retries bind the complete source board, region, revision, destination, summary and audience
+confirmation to the client ID; any changed intent returns 409 `client_id_reused`. Legacy snapshot
+receipts without a digest cannot prove a retry's intent and require review of the already published
+copy. Restore/recharge replaces only the chosen board's derived charges. Migration 0044 clears only
+that derived ledger and marks it incomplete until source-state reconciliation or a board write.
+Personal boards retain separate session-only drafts per board and use UUID object IDs. New image
+upload is unavailable on personal boards; team-board image upload remains available.
+
+Calendar routes require a current normal session; header/query panel mode is rejected (401).
+Identity and workspace/membership locks fence both mutations and protected-content delivery.
+
+| Route | Request and result |
+| --- | --- |
+| `GET /calendar/sources` | Personal, site and currently readable workspaces, with write capability. |
+| `GET /calendar/events` | Required aware `start`, `end`, range <=366 days; optional `sources` <=10000 chars and literal `search` <=200 chars. At most 1000 results; overflow returns 422 `calendar_range_too_busy` rather than truncating silently. |
+| `POST /calendar/events` | Scope `personal`, `site` or `workspace`; only workspace scope accepts/requires `workspace_id`. Title 1–140 nonblank chars, description <=10000, location <=140, aware start/end, optional all-day/color. Returns event with `revision:1`. |
+| `GET /calendar/events/{id}` | Current-readable, non-cancelled event plus `revision`, `can_edit`, `can_delete`. |
+| `PATCH /calendar/events/{id}` | Required positive integer `revision` and bounded editable fields. Stale revision: 409 `stale_revision`; successful edit increments revision. |
+| `DELETE /calendar/events/{id}?revision=N` | Revisioned cancellation; retains the database row and increments revision. Subsequent normal reads omit it/return 404. |
+
+Personal events are owner-only, including against administrators. Workspace events follow upward-only
+read grants and current posting policy; archived/read-only workspaces cannot be edited by stewards.
+Creators with write access or permitted moderators manage workspace events. Site events are visible
+to all normal sessions and managed by site admins/root stewards. Out-of-scope events return uniform
+404; visible but disallowed changes return 403. Dates require a time zone; invalid bounds/schema are
+422. The browser displays its local time zone. Cancelled records and snapshot receipts survive backup
+and restore; migrations refuse downgrades that would discard retained safety history.

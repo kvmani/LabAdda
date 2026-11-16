@@ -156,7 +156,7 @@ def restore_head(migrated):
     command.upgrade(alembic_config(migrated), "head")
 
 
-def test_downgrade_refuses_while_metrics_exist(db_factory, ids, restore_head):
+def test_downgrade_refuses_while_metrics_exist(db_factory, ids, restore_head, legacy_unit_codes):
     with db_factory() as db:
         upsert(db, "minute", [Sample(NOON.replace(second=0), "auth.signin_ok", "", 1, 1)])
         db.commit()

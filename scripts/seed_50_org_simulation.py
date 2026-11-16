@@ -8,14 +8,11 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import uuid
 from datetime import timedelta
 from pathlib import Path
 
-# Add backend directory to sys.path
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "backend"))
+from sqlalchemy.engine import make_url
 
 from labadda import __version__, audit, people
 from labadda.db import session_factory
@@ -36,6 +33,8 @@ from labadda.models import (
     Workspace,
 )
 from labadda.security import hash_password, utcnow
+
+ROOT = Path(__file__).resolve().parents[1]
 
 DATABASE_URL = os.environ.get(
     "LABADDA_DATABASE_URL",
@@ -383,779 +382,842 @@ ORG_TREE = [
 ]
 
 
-def seed_simulation():
-    print(f"Connecting to database: {DATABASE_URL}")
-    factory = session_factory(DATABASE_URL)
-
-    with factory() as db:
-        print("Resetting database...")
-        reset_database(db)
-
-        # 1. Create Workspaces
-        print("Creating organizational units, projects, and groups...")
-        ws: dict[str, Workspace] = {}
-        for key, name, parent_key, code, level in ORG_TREE:
-            w = Workspace(
-                kind="org",
-                name=name,
-                code=code,
-                level=level,
-                parent_id=ws[parent_key].id if parent_key else None,
-                description=f"{name} ({code}) - National Fundamental and Advanced Science Centre, Mumbai",
-            )
-            db.add(w)
-            db.flush()
-            ws[key] = w
-
-        # Projects
-        ws["proj_tejas"] = Workspace(
-            kind="project",
-            name="Project Tejas",
-            code="TEJ",
-            description="High-Temperature Thermal Barrier Coatings for Aerospace Applications",
+def seed_workspaces(db):
+    # 1. Create Workspaces
+    print("Creating organizational units, projects, and groups...")
+    ws: dict[str, Workspace] = {}
+    for key, name, parent_key, code, level in ORG_TREE:
+        w = Workspace(
+            kind="org",
+            name=name,
+            code=code,
+            level=level,
+            parent_id=ws[parent_key].id if parent_key else None,
+            description=f"{name} ({code}) - National Fundamental and Advanced Science Centre, Mumbai",
         )
-        ws["proj_akash"] = Workspace(
-            kind="project",
-            name="Project Akash",
-            code="AKA",
-            description="Corrosion Resistant Multi-layer Sensors for Marine Defense Platforms",
-        )
-        ws["proj_surya"] = Workspace(
-            kind="project",
-            name="Project Surya",
-            code="SUR",
-            description="Perovskite & Tandem Photovoltaic Thin Film Development",
-        )
-
-        # Collaborative Groups
-        ws["grp_microscopy"] = Workspace(
-            kind="group",
-            name="Microscopy Journal Club",
-            description="Bi-weekly literature review on in-situ TEM, SEM and SPM surface analysis",
-        )
-        ws["grp_spectroscopy"] = Workspace(
-            kind="group",
-            name="Spectroscopy Discussion Group",
-            description="Cross-divisional forum for XPS, Raman and FTIR peak deconvolution",
-        )
-
-        for p in (
-            "proj_tejas",
-            "proj_akash",
-            "proj_surya",
-            "grp_microscopy",
-            "grp_spectroscopy",
-        ):
-            db.add(ws[p])
+        db.add(w)
         db.flush()
+        ws[key] = w
 
-        # 2. Create Users
-        print(f"Creating {len(USERS_DATA)} users with fixture credentials...")
-        pw_hash = hash_password(FIXTURE_PASSWORD)
-        users: dict[str, User] = {}
+    # Projects
+    ws["proj_tejas"] = Workspace(
+        kind="project",
+        name="Project Tejas",
+        code="TEJ",
+        description="High-Temperature Thermal Barrier Coatings for Aerospace Applications",
+    )
+    ws["proj_akash"] = Workspace(
+        kind="project",
+        name="Project Akash",
+        code="AKA",
+        description="Corrosion Resistant Multi-layer Sensors for Marine Defense Platforms",
+    )
+    ws["proj_surya"] = Workspace(
+        kind="project",
+        name="Project Surya",
+        code="SUR",
+        description="Perovskite & Tandem Photovoltaic Thin Film Development",
+    )
 
-        for username, display_name, title, is_admin, home_key, _ in USERS_DATA:
-            u = User(
-                username=username,
-                display_name=display_name,
-                is_admin=is_admin,
-                password_hash=pw_hash,
-                must_set_password=False,
-                welcome_dismissed_at=utcnow(),
-                whats_new_seen_release=__version__,
-            )
-            # Farhan is inactive (departed research fellow)
-            status = "left" if username == "farhan" else "active"
-            people.set_status(u, status)
-            db.add(u)
-            users[username] = u
+    # Collaborative Groups
+    ws["grp_microscopy"] = Workspace(
+        kind="group",
+        name="Microscopy Journal Club",
+        description="Bi-weekly literature review on in-situ TEM, SEM and SPM surface analysis",
+    )
+    ws["grp_spectroscopy"] = Workspace(
+        kind="group",
+        name="Spectroscopy Discussion Group",
+        description="Cross-divisional forum for XPS, Raman and FTIR peak deconvolution",
+    )
 
-        db.flush()
+    for p in (
+        "proj_tejas",
+        "proj_akash",
+        "proj_surya",
+        "grp_microscopy",
+        "grp_spectroscopy",
+    ):
+        db.add(ws[p])
+    db.flush()
 
-        # Set home workspaces
-        for username, _, _, _, home_key, _ in USERS_DATA:
-            users[username].home_workspace_id = ws[home_key].id
+    return ws
 
-        # 3. Create Memberships
-        print("Assigning memberships across units, projects, and groups...")
-        # Add everyone to root and their home section/division
-        for username, _, _, _, home_key, is_steward in USERS_DATA:
-            role = "steward" if is_steward else "member"
+
+def seed_users(db, ws):
+    # 2. Create Users
+    print(f"Creating {len(USERS_DATA)} users with fixture credentials...")
+    pw_hash = hash_password(FIXTURE_PASSWORD)
+    users: dict[str, User] = {}
+
+    for username, display_name, _title, is_admin, _home_key, _ in USERS_DATA:
+        u = User(
+            username=username,
+            display_name=display_name,
+            is_admin=is_admin,
+            password_hash=pw_hash,
+            must_set_password=False,
+            welcome_dismissed_at=utcnow(),
+            whats_new_seen_release=__version__,
+        )
+        # Farhan is inactive (departed research fellow)
+        status = "left" if username == "farhan" else "active"
+        people.set_status(u, status)
+        db.add(u)
+        users[username] = u
+
+    db.flush()
+
+    # Set home workspaces
+    for username, _, _, _, home_key, _ in USERS_DATA:
+        users[username].home_workspace_id = ws[home_key].id
+
+    return users
+
+
+def seed_memberships(db, ws, users):
+    # 3. Create Memberships
+    print("Assigning memberships across units, projects, and groups...")
+    # Add everyone to root and their home section/division
+    for username, _, _, _, home_key, is_steward in USERS_DATA:
+        role = "steward" if is_steward else "member"
+        db.add(Membership(user_id=users[username].id, workspace_id=ws[home_key].id, role=role))
+        # Also give root membership
+        if home_key != "root":
             db.add(
                 Membership(
-                    user_id=users[username].id, workspace_id=ws[home_key].id, role=role
+                    user_id=users[username].id,
+                    workspace_id=ws["root"].id,
+                    role="member",
                 )
             )
-            # Also give root membership
-            if home_key != "root":
-                db.add(
-                    Membership(
-                        user_id=users[username].id,
-                        workspace_id=ws["root"].id,
-                        role="member",
-                    )
-                )
 
-        # Add section members to their parent division explicitly for write/steward
-        div_members = {
-            "div_sed": [
-                "deepa",
-                "asha",
-                "arvind",
-                "bharat",
-                "chitra",
-                "mira",
-                "esha",
-                "gita",
-                "hari",
-                "ananya",
-                "rajesh",
-                "sneha",
-                "sunita",
-                "pradeep",
-                "neha",
-                "rahul",
-                "pooja",
-                "gautam",
-                "swati",
-                "vidya",
-                "naveen",
-                "harish",
-                "pallavi",
-                "tarun",
-                "smita",
-                "rakesh",
-                "aparna",
-                "jyoti",
-            ],
-            "div_amd": ["devendra", "ramesh", "karthik", "mohan", "nandita"],
-            "div_od": ["kavita", "suresh", "meera", "rekha", "alok", "vinay", "chetan"],
-        }
-        for div_key, u_list in div_members.items():
-            for u in u_list:
-                role = "steward" if u in ("deepa", "devendra", "kavita") else "member"
-                if not db.scalar(
-                    Membership.__table__.select().where(
-                        Membership.user_id == users[u].id,
-                        Membership.workspace_id == ws[div_key].id,
-                    )
-                ):
-                    db.add(
-                        Membership(
-                            user_id=users[u].id, workspace_id=ws[div_key].id, role=role
-                        )
-                    )
-
-        # Project Tejas Members
-        tejas_team = [
-            "bharat",
-            "asha",
+    # Add section members to their parent division explicitly for write/steward
+    div_members = {
+        "div_sed": [
             "deepa",
+            "asha",
+            "arvind",
+            "bharat",
+            "chitra",
             "mira",
             "esha",
             "gita",
             "hari",
+            "ananya",
             "rajesh",
+            "sneha",
+            "sunita",
+            "pradeep",
             "neha",
             "rahul",
-            "tanvi",
+            "pooja",
+            "gautam",
+            "swati",
+            "vidya",
             "naveen",
             "harish",
-            "ramesh",
-            "karthik",
-        ]
-        for u in tejas_team:
-            role = "steward" if u in ("bharat", "deepa") else "member"
-            db.add(
-                Membership(
-                    user_id=users[u].id, workspace_id=ws["proj_tejas"].id, role=role
-                )
-            )
-
-        # Project Akash Members
-        akash_team = [
-            "chitra",
-            "arvind",
-            "sneha",
-            "pradeep",
-            "divya",
             "pallavi",
+            "tarun",
+            "smita",
             "rakesh",
+            "aparna",
             "jyoti",
-            "suresh",
-            "chetan",
-        ]
-        for u in akash_team:
-            role = "steward" if u in ("chitra", "arvind") else "member"
-            db.add(
-                Membership(
-                    user_id=users[u].id, workspace_id=ws["proj_akash"].id, role=role
+        ],
+        "div_amd": ["devendra", "ramesh", "karthik", "mohan", "nandita"],
+        "div_od": ["kavita", "suresh", "meera", "rekha", "alok", "vinay", "chetan"],
+    }
+    for div_key, u_list in div_members.items():
+        for u in u_list:
+            role = "steward" if u in ("deepa", "devendra", "kavita") else "member"
+            if not db.scalar(
+                Membership.__table__.select().where(
+                    Membership.user_id == users[u].id,
+                    Membership.workspace_id == ws[div_key].id,
                 )
-            )
+            ):
+                db.add(Membership(user_id=users[u].id, workspace_id=ws[div_key].id, role=role))
 
-        # Collaborative Club Members
-        for u in (
-            "bharat",
-            "chitra",
-            "asha",
-            "devendra",
-            "swati",
-            "esha",
-            "mohan",
-            "nandita",
-        ):
-            db.add(
-                Membership(
-                    user_id=users[u].id,
-                    workspace_id=ws["grp_microscopy"].id,
-                    role="steward" if u == "bharat" else "member",
-                )
-            )
-        for u in ("mira", "kavita", "meera", "rekha", "ananya", "smita", "vinay"):
-            db.add(
-                Membership(
-                    user_id=users[u].id,
-                    workspace_id=ws["grp_spectroscopy"].id,
-                    role="steward" if u == "mira" else "member",
-                )
-            )
+    # Project Tejas Members
+    tejas_team = [
+        "bharat",
+        "asha",
+        "deepa",
+        "mira",
+        "esha",
+        "gita",
+        "hari",
+        "rajesh",
+        "neha",
+        "rahul",
+        "tanvi",
+        "naveen",
+        "harish",
+        "ramesh",
+        "karthik",
+    ]
+    for u in tejas_team:
+        role = "steward" if u in ("bharat", "deepa") else "member"
+        db.add(Membership(user_id=users[u].id, workspace_id=ws["proj_tejas"].id, role=role))
 
-        db.flush()
+    # Project Akash Members
+    akash_team = [
+        "chitra",
+        "arvind",
+        "sneha",
+        "pradeep",
+        "divya",
+        "pallavi",
+        "rakesh",
+        "jyoti",
+        "suresh",
+        "chetan",
+    ]
+    for u in akash_team:
+        role = "steward" if u in ("chitra", "arvind") else "member"
+        db.add(Membership(user_id=users[u].id, workspace_id=ws["proj_akash"].id, role=role))
 
-        # 4. Unit Administration Grants (SED, TFS, OD)
-        print("Configuring Unit Administration grants...")
-        now = utcnow()
+    # Collaborative Club Members
+    for u in (
+        "bharat",
+        "chitra",
+        "asha",
+        "devendra",
+        "swati",
+        "esha",
+        "mohan",
+        "nandita",
+    ):
         db.add(
-            UnitAdminGrant(
-                user_id=users["deepa"].id,
-                workspace_id=ws["div_sed"].id,
-                granted_by=users["admin"].id,
-                granted_at=now - timedelta(days=60),
+            Membership(
+                user_id=users[u].id,
+                workspace_id=ws["grp_microscopy"].id,
+                role="steward" if u == "bharat" else "member",
             )
         )
+    for u in ("mira", "kavita", "meera", "rekha", "ananya", "smita", "vinay"):
         db.add(
-            UnitAdminGrant(
-                user_id=users["asha"].id,
-                workspace_id=ws["sec_tfs"].id,
-                granted_by=users["admin"].id,
-                granted_at=now - timedelta(days=45),
-            )
-        )
-        db.add(
-            UnitAdminGrant(
-                user_id=users["kavita"].id,
-                workspace_id=ws["div_od"].id,
-                granted_by=users["admin"].id,
-                granted_at=now - timedelta(days=30),
-            )
-        )
-
-        # Unit Positions
-        db.add(
-            UnitPosition(
-                workspace_id=ws["group_mg"].id,
-                position="head",
-                user_id=users["vikram"].id,
-                starts_on=now.date() - timedelta(days=365),
-            )
-        )
-        db.add(
-            UnitPosition(
-                workspace_id=ws["div_sed"].id,
-                position="head",
-                user_id=users["deepa"].id,
-                starts_on=now.date() - timedelta(days=180),
-            )
-        )
-        db.add(
-            UnitPosition(
-                workspace_id=ws["sec_tfs"].id,
-                position="head",
-                user_id=users["asha"].id,
-                starts_on=now.date() - timedelta(days=180),
-            )
-        )
-        db.add(
-            UnitPosition(
-                workspace_id=ws["sec_cs"].id,
-                position="head",
-                user_id=users["arvind"].id,
-                starts_on=now.date() - timedelta(days=180),
-            )
-        )
-        db.add(
-            UnitPosition(
-                workspace_id=ws["div_od"].id,
-                position="head",
-                user_id=users["kavita"].id,
-                starts_on=now.date() - timedelta(days=120),
+            Membership(
+                user_id=users[u].id,
+                workspace_id=ws["grp_spectroscopy"].id,
+                role="steward" if u == "mira" else "member",
             )
         )
 
-        # 5. Site Broadcasts
-        print("Configuring Site-wide Broadcast Banner...")
-        db.add(
-            SiteBroadcast(
-                message="NMRL Pilot Intranet: Operation verified on air-gapped Ubuntu infrastructure. All research teams please adhere to clean data classification protocols.",
-                level="info",
-                active=True,
-                position=1,
-                revision=1,
-                created_at=now - timedelta(days=7),
-                updated_at=now - timedelta(days=7),
-            )
-        )
+    db.flush()
 
-        # 6. Noticeboard Posts & Official Notices
-        print(
-            "Populating Noticeboard posts, announcements, and technical discussions..."
-        )
-        # Surface Engineering Division Noticeboard
-        sed_p1 = Post(
+
+def seed_authority(db, ws, users):
+    # 4. Unit Administration Grants (SED, TFS, OD)
+    print("Configuring Unit Administration grants...")
+    now = utcnow()
+    db.add(
+        UnitAdminGrant(
+            user_id=users["deepa"].id,
             workspace_id=ws["div_sed"].id,
-            author_id=users["deepa"].id,
-            kind="official",
-            pinned=True,
-            body=(
-                "### Official Notice: Annual Laboratory Safety Audit & High-Vacuum Equipment Recertification\n\n"
-                "The Directorate has scheduled the mandatory annual safety audit for all Surface Engineering Division labs from **November 18 to 22**.\n\n"
-                "- **Thin Films Section**: PVD chamber interlocks, turbo-molecular pump backing lines, and Ar/O2 cylinder manifolds.\n"
-                "- **Corrosion Section**: Autoclave overpressure rupture discs and acid fume extraction scrubbing efficiency.\n"
-                "- **Nanocoatings Section**: Chemical handling hoods and hazardous solvent disposal logs.\n\n"
-                "All Section Heads are requested to ensure safety logbooks are signed and equipment calibration tags are up to date."
-            ),
-            created_at=now - timedelta(days=2, hours=4),
+            granted_by=users["admin"].id,
+            granted_at=now - timedelta(days=60),
         )
-        db.add(sed_p1)
-        db.flush()
-
-        # Reply to official notice
-        db.add(
-            Post(
-                workspace_id=ws["div_sed"].id,
-                author_id=users["asha"].id,
-                parent_id=sed_p1.id,
-                kind="discussion",
-                body="Thin Films Section has completed preliminary inspection of all high-vacuum interlocks. PVD-02 calibration certificate was renewed yesterday.",
-                created_at=now - timedelta(days=1, hours=22),
-            )
-        )
-
-        # Research discussion post in SED
-        sed_p2 = Post(
-            workspace_id=ws["div_sed"].id,
-            author_id=users["bharat"].id,
-            kind="discussion",
-            pinned=False,
-            body=(
-                "### Friday Technical Review: Oxygen Vacancy Kinetics in ZrO2-Y2O3 Barrier Coatings\n\n"
-                "We have concluded the 20nm, 40nm, and 60nm reactive sputtering runs for Project Tejas. Preliminary XPS spectra show a 4.8% variation in vacancy density near the substrate interface.\n\n"
-                "Thin Films and Corrosion sections will hold a joint review this Friday at 15:00 in Room 204. Please bring comparative profilometry curves."
-            ),
-            created_at=now - timedelta(hours=18),
-        )
-        db.add(sed_p2)
-        db.flush()
-
-        db.add(
-            Post(
-                workspace_id=ws["div_sed"].id,
-                author_id=users["chitra"].id,
-                parent_id=sed_p2.id,
-                kind="discussion",
-                body="Corrosion Section will present the electrochemical impedance spectroscopy (EIS) data from the 60nm coupons exposed to 3.5% NaCl. There is a noticeable passivation improvement.",
-                created_at=now - timedelta(hours=14),
-            )
-        )
-
-        # Thin Films Section Noticeboard
-        tfs_p1 = Post(
+    )
+    db.add(
+        UnitAdminGrant(
+            user_id=users["asha"].id,
             workspace_id=ws["sec_tfs"].id,
+            granted_by=users["admin"].id,
+            granted_at=now - timedelta(days=45),
+        )
+    )
+    db.add(
+        UnitAdminGrant(
+            user_id=users["kavita"].id,
+            workspace_id=ws["div_od"].id,
+            granted_by=users["admin"].id,
+            granted_at=now - timedelta(days=30),
+        )
+    )
+
+    # Unit Positions
+    db.add(
+        UnitPosition(
+            workspace_id=ws["group_mg"].id,
+            position="head",
+            user_id=users["vikram"].id,
+            starts_on=now.date() - timedelta(days=365),
+        )
+    )
+    db.add(
+        UnitPosition(
+            workspace_id=ws["div_sed"].id,
+            position="head",
+            user_id=users["deepa"].id,
+            starts_on=now.date() - timedelta(days=180),
+        )
+    )
+    db.add(
+        UnitPosition(
+            workspace_id=ws["sec_tfs"].id,
+            position="head",
+            user_id=users["asha"].id,
+            starts_on=now.date() - timedelta(days=180),
+        )
+    )
+    db.add(
+        UnitPosition(
+            workspace_id=ws["sec_cs"].id,
+            position="head",
+            user_id=users["arvind"].id,
+            starts_on=now.date() - timedelta(days=180),
+        )
+    )
+    db.add(
+        UnitPosition(
+            workspace_id=ws["div_od"].id,
+            position="head",
+            user_id=users["kavita"].id,
+            starts_on=now.date() - timedelta(days=120),
+        )
+    )
+
+    return now
+
+
+def seed_broadcasts(db, ws, users, now):
+    # 5. Site Broadcasts
+    print("Configuring Site-wide Broadcast Banner...")
+    db.add(
+        SiteBroadcast(
+            message="NMRL Pilot Intranet: Operation verified on air-gapped Ubuntu infrastructure."
+            " All research teams please adhere to clean data classification protocols.",
+            level="info",
+            active=True,
+            position=1,
+            revision=1,
+            created_at=now - timedelta(days=7),
+            updated_at=now - timedelta(days=7),
+        )
+    )
+
+
+def seed_posts(db, ws, users, now):
+    # 6. Noticeboard Posts & Official Notices
+    print("Populating Noticeboard posts, announcements, and technical discussions...")
+    # Surface Engineering Division Noticeboard
+    sed_p1 = Post(
+        workspace_id=ws["div_sed"].id,
+        author_id=users["deepa"].id,
+        kind="official",
+        pinned=True,
+        body=(
+            "### Official Notice: Annual Laboratory Safety Audit & High-Vacuum Equipment "
+            "Recertification\n\n"
+            "The Directorate has scheduled the mandatory annual safety audit for all Surf"
+            "ace Engineering Division labs from **November 18 to 22**.\n\n"
+            "- **Thin Films Section**: PVD chamber interlocks, turbo-molecular pump backi"
+            "ng lines, and Ar/O2 cylinder manifolds.\n"
+            "- **Corrosion Section**: Autoclave overpressure rupture discs and acid fume "
+            "extraction scrubbing efficiency.\n"
+            "- **Nanocoatings Section**: Chemical handling hoods and hazardous solvent di"
+            "sposal logs.\n\n"
+            "All Section Heads are requested to ensure safety logbooks are signed and equ"
+            "ipment calibration tags are up to date."
+        ),
+        created_at=now - timedelta(days=2, hours=4),
+    )
+    db.add(sed_p1)
+    db.flush()
+
+    # Reply to official notice
+    db.add(
+        Post(
+            workspace_id=ws["div_sed"].id,
             author_id=users["asha"].id,
-            kind="official",
-            pinned=True,
-            body=(
-                "### Thin Films Section: Substrate Ultrasonic Cleaning Protocol Revision\n\n"
-                "All operators of PVD Sputtering Unit 1 & 2 must adhere to the 4-stage cleaning sequence: Acetone (15 min) -> Isopropanol (15 min) -> DI Water rinse -> N2 dry bake (120C, 30 min). Witness coupons must be stored strictly in the vacuum desiccator."
-            ),
-            created_at=now - timedelta(days=3),
-        )
-        db.add(tfs_p1)
-
-        tfs_p2 = Post(
-            workspace_id=ws["sec_tfs"].id,
-            author_id=users["esha"].id,
+            parent_id=sed_p1.id,
             kind="discussion",
-            body="Batch 4B deposition is completed. Thickness measurements across 6 points show uniformity within 1.2% standard deviation. Substrates are transferred to the characterization box.",
-            created_at=now - timedelta(hours=8),
+            body="Thin Films Section has completed preliminary inspection of all high-vacuum i"
+            "nterlocks. PVD-02 calibration certificate was renewed yesterday.",
+            created_at=now - timedelta(days=1, hours=22),
         )
-        db.add(tfs_p2)
+    )
 
-        # 7. Interactive Live Whiteboard (Hand-drawn Ink Objects)
-        print(
-            "Populating Live Whiteboard with ink drawings, schematics, and sticky notes..."
+    # Research discussion post in SED
+    sed_p2 = Post(
+        workspace_id=ws["div_sed"].id,
+        author_id=users["bharat"].id,
+        kind="discussion",
+        pinned=False,
+        body=(
+            "### Friday Technical Review: Oxygen Vacancy Kinetics in ZrO2-Y2O3 Barrier Co"
+            "atings\n\n"
+            "We have concluded the 20nm, 40nm, and 60nm reactive sputtering runs for Proj"
+            "ect Tejas. Preliminary XPS spectra show a 4.8% variation in vacancy density "
+            "near the substrate interface.\n\n"
+            "Thin Films and Corrosion sections will hold a joint review this Friday at 15"
+            ":00 in Room 204. Please bring comparative profilometry curves."
+        ),
+        created_at=now - timedelta(hours=18),
+    )
+    db.add(sed_p2)
+    db.flush()
+
+    db.add(
+        Post(
+            workspace_id=ws["div_sed"].id,
+            author_id=users["chitra"].id,
+            parent_id=sed_p2.id,
+            kind="discussion",
+            body="Corrosion Section will present the electrochemical impedance spectroscopy (E"
+            "IS) data from the 60nm coupons exposed to 3.5% NaCl. There is a noticeable p"
+            "assivation improvement.",
+            created_at=now - timedelta(hours=14),
         )
-        art_file = ROOT / "fixtures/research-day/board-objects.json"
-        board_state = {}
-        if art_file.exists():
-            raw_objects = json.loads(art_file.read_text(encoding="utf-8"))
-            # Take sticky notes and sample of strokes for high fidelity rendering
-            for i, obj in enumerate(raw_objects[:120]):
-                board_state[f"obj_{i:04d}"] = {
-                    "kind": obj["kind"],
-                    "data": obj["data"],
-                    "author": str(users["bharat"].id),
-                    "alive": True,
-                    "rev": 1,
-                    "dx": 0.0,
-                    "dy": 0.0,
-                }
+    )
 
-        # Board in Project Tejas
-        board_tejas = Board(
+    # Thin Films Section Noticeboard
+    tfs_p1 = Post(
+        workspace_id=ws["sec_tfs"].id,
+        author_id=users["asha"].id,
+        kind="official",
+        pinned=True,
+        body=(
+            "### Thin Films Section: Substrate Ultrasonic Cleaning Protocol Revision\n\n"
+            "All operators of PVD Sputtering Unit 1 & 2 must adhere to the 4-stage cleani"
+            "ng sequence: Acetone (15 min) -> Isopropanol (15 min) -> DI Water rinse -> N"
+            "2 dry bake (120C, 30 min). Witness coupons must be stored strictly in the va"
+            "cuum desiccator."
+        ),
+        created_at=now - timedelta(days=3),
+    )
+    db.add(tfs_p1)
+
+    tfs_p2 = Post(
+        workspace_id=ws["sec_tfs"].id,
+        author_id=users["esha"].id,
+        kind="discussion",
+        body="Batch 4B deposition is completed. Thickness measurements across 6 points sho"
+        "w uniformity within 1.2% standard deviation. Substrates are transferred to t"
+        "he characterization box.",
+        created_at=now - timedelta(hours=8),
+    )
+    db.add(tfs_p2)
+
+
+def seed_boards(db, ws, users, now):
+    # 7. Interactive Live Whiteboard (Hand-drawn Ink Objects)
+    print("Populating Live Whiteboard with ink drawings, schematics, and sticky notes...")
+    art_file = ROOT / "fixtures/research-day/board-objects.json"
+    board_state = {}
+    if art_file.exists():
+        raw_objects = json.loads(art_file.read_text(encoding="utf-8"))
+        # Take sticky notes and sample of strokes for high fidelity rendering
+        for i, obj in enumerate(raw_objects[:120]):
+            board_state[f"obj_{i:04d}"] = {
+                "kind": obj["kind"],
+                "data": obj["data"],
+                "author": str(users["bharat"].id),
+                "alive": True,
+                "rev": 1,
+                "dx": 0.0,
+                "dy": 0.0,
+            }
+
+    # Board in Project Tejas
+    board_tejas = Board(
+        workspace_id=ws["proj_tejas"].id,
+        epoch=1,
+        revision=len(board_state),
+        base_revision=0,
+    )
+    db.add(board_tejas)
+    db.flush()
+
+    db.add(
+        BoardSnapshot(
             workspace_id=ws["proj_tejas"].id,
             epoch=1,
             revision=len(board_state),
-            base_revision=0,
+            state=board_state,
+            created_at=now - timedelta(hours=6),
         )
-        db.add(board_tejas)
-        db.flush()
+    )
 
-        db.add(
-            BoardSnapshot(
-                workspace_id=ws["proj_tejas"].id,
-                epoch=1,
-                revision=len(board_state),
-                state=board_state,
-                created_at=now - timedelta(hours=6),
-            )
-        )
+    # Board in Thin Films Section
+    board_tfs = Board(
+        workspace_id=ws["sec_tfs"].id,
+        epoch=1,
+        revision=len(board_state),
+        base_revision=0,
+    )
+    db.add(board_tfs)
+    db.flush()
 
-        # Board in Thin Films Section
-        board_tfs = Board(
+    db.add(
+        BoardSnapshot(
             workspace_id=ws["sec_tfs"].id,
             epoch=1,
             revision=len(board_state),
-            base_revision=0,
+            state=board_state,
+            created_at=now - timedelta(hours=5),
         )
-        db.add(board_tfs)
-        db.flush()
+    )
 
-        db.add(
-            BoardSnapshot(
-                workspace_id=ws["sec_tfs"].id,
-                epoch=1,
-                revision=len(board_state),
-                state=board_state,
-                created_at=now - timedelta(hours=5),
-            )
-        )
 
-        # 8. Project Chat & Threaded Messages
-        print("Populating Project Chat & Threads...")
-        chat_script = [
-            (
-                "asha",
-                "Films are ready: 20, 40 and 60 nm ZrO2-Y2O3 series. Uncoated witness coupons are stored in desiccator box #4.",
-                5,
-            ),
-            (
-                "chitra",
-                "Thanks Asha. Gas Chromatography and XRD slot is reserved for 14:00. Can we run a reference baseline before the series?",
-                4.5,
-            ),
-            (
-                "mira",
-                "XPS beamline queue is clear after lunch. Please ensure samples are capped; atmospheric exposure would perturb the vacancy signal.",
-                4,
-            ),
-            (
-                "bharat",
-                "I added the sample-to-run calibration table to the project plan. If reference baseline drifts above 2%, we repeat the 40 nm sample.",
-                3.5,
-            ),
-            (
-                "deepa",
-                "Agreed. Keep raw spectral traces in this project channel; post only the reviewed synthesis and conclusions to the Division board.",
-                3,
-            ),
-            (
-                "esha",
-                "Substrate pre-heating thermocouple reached stable 650 C. Ready for the next deposition cycle whenever Dr. Bharat confirms.",
-                2,
-            ),
-            (
-                "rajesh",
-                "Chamber base pressure reached 2.4e-7 mbar with liquid nitrogen trap filled. Mass flow controllers calibrated for Ar/O2 80:20 ratio.",
-                1.5,
-            ),
-            (
-                "bharat",
-                "Excellent. Proceed with the automated sequence. I have updated the task checklist on our project board.",
-                0.5,
-            ),
-        ]
-        chat_msgs = []
-        for author, text_msg, hours_ago in chat_script:
-            msg = ChatMessage(
-                workspace_id=ws["proj_tejas"].id,
-                author_id=users[author].id,
-                body=text_msg,
-                client_id=f"client_chat_{uuid.uuid4().hex[:12]}",
-                created_at=now - timedelta(hours=hours_ago),
-            )
-            db.add(msg)
-            chat_msgs.append(msg)
-        db.flush()
-
-        # Threaded reply on the second message
-        db.add(
-            ChatMessage(
-                workspace_id=ws["proj_tejas"].id,
-                author_id=users["asha"].id,
-                parent_id=chat_msgs[1].id,
-                body="Baseline standard coupon #STD-01 is mounted on holder 2 for the 14:00 run.",
-                client_id=f"client_chat_{uuid.uuid4().hex[:12]}",
-                created_at=now - timedelta(hours=4.2),
-            )
-        )
-
-        # 9. Tasks & Workflows
-        print("Populating Research Tasks and Kanban boards...")
-        # Todo list for Project Tejas
-        tejas_todo_list = TodoList(
+def seed_chat(db, ws, users, now):
+    # 8. Project Chat & Threaded Messages
+    print("Populating Project Chat & Threads...")
+    chat_script = [
+        (
+            "asha",
+            "Films are ready: 20, 40 and 60 nm ZrO2-Y2O3 series. Uncoated witness coupons"
+            " are stored in desiccator box #4.",
+            5,
+        ),
+        (
+            "chitra",
+            "Thanks Asha. Gas Chromatography and XRD slot is reserved for 14:00. Can we r"
+            "un a reference baseline before the series?",
+            4.5,
+        ),
+        (
+            "mira",
+            "XPS beamline queue is clear after lunch. Please ensure samples are capped; a"
+            "tmospheric exposure would perturb the vacancy signal.",
+            4,
+        ),
+        (
+            "bharat",
+            "I added the sample-to-run calibration table to the project plan. If referenc"
+            "e baseline drifts above 2%, we repeat the 40 nm sample.",
+            3.5,
+        ),
+        (
+            "deepa",
+            "Agreed. Keep raw spectral traces in this project channel; post only the revi"
+            "ewed synthesis and conclusions to the Division board.",
+            3,
+        ),
+        (
+            "esha",
+            "Substrate pre-heating thermocouple reached stable 650 C. Ready for the next "
+            "deposition cycle whenever Dr. Bharat confirms.",
+            2,
+        ),
+        (
+            "rajesh",
+            "Chamber base pressure reached 2.4e-7 mbar with liquid nitrogen trap filled. "
+            "Mass flow controllers calibrated for Ar/O2 80:20 ratio.",
+            1.5,
+        ),
+        (
+            "bharat",
+            "Excellent. Proceed with the automated sequence. I have updated the task chec"
+            "klist on our project board.",
+            0.5,
+        ),
+    ]
+    chat_msgs = []
+    for author, text_msg, hours_ago in chat_script:
+        msg = ChatMessage(
             workspace_id=ws["proj_tejas"].id,
-            created_by=users["bharat"].id,
-            client_id=uuid.uuid4(),
-            create_digest=uuid.uuid4().hex,
-            title="Project Tejas: Phase-II Coating Trials",
-            revision=1,
-            created_at=now - timedelta(days=10),
+            author_id=users[author].id,
+            body=text_msg,
+            client_id=f"client_chat_{uuid.uuid4().hex[:12]}",
+            created_at=now - timedelta(hours=hours_ago),
         )
-        db.add(tejas_todo_list)
-        db.flush()
+        db.add(msg)
+        chat_msgs.append(msg)
+    db.flush()
 
-        tasks_info = [
-            (
-                "Substrate Ultrasonic Degreasing & Pre-treatment",
-                "Clean 12 Inconel-718 turbine alloy coupons following revised 4-stage solvent procedure.",
-                users["esha"].id,
-                "high",
-                "done",
-                True,
-                now.date() - timedelta(days=2),
-                [
-                    {"text": "Acetone ultrasonic bath 15 min", "done": True},
-                    {"text": "DI water rinse & dry bake", "done": True},
-                ],
-            ),
-            (
-                "Electron Beam PVD Chamber Pump-down & Glow Discharge",
-                "Achieve base pressure < 5e-7 mbar, execute 10-minute Ar plasma substrate reverse sputtering etch.",
-                users["rajesh"].id,
-                "high",
-                "done",
-                True,
-                now.date() - timedelta(days=1),
-                [
-                    {"text": "Turbopump backing pressure check", "done": True},
-                    {"text": "RF substrate bias tuning", "done": True},
-                ],
-            ),
-            (
-                "Multi-layer Deposition of 40nm & 60nm YSZ Coatings",
-                "Execute reactive sputtering run at 650 C substrate temperature with continuous optical emission monitoring.",
-                users["bharat"].id,
-                "high",
-                "in_progress",
-                False,
-                now.date() + timedelta(days=1),
-                [
-                    {"text": "Deposition rate calibration", "done": True},
-                    {"text": "Substrate rotation set to 12 rpm", "done": True},
-                    {"text": "Thickness monitoring", "done": False},
-                ],
-            ),
-            (
-                "High-Resolution Cross-Sectional SEM & EDS Line Scans",
-                "Mount witness samples, FIB cross-section preparation, evaluate elemental diffusion across interface.",
-                users["swati"].id,
-                "normal",
-                "todo",
-                False,
-                now.date() + timedelta(days=3),
-                [
-                    {"text": "Diamond saw precision slicing", "done": False},
-                    {"text": "EDS line scan at 15 kV", "done": False},
-                ],
-            ),
-            (
-                "High-Temperature Cyclic Oxidation Testing (1050 C)",
-                "Expose coated coupons to 100 thermal shock cycles in air furnace (1050 C to room temp forced air).",
-                users["neha"].id,
-                "high",
-                "todo",
-                False,
-                now.date() + timedelta(days=7),
-                [
-                    {"text": "Weigh samples to 0.1 mg accuracy", "done": False},
-                    {"text": "Program furnace PID controller", "done": False},
-                ],
-            ),
-            (
-                "Quarter-3 Milestone Report & Deliverable Compilation",
-                "Collate microstructural findings, EIS Nyquist plots, and draft formal report for NMRL Directorate.",
-                users["deepa"].id,
-                "normal",
-                "in_progress",
-                False,
-                now.date() + timedelta(days=14),
-                [
-                    {"text": "Aggregate XRD peak tables", "done": True},
-                    {"text": "Executive summary draft", "done": False},
-                ],
-            ),
-        ]
-
-        for title, desc, assignee, priority, status, done, due, checklist in tasks_info:
-            db.add(
-                TodoTask(
-                    list_id=tejas_todo_list.id,
-                    created_by=users["bharat"].id,
-                    client_id=uuid.uuid4(),
-                    create_digest=uuid.uuid4().hex,
-                    title=title,
-                    description=desc,
-                    due_date=due,
-                    priority=priority,
-                    status=status,
-                    done=done,
-                    assignee_id=assignee,
-                    checklist=checklist,
-                    revision=1,
-                    created_at=now - timedelta(days=5),
-                    updated_at=now - timedelta(hours=3),
-                )
-            )
-
-        # Personal task list for Bharat
-        bharat_todo_list = TodoList(
-            owner_id=users["bharat"].id,
-            created_by=users["bharat"].id,
-            client_id=uuid.uuid4(),
-            create_digest=uuid.uuid4().hex,
-            title="My Personal Priorities & Action Items",
-            revision=1,
-            created_at=now - timedelta(days=12),
+    # Threaded reply on the second message
+    db.add(
+        ChatMessage(
+            workspace_id=ws["proj_tejas"].id,
+            author_id=users["asha"].id,
+            parent_id=chat_msgs[1].id,
+            body="Baseline standard coupon #STD-01 is mounted on holder 2 for the 14:00 run.",
+            client_id=f"client_chat_{uuid.uuid4().hex[:12]}",
+            created_at=now - timedelta(hours=4.2),
         )
-        db.add(bharat_todo_list)
-        db.flush()
+    )
 
+
+def seed_tasks(db, ws, users, now):
+    # 9. Tasks & Workflows
+    print("Populating Research Tasks and Kanban boards...")
+    # Todo list for Project Tejas
+    tejas_todo_list = TodoList(
+        workspace_id=ws["proj_tejas"].id,
+        created_by=users["bharat"].id,
+        client_id=uuid.uuid4(),
+        create_digest=uuid.uuid4().hex,
+        title="Project Tejas: Phase-II Coating Trials",
+        revision=1,
+        created_at=now - timedelta(days=10),
+    )
+    db.add(tejas_todo_list)
+    db.flush()
+
+    tasks_info = [
+        (
+            "Substrate Ultrasonic Degreasing & Pre-treatment",
+            "Clean 12 Inconel-718 turbine alloy coupons following revised 4-stage solvent procedure.",
+            users["esha"].id,
+            "high",
+            "done",
+            True,
+            now.date() - timedelta(days=2),
+            [
+                {"text": "Acetone ultrasonic bath 15 min", "done": True},
+                {"text": "DI water rinse & dry bake", "done": True},
+            ],
+        ),
+        (
+            "Electron Beam PVD Chamber Pump-down & Glow Discharge",
+            "Achieve base pressure < 5e-7 mbar, execute 10-minute Ar plasma substrate rev"
+            "erse sputtering etch.",
+            users["rajesh"].id,
+            "high",
+            "done",
+            True,
+            now.date() - timedelta(days=1),
+            [
+                {"text": "Turbopump backing pressure check", "done": True},
+                {"text": "RF substrate bias tuning", "done": True},
+            ],
+        ),
+        (
+            "Multi-layer Deposition of 40nm & 60nm YSZ Coatings",
+            "Execute reactive sputtering run at 650 C substrate temperature with continuo"
+            "us optical emission monitoring.",
+            users["bharat"].id,
+            "high",
+            "in_progress",
+            False,
+            now.date() + timedelta(days=1),
+            [
+                {"text": "Deposition rate calibration", "done": True},
+                {"text": "Substrate rotation set to 12 rpm", "done": True},
+                {"text": "Thickness monitoring", "done": False},
+            ],
+        ),
+        (
+            "High-Resolution Cross-Sectional SEM & EDS Line Scans",
+            "Mount witness samples, FIB cross-section preparation, evaluate elemental dif"
+            "fusion across interface.",
+            users["swati"].id,
+            "normal",
+            "todo",
+            False,
+            now.date() + timedelta(days=3),
+            [
+                {"text": "Diamond saw precision slicing", "done": False},
+                {"text": "EDS line scan at 15 kV", "done": False},
+            ],
+        ),
+        (
+            "High-Temperature Cyclic Oxidation Testing (1050 C)",
+            "Expose coated coupons to 100 thermal shock cycles in air furnace (1050 C to "
+            "room temp forced air).",
+            users["neha"].id,
+            "high",
+            "todo",
+            False,
+            now.date() + timedelta(days=7),
+            [
+                {"text": "Weigh samples to 0.1 mg accuracy", "done": False},
+                {"text": "Program furnace PID controller", "done": False},
+            ],
+        ),
+        (
+            "Quarter-3 Milestone Report & Deliverable Compilation",
+            "Collate microstructural findings, EIS Nyquist plots, and draft formal report"
+            " for NMRL Directorate.",
+            users["deepa"].id,
+            "normal",
+            "in_progress",
+            False,
+            now.date() + timedelta(days=14),
+            [
+                {"text": "Aggregate XRD peak tables", "done": True},
+                {"text": "Executive summary draft", "done": False},
+            ],
+        ),
+    ]
+
+    for title, desc, assignee, priority, status, done, due, checklist in tasks_info:
         db.add(
             TodoTask(
-                list_id=bharat_todo_list.id,
+                list_id=tejas_todo_list.id,
                 created_by=users["bharat"].id,
                 client_id=uuid.uuid4(),
                 create_digest=uuid.uuid4().hex,
-                title="Review Fellowship Extension for Esha Menon",
-                description="Evaluate progress report on high-temperature barrier layers before Friday submission to DG Office.",
-                due_date=now.date() + timedelta(days=2),
-                priority="high",
-                status="todo",
-                done=False,
-                checklist=[
-                    {"text": "Check publication manuscript draft", "done": False}
-                ],
+                title=title,
+                description=desc,
+                due_date=due,
+                priority=priority,
+                status=status,
+                done=done,
+                assignee_id=assignee,
+                checklist=checklist,
                 revision=1,
-                created_at=now - timedelta(days=3),
-                updated_at=now - timedelta(days=1),
+                created_at=now - timedelta(days=5),
+                updated_at=now - timedelta(hours=3),
             )
         )
 
-        # 10. Personal Research Notes
-        print("Populating Personal Notes and Scratchpads...")
-        notes_data = [
-            (
-                users["bharat"].id,
-                "Inconel-718 Substrate Degas Observation",
-                "Note from yesterday's trial: When ramping past 520 C, vacuum chamber pressure rose to 8e-6 mbar temporarily. Likely residual moisture from ultrasonic rinse. Advise Esha to increase nitrogen pre-bake to 45 minutes at 140 C.",
-            ),
-            (
-                users["bharat"].id,
-                "Literature Reference: Perovskite Interfacial Strain",
-                "Paper by Ramanathan et al. (Acta Mater. 2024): lattice mismatch between YSZ and bond coat drops from 3.2% to 0.9% when doping with 2 mol% Sc2O3. Check if our chemical inventory has Scandium nitrate precursor.",
-            ),
-            (
-                users["asha"].id,
-                "Thin Films Section Lab Inspection Notes",
-                "Turbo-molecular pump on Sputter-1 due for 8,000-hour bearing overhaul in December. Quote received from vendor under rate contract. Forward to Dr. Deepa for purchase approval.",
-            ),
-        ]
-        for owner_id, title, body in notes_data:
-            db.add(
-                Note(
-                    owner_id=owner_id,
-                    title=title,
-                    body=body,
-                    created_at=now - timedelta(days=2),
-                    updated_at=now - timedelta(hours=4),
-                )
-            )
+    # Personal task list for Bharat
+    bharat_todo_list = TodoList(
+        owner_id=users["bharat"].id,
+        created_by=users["bharat"].id,
+        client_id=uuid.uuid4(),
+        create_digest=uuid.uuid4().hex,
+        title="My Personal Priorities & Action Items",
+        revision=1,
+        created_at=now - timedelta(days=12),
+    )
+    db.add(bharat_todo_list)
+    db.flush()
 
-        # 11. Audit Trail Events
-        print("Populating tamper-evident Audit Trail records...")
-        audit_events = [
-            (
-                "identity.create",
-                "identity",
-                users["bharat"].id,
-                "Site Administrator initialized user account Bharat Kulkarni",
-            ),
-            (
-                "identity.create",
-                "identity",
-                users["deepa"].id,
-                "Site Administrator initialized user account Deepa Nair",
-            ),
-            (
-                "unit_admin.grant",
-                "authority",
-                ws["div_sed"].id,
-                "Site Administrator appointed Dr. Deepa Nair as Unit Administrator of Surface Engineering Division",
-            ),
-            (
-                "unit_admin.grant",
-                "authority",
-                ws["sec_tfs"].id,
-                "Site Administrator appointed Dr. Asha Rao as Unit Administrator of Thin Films Section",
-            ),
-            (
-                "position.set",
-                "authority",
-                ws["div_sed"].id,
-                "Dr. Deepa Nair confirmed as Head, Surface Engineering Division",
-            ),
-            (
-                "broadcast.create",
-                "site",
-                None,
-                "Site Administrator issued air-gapped pilot advisory broadcast",
-            ),
-        ]
-        for action, scope, target_id, reason in audit_events:
-            audit.record(
-                db,
-                actor=users["admin"],
-                action=action,
-                scope_type=scope,
-                target_id=target_id or users["admin"].id,
-                reason=reason,
-                status_before=None,
-                status_after="active",
-            )
+    db.add(
+        TodoTask(
+            list_id=bharat_todo_list.id,
+            created_by=users["bharat"].id,
+            client_id=uuid.uuid4(),
+            create_digest=uuid.uuid4().hex,
+            title="Review Fellowship Extension for Esha Menon",
+            description="Evaluate progress report on high-temperature barrier layers before Friday su"
+            "bmission to DG Office.",
+            due_date=now.date() + timedelta(days=2),
+            priority="high",
+            status="todo",
+            done=False,
+            checklist=[{"text": "Check publication manuscript draft", "done": False}],
+            revision=1,
+            created_at=now - timedelta(days=3),
+            updated_at=now - timedelta(days=1),
+        )
+    )
 
+
+def seed_notes(db, ws, users, now):
+    # 10. Personal Research Notes
+    print("Populating Personal Notes and Scratchpads...")
+    notes_data = [
+        (
+            users["bharat"].id,
+            "Inconel-718 Substrate Degas Observation",
+            "Note from yesterday's trial: When ramping past 520 C, vacuum chamber pressur"
+            "e rose to 8e-6 mbar temporarily. Likely residual moisture from ultrasonic ri"
+            "nse. Advise Esha to increase nitrogen pre-bake to 45 minutes at 140 C.",
+        ),
+        (
+            users["bharat"].id,
+            "Literature Reference: Perovskite Interfacial Strain",
+            "Paper by Ramanathan et al. (Acta Mater. 2024): lattice mismatch between YSZ "
+            "and bond coat drops from 3.2% to 0.9% when doping with 2 mol% Sc2O3. Check i"
+            "f our chemical inventory has Scandium nitrate precursor.",
+        ),
+        (
+            users["asha"].id,
+            "Thin Films Section Lab Inspection Notes",
+            "Turbo-molecular pump on Sputter-1 due for 8,000-hour bearing overhaul in Dec"
+            "ember. Quote received from vendor under rate contract. Forward to Dr. Deepa "
+            "for purchase approval.",
+        ),
+    ]
+    for owner_id, title, body in notes_data:
+        db.add(
+            Note(
+                owner_id=owner_id,
+                title=title,
+                body=body,
+                created_at=now - timedelta(days=2),
+                updated_at=now - timedelta(hours=4),
+            )
+        )
+
+
+def seed_audit(db, ws, users, now):
+    # 11. Audit Trail Events
+    print("Populating tamper-evident Audit Trail records...")
+    audit_events = [
+        (
+            "identity.create",
+            "identity",
+            users["bharat"].id,
+            "Site Administrator initialized user account Bharat Kulkarni",
+        ),
+        (
+            "identity.create",
+            "identity",
+            users["deepa"].id,
+            "Site Administrator initialized user account Deepa Nair",
+        ),
+        (
+            "unit_admin.grant",
+            "authority",
+            ws["div_sed"].id,
+            "Site Administrator appointed Dr. Deepa Nair as Unit Administrator of Surface"
+            " Engineering Division",
+        ),
+        (
+            "unit_admin.grant",
+            "authority",
+            ws["sec_tfs"].id,
+            "Site Administrator appointed Dr. Asha Rao as Unit Administrator of Thin Films Section",
+        ),
+        (
+            "position.set",
+            "authority",
+            ws["div_sed"].id,
+            "Dr. Deepa Nair confirmed as Head, Surface Engineering Division",
+        ),
+        (
+            "broadcast.create",
+            "site",
+            None,
+            "Site Administrator issued air-gapped pilot advisory broadcast",
+        ),
+    ]
+    for action, scope, target_id, reason in audit_events:
+        audit.record(
+            db,
+            actor=users["admin"],
+            action=action,
+            scope_type=scope,
+            target_id=target_id or users["admin"].id,
+            reason=reason,
+            status_before=None,
+            status_after="active",
+        )
+
+
+def seed_simulation():
+    """Reset only an explicitly selected local fictional simulation database."""
+    url = make_url(DATABASE_URL)
+    if (
+        os.environ.get("LABADDA_ENV") != "test"
+        or url.host not in {"localhost", "127.0.0.1"}
+        or not (url.database or "").startswith("labadda_simulation_")
+    ):
+        raise SystemExit(
+            "Refusing reset: set LABADDA_ENV=test and use a local labadda_simulation_* database."
+        )
+    factory = session_factory(DATABASE_URL)
+    with factory() as db:
+        reset_database(db)
+        ws = seed_workspaces(db)
+        users = seed_users(db, ws)
+        seed_memberships(db, ws, users)
+        now = seed_authority(db, ws, users)
+        seed_broadcasts(db, ws, users, now)
+        seed_posts(db, ws, users, now)
+        seed_boards(db, ws, users, now)
+        seed_chat(db, ws, users, now)
+        seed_tasks(db, ws, users, now)
+        seed_notes(db, ws, users, now)
+        seed_audit(db, ws, users, now)
         db.commit()
-        print("Successfully seeded realistic 50-user NMRL research organization!")
+    print("Seeded the fictional research simulation.")
 
 
 if __name__ == "__main__":

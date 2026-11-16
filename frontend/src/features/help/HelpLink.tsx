@@ -17,7 +17,7 @@ export function HelpLink({ fallback }: HelpEntryProps) {
 
   function openPage(slug: string) {
     setOpen(false);
-    navigate(`/help/${slug}`);
+    void navigate(`/help/${slug}`);
   }
 
   return (

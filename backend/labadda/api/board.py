@@ -405,6 +405,19 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
             raise Conflict("object_exists", "That board object already exists.")
         payload = _validate_add(db, actor, workspace_id, body.payload)
         payload["author"] = str(actor.id)
+    elif body.type == "update":
+        object_id = body.object_id
+        obj = objects.get(object_id or "")
+        if obj is None or not obj["alive"]:
+            raise Conflict("object_gone", "That item was already removed.")
+        if body.base_revision is None or obj["rev"] != body.base_revision:
+            raise Conflict("stale_object", "Someone else changed this item first. Your edit was not applied.")
+        if obj["kind"] not in ("sticky", "text"):
+            raise Invalid("invalid_board_op", "Only notes and text can be edited.")
+        payload = _validate_add(
+            db, actor, workspace_id, {"kind": obj["kind"], "data": body.payload.get("data")}
+        )
+        payload["previous_data"] = obj["data"]
     elif body.type in ("erase", "move"):
         obj = objects.get(body.object_id or "")
         if obj is None or not obj["alive"]:
@@ -423,6 +436,11 @@ def submit_op(  # noqa: PLR0912, PLR0915 — ordered authorization and revision 
             raise Conflict("nothing_to_undo", "You have nothing to undo on this board.")
         object_id = target.object_id
         payload = {"target_revision": target.revision, "target_type": target.op_type}
+        if target.op_type == "update":
+            obj = objects.get(object_id or "")
+            if obj is None or obj["rev"] != target.revision:
+                raise Conflict("stale_object", "This item changed after your edit; undo was not applied.")
+            payload["previous_data"] = target.payload["previous_data"]
         if target.op_type == "move":
             payload.update(dx=target.payload["dx"], dy=target.payload["dy"])
     else:
@@ -639,10 +657,12 @@ def publish_snapshot(  # noqa: PLR0915 — ordered authorization and revision ch
     lock_identity(db, identity, settings)
     # Fresh authorization on both ends at publish time.
     source = policy.require_read(db, actor.user, workspace_id).workspace
+    intent_digest = _hash({"source": str(workspace_id), **body.model_dump(mode="json")})
     existing = db.scalar(select(Post).where(Post.author_id == actor.id, Post.client_id == body.client_id))
     if existing is not None:
         if (
-            existing.source_workspace_id != workspace_id
+            existing.source_request_digest != intent_digest
+            or existing.source_workspace_id != workspace_id
             or existing.workspace_id != body.destination_id
             or existing.source_revision != body.revision
             or existing.body != body.summary
@@ -678,6 +698,7 @@ def publish_snapshot(  # noqa: PLR0915 — ordered authorization and revision ch
             client_id=body.client_id,
             source_workspace_id=source.id,
             source_revision=body.revision,
+            source_request_digest=intent_digest,
         )
         db.add(post)
         db.flush()

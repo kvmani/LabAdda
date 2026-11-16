@@ -12,7 +12,7 @@ Use this to set up LabAdda for many people at once, for example when a laborator
 
 ## Before you start
 
-You need to be a site administrator, and whoever runs the server must have set the site's e-mail domain. Choose **Download the Excel template** on the import screen and fill it in. Save it as an Excel Workbook (.xlsx). A CSV file with the same column names also works. The file can be up to 1 MiB and 2,000 rows. Workbooks with macros (.xlsm) and password-protected workbooks are refused.
+You need to be a site administrator, and whoever runs the server must have set the site's e-mail domain. Choose **Download Excel template** on the import screen and fill it in. Save it as an Excel Workbook (.xlsx). A CSV file with the same column names also works. The file can be up to 1 MiB and 2,000 rows. Workbooks with macros (.xlsm) and password-protected workbooks are refused.
 
 The columns are full_name, division, section, Emp No, email, Extension, Group, Residence Phone, username, Password, is_active and an optional role. Capital letters and spaces in the column names do not matter, so "Emp No" and "emp_no" are the same.
 
@@ -30,8 +30,8 @@ Other blank cells mean: Extension and Residence Phone stay empty, is_active mean
 ## Steps
 
 1. Open **Administration**, choose **People**, then choose **Import from Excel**.
-2. Choose **Download the Excel template** if you need one, fill it in and save it.
-3. Choose **Choose an Excel file** and pick your file. It is read at once and is not kept.
+2. Choose **Download Excel template** if you need one, fill it in and save it.
+3. Choose **Choose an Excel or CSV file** and pick your file. It is read at once and is not kept.
 4. If the report shows **Rows with problems**, fix those rows in your spreadsheet and choose **Choose a different file**. Nothing has been saved.
 5. Otherwise read the report: how many people will be added, which groups, divisions and sections will be created, and the full list of people. Units that do not exist yet appear under **What will happen** as steps starting "Create the". Existing units are matched by name, ignoring capital letters, inside the same parent. Two units with the same name under different parents are kept separate.
 6. Anyone with admin in the role column is named in a red warning that they will become an administrator. Check it carefully: administrators can manage every person and unit.

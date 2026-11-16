@@ -18,12 +18,13 @@ from __future__ import annotations
 
 import json
 import uuid
+from urllib.parse import quote
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from .models import Board, ContentCharge
+from .models import Board, ContentCharge, WorkspaceBoard
 
 TEXT_METHOD = "utf8-text-v1"
 BOARD_METHOD = "board-object-json-v1"
@@ -38,7 +39,7 @@ def board_object_bytes(kind: str, data: dict) -> int:
 
 
 def board_key(workspace_id: uuid.UUID, object_id: str, board_index: int = 0) -> str:
-    return f"{workspace_id}:{board_index}:{object_id}" if board_index > 0 else f"{workspace_id}:{object_id}"
+    return f"{workspace_id}:{board_index}:{quote(object_id, safe='')}"
 
 
 def expected_board_rows(
@@ -81,6 +82,7 @@ def charge_board_object(
         return
     values = {
         "item_type": "board_object",
+        "board_index": board_index,
         "item_key": key,
         "user_id": author_uuid,
         "workspace_id": workspace_id,
@@ -106,12 +108,15 @@ def recharge_board(db: Session, board: Board, objects: dict[str, dict]) -> None:
     board_idx = getattr(board, "board_index", 0)
     db.execute(
         delete(ContentCharge).where(
-            ContentCharge.item_type == "board_object", ContentCharge.workspace_id == board.workspace_id
+            ContentCharge.item_type == "board_object",
+            ContentCharge.workspace_id == board.workspace_id,
+            ContentCharge.board_index == board_idx,
         )
     )
     rows = [
         {
             "item_type": "board_object",
+            "board_index": board_idx,
             "item_key": key,
             "user_id": user_id,
             "workspace_id": board.workspace_id,
@@ -149,6 +154,14 @@ def summary(db: Session, user_id: uuid.UUID | None = None) -> dict:
         select(func.count())
         .select_from(Board)
         .where(Board.revision > 0, Board.charges_epoch.is_distinct_from(Board.epoch))
+    )
+    incomplete += db.scalar(
+        select(func.count())
+        .select_from(WorkspaceBoard)
+        .where(
+            WorkspaceBoard.revision > 0,
+            WorkspaceBoard.charges_epoch.is_distinct_from(WorkspaceBoard.epoch),
+        )
     )
     return {
         "methods": {"text": TEXT_METHOD, "board": BOARD_METHOD},

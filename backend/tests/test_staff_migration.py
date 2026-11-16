@@ -78,7 +78,9 @@ def test_staff_constraints_enforce_unique_number_valid_status_and_revision(db_fa
         ("status", "on_leave"),
     ],
 )
-def test_each_novel_staff_value_blocks_downgrade(db_factory, ids, settings, field, value):
+def test_each_novel_staff_value_blocks_downgrade(
+    db_factory, ids, settings, field, value, *, legacy_unit_codes
+):
     from datetime import date
 
     from labadda.models import User

@@ -19,11 +19,16 @@ while (($#)); do
   esac; shift
 done
 TEST_SITE=${TEST_SITE:-${MAIN_SITE}restore}
+[[ $MAIN_SITE =~ ^[a-z][a-z0-9]{0,19}$ ]] || die "Invalid source site name."
 [[ $TEST_SITE != "$MAIN_SITE" ]] || die "The test copy must have a different name from the live site."
 SITE=$TEST_SITE; set_paths; need_root
+marker="$INSTANCE_ROOT/restore-test-source"
 if ((REMOVE)); then
   step "Removing test copy $TEST_SITE"
   [[ -f $SITE_JSON ]] || die "No test copy named $TEST_SITE."
+  [[ -f $marker && ! -L $marker && $(<"$marker") == "$MAIN_SITE:$TEST_SITE:$INSTANCE_ROOT" ]] \
+    || die "Refusing removal: this site has no matching disposable restore-test provenance."
+  [[ $(site_field root) == "$INSTANCE_ROOT" ]] || die "Restore-test instance path does not match."
   run "$SYSTEMCTL" disable --now "$UNIT"
   run rm -f "$SYSTEMD_DIR/$UNIT"; run "$SYSTEMCTL" daemon-reload
   run runuser -u postgres -- dropdb --if-exists "labadda_$SITE"
@@ -31,9 +36,21 @@ if ((REMOVE)); then
   run rm -rf "$INSTANCE_ROOT" "$BACKUP_ROOT" "$ETC_DIR/$SITE".* "$SECRETS_DIR/$SITE.db-password"
   ok "test copy removed (the live site was not touched)"; exit 0
 fi
+[[ ! -e $SITE_JSON && ! -e $INSTANCE_ROOT ]] || die "Restore-test target already exists; choose a new disposable name."
 [[ -d $BUNDLE && $DIGEST =~ ^[0-9a-f]{64}$ ]] || die "Give --bundle (a backup folder) and --manifest-sha256 (64 hex characters)."
 SITE=$MAIN_SITE; set_paths
 [[ -f $ANSWERS_FILE ]] || die "No install answers for site $MAIN_SITE; run on the server that holds the live site."
+# A disposable copy must not process copied mail, reminders or scheduled personnel changes.
+isolated_answers=$(mktemp)
+trap 'rm -f "$isolated_answers"' EXIT
+sed -e '/^FEEDBACK_EMAIL=/d' -e '/^SMTP_RELAY=/d' -e '/^SMTP_USER=/d' \
+  -e '/^RUN_SCHEDULER=/d' -e '/^SERVICE_USER=/d' "$ANSWERS_FILE" >"$isolated_answers"
+printf 'FEEDBACK_EMAIL=none\nSMTP_RELAY=none\nSMTP_USER=none\nRUN_SCHEDULER=false\nSERVICE_USER=labadda-%s\n' "$TEST_SITE" >>"$isolated_answers"
 extra=(); ((DRY_RUN)) && extra=(--dry-run)
-exec bash "$KIT/install.sh" --site "$TEST_SITE" --answers "$ANSWERS_FILE" --port "$PORT_TEST" --yes --skip-os-packages \
+bash "$KIT/install.sh" --site "$TEST_SITE" --answers "$isolated_answers" --port "$PORT_TEST" --yes --skip-os-packages \
   --no-nginx --no-timer --restore-bundle "$BUNDLE" --manifest-sha256 "$DIGEST" "${MODE_ARGS[@]}" "${extra[@]}"
+
+if ! ((DRY_RUN)); then
+  SITE=$TEST_SITE; set_paths
+  printf '%s\n' "$MAIN_SITE:$TEST_SITE:$INSTANCE_ROOT" | write_file 0600 root:root "$INSTANCE_ROOT/restore-test-source"
+fi

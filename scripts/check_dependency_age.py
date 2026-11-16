@@ -102,6 +102,25 @@ def check(
     return too_new, unknown
 
 
+def approved_exceptions(root: Path, now: datetime) -> set[tuple[str, str, str]]:
+    """Load exact, dated owner approvals; unknown release dates are never exempted."""
+    path = root / "deploy/dependency-age-exceptions.json"
+    if not path.exists():
+        return set()
+    document = json.loads(path.read_text())
+    if document.get("schema") != 1:
+        raise ValueError("Unsupported dependency-age approval format")
+    approved = set()
+    for row in document["exceptions"]:
+        starts = datetime.fromisoformat(row["approved_on"]).date()
+        ends = datetime.fromisoformat(row["expires_on"]).date()
+        if not row.get("reason") or row["index"] not in {"pypi", "npm"}:
+            raise ValueError("Incomplete dependency-age approval")
+        if starts <= now.date() <= ends:
+            approved.add((row["index"], row["name"], row["version"]))
+    return approved
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--min-age-days", type=int, default=30)
@@ -121,6 +140,15 @@ def main(argv: list[str] | None = None) -> int:
     too_new, unknown = check(
         pins, make_fetch(args.pypi_url, args.npm_url), now=now, min_days=args.min_age_days
     )
+    try:
+        approvals = approved_exceptions(args.root, now)
+    except (OSError, ValueError, KeyError) as error:
+        print(f"INVALID APPROVAL: {error}")
+        return 1
+    waived = [row for row in too_new if row[:3] in approvals]
+    too_new = [row for row in too_new if row[:3] not in approvals]
+    for kind, name, version, released in waived:
+        print(f"APPROVED SECURITY EXCEPTION  {kind} {name}=={version}, released {released:%Y-%m-%d}")
     total = sum(len(v) for v in pins.values())
     for kind, name, version, released in too_new:
         age = (now - released).days
@@ -129,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"UNKNOWN  {kind:4} {name}=={version}  release date not found in the index")
     print(
         f"dependency age: {total} pins checked, minimum {args.min_age_days} days; "
-        f"{len(too_new)} too new, {len(unknown)} unknown"
+        f"{len(too_new)} too new, {len(unknown)} unknown, {len(waived)} approved security exceptions"
     )
     return 1 if too_new or unknown else 0
 

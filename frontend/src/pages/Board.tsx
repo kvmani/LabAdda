@@ -7,6 +7,7 @@ import { PublishSnapshot } from "../components/PublishSnapshot";
 import { ConversationTask } from "../components/ConversationTask";
 import { Button, Card, Dialog } from "../ui";
 import {
+  BoardTabs,
   STICKY_SHAPES,
   STICKY_SIZES,
   STICKY_COLORS,
@@ -83,6 +84,7 @@ export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<str
         dy: 0,
       });
     } else if (!obj) continue;
+    else if (op.type === "update") Object.assign(obj, { data: op.payload.data, rev: op.revision });
     else if (op.type === "erase") Object.assign(obj, { alive: false, rev: op.revision });
     else if (op.type === "move")
       Object.assign(obj, {
@@ -98,6 +100,7 @@ export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<str
       const dx = op.payload.dx ?? t?.payload.dx ?? 0;
       const dy = op.payload.dy ?? t?.payload.dy ?? 0;
       if (!type) continue;
+      if (type === "update") obj.data = op.payload.previous_data ?? obj.data;
       if (type === "add") obj.alive = false;
       if (type === "erase") obj.alive = true;
       if (type === "move") Object.assign(obj, { dx: obj.dx - dx, dy: obj.dy - dy });
@@ -192,6 +195,7 @@ export function Board({
   const shapeDrawing = useRef<{ id: string; start: Point; points: Point[] } | null>(null);
 
   useEffect(() => {
+    if (panel) return;
     api<{ id: string; display_name: string }[]>(`/workspaces/${ws.id}/members`)
       .then((list) => {
         const map = new Map<string, string>();
@@ -199,7 +203,7 @@ export function Board({
         setMembers(map);
       })
       .catch(() => undefined);
-  }, [ws.id]);
+  }, [ws.id, panel]);
   const [save, setSave] = useState<SaveState>(ws.can_write ? "Saved" : "Read-only");
   const [message, setMessage] = useState<string | null>(null);
   const uploads = useUploadQueue(maxUploadBytes, (asset) => {
@@ -207,6 +211,16 @@ export function Board({
   });
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
   const [boardIndex, setBoardIndex] = useState(0);
+  const activeScope = useRef(`${ws.id}:0`);
+  activeScope.current = `${ws.id}:${boardIndex}`;
+  const loadSequence = useRef(0);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const [boardTabs, setBoardTabs] = useState<{ board_index: number; title: string }[]>([
     { board_index: 0, title: "WhiteBoard_1" },
   ]);
@@ -223,6 +237,7 @@ export function Board({
   const objects = fold(ops, base);
 
   useEffect(() => {
+    if (panel) return;
     api<
       | { boards?: { board_index: number; title: string }[]; max_whiteboards?: number }
       | { board_index: number; title: string }[]
@@ -235,20 +250,24 @@ export function Board({
         }
       })
       .catch(() => undefined);
-  }, [ws.id]);
+  }, [ws.id, panel]);
 
   const load = useCallback(
     async (full = false) => {
+      const sequence = ++loadSequence.current;
+      const scope = `${ws.id}:${boardIndex}`;
       const params: Record<string, string | number> = { board_index: boardIndex };
       if (!full) {
         params.epoch = state.current.epoch;
         params.after = state.current.revision;
       }
       const r = await api<BoardState>(`/workspaces/${ws.id}/board`, { params });
+      if (!alive.current || activeScope.current !== scope || sequence !== loadSequence.current) return;
+      if (r.epoch < state.current.epoch) return;
       // A reset response starts from the compacted snapshot (if any) plus later operations.
       if (r.reset) setBase(r.snapshot?.objects ?? null);
       setOps((prev) => {
-        const kept = r.reset ? [] : prev;
+        const kept = r.reset ? prev.filter((op) => op.epoch === r.epoch && op.revision > r.revision) : prev;
         const known = new Set(kept.map((o) => o.revision));
         const merged = [...kept, ...r.ops.filter((o: BoardOp) => !known.has(o.revision))].sort(
           (a, b) => a.revision - b.revision,
@@ -267,6 +286,7 @@ export function Board({
 
   const apply = useCallback(
     (op: BoardOp) => {
+      if (!alive.current || activeScope.current !== `${ws.id}:${boardIndex}`) return;
       const opIdx = (op as { board_index?: number }).board_index ?? 0;
       if (opIdx !== boardIndex) return;
       previews.current.delete(op.object_id);
@@ -279,12 +299,13 @@ export function Board({
         return next;
       });
     },
-    [load, boardIndex],
+    [load, boardIndex, ws.id],
   );
 
   const flush = useCallback(async () => {
     if (flushing.current) return;
     flushing.current = true;
+    const scope = `${ws.id}:${boardIndex}`;
     try {
       while (pending.current.length) {
         setSave("Saving…");
@@ -293,9 +314,11 @@ export function Board({
           const r = await api<{ committed: BoardOp; duplicate: boolean }>(`/workspaces/${ws.id}/board/ops`, {
             body: { ...op, board_index: boardIndex },
           });
+          if (!alive.current || activeScope.current !== scope) return;
           apply(r.committed);
           pending.current.shift();
         } catch (e: unknown) {
+          if (!alive.current || activeScope.current !== scope) return;
           if (outcomeUnknown(e)) {
             setSave("Reconnecting…");
             return; // keep pending ops; resend with the same IDs later
@@ -323,9 +346,28 @@ export function Board({
     state.current = { revision: 0, epoch: 1 };
     setOps([]);
     setBase(null);
+    setSelection(null);
+    setPairing(null);
+    setTaskContext(null);
+    setEditingSticky(null);
+    setEditingText(null);
+    setCreatingStickyAt(null);
+    setCreatingTextAt(null);
+    drawing.current = null;
+    shapeDrawing.current = null;
+    previews.current.clear();
     pending.current = [];
     load(true).catch((e) => setMessage(errorMessage(e)));
   }, [boardIndex, load]);
+
+  function switchBoard(index: number) {
+    if (pending.current.length || flushing.current) {
+      setMessage("Wait for this board to finish saving before switching boards.");
+      return;
+    }
+    activeScope.current = `${ws.id}:${index}`;
+    setBoardIndex(index);
+  }
 
   async function renameBoard(idx: number, currentTitle: string) {
     const title = window.prompt("Short board name (max 10 chars, or default WhiteBoard_N):", currentTitle);
@@ -359,7 +401,7 @@ export function Board({
         body: { title: newTitle },
       });
       setBoardTabs((prev) => [...prev, { board_index: nextIdx, title: newTitle }]);
-      setBoardIndex(nextIdx);
+      switchBoard(nextIdx);
     } catch (e: unknown) {
       setMessage(errorMessage(e));
     }
@@ -370,11 +412,11 @@ export function Board({
     const retry = window.setInterval(() => pending.current.length && flush(), 3000);
     const unsub = realtime.subscribe(ws.id, (ev) => {
       if (ev.type === "board.op") apply(ev.op);
-      else if (ev.type === "board.epoch") {
+      else if (ev.type === "board.epoch" && (ev.board_index ?? 0) === boardIndex) {
         pending.current = [];
         setMessage("A steward restored the board. Your view was refreshed.");
         load(true).catch((e) => setMessage(errorMessage(e)));
-      } else if (ev.type === "board.preview") {
+      } else if (ev.type === "board.preview" && (ev.board_index ?? 0) === boardIndex) {
         if (ev.done) previews.current.delete(ev.preview_id);
         else if (ev.stroke) previews.current.set(ev.preview_id, ev.stroke);
         force((n) => n + 1);
@@ -390,7 +432,7 @@ export function Board({
       unsub();
       window.clearInterval(retry);
     };
-  }, [ws.id, load, apply, flush]);
+  }, [ws.id, load, apply, flush, boardIndex]);
 
   // ---- rendering ----------------------------------------------------------
   useEffect(() => {
@@ -577,6 +619,7 @@ export function Board({
         d.last = now;
         realtime.send({
           type: "board.preview",
+          board_index: boardIndex,
           workspace_id: ws.id,
           preview_id: d.id,
           stroke: { points: d.points.slice(-400), color },
@@ -647,7 +690,13 @@ export function Board({
     drawing.current = null;
     if (!d) return;
     const strokeW = drawMode === "pencil" ? 1.5 : drawMode === "brush" ? 8 : 3;
-    realtime.send({ type: "board.preview", workspace_id: ws.id, preview_id: d.id, done: true });
+    realtime.send({
+      type: "board.preview",
+      board_index: boardIndex,
+      workspace_id: ws.id,
+      preview_id: d.id,
+      done: true,
+    });
     submit({
       type: "add",
       object_id: d.id,
@@ -716,7 +765,7 @@ export function Board({
     if (answer === null) return;
     try {
       await api(`/workspaces/${ws.id}/board/restore`, {
-        body: { revision: Number(answer), reason: "Restored from board view" },
+        body: { board_index: boardIndex, revision: Number(answer), reason: "Restored from board view" },
       });
       await load(true);
     } catch (e: unknown) {
@@ -769,51 +818,18 @@ export function Board({
             </div>
           )}
         </Dialog>
-        <div className="whiteboard-tabs" role="tablist" aria-label="Whiteboard tabs">
-          {boardTabs.map((tab) => (
-            <button
-              key={tab.board_index}
-              type="button"
-              role="tab"
-              aria-selected={boardIndex === tab.board_index}
-              className={`whiteboard-tab ${boardIndex === tab.board_index ? "whiteboard-tab--active" : ""}`}
-              onClick={() => setBoardIndex(tab.board_index)}
-            >
-              <span>{tab.title}</span>
-              {ws.can_write && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="whiteboard-tab__rename"
-                  title="Rename board"
-                  aria-label={`Rename ${tab.title}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void renameBoard(tab.board_index, tab.title);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.stopPropagation();
-                      void renameBoard(tab.board_index, tab.title);
-                    }
-                  }}
-                >
-                  ✏️
-                </span>
-              )}
-            </button>
-          ))}
-          {ws.can_write && boardTabs.length < 5 && (
-            <button
-              type="button"
-              className="whiteboard-tab__add"
-              onClick={() => void addBoard()}
-              title="Add a new whiteboard tab"
-            >
-              ＋ Add Board
-            </button>
-          )}
-        </div>
+        {!panel && (
+          <BoardTabs
+            tabs={boardTabs}
+            selected={boardIndex}
+            label="Whiteboard tabs"
+            canWrite={ws.can_write}
+            maximum={maxWhiteboards}
+            onSelect={switchBoard}
+            onRename={(index, title) => void renameBoard(index, title)}
+            onAdd={() => void addBoard()}
+          />
+        )}
         <div className="toolbar" role="toolbar" aria-label="Drawing tools">
           {(["select", "pen", "eraser", "text", "sticky", "pan"] as Tool[]).map((t) => (
             <button
@@ -976,15 +992,29 @@ export function Board({
           {!panel && (
             <button
               className="tool"
-              disabled={state.current.revision === 0 || save === "Saving…" || save === "Reconnecting…"}
-              title="Add research-plan content before creating a task reference"
+              disabled={
+                boardIndex !== 0 ||
+                state.current.revision === 0 ||
+                save === "Saving…" ||
+                save === "Reconnecting…"
+              }
+              title={
+                boardIndex === 0
+                  ? "Create a task reference from this board"
+                  : "Task references are available on the first board"
+              }
               onClick={() => setTaskContext({ ...state.current })}
             >
               Create task from board
             </button>
           )}
           {!panel && (
-            <button className="tool" onClick={openOnPanel}>
+            <button
+              className="tool"
+              onClick={openOnPanel}
+              disabled={boardIndex !== 0}
+              title="Touch panels open the first board"
+            >
               📺 Open on touch panel
             </button>
           )}
@@ -1002,6 +1032,7 @@ export function Board({
         {selection && tool === "snapshot" && (
           <PublishSnapshot
             ws={ws}
+            boardIndex={boardIndex}
             region={selection}
             revision={state.current.revision}
             onClose={(done) => {
@@ -1091,15 +1122,15 @@ export function Board({
             }}
             onClose={() => setEditingSticky(null)}
             onSave={(cfg) => {
-              submit({ type: "erase", object_id: editingSticky.id });
               submit({
-                type: "add",
-                object_id: newId("s"),
+                type: "update",
+                object_id: editingSticky.id,
+                base_revision: editingSticky.obj.rev,
                 payload: {
                   kind: "sticky",
                   data: {
-                    x: editingSticky.obj.data.x + editingSticky.obj.dx,
-                    y: editingSticky.obj.data.y + editingSticky.obj.dy,
+                    x: editingSticky.obj.data.x,
+                    y: editingSticky.obj.data.y,
                     text: cfg.text,
                     shape: cfg.shape,
                     size: cfg.size,
@@ -1160,15 +1191,15 @@ export function Board({
             }}
             onClose={() => setEditingText(null)}
             onSave={(t, c) => {
-              submit({ type: "erase", object_id: editingText.id });
               submit({
-                type: "add",
-                object_id: newId("t"),
+                type: "update",
+                object_id: editingText.id,
+                base_revision: editingText.obj.rev,
                 payload: {
                   kind: "text",
                   data: {
-                    x: editingText.obj.data.x + editingText.obj.dx,
-                    y: editingText.obj.data.y + editingText.obj.dy,
+                    x: editingText.obj.data.x,
+                    y: editingText.obj.data.y,
                     text: t,
                     color: c,
                   },

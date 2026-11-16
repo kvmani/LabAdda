@@ -57,7 +57,10 @@ class MetricsMiddleware:
 
     def _record(self, scope: Scope, status: int, elapsed_ms: float) -> None:
         route = scope.get("route")
-        group = route_group(getattr(route, "path", None), self.api_prefix)
+        # Included routers expose the prefixed template through FastAPI's effective context.
+        context = scope.get("fastapi", {}).get("effective_route_context")
+        template = getattr(context, "path", None) or getattr(route, "path", None)
+        group = route_group(template, self.api_prefix)
         self.registry.count("http.requests", group)
         if status >= 500:
             self.registry.count("http.errors", group)

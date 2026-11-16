@@ -127,12 +127,7 @@
   cursor: grab;
 }
 .board-list {
-  position: absolute;
-  right: var(--space-2);
-  top: 4rem;
-  width: 280px;
-  max-width: calc(100% - var(--space-4));
-  max-height: 60%;
+  margin: var(--space-2);
   overflow: auto;
 }
 .snapshot-preview {
@@ -194,6 +189,9 @@
 }
 .tool-group {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
   gap: var(--space-1);
   align-items: center;
   border-left: 1px solid var(--line);
@@ -310,4 +308,10 @@
   color: var(--accent);
   border-color: var(--accent);
   border-style: solid;
+}
+
+.whiteboard-tabs__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
 }

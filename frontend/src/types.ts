@@ -95,6 +95,7 @@ export type BoardOpPayload = {
   author?: string;
   dx?: number;
   dy?: number;
+  previous_data?: BoardObjectData;
   target_revision?: number;
   target_type?: string;
 };

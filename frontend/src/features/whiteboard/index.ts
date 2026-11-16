@@ -4,3 +4,5 @@ export * from "./StickyEditDialog";
 export * from "./TextEditDialog";
 export * from "./WhiteboardHoverTooltip";
 export * from "./WhiteboardToolbar";
+
+export { BoardTabs } from "./BoardTabs";

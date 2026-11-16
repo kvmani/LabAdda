@@ -42,7 +42,7 @@ export function WorkspaceSwitcher({ workspaces, currentId, operations }: Workspa
         onChange={(event) => {
           const value = event.target.value;
           if (!value) return;
-          navigate(pages.find((page) => page.value === value)?.to ?? `/w/${value}/noticeboard`);
+          void navigate(pages.find((page) => page.value === value)?.to ?? `/w/${value}/noticeboard`);
         }}
       >
         <option value="">Choose workspace…</option>

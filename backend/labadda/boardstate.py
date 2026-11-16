@@ -46,6 +46,9 @@ def apply_op(objects: dict[str, dict], op: BoardOp, by_rev: dict[int, BoardOp] |
         }
     elif obj is None:
         return
+    elif op.op_type == "update":
+        obj["data"] = op.payload["data"]
+        obj["rev"] = op.revision
     elif op.op_type == "erase":
         obj["alive"], obj["rev"] = False, op.revision
     elif op.op_type == "move":
@@ -53,24 +56,30 @@ def apply_op(objects: dict[str, dict], op: BoardOp, by_rev: dict[int, BoardOp] |
         obj["dy"] = obj.get("dy", 0.0) + op.payload["dy"]
         obj["rev"] = op.revision
     elif op.op_type == "undo":
-        # Undo payloads carry their effect so they still apply after the target is compacted.
-        target_type = op.payload.get("target_type")
-        delta = (op.payload.get("dx", 0.0), op.payload.get("dy", 0.0))
-        if target_type is None:
-            target = (by_rev or {}).get(op.payload["target_revision"])
-            if target is None:
-                return
-            target_type = target.op_type
-            if target_type == "move":
-                delta = (target.payload["dx"], target.payload["dy"])
-        if target_type == "add":
-            obj["alive"] = False
-        elif target_type == "erase":
-            obj["alive"] = True
-        elif target_type == "move":
-            obj["dx"] = obj.get("dx", 0.0) - delta[0]
-            obj["dy"] = obj.get("dy", 0.0) - delta[1]
-        obj["rev"] = op.revision
+        _undo_object(obj, op, by_rev)
+
+
+def _undo_object(obj: dict, op: BoardOp, by_rev: dict[int, BoardOp] | None) -> None:
+    # Undo payloads carry their effect so they still apply after the target is compacted.
+    target_type = op.payload.get("target_type")
+    delta = (op.payload.get("dx", 0.0), op.payload.get("dy", 0.0))
+    if target_type is None:
+        target = (by_rev or {}).get(op.payload["target_revision"])
+        if target is None:
+            return
+        target_type = target.op_type
+        if target_type == "move":
+            delta = (target.payload["dx"], target.payload["dy"])
+    if target_type == "update":
+        obj["data"] = op.payload["previous_data"]
+    if target_type == "add":
+        obj["alive"] = False
+    elif target_type == "erase":
+        obj["alive"] = True
+    elif target_type == "move":
+        obj["dx"] = obj.get("dx", 0.0) - delta[0]
+        obj["dy"] = obj.get("dy", 0.0) - delta[1]
+    obj["rev"] = op.revision
 
 
 def fold(ops: Iterable[BoardOp], base: dict | None = None, upto: int | None = None) -> dict[str, dict]:

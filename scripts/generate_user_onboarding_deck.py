@@ -17,9 +17,7 @@ from pptx.util import Inches, Pt
 # Paths
 WORKSPACE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(WORKSPACE_DIR, "docs", "presentation_assets")
-OUTPUT_PPTX = os.path.join(
-    WORKSPACE_DIR, "docs", "LabAdda_User_Guide_and_Onboarding_Presentation.pptx"
-)
+OUTPUT_PPTX = os.path.join(WORKSPACE_DIR, "docs", "LabAdda_User_Guide_and_Onboarding_Presentation.pptx")
 
 # Color Palette
 NAVY_DARK = RGBColor(11, 25, 44)  # #0B192C Deep Navy
@@ -56,14 +54,10 @@ def set_shape_flat_color(shape, fill_color, line_color=None, line_width=1):
 def add_header(slide, tag_text, title_text, subtitle_text, dark=False):
     """Adds a standard structured header zone to any slide."""
     # Tag Pill
-    tag_box = slide.shapes.add_textbox(
-        Inches(0.8), Inches(0.4), Inches(11.7), Inches(0.3)
-    )
+    tag_box = slide.shapes.add_textbox(Inches(0.8), Inches(0.4), Inches(11.7), Inches(0.3))
     tf_tag = tag_box.text_frame
     tf_tag.word_wrap = True
-    tf_tag.margin_left = tf_tag.margin_top = tf_tag.margin_right = (
-        tf_tag.margin_bottom
-    ) = 0
+    tf_tag.margin_left = tf_tag.margin_top = tf_tag.margin_right = tf_tag.margin_bottom = 0
     p_tag = tf_tag.paragraphs[0]
     p_tag.text = tag_text.upper()
     p_tag.font.size = Pt(9.5)
@@ -71,14 +65,10 @@ def add_header(slide, tag_text, title_text, subtitle_text, dark=False):
     p_tag.font.color.rgb = CYAN_ACCENT if dark else BLUE_PRIMARY
 
     # Title
-    title_box = slide.shapes.add_textbox(
-        Inches(0.8), Inches(0.68), Inches(11.7), Inches(0.5)
-    )
+    title_box = slide.shapes.add_textbox(Inches(0.8), Inches(0.68), Inches(11.7), Inches(0.5))
     tf_title = title_box.text_frame
     tf_title.word_wrap = True
-    tf_title.margin_left = tf_title.margin_top = tf_title.margin_right = (
-        tf_title.margin_bottom
-    ) = 0
+    tf_title.margin_left = tf_title.margin_top = tf_title.margin_right = tf_title.margin_bottom = 0
     p_title = tf_title.paragraphs[0]
     p_title.text = title_text
     p_title.font.size = Pt(21)
@@ -86,40 +76,22 @@ def add_header(slide, tag_text, title_text, subtitle_text, dark=False):
     p_title.font.color.rgb = WHITE if dark else TEXT_MAIN
 
     # Subtitle
-    sub_box = slide.shapes.add_textbox(
-        Inches(0.8), Inches(1.22), Inches(11.7), Inches(0.35)
-    )
+    sub_box = slide.shapes.add_textbox(Inches(0.8), Inches(1.22), Inches(11.7), Inches(0.35))
     tf_sub = sub_box.text_frame
     tf_sub.word_wrap = True
-    tf_sub.margin_left = tf_sub.margin_top = tf_sub.margin_right = (
-        tf_sub.margin_bottom
-    ) = 0
+    tf_sub.margin_left = tf_sub.margin_top = tf_sub.margin_right = tf_sub.margin_bottom = 0
     p_sub = tf_sub.paragraphs[0]
     p_sub.text = subtitle_text
     p_sub.font.size = Pt(11.5)
     p_sub.font.color.rgb = TEXT_LIGHT if dark else TEXT_MUTED
 
 
-def build_presentation():
-    prs = Presentation()
-    prs.slide_width = Inches(13.333)
-    prs.slide_height = Inches(7.5)
-    blank_layout = prs.slide_layouts[6]
-
-    # =========================================================================
-    # SLIDE 1: Title Slide (Dark Theme)
-    # =========================================================================
+def slide_1(prs, blank_layout):
     s1 = prs.slides.add_slide(blank_layout)
     bg1 = s1.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg1, NAVY_DARK)
-
-    # Accent top border line
-    top_bar = s1.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(0.12)
-    )
+    top_bar = s1.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(0.12))
     set_shape_flat_color(top_bar, CYAN_ACCENT)
-
-    # Pill badge
     badge = s1.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.0), Inches(4.8), Inches(0.42)
     )
@@ -131,8 +103,6 @@ def build_presentation():
     p_b.font.size = Pt(10)
     p_b.font.bold = True
     p_b.font.color.rgb = CYAN_ACCENT
-
-    # Main Title
     t_box = s1.shapes.add_textbox(Inches(1.0), Inches(1.65), Inches(11.3), Inches(1.5))
     tf_t = t_box.text_frame
     tf_t.word_wrap = True
@@ -141,26 +111,26 @@ def build_presentation():
     p_t1.font.size = Pt(38)
     p_t1.font.bold = True
     p_t1.font.color.rgb = WHITE
-
     p_t2 = tf_t.add_paragraph()
     p_t2.text = "Your Digital Space for Lab Ideas, Sketches, Discussions & Schedules"
     p_t2.font.size = Pt(20)
     p_t2.font.color.rgb = CYAN_ACCENT
-
-    # Description
     d_box = s1.shapes.add_textbox(Inches(1.0), Inches(3.35), Inches(11.3), Inches(0.8))
     tf_d = d_box.text_frame
     tf_d.word_wrap = True
+    return _finish_slide_1(s1=s1, tf_d=tf_d)
+
+
+def _finish_slide_1(*, s1, tf_d):
     p_d = tf_d.paragraphs[0]
     p_d.text = (
-        "LabAdda is a friendly, lightweight browser-based collaboration space designed specifically for our "
-        "research community on the internal laboratory intranet. Think of it as a digital whiteboard for our "
-        "entire institute—built to make scientific communication faster, simpler, and more engaging."
+        "LabAdda is a friendly, lightweight browser-based collaboration space designe"
+        "d specifically for our research community on the internal laboratory intrane"
+        "t. Think of it as a digital whiteboard for our entire institute—built to mak"
+        "e scientific communication faster, simpler, and more engaging."
     )
     p_d.font.size = Pt(13)
     p_d.font.color.rgb = TEXT_LIGHT
-
-    # 4 Key Principles Cards at bottom
     cards = [
         (
             "Grassroots Experiment",
@@ -188,47 +158,32 @@ def build_presentation():
     start_x = Inches(1.0)
     card_y = Inches(4.55)
     card_h = Inches(1.9)
-
     for i, (head, body, acc_col) in enumerate(cards):
         cx = start_x + i * (card_w + card_gap)
-        c_shape = s1.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, cx, card_y, card_w, card_h
-        )
+        c_shape = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, cx, card_y, card_w, card_h)
         set_shape_flat_color(c_shape, NAVY_SLATE, NAVY_HEADER, 1.5)
-
         s_bar = s1.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            cx + Inches(0.15),
-            card_y + Inches(0.15),
-            card_w - Inches(0.3),
-            Inches(0.04),
+            MSO_SHAPE.RECTANGLE, cx + Inches(0.15), card_y + Inches(0.15), card_w - Inches(0.3), Inches(0.04)
         )
         set_shape_flat_color(s_bar, acc_col)
-
         tb = s1.shapes.add_textbox(
-            cx + Inches(0.15),
-            card_y + Inches(0.28),
-            card_w - Inches(0.3),
-            card_h - Inches(0.35),
+            cx + Inches(0.15), card_y + Inches(0.28), card_w - Inches(0.3), card_h - Inches(0.35)
         )
         tf = tb.text_frame
         tf.word_wrap = True
         tf.margin_left = tf.margin_top = tf.margin_right = tf.margin_bottom = 0
-
         p1 = tf.paragraphs[0]
         p1.text = head
         p1.font.size = Pt(13)
         p1.font.bold = True
         p1.font.color.rgb = WHITE
-
         p2 = tf.add_paragraph()
         p2.text = body
         p2.font.size = Pt(10.5)
         p2.font.color.rgb = TEXT_LIGHT
 
-    # =========================================================================
-    # SLIDE 2: Purpose & Scope (Clear Boundaries)
-    # =========================================================================
+
+def slide_2(prs, blank_layout):
     s2 = prs.slides.add_slide(blank_layout)
     bg2 = s2.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg2, BG_LIGHT)
@@ -238,31 +193,19 @@ def build_presentation():
         "What LabAdda Is — and What It Is Not",
         "Clear boundaries ensure safe, productive, and comfortable adoption across all research units.",
     )
-
-    # Two big comparison columns
     col_w = Inches(5.65)
     col_h = Inches(5.3)
     c1_x = Inches(0.8)
     c2_x = Inches(6.88)
     col_y = Inches(1.7)
-
-    # Card 1: What LabAdda IS (Green accent)
     c1 = s2.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, c1_x, col_y, col_w, col_h)
     set_shape_flat_color(c1, CARD_BG, GREEN_ACCENT, 2)
     s_bar1 = s2.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE,
-        c1_x + Inches(0.2),
-        col_y + Inches(0.2),
-        col_w - Inches(0.4),
-        Inches(0.06),
+        MSO_SHAPE.RECTANGLE, c1_x + Inches(0.2), col_y + Inches(0.2), col_w - Inches(0.4), Inches(0.06)
     )
     set_shape_flat_color(s_bar1, GREEN_ACCENT)
-
     tb1 = s2.shapes.add_textbox(
-        c1_x + Inches(0.3),
-        col_y + Inches(0.35),
-        col_w - Inches(0.6),
-        col_h - Inches(0.5),
+        c1_x + Inches(0.3), col_y + Inches(0.35), col_w - Inches(0.6), col_h - Inches(0.5)
     )
     tf1 = tb1.text_frame
     tf1.word_wrap = True
@@ -271,7 +214,6 @@ def build_presentation():
     p.font.size = Pt(18)
     p.font.bold = True
     p.font.color.rgb = GREEN_ACCENT
-
     is_points = [
         (
             "A Digital Whiteboard for Your Team:",
@@ -279,19 +221,23 @@ def build_presentation():
         ),
         (
             "A Grassroots Intranet Experiment:",
-            "Built by researchers for researchers to explore faster, simpler peer collaboration without delay.",
+            "Built by researchers for researchers to explore faster, simpler peer collabo"
+            "ration without delay.",
         ),
         (
             "Fast, Informal Coordination:",
-            "Keep meeting minutes, equipment availability notes, and quick action items in one place instead of buried in emails.",
+            "Keep meeting minutes, equipment availability notes, and quick action items i"
+            "n one place instead of buried in emails.",
         ),
         (
             "Unified Lab Calendar in IST:",
-            "Track institutional seminars, division reviews, and project milestones alongside your personal tasks.",
+            "Track institutional seminars, division reviews, and project milestones along"
+            "side your personal tasks.",
         ),
         (
             "An Organic Community Space:",
-            "Usage is expected to grow naturally as more colleagues discover its convenience and invite team peers.",
+            "Usage is expected to grow naturally as more colleagues discover its convenie"
+            "nce and invite team peers.",
         ),
     ]
     for title, desc in is_points:
@@ -304,24 +250,18 @@ def build_presentation():
         p_d.text = f"   {desc}"
         p_d.font.size = Pt(11)
         p_d.font.color.rgb = TEXT_MUTED
+    return _finish_slide_2(c2_x=c2_x, col_h=col_h, col_w=col_w, col_y=col_y, s2=s2)
 
-    # Card 2: What LabAdda IS NOT (Rose accent)
+
+def _finish_slide_2(*, c2_x, col_h, col_w, col_y, s2):
     c2 = s2.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, c2_x, col_y, col_w, col_h)
     set_shape_flat_color(c2, CARD_BG, ROSE_ACCENT, 2)
     s_bar2 = s2.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE,
-        c2_x + Inches(0.2),
-        col_y + Inches(0.2),
-        col_w - Inches(0.4),
-        Inches(0.06),
+        MSO_SHAPE.RECTANGLE, c2_x + Inches(0.2), col_y + Inches(0.2), col_w - Inches(0.4), Inches(0.06)
     )
     set_shape_flat_color(s_bar2, ROSE_ACCENT)
-
     tb2 = s2.shapes.add_textbox(
-        c2_x + Inches(0.3),
-        col_y + Inches(0.35),
-        col_w - Inches(0.6),
-        col_h - Inches(0.5),
+        c2_x + Inches(0.3), col_y + Inches(0.35), col_w - Inches(0.6), col_h - Inches(0.5)
     )
     tf2 = tb2.text_frame
     tf2.word_wrap = True
@@ -330,7 +270,6 @@ def build_presentation():
     p.font.size = Pt(18)
     p.font.bold = True
     p.font.color.rgb = ROSE_ACCENT
-
     is_not_points = [
         (
             "NOT an Official Institutional Platform:",
@@ -338,15 +277,18 @@ def build_presentation():
         ),
         (
             "NO Place for Sensitive or Official Data:",
-            "Never upload classified records, confidential findings, or formal administrative grievances here.",
+            "Never upload classified records, confidential findings, or formal administra"
+            "tive grievances here.",
         ),
         (
             "NOT a Heavy File Storage Dump:",
-            "Keep uploads lightweight (<20MB per file). Massive raw instrument datasets stay on central NAS storage.",
+            "Keep uploads lightweight (<20MB per file). Massive raw instrument datasets s"
+            "tay on central NAS storage.",
         ),
         (
             "NOT a Monitored Spyware Tool:",
-            "Administrators CANNOT read your messages, private notes, or whiteboard sketches (enforced by design).",
+            "Administrators CANNOT read your messages, private notes, or whiteboard sketc"
+            "hes (enforced by design).",
         ),
         (
             "NO Bureaucratic Approvals Needed:",
@@ -364,9 +306,9 @@ def build_presentation():
         p_d.font.size = Pt(11)
         p_d.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
+
+def slide_3(prs, blank_layout):
     # SLIDE 3: Why Use LabAdda (The 6 Major Capabilities)
-    # =========================================================================
     s3 = prs.slides.add_slide(blank_layout)
     bg3 = s3.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg3, BG_LIGHT)
@@ -374,28 +316,33 @@ def build_presentation():
         s3,
         "Key Capabilities",
         "Six Reasons Every Lab Member Should Try LabAdda",
-        "Designed to streamline everyday laboratory work, reduce communication fatigue, and spark innovation.",
+        "Designed to streamline everyday laboratory work, reduce communication fatigu"
+        "e, and spark innovation.",
     )
 
     six_cards = [
         (
             "📅 Central Calendar in IST",
-            "Combines institute seminars, division events, project deadlines, and personal reminders into one clean view.",
+            "Combines institute seminars, division events, project deadlines, and persona"
+            "l reminders into one clean view.",
             BLUE_PRIMARY,
         ),
         (
             "🎨 Multi-Board Whiteboards",
-            "Sketch mechanisms, stickies, and diagrams with custom board tabs (e.g., 'SiC Project') and live collaboration.",
+            "Sketch mechanisms, stickies, and diagrams with custom board tabs (e.g., 'SiC"
+            " Project') and live collaboration.",
             CYAN_ACCENT,
         ),
         (
             "📢 Organized Noticeboards",
-            "Official section circulars and team notices pinned with rich discussion threads, eliminating inbox clutter.",
+            "Official section circulars and team notices pinned with rich discussion thre"
+            "ads, eliminating inbox clutter.",
             TEAL_ACCENT,
         ),
         (
             "⚡ Actionable Tasks & Todos",
-            "Convert whiteboard ideas and chat messages directly into actionable tasks with due dates and checklists.",
+            "Convert whiteboard ideas and chat messages directly into actionable tasks wi"
+            "th due dates and checklists.",
             GREEN_ACCENT,
         ),
         (
@@ -452,9 +399,9 @@ def build_presentation():
         p2.font.size = Pt(11)
         p2.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
+
+def slide_4(prs, blank_layout):
     # SLIDE 4: Feature Tour — Home & Central Calendar
-    # =========================================================================
     s4 = prs.slides.add_slide(blank_layout)
     bg4 = s4.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg4, BG_LIGHT)
@@ -462,7 +409,8 @@ def build_presentation():
         s4,
         "Feature Deep Dive",
         "Member Home & The Central Calendar",
-        "Personalized collegiate greeting engine, instant FAQs, and multi-tier institutional event scheduling.",
+        "Personalized collegiate greeting engine, instant FAQs, and multi-tier instit"
+        "utional event scheduling.",
     )
 
     # Left Column: Screenshot & Explanation of Home
@@ -473,9 +421,7 @@ def build_presentation():
     # Home Screenshot
     img_home = os.path.join(ASSETS_DIR, "13_home_welcome_and_faq.png")
     if os.path.exists(img_home):
-        s4.shapes.add_picture(
-            img_home, left_x, Inches(1.75), width=col_width, height=img_h
-        )
+        s4.shapes.add_picture(img_home, left_x, Inches(1.75), width=col_width, height=img_h)
 
     tb_h = s4.shapes.add_textbox(left_x, Inches(5.45), col_width, Inches(1.6))
     tf_h = tb_h.text_frame
@@ -488,9 +434,12 @@ def build_presentation():
 
     p2 = tf_h.add_paragraph()
     p2.text = (
-        "• 180+ Dynamic greetings: Warm, collegiate messages greet you based on the time of day.\n"
-        "• Built-in FAQ Accordion: Answers all questions on boundaries, privacy, and group creation.\n"
-        "• One-click access to your research division, project workspaces, and personal tools."
+        "• 180+ Dynamic greetings: Warm, collegiate messages greet you based on the t"
+        "ime of day.\n"
+        "• Built-in FAQ Accordion: Answers all questions on boundaries, privacy, and "
+        "group creation.\n"
+        "• One-click access to your research division, project workspaces, and person"
+        "al tools."
     )
     p2.font.size = Pt(10.5)
     p2.font.color.rgb = TEXT_MUTED
@@ -499,9 +448,7 @@ def build_presentation():
     right_x = Inches(6.88)
     img_cal = os.path.join(ASSETS_DIR, "15_calendar_month_view.png")
     if os.path.exists(img_cal):
-        s4.shapes.add_picture(
-            img_cal, right_x, Inches(1.75), width=col_width, height=img_h
-        )
+        s4.shapes.add_picture(img_cal, right_x, Inches(1.75), width=col_width, height=img_h)
 
     tb_c = s4.shapes.add_textbox(right_x, Inches(5.45), col_width, Inches(1.6))
     tf_c = tb_c.text_frame
@@ -514,16 +461,20 @@ def build_presentation():
 
     p2 = tf_c.add_paragraph()
     p2.text = (
-        "• Hierarchical Visibility: Institute events for all; division events for unit members.\n"
+        "• Hierarchical Visibility: Institute events for all; division events for uni"
+        "t members.\n"
         "• Multiple Views: Smooth switching between Month, Week, Day, and Agenda schedule.\n"
-        "• Color Tagging & IST Format: Create events with venue notes, color chips, and quick filters."
+        "• Color Tagging & IST Format: Create events with venue notes, color chips, a"
+        "nd quick filters."
     )
     p2.font.size = Pt(10.5)
     p2.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
+
+def slide_5(prs, blank_layout):
+    left_x, right_x = Inches(0.8), Inches(6.88)
+    col_width, img_h = Inches(5.65), Inches(3.6)
     # SLIDE 5: Feature Tour — Whiteboards & Creative Sketching
-    # =========================================================================
     s5 = prs.slides.add_slide(blank_layout)
     bg5 = s5.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg5, BG_LIGHT)
@@ -531,15 +482,14 @@ def build_presentation():
         s5,
         "Feature Deep Dive",
         "Multi-Board Whiteboards & Visual Thinking",
-        "Real-time ink drawing, sticky notes with shapes and sizes, multi-board tabs, and snapshot publishing.",
+        "Real-time ink drawing, sticky notes with shapes and sizes, multi-board tabs,"
+        " and snapshot publishing.",
     )
 
     # Multi-board screenshot
     img_wb1 = os.path.join(ASSETS_DIR, "14_multiboard_whiteboard.png")
     if os.path.exists(img_wb1):
-        s5.shapes.add_picture(
-            img_wb1, left_x, Inches(1.75), width=col_width, height=img_h
-        )
+        s5.shapes.add_picture(img_wb1, left_x, Inches(1.75), width=col_width, height=img_h)
 
     tb_w1 = s5.shapes.add_textbox(left_x, Inches(5.45), col_width, Inches(1.6))
     tf_w1 = tb_w1.text_frame
@@ -552,9 +502,11 @@ def build_presentation():
 
     p2 = tf_w1.add_paragraph()
     p2.text = (
-        "• Up to 5 boards per space: Separate your ideas by topic (e.g., 'SiC Project', 'Furnace B').\n"
+        "• Up to 5 boards per space: Separate your ideas by topic (e.g., 'SiC Project"
+        "', 'Furnace B').\n"
         "• Short Tab Naming: Click the ✏️ pencil icon to assign meaningful custom names.\n"
-        "• Live presence & undo: See active team members and undo your own strokes seamlessly."
+        "• Live presence & undo: See active team members and undo your own strokes se"
+        "amlessly."
     )
     p2.font.size = Pt(10.5)
     p2.font.color.rgb = TEXT_MUTED
@@ -562,9 +514,7 @@ def build_presentation():
     # Team Whiteboard Tools screenshot
     img_wb2 = os.path.join(ASSETS_DIR, "04_collaborative_live_whiteboard.png")
     if os.path.exists(img_wb2):
-        s5.shapes.add_picture(
-            img_wb2, right_x, Inches(1.75), width=col_width, height=img_h
-        )
+        s5.shapes.add_picture(img_wb2, right_x, Inches(1.75), width=col_width, height=img_h)
 
     tb_w2 = s5.shapes.add_textbox(right_x, Inches(5.45), col_width, Inches(1.6))
     tf_w2 = tb_w2.text_frame
@@ -577,16 +527,21 @@ def build_presentation():
 
     p2 = tf_w2.add_paragraph()
     p2.text = (
-        "• Geometric Shapes & Stickies: Draw lines, arrows, rectangles, and circles effortlessly.\n"
-        "• Sticky Note Varieties: Small, medium, large stickies in square, round, star, or heart shapes.\n"
-        "• Publish Snapshots: Capture a committed whiteboard region directly to the noticeboard."
+        "• Geometric Shapes & Stickies: Draw lines, arrows, rectangles, and circles e"
+        "ffortlessly.\n"
+        "• Sticky Note Varieties: Small, medium, large stickies in square, round, sta"
+        "r, or heart shapes.\n"
+        "• Publish Snapshots: Capture a committed whiteboard region directly to the n"
+        "oticeboard."
     )
     p2.font.size = Pt(10.5)
     p2.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
+
+def slide_6(prs, blank_layout):
+    left_x, right_x = Inches(0.8), Inches(6.88)
+    col_width, img_h = Inches(5.65), Inches(3.6)
     # SLIDE 6: Feature Tour — Noticeboards, Chat & Tasks
-    # =========================================================================
     s6 = prs.slides.add_slide(blank_layout)
     bg6 = s6.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg6, BG_LIGHT)
@@ -599,9 +554,7 @@ def build_presentation():
 
     img_nb = os.path.join(ASSETS_DIR, "03_division_noticeboard.png")
     if os.path.exists(img_nb):
-        s6.shapes.add_picture(
-            img_nb, left_x, Inches(1.75), width=col_width, height=img_h
-        )
+        s6.shapes.add_picture(img_nb, left_x, Inches(1.75), width=col_width, height=img_h)
 
     tb_nb = s6.shapes.add_textbox(left_x, Inches(5.45), col_width, Inches(1.6))
     tf_nb = tb_nb.text_frame
@@ -614,18 +567,18 @@ def build_presentation():
 
     p2 = tf_nb.add_paragraph()
     p2.text = (
-        "• Pinned Notices: Key equipment rules and division circulars remain pinned at the top.\n"
+        "• Pinned Notices: Key equipment rules and division circulars remain pinned a"
+        "t the top.\n"
         "• Threaded Replies: Discuss posts with colleague replies without losing context.\n"
-        "• Upward Visibility: Section staff automatically see announcements from parent division."
+        "• Upward Visibility: Section staff automatically see announcements from pare"
+        "nt division."
     )
     p2.font.size = Pt(10.5)
     p2.font.color.rgb = TEXT_MUTED
 
     img_task = os.path.join(ASSETS_DIR, "06_research_tasks_workflow.png")
     if os.path.exists(img_task):
-        s6.shapes.add_picture(
-            img_task, right_x, Inches(1.75), width=col_width, height=img_h
-        )
+        s6.shapes.add_picture(img_task, right_x, Inches(1.75), width=col_width, height=img_h)
 
     tb_tk = s6.shapes.add_textbox(right_x, Inches(5.45), col_width, Inches(1.6))
     tf_tk = tb_tk.text_frame
@@ -638,16 +591,18 @@ def build_presentation():
 
     p2 = tf_tk.add_paragraph()
     p2.text = (
-        "• Status & Priority: Follow tasks across Open, In Progress, Blocked, and Completed.\n"
+        "• Status & Priority: Follow tasks across Open, In Progress, Blocked, and Com"
+        "pleted.\n"
         "• Checklists & Sub-items: Break complex experiments into step-by-step milestones.\n"
-        "• Direct Conversion: Turn any chat message or whiteboard discussion into an assigned task."
+        "• Direct Conversion: Turn any chat message or whiteboard discussion into an "
+        "assigned task."
     )
     p2.font.size = Pt(10.5)
     p2.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
+
+def slide_7(prs, blank_layout):
     # SLIDE 7: Personal Tools & Ironclad Privacy
-    # =========================================================================
     s7 = prs.slides.add_slide(blank_layout)
     bg7 = s7.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg7, BG_LIGHT)
@@ -669,8 +624,10 @@ def build_presentation():
             "☀️ My Day",
             "Morning Executive Dashboard",
             [
-                "Consolidates your daily schedule, upcoming deadlines, and new updates into one clean summary.",
-                "Never wonder what to tackle first: see assigned project tasks and calendar events side by side.",
+                "Consolidates your daily schedule, upcoming deadlines, and new updates into o"
+                "ne clean summary.",
+                "Never wonder what to tackle first: see assigned project tasks and calendar e"
+                "vents side by side.",
                 "Helps you plan experimental runs and meeting times seamlessly.",
             ],
             BLUE_PRIMARY,
@@ -679,7 +636,8 @@ def build_presentation():
             "📝 My Notes",
             "Personal Research Scratchpad",
             [
-                "Your confidential digital lab notebook: draft thoughts, literature summaries, and reminders.",
+                "Your confidential digital lab notebook: draft thoughts, literature summaries"
+                ", and reminders.",
                 "Instant full-text search across your personal notes.",
                 "Completely invisible to colleagues and administrators—zero external visibility.",
             ],
@@ -739,9 +697,10 @@ def build_presentation():
             p_b.font.size = Pt(11)
             p_b.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
+
+def slide_8(prs, blank_layout):
+    pxs = [Inches(0.8), Inches(4.82), Inches(8.84)]
     # SLIDE 8: Getting Started in 3 Simple Steps
-    # =========================================================================
     s8 = prs.slides.add_slide(blank_layout)
     bg8 = s8.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg8, BG_LIGHT)
@@ -749,7 +708,8 @@ def build_presentation():
         s8,
         "Quick Start Guide",
         "How to Get Started on LabAdda in 3 Easy Steps",
-        "No software installation, no browser plugins, no setup delays. Accessible from any device on the intranet.",
+        "No software installation, no browser plugins, no setup delays. Accessible fr"
+        "om any device on the intranet.",
     )
 
     step_w = Inches(3.68)
@@ -763,7 +723,8 @@ def build_presentation():
             "🖥️",
             [
                 "Open your web browser (Edge, Chrome, or Firefox).",
-                "Navigate to our internal portal address: http://127.0.0.1:8000/ (or your local laboratory host URL).",
+                "Navigate to our internal portal address: http://127.0.0.1:8000/ (or your loc"
+                "al laboratory host URL).",
                 "Bookmark the link in your browser bar for instantaneous daily access.",
                 "Works on Windows, Linux, and touch panels across the institute.",
             ],
@@ -789,16 +750,15 @@ def build_presentation():
                 "Visit your Section or Division space to view pinned notices and ongoing discussions.",
                 "Open Calendar to check this week's seminars or schedule a project meeting.",
                 "Open My Whiteboard and sketch an idea or post sticky notes.",
-                "Click '+ New group' to create an instant private workspace for any project or reading circle!",
+                "Click '+ New group' to create an instant private workspace for any project o"
+                "r reading circle!",
             ],
             GREEN_ACCENT,
         ),
     ]
 
     for i, (badge_txt, step_title, emoji, bullets, col_color) in enumerate(steps):
-        c_box = s8.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, pxs[i], step_y, step_w, step_h
-        )
+        c_box = s8.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, pxs[i], step_y, step_w, step_h)
         set_shape_flat_color(c_box, CARD_BG, BORDER_COLOR, 1)
 
         # Badge pill
@@ -841,9 +801,9 @@ def build_presentation():
             p_b.font.size = Pt(11)
             p_b.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
+
+def slide_9(prs, blank_layout):
     # SLIDE 9: Best Practices & Etiquette (Digital Whiteboard Rule)
-    # =========================================================================
     s9 = prs.slides.add_slide(blank_layout)
     bg9 = s9.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg9, BG_LIGHT)
@@ -858,25 +818,35 @@ def build_presentation():
         (
             "The Digital Whiteboard Rule",
             "Post only what you would comfortably write on a physical lab whiteboard",
-            "Treat LabAdda as an informal visual scratchpad. Great for brainstorming hypotheses, diagramming mechanisms, planning trials, and coordinating equipment times. Keep any sensitive, restricted, or official administrative records strictly on designated formal institutional channels.",
+            "Treat LabAdda as an informal visual scratchpad. Great for brainstorming hypo"
+            "theses, diagramming mechanisms, planning trials, and coordinating equipment "
+            "times. Keep any sensitive, restricted, or official administrative records st"
+            "rictly on designated formal institutional channels.",
             BLUE_PRIMARY,
         ),
         (
             "Keep File Attachments Lightweight",
             "Upload concise summaries, micrographs, and PDFs under 20 MB",
-            "LabAdda operates on a dedicated intranet server with local SSD storage. Keeping files light ensures lightning-fast load times for everyone. Massive raw spectrometer or diffraction datasets should remain on the institute's high-capacity central NAS storage.",
+            "LabAdda operates on a dedicated intranet server with local SSD storage. Keep"
+            "ing files light ensures lightning-fast load times for everyone. Massive raw "
+            "spectrometer or diffraction datasets should remain on the institute's high-c"
+            "apacity central NAS storage.",
             AMBER_ACCENT,
         ),
         (
             "Friendly Communication & Ethics",
             "Communicate with courtesy, mutual respect, and encouraging teamwork",
-            "Research breakthroughs happen when colleagues support each other's ideas. Keep discussions constructive, share credit generously, and foster a welcoming atmosphere for junior scholars and multidisciplinary teams.",
+            "Research breakthroughs happen when colleagues support each other's ideas. Ke"
+            "ep discussions constructive, share credit generously, and foster a welcoming"
+            " atmosphere for junior scholars and multidisciplinary teams.",
             GREEN_ACCENT,
         ),
         (
             "Give Feedback & Shape the Future",
             "This is an active experiment—your feedback directly influences updates",
-            "Have an idea for a tool that would save your lab 10 minutes a day? Spotted a quirk? Click the Feedback button in the top bar anytime. Our developer team reviews all suggestions to continuously enhance the platform.",
+            "Have an idea for a tool that would save your lab 10 minutes a day? Spotted a"
+            " quirk? Click the Feedback button in the top bar anytime. Our developer team"
+            " reviews all suggestions to continuously enhance the platform.",
             PURPLE_ACCENT,
         ),
     ]
@@ -902,9 +872,7 @@ def build_presentation():
         )
         set_shape_flat_color(s_bar, color)
 
-        tb = s9.shapes.add_textbox(
-            rx + Inches(0.25), ry + Inches(0.3), r_w - Inches(0.5), r_h - Inches(0.45)
-        )
+        tb = s9.shapes.add_textbox(rx + Inches(0.25), ry + Inches(0.3), r_w - Inches(0.5), r_h - Inches(0.45))
         tf = tb.text_frame
         tf.word_wrap = True
 
@@ -925,118 +893,109 @@ def build_presentation():
         p3.font.size = Pt(10.5)
         p3.font.color.rgb = TEXT_MUTED
 
-    # =========================================================================
-    # SLIDE 10: Conclusion & Getting Help (Dark Theme)
-    # =========================================================================
+
+def slide_10(prs, blank_layout):
     s10 = prs.slides.add_slide(blank_layout)
     bg10 = s10.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
     set_shape_flat_color(bg10, NAVY_DARK)
-
-    # Accent top border line
-    top_bar10 = s10.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(0.12)
-    )
+    top_bar10 = s10.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(0.12))
     set_shape_flat_color(top_bar10, GREEN_ACCENT)
-
-    # Main text
-    t_box10 = s10.shapes.add_textbox(
-        Inches(1.0), Inches(1.2), Inches(11.3), Inches(1.5)
-    )
+    t_box10 = s10.shapes.add_textbox(Inches(1.0), Inches(1.2), Inches(11.3), Inches(1.5))
     tf10 = t_box10.text_frame
     tf10.word_wrap = True
-
     p_c1 = tf10.paragraphs[0]
     p_c1.text = "Ready to Explore LabAdda?"
     p_c1.font.size = Pt(36)
     p_c1.font.bold = True
     p_c1.font.color.rgb = WHITE
-
     p_c2 = tf10.add_paragraph()
     p_c2.text = "Let's connect our teams, sketch bold ideas, and achieve research excellence together."
     p_c2.font.size = Pt(18)
     p_c2.font.color.rgb = CYAN_ACCENT
-
-    # 3 Contact / Resource Cards
     res_cards = [
         (
             "📖 In-App Help Center",
             "Comprehensive User Guides",
-            "Browse 87 detailed articles covering every feature from whiteboards to calendar at /help or via the 'Help with this page' link.",
+            "Browse 87 detailed articles covering every feature from whiteboards to calen"
+            "dar at /help or via the 'Help with this page' link.",
         ),
         (
             "💬 Feedback Channel",
             "Direct to Developer Team",
-            "Click the 'Feedback' button in the top navigation bar anytime to submit suggestions, bug reports, or feature requests.",
+            "Click the 'Feedback' button in the top navigation bar anytime to submit sugg"
+            "estions, bug reports, or feature requests.",
         ),
         (
             "🏢 Your Unit Steward",
             "Account & Workspace Support",
-            "Reach out to your designated division or section steward for additional workspace grants or login assistance.",
+            "Reach out to your designated division or section steward for additional work"
+            "space grants or login assistance.",
         ),
     ]
     res_w = Inches(3.6)
     res_gap = Inches(0.25)
     res_y = Inches(3.2)
     res_h = Inches(2.5)
-
     for i, (head, sub, desc) in enumerate(res_cards):
         rx = Inches(1.0) + i * (res_w + res_gap)
-        c_shape = s10.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, rx, res_y, res_w, res_h
-        )
+        c_shape = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, res_y, res_w, res_h)
         set_shape_flat_color(c_shape, NAVY_SLATE, NAVY_HEADER, 1.5)
-
         s_bar = s10.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            rx + Inches(0.15),
-            res_y + Inches(0.15),
-            res_w - Inches(0.3),
-            Inches(0.04),
+            MSO_SHAPE.RECTANGLE, rx + Inches(0.15), res_y + Inches(0.15), res_w - Inches(0.3), Inches(0.04)
         )
-        set_shape_flat_color(
-            s_bar, CYAN_ACCENT if i == 0 else TEAL_ACCENT if i == 1 else GREEN_ACCENT
-        )
-
+        set_shape_flat_color(s_bar, CYAN_ACCENT if i == 0 else TEAL_ACCENT if i == 1 else GREEN_ACCENT)
         tb = s10.shapes.add_textbox(
-            rx + Inches(0.2),
-            res_y + Inches(0.3),
-            res_w - Inches(0.4),
-            res_h - Inches(0.4),
+            rx + Inches(0.2), res_y + Inches(0.3), res_w - Inches(0.4), res_h - Inches(0.4)
         )
         tf = tb.text_frame
         tf.word_wrap = True
-
         p1 = tf.paragraphs[0]
         p1.text = head
         p1.font.size = Pt(14)
         p1.font.bold = True
         p1.font.color.rgb = WHITE
-
         p2 = tf.add_paragraph()
         p2.text = sub
         p2.font.size = Pt(11)
         p2.font.bold = True
         p2.font.color.rgb = CYAN_ACCENT
-
         p3 = tf.add_paragraph()
         p3.text = desc
         p3.font.size = Pt(10.5)
         p3.font.color.rgb = TEXT_LIGHT
+    return _finish_slide_10(s10=s10)
 
-    # Bottom footer note
+
+def _finish_slide_10(*, s10):
     fb = s10.shapes.add_textbox(Inches(1.0), Inches(6.3), Inches(11.3), Inches(0.5))
     tf_fb = fb.text_frame
     p_fb = tf_fb.paragraphs[0]
-    p_fb.text = "LabAdda Intranet Workspace · Conceived and Developed by Dr. K. V. Mani Krishna, Materials Group · Version 0.0.1 Beta"
+    p_fb.text = (
+        "LabAdda Intranet Workspace · Conceived and Developed by Dr. K. V. Mani Krish"
+        "na, Materials Group · Version 0.0.2 Beta"
+    )
     p_fb.font.size = Pt(10.5)
     p_fb.font.color.rgb = TEXT_LIGHT
     p_fb.alignment = PP_ALIGN.CENTER
 
-    # Save presentation
+
+def build_presentation():
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
+    blank_layout = prs.slide_layouts[6]
+    slide_1(prs, blank_layout)
+    slide_2(prs, blank_layout)
+    slide_3(prs, blank_layout)
+    slide_4(prs, blank_layout)
+    slide_5(prs, blank_layout)
+    slide_6(prs, blank_layout)
+    slide_7(prs, blank_layout)
+    slide_8(prs, blank_layout)
+    slide_9(prs, blank_layout)
+    slide_10(prs, blank_layout)
     prs.save(OUTPUT_PPTX)
-    print(
-        f"User onboarding presentation generated successfully: {OUTPUT_PPTX} (Total Slides: {len(prs.slides)})"
-    )
+    print(f"Presentation generated: {OUTPUT_PPTX}; slides: {len(prs.slides)}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,8 @@
+# Optional starting budget for a small supervised pilot; review host headroom first.
+# Install as /etc/systemd/system/labadda-main.service.d/office-limits.conf.
+# These affect LabAdda only. Do not copy them onto PostgreSQL, nginx or any ipms-* unit.
+[Service]
+MemoryHigh=1G
+MemoryMax=1536M
+CPUQuota=150%
+TasksMax=256

@@ -51,8 +51,11 @@ def test_personal_calendar_isolation_and_admin_blindness(as_user, ids):
 
     # 4. Chitra directly accessing event gets uniform 404
     assert chitra.get(f"/calendar/events/{event_id}").status_code == 404
-    assert chitra.patch(f"/calendar/events/{event_id}", json={"title": "Hacked"}).status_code == 404
-    assert chitra.delete(f"/calendar/events/{event_id}").status_code == 404
+    assert (
+        chitra.patch(f"/calendar/events/{event_id}", json={"revision": 1, "title": "Hacked"}).status_code
+        == 404
+    )
+    assert chitra.delete(f"/calendar/events/{event_id}?revision=2").status_code == 404
 
     # 5. ADMIN BLINDNESS: Administrator cannot see it in range query or single fetch
     r_admin_list = admin.get("/calendar/events?start=2026-11-20T00:00:00Z&end=2026-11-20T23:59:59Z")
@@ -61,20 +64,25 @@ def test_personal_calendar_isolation_and_admin_blindness(as_user, ids):
 
     # Administrator directly attempting to inspect or mutate gets uniform 404
     assert admin.get(f"/calendar/events/{event_id}").status_code == 404
-    assert admin.patch(f"/calendar/events/{event_id}", json={"title": "Admin Override"}).status_code == 404
-    assert admin.delete(f"/calendar/events/{event_id}").status_code == 404
+    assert (
+        admin.patch(
+            f"/calendar/events/{event_id}", json={"revision": 1, "title": "Admin Override"}
+        ).status_code
+        == 404
+    )
+    assert admin.delete(f"/calendar/events/{event_id}?revision=2").status_code == 404
 
     # 6. Bharat updates their event
     r_update = bharat.patch(
         f"/calendar/events/{event_id}",
-        json={"title": "Updated Research Review", "location": "Seminar Hall A"},
+        json={"revision": 1, "title": "Updated Research Review", "location": "Seminar Hall A"},
     )
     assert r_update.status_code == 200
     assert r_update.json()["title"] == "Updated Research Review"
     assert r_update.json()["location"] == "Seminar Hall A"
 
     # 7. Bharat deletes their event
-    r_del = bharat.delete(f"/calendar/events/{event_id}")
+    r_del = bharat.delete(f"/calendar/events/{event_id}?revision=2")
     assert r_del.status_code == 200
     assert bharat.get(f"/calendar/events/{event_id}").status_code == 404
 

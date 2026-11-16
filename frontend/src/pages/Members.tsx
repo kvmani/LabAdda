@@ -147,7 +147,7 @@ export function Members({ ws }: { ws: Workspace }) {
                         danger: true,
                         act: () =>
                           api(`/groups/${ws.id}/members/${me}`, { method: "DELETE" }).then(
-                            finish(() => navigate("/")),
+                            finish(() => void navigate("/")),
                           ),
                       })
                     }

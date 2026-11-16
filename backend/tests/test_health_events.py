@@ -192,7 +192,7 @@ def test_events_are_retried_when_the_database_write_fails(ids, settings, db_fact
 # --- migration ------------------------------------------------------------------------------
 
 
-def test_downgrade_refuses_while_events_exist(migrated, db_factory, ids):
+def test_downgrade_refuses_while_events_exist(migrated, db_factory, ids, legacy_unit_codes):
     import pytest
     from alembic import command
 

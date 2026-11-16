@@ -78,7 +78,7 @@ ask EMAIL_DOMAIN "E-mail domain of staff addresses (the part after @)" ""
 ask FEEDBACK_EMAIL "Administrator e-mail that receives feedback (type none to skip)" "none"
 ask SMTP_RELAY "Mail relay host:port (type none to skip)" "none"
 if [[ $FEEDBACK_EMAIL != none && $SMTP_RELAY != none ]]; then
-  ask SMTP_FROM "Address feedback mail is sent from" "labadda@$HOSTNAME_"
+  ask SMTP_FROM "Address feedback mail is sent from" "admin.labadda@$EMAIL_DOMAIN"
   ask SMTP_STARTTLS "Does the relay use STARTTLS (true/false)" "false"
   ask SMTP_USER "Relay user name (type none if the relay needs no login)" "none"
 fi
@@ -90,6 +90,19 @@ ask SERVICE_USER "Service account name" "labadda"
   "$KIT/tools/scripts" "$SITE" "$HOSTNAME_" "$TIMEZONE_" "$EMAIL_DOMAIN" "$(blank_if_none "$FEEDBACK_EMAIL")" \
   || die "One of the answers cannot be used (see above)."
 [[ -f /usr/share/zoneinfo/$TIMEZONE_ ]] || [[ -n $PREFIX ]] || die "Unknown time zone $TIMEZONE_."
+
+# Refuse a port used by another application before changing the shared host.
+if [[ ! -L $INSTANCE_ROOT/current ]] && ! ((DRY_RUN)); then
+  "$PYTHON" - "$PORT" <<'PYTHON'
+import socket
+import sys
+with socket.socket() as probe:
+    try:
+        probe.bind(("127.0.0.1", int(sys.argv[1])))
+    except OSError:
+        sys.exit("The requested loopback port is already occupied. Choose a free LabAdda port.")
+PYTHON
+fi
 
 step_os_packages
 step_service_user

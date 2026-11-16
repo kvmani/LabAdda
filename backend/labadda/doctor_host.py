@@ -108,7 +108,10 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def fetch_health(url: str, expected: str) -> FetchState:
     """GET a health address and require the exact `{"status": expected}` answer."""
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    context = ssl.create_default_context(cafile=os.environ.get("LABADDA_PROBE_CA_FILE") or None)
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=context), _NoRedirect()
+    )
     try:
         with opener.open(url, timeout=PROBE_SECONDS) as response:
             payload = response.read(4097)
@@ -130,7 +133,7 @@ def fetch_health(url: str, expected: str) -> FetchState:
 
 def inspect_certificate(hostname: str, port: int, now: datetime) -> TlsState:
     """Open a verified TLS connection with the system trust store and read the expiry."""
-    context = ssl.create_default_context()
+    context = ssl.create_default_context(cafile=os.environ.get("LABADDA_PROBE_CA_FILE") or None)
     try:
         with (
             socket.create_connection((hostname, port), timeout=PROBE_SECONDS) as raw,

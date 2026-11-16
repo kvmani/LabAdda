@@ -77,21 +77,21 @@ def test_deactivation_ends_socket(as_user, ids, settings):
         assert recv_until(conn, "session_ended")
 
 
-def test_board_preview_relay(as_user, ids, settings):
-    a = ids["workspaces"]["section_a"]
-    with (
-        as_user("bharat").client.websocket_connect(ws_url(settings)) as b,
-        as_user("asha").client.websocket_connect(ws_url(settings)) as s,
-    ):
-        for c in (b, s):
-            c.receive_json()
-            c.send_json({"type": "subscribe", "workspace_id": a})
-            recv_until(c, "subscribed")
-        b.send_json(
-            {"type": "board.preview", "workspace_id": a, "preview_id": "p1", "stroke": {"points": [[1, 2]]}}
+def test_board_preview_relay(as_user, ids, settings, app):
+    workspace = ids["workspaces"]["section_a"]
+    # Production owns one asyncio loop; each socket uses that same TestClient portal.
+    with shared_loop_sockets(app, settings, [as_user("bharat"), as_user("asha")], workspace) as sockets:
+        sockets[0].send_json(
+            {
+                "type": "board.preview",
+                "workspace_id": workspace,
+                "preview_id": "p1",
+                "stroke": {"points": [[1, 2]]},
+            }
         )
-        msg = recv_until(s, "board.preview")
-        assert msg["stroke"]["points"] == [[1, 2]]
+        message = recv_until(sockets[1], "board.preview")
+        assert message["stroke"]["points"] == [[1, 2]]
+        assert message["board_index"] == 0
 
 
 @contextmanager

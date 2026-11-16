@@ -48,6 +48,7 @@ need_root() {
 }
 
 set_paths() {
+  [[ $SITE =~ ^[a-z][a-z0-9]{0,19}$ ]] || die "Site names must be lowercase letters or digits (max 20)."
   ETC_DIR="$PREFIX/etc/labadda"
   SITE_JSON="$ETC_DIR/$SITE.site.json"
   ENV_FILE="$ETC_DIR/$SITE.env"
@@ -119,7 +120,7 @@ load_answers() {
   while IFS='=' read -r key value; do
     [[ -z $key || $key == \#* ]] && continue
     case $key in
-      SITE_TITLE | HOSTNAME_ | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | SMTP_FROM | SMTP_STARTTLS | SMTP_USER | PIP_INDEX_URL | PIP_TRUSTED_HOST | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
+      RUN_SCHEDULER | SITE_TITLE | HOSTNAME_ | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | SMTP_FROM | SMTP_STARTTLS | SMTP_USER | PIP_INDEX_URL | PIP_TRUSTED_HOST | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
         [[ $value =~ ^[A-Za-z0-9@._:/\ -]*$ ]] || die "Answers file: odd characters in $key"
         [[ -n ${!key:-} ]] || printf -v "$key" '%s' "$value" ;;
       *) die "Answers file: unknown setting $key" ;;
@@ -149,4 +150,16 @@ check_mode() {
   ask PIP_INDEX_URL "Python package mirror address (for example https://mirror.lab.example.in/simple)" ""
   [[ $PIP_INDEX_URL =~ ^https?://[A-Za-z0-9.:/_-]+$ ]] || die "The Python mirror address must be an http(s) URL."
   ok "Python packages come from $PIP_INDEX_URL; operating system packages from this server's apt sources"
+}
+
+# A release ID may never identify two different source commits.
+assert_release_identity() {
+  "$PYTHON" - "$1" "$2" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+installed, candidate = [json.loads(Path(p).read_text()) for p in sys.argv[1:]]
+if not installed.get("commit") or installed["commit"] != candidate.get("commit"):
+    sys.exit("Release ID collision: installed and candidate commits differ. Build a new release ID.")
+PYTHON
 }

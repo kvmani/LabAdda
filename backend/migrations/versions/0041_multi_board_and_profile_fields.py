@@ -37,7 +37,9 @@ def upgrade():
     op.create_table(
         "workspace_boards",
         sa.Column("id", sa.UUID(), primary_key=True),
-        sa.Column("workspace_id", sa.UUID(), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "workspace_id", sa.UUID(), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("board_index", sa.Integer(), nullable=False),
         sa.Column("title", sa.String(64), nullable=False, server_default="Board 2"),
         sa.Column("epoch", sa.Integer(), nullable=False, server_default="1"),
@@ -63,15 +65,22 @@ def upgrade():
     )
 
     # 6. board_snapshots
-    op.add_column("board_snapshots", sa.Column("board_index", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column(
+        "board_snapshots", sa.Column("board_index", sa.Integer(), nullable=False, server_default="0")
+    )
     op.drop_constraint("board_snapshots_pkey", "board_snapshots", type_="primary")
     op.create_primary_key(
         "board_snapshots_pkey", "board_snapshots", ["workspace_id", "board_index", "epoch", "revision"]
     )
 
     # 7. personal_board_revisions
-    op.add_column("personal_board_revisions", sa.Column("board_index", sa.Integer(), nullable=False, server_default="0"))
-    op.add_column("personal_board_revisions", sa.Column("title", sa.String(64), nullable=False, server_default="Board 1"))
+    op.add_column(
+        "personal_board_revisions", sa.Column("board_index", sa.Integer(), nullable=False, server_default="0")
+    )
+    op.add_column(
+        "personal_board_revisions",
+        sa.Column("title", sa.String(64), nullable=False, server_default="Board 1"),
+    )
     op.drop_constraint("personal_board_revisions_pkey", "personal_board_revisions", type_="primary")
     op.create_primary_key(
         "personal_board_revisions_pkey", "personal_board_revisions", ["owner_id", "board_index", "revision"]
@@ -96,7 +105,9 @@ def downgrade():
 
     # Revert personal_board_revisions
     op.drop_constraint("personal_board_revisions_pkey", "personal_board_revisions", type_="primary")
-    op.create_primary_key("personal_board_revisions_pkey", "personal_board_revisions", ["owner_id", "revision"])
+    op.create_primary_key(
+        "personal_board_revisions_pkey", "personal_board_revisions", ["owner_id", "revision"]
+    )
     op.drop_column("personal_board_revisions", "title")
     op.drop_column("personal_board_revisions", "board_index")
 
@@ -108,7 +119,9 @@ def downgrade():
     # Revert board_ops
     op.drop_constraint("uq_board_op_revision", "board_ops", type_="unique")
     op.drop_constraint("uq_board_op_identity", "board_ops", type_="unique")
-    op.create_unique_constraint("uq_board_op_identity", "board_ops", ["workspace_id", "epoch", "actor_id", "op_id"])
+    op.create_unique_constraint(
+        "uq_board_op_identity", "board_ops", ["workspace_id", "epoch", "actor_id", "op_id"]
+    )
     op.create_unique_constraint("uq_board_op_revision", "board_ops", ["workspace_id", "revision"])
     op.drop_column("board_ops", "board_index")
 

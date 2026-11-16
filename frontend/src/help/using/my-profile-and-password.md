@@ -13,7 +13,7 @@ updated: 2026-11-11
 ## Steps
 
 1. Choose your name at the top right of any page, then choose **My profile**.
-2. Read **My record** and **My access**. You cannot edit these. To correct a detail, ask an administrator.
+2. Read **My details & photo** and **My access**. You can edit contact details and your photo. Ask an administrator to correct your staff record or workspace access.
 3. To change your password, fill in **Current password**, **New password** and **Repeat new password**, then choose **Change password**. Use at least 10 characters.
 4. Look through **My sessions**. Each line is a browser where you are signed in, with when it started and when it was last used.
 5. If you do not recognise a session or no longer use it, choose **Sign out this session** beside it.

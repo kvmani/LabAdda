@@ -18,7 +18,7 @@ def test_every_place_agrees_on_the_version():
     pyproject = re.search(r'^version = "([^"]+)"', (ROOT / "backend/pyproject.toml").read_text(), re.M)
     package = json.loads((ROOT / "frontend/package.json").read_text())
     lock = json.loads((ROOT / "frontend/package-lock.json").read_text())
-    assert __version__ == "0.0.1-beta"
+    assert __version__ == "0.0.2-beta"
     assert pyproject.group(1) == __version__
     assert package["version"] == __version__
     assert lock["version"] == lock["packages"][""]["version"] == __version__
@@ -26,11 +26,11 @@ def test_every_place_agrees_on_the_version():
 
 
 def test_people_see_a_spaced_label():
-    assert build_info.version_label("0.0.1-beta") == "0.0.1 beta"
+    assert build_info.version_label("0.0.2-beta") == "0.0.2 beta"
     assert (
-        build_info.summary_line("abc1234", "2026-11-13") == "Version 0.0.1 beta · commit abc1234 · 2026-11-13"
+        build_info.summary_line("abc1234", "2026-11-13") == "Version 0.0.2 beta · commit abc1234 · 2026-11-13"
     )
-    assert build_info.summary_line("", "") == "Version 0.0.1 beta · commit unknown"
+    assert build_info.summary_line("", "") == "Version 0.0.2 beta · commit unknown"
 
 
 def test_bundle_stamp_wins_and_bad_stamp_is_unknown(monkeypatch, tmp_path):
@@ -50,7 +50,7 @@ def test_bundle_stamp_wins_and_bad_stamp_is_unknown(monkeypatch, tmp_path):
 def test_version_endpoint_and_settings_report_it(as_user, make_client):
     body = make_client().get("/site/version").json()
     assert body["version"] == __version__
-    assert body["version_label"] == "0.0.1 beta"
+    assert body["version_label"] == "0.0.2 beta"
     rows = as_user("admin").get("/admin/settings").json()["groups"][0]["items"]
     assert rows[0]["key"] == "software_version"
     assert rows[0]["value"] == body["summary"]
@@ -61,4 +61,4 @@ def test_command_line_reports_it(capsys):
         main(["--version"])
     except SystemExit as done:
         assert done.code == 0
-    assert capsys.readouterr().out.startswith("LabAdda Version 0.0.1 beta")
+    assert capsys.readouterr().out.startswith("LabAdda Version 0.0.2 beta")

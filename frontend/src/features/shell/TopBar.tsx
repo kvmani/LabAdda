@@ -111,10 +111,10 @@ export function TopBar({
           label={`Account menu for ${name}`}
           visibleLabel={name}
           items={[
-            { label: "Calendar", icon: "clock", onSelect: () => navigate("/calendar") },
-            { label: "My profile", icon: "user", onSelect: () => navigate("/profile") },
-            { label: "Staff directory", icon: "search", onSelect: () => navigate("/directory") },
-            { label: "Alert preferences", icon: "bell", onSelect: () => navigate("/preferences") },
+            { label: "Calendar", icon: "clock", onSelect: () => void navigate("/calendar") },
+            { label: "My profile", icon: "user", onSelect: () => void navigate("/profile") },
+            { label: "Staff directory", icon: "search", onSelect: () => void navigate("/directory") },
+            { label: "Alert preferences", icon: "bell", onSelect: () => void navigate("/preferences") },
             ...THEMES.map(({ choice, label, icon }) => ({
               label: `Theme: ${label}${theme === choice ? " (selected)" : ""}`,
               icon,

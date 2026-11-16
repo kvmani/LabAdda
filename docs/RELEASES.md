@@ -8,7 +8,23 @@ Every pinned dependency version (all of `backend/requirements.lock` and every pa
 
 ## Mirror-mode bundle and offline kit
 
-`scripts/make-release-bundle.sh OUT` (version from `backend/labadda/__init__.py`) makes the small default bundle: release archive without wheels, scripts, guide, manifest. The server installs the exact pins from its Python mirror (`--index-url`, `--no-deps`, then `pip check`; the public index is refused) and operating system packages with apt from its configured mirror. `--offline-kit` (or `scripts/make-offline-kit.sh`) also carries the wheelhouse and `.deb` files for a server with no mirror. See the [rollout checklist](ROLLOUT-INTRANET.md).
+`scripts/make-release-bundle.sh OUT` (version from `backend/labadda/__init__.py`) makes the small default bundle: release archive without wheels, scripts, guide, manifest. The server installs the exact pins from its Python mirror (`--index-url`, `--no-deps`, then `pip check`; the public index is refused) and operating system packages with apt from its configured mirror. `--offline-kit` (or `scripts/make-offline-kit.sh`) also carries the wheelhouse and an OS package inventory/pool. Missing OS prerequisites must be installed from a signed internal apt mirror before offline installation; the installer refuses the unsigned local pool. See the [rollout checklist](ROLLOUT-INTRANET.md).
+
+## Exact security age exceptions
+
+The owner approved Pillow 13.0.0 and certifi 2026.10.23 on 16 November 2026 to address published
+security advisories before the pilot. `deploy/dependency-age-exceptions.json` records only those
+exact pins and a 23 November expiry. The checker prints each used exception; unknown release dates
+are never exempted. Pillow has since reached the normal age threshold. Remove the temporary record
+after the pins mature; other young pins remain blocked. Never use `--skip-age-check` for promotion.
+
+## Advisory check
+
+Run `.venv/bin/python scripts/check_advisories.py --output /tmp/labadda-advisory-report.json`
+on the connected build host before promotion. It checks every exact Python pin against PyPI's
+published advisories and the frontend production dependency graph against npm. Unknown results fail
+closed. Preserve the report with the candidate commit and artifact fingerprint. This is a dated
+advisory snapshot, not proof against undisclosed defects; review future updates separately.
 
 ## Connected build and transfer
 

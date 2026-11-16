@@ -8,139 +8,21 @@ Strictly enforces administrator blindness for personal events.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from typing import Literal, Self
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from .. import policy
+from ..calendar_access import _can_manage_event, _can_manage_site, _event_out, _source_color, lock_calendar
+from ..calendar_schemas import CalendarEventOut, CalendarSourceOut, EventCreate, EventUpdate
 from ..deps import Actor, current_actor, get_db
-from ..errors import Forbidden, NotFound, Unauthenticated
+from ..errors import Conflict, Forbidden, Invalid, NotFound
 from ..models import CalendarEvent, User, Workspace
 from ..security import utcnow
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
-
-
-class EventCreate(BaseModel):
-    scope_kind: Literal["site", "workspace", "personal"]
-    workspace_id: uuid.UUID | None = None
-    title: str = Field(min_length=1, max_length=140)
-    description: str | None = None
-    location: str | None = Field(default=None, max_length=140)
-    starts_at: datetime
-    ends_at: datetime
-    all_day: bool = False
-    color: str | None = Field(default=None, max_length=32)
-
-    @model_validator(mode="after")
-    def check_dates_and_scope(self) -> Self:
-        if self.starts_at > self.ends_at:
-            raise ValueError("starts_at must be before or equal to ends_at")
-        if self.scope_kind == "personal" and self.workspace_id is not None:
-            raise ValueError("personal events cannot have a workspace_id")
-        if self.scope_kind == "workspace" and self.workspace_id is None:
-            raise ValueError("workspace events must have a workspace_id")
-        if self.scope_kind == "site" and self.workspace_id is not None:
-            raise ValueError("site events cannot have a workspace_id")
-        return self
-
-
-class EventUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=140)
-    description: str | None = None
-    location: str | None = Field(default=None, max_length=140)
-    starts_at: datetime | None = None
-    ends_at: datetime | None = None
-    all_day: bool | None = None
-    color: str | None = Field(default=None, max_length=32)
-
-
-class CalendarSourceOut(BaseModel):
-    id: str
-    title: str
-    kind: str
-    level: str | None = None
-    color: str
-    can_write: bool
-    inherited: bool = False
-
-
-class CalendarEventOut(BaseModel):
-    id: uuid.UUID
-    scope_kind: str
-    workspace_id: uuid.UUID | None
-    workspace_name: str | None
-    owner_id: uuid.UUID | None
-    created_by: uuid.UUID
-    creator_name: str | None
-    title: str
-    description: str | None
-    location: str | None
-    starts_at: datetime
-    ends_at: datetime
-    all_day: bool
-    color: str | None
-    created_at: datetime
-    updated_at: datetime
-    can_edit: bool
-    can_delete: bool
-
-
-COLOR_MAP: dict[tuple[str, str], str] = {
-    ("kind", "personal"): "#d81b60",
-    ("kind", "site"): "#1565c0",
-    ("kind", "project"): "#ef6c00",
-    ("kind", "group"): "#2e7d32",
-    ("level", "organisation"): "#1565c0",
-    ("level", "division"): "#6a1b9a",
-    ("level", "section"): "#00838f",
-    ("level", "group"): "#2e7d32",
-}
-
-
-def _source_color(kind: str, level: str | None = None) -> str:
-    if level and ("level", level) in COLOR_MAP:
-        return COLOR_MAP[("level", level)]
-    return COLOR_MAP.get(("kind", kind), "#3f51b5")
-
-
-def _can_manage_site(db: Session, actor: Actor) -> bool:
-    if actor.user.is_admin:
-        return True
-    root_ws = db.scalars(
-        select(Workspace).where(Workspace.kind == "org", Workspace.parent_id.is_(None))
-    ).first()
-    if root_ws is None:
-        return False
-    grants = policy.direct_grants(db, actor.user.id)
-    return grants.get(root_ws.id) == "steward"
-
-
-def _can_manage_event(db: Session, actor: Actor, event: CalendarEvent) -> tuple[bool, bool]:
-    if event.scope_kind == "personal":
-        is_owner = event.owner_id == actor.user.id
-        return (is_owner, is_owner)
-    if event.scope_kind == "site":
-        allowed = _can_manage_site(db, actor)
-        return (allowed, allowed)
-    if event.scope_kind == "workspace" and event.workspace_id is not None:
-        access = policy.resolve(db, actor.user, event.workspace_id)
-        if not access or not access.can_read:
-            return (False, False)
-        is_creator = event.created_by == actor.user.id and access.can_write
-        is_steward_or_admin = access.can_moderate or actor.user.is_admin
-        can_manage = is_creator or is_steward_or_admin
-        return (can_manage, can_manage)
-    return (False, False)
-
-
-def _check_panel(request: Request) -> None:
-    if request.headers.get("x-labadda-panel"):
-        raise Unauthenticated("session_scope", "Touch panels cannot access calendar.")
 
 
 @router.get("/sources", response_model=list[CalendarSourceOut])
@@ -149,7 +31,7 @@ def get_sources(
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ) -> list[CalendarSourceOut]:
-    _check_panel(request)
+    lock_calendar(request, actor, db)
     sources: list[CalendarSourceOut] = [
         CalendarSourceOut(
             id="personal",
@@ -197,18 +79,34 @@ def get_sources(
     return sources
 
 
+def _selected_workspaces(tokens: set[str] | None, readable_ids: set[uuid.UUID]) -> set[uuid.UUID]:
+    if tokens is None:
+        return readable_ids
+    selected = set()
+    for token in tokens:
+        try:
+            value = uuid.UUID(token.strip())
+        except ValueError:
+            continue
+        if value in readable_ids:
+            selected.add(value)
+    return selected
+
+
 @router.get("/events", response_model=list[CalendarEventOut])
 def get_events(
     request: Request,
     *,
     start: datetime = Query(...),
     end: datetime = Query(...),
-    sources: str | None = Query(default=None),
-    search: str | None = Query(default=None),
+    sources: str | None = Query(default=None, max_length=10000),
+    search: str | None = Query(default=None, max_length=200),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ) -> list[CalendarEventOut]:
-    _check_panel(request)
+    lock_calendar(request, actor, db)
+    if start.tzinfo is None or end.tzinfo is None or not start <= end <= start + timedelta(days=366):
+        raise Invalid("invalid_calendar_range", "Choose a time zone and a range of at most 366 days.")
     readable_map = policy.readable_workspace_ids(db, actor.user)
     readable_ids = set(readable_map.keys())
 
@@ -216,17 +114,7 @@ def get_events(
     include_personal = tokens is None or "personal" in tokens
     include_site = tokens is None or "site" in tokens
 
-    selected_ws_ids: set[uuid.UUID] = set()
-    if tokens is None:
-        selected_ws_ids = readable_ids
-    else:
-        for t in tokens:
-            try:
-                u = uuid.UUID(t.strip())
-                if u in readable_ids:
-                    selected_ws_ids.add(u)
-            except ValueError:
-                continue
+    selected_ws_ids = _selected_workspaces(tokens, readable_ids)
 
     scope_clauses = []
     if include_personal:
@@ -244,19 +132,24 @@ def get_events(
         return []
 
     time_clause = (CalendarEvent.starts_at <= end) & (CalendarEvent.ends_at >= start)
-    query = select(CalendarEvent).where(time_clause, or_(*scope_clauses))
+    query = select(CalendarEvent).where(
+        time_clause, CalendarEvent.cancelled_at.is_(None), or_(*scope_clauses)
+    )
 
     if search and search.strip():
-        pat = f"%{search.strip()}%"
+        escaped = search.strip().replace("!", "!!").replace("%", "!%").replace("_", "!_")
+        pat = f"%{escaped}%"
         query = query.where(
             or_(
-                CalendarEvent.title.ilike(pat),
-                CalendarEvent.description.ilike(pat),
-                CalendarEvent.location.ilike(pat),
+                CalendarEvent.title.ilike(pat, escape="!"),
+                CalendarEvent.description.ilike(pat, escape="!"),
+                CalendarEvent.location.ilike(pat, escape="!"),
             )
         )
 
-    events = db.scalars(query.order_by(CalendarEvent.starts_at.asc())).all()
+    events = db.scalars(query.order_by(CalendarEvent.starts_at.asc(), CalendarEvent.id).limit(1001)).all()
+    if len(events) > 1000:
+        raise Invalid("calendar_range_too_busy", "Choose a smaller date range or fewer calendars.")
     if not events:
         return []
 
@@ -271,6 +164,7 @@ def get_events(
         can_edit, can_del = _can_manage_event(db, actor, ev)
         result.append(
             CalendarEventOut(
+                revision=ev.revision,
                 id=ev.id,
                 scope_kind=ev.scope_kind,
                 workspace_id=ev.workspace_id,
@@ -301,7 +195,7 @@ def create_event(
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ) -> CalendarEventOut:
-    _check_panel(request)
+    lock_calendar(request, actor, db)
 
     owner_id: uuid.UUID | None = None
     workspace_id: uuid.UUID | None = None
@@ -342,31 +236,8 @@ def create_event(
     db.commit()
     db.refresh(event)
 
-    ws_name = None
-    if workspace_id:
-        ws = db.get(Workspace, workspace_id)
-        ws_name = ws.name if ws else None
-
-    return CalendarEventOut(
-        id=event.id,
-        scope_kind=event.scope_kind,
-        workspace_id=event.workspace_id,
-        workspace_name=ws_name,
-        owner_id=event.owner_id,
-        created_by=event.created_by,
-        creator_name=actor.user.display_name,
-        title=event.title,
-        description=event.description,
-        location=event.location,
-        starts_at=event.starts_at,
-        ends_at=event.ends_at,
-        all_day=event.all_day,
-        color=event.color,
-        created_at=event.created_at,
-        updated_at=event.updated_at,
-        can_edit=True,
-        can_delete=True,
-    )
+    lock_calendar(request, actor, db)
+    return _event_out(db, actor, event)
 
 
 @router.get("/events/{event_id}", response_model=CalendarEventOut)
@@ -376,9 +247,9 @@ def get_event(
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ) -> CalendarEventOut:
-    _check_panel(request)
-    event = db.get(CalendarEvent, event_id)
-    if event is None:
+    lock_calendar(request, actor, db)
+    event = db.scalar(select(CalendarEvent).where(CalendarEvent.id == event_id).with_for_update())
+    if event is None or event.cancelled_at is not None:
         raise NotFound("event_not_found", "Event not found.")
 
     if event.scope_kind == "personal" and event.owner_id != actor.user.id:
@@ -389,30 +260,8 @@ def get_event(
         if not access or not access.can_read:
             raise NotFound("event_not_found", "Event not found.")
 
-    can_edit, can_del = _can_manage_event(db, actor, event)
-    creator = db.get(User, event.created_by)
-    ws = db.get(Workspace, event.workspace_id) if event.workspace_id else None
-
-    return CalendarEventOut(
-        id=event.id,
-        scope_kind=event.scope_kind,
-        workspace_id=event.workspace_id,
-        workspace_name=ws.name if ws else None,
-        owner_id=event.owner_id,
-        created_by=event.created_by,
-        creator_name=creator.display_name if creator else None,
-        title=event.title,
-        description=event.description,
-        location=event.location,
-        starts_at=event.starts_at,
-        ends_at=event.ends_at,
-        all_day=event.all_day,
-        color=event.color,
-        created_at=event.created_at,
-        updated_at=event.updated_at,
-        can_edit=can_edit,
-        can_delete=can_del,
-    )
+    lock_calendar(request, actor, db)
+    return _event_out(db, actor, event)
 
 
 def _apply_event_updates(event: CalendarEvent, body: EventUpdate) -> None:
@@ -440,9 +289,9 @@ def update_event(
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ) -> CalendarEventOut:
-    _check_panel(request)
-    event = db.get(CalendarEvent, event_id)
-    if event is None:
+    lock_calendar(request, actor, db)
+    event = db.scalar(select(CalendarEvent).where(CalendarEvent.id == event_id).with_for_update())
+    if event is None or event.cancelled_at is not None:
         raise NotFound("event_not_found", "Event not found.")
 
     if event.scope_kind == "personal" and event.owner_id != actor.user.id:
@@ -453,10 +302,12 @@ def update_event(
         if not access or not access.can_read:
             raise NotFound("event_not_found", "Event not found.")
 
-    can_edit, can_del = _can_manage_event(db, actor, event)
+    can_edit, _can_del = _can_manage_event(db, actor, event)
     if not can_edit:
         raise Forbidden("edit_forbidden", "You cannot edit this event.")
 
+    if event.revision != body.revision:
+        raise Conflict("stale_revision", "This event changed. Reopen it and review the latest version.")
     new_starts = body.starts_at if body.starts_at is not None else event.starts_at
     new_ends = body.ends_at if body.ends_at is not None else event.ends_at
     if new_starts > new_ends:
@@ -464,45 +315,26 @@ def update_event(
 
     _apply_event_updates(event, body)
 
+    event.revision += 1
     event.updated_at = utcnow()
     db.commit()
     db.refresh(event)
 
-    creator = db.get(User, event.created_by)
-    ws = db.get(Workspace, event.workspace_id) if event.workspace_id else None
-
-    return CalendarEventOut(
-        id=event.id,
-        scope_kind=event.scope_kind,
-        workspace_id=event.workspace_id,
-        workspace_name=ws.name if ws else None,
-        owner_id=event.owner_id,
-        created_by=event.created_by,
-        creator_name=creator.display_name if creator else None,
-        title=event.title,
-        description=event.description,
-        location=event.location,
-        starts_at=event.starts_at,
-        ends_at=event.ends_at,
-        all_day=event.all_day,
-        color=event.color,
-        created_at=event.created_at,
-        updated_at=event.updated_at,
-        can_edit=can_edit,
-        can_delete=can_del,
-    )
+    lock_calendar(request, actor, db)
+    return _event_out(db, actor, event)
 
 
 @router.delete("/events/{event_id}")
 def delete_event(
     event_id: uuid.UUID,
     request: Request,
+    revision: int = Query(ge=1),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ) -> dict[str, bool]:
-    _check_panel(request)
-    event = db.get(CalendarEvent, event_id)
-    if event is None:
+    lock_calendar(request, actor, db)
+    event = db.scalar(select(CalendarEvent).where(CalendarEvent.id == event_id).with_for_update())
+    if event is None or event.cancelled_at is not None:
         raise NotFound("event_not_found", "Event not found.")
 
     if event.scope_kind == "personal" and event.owner_id != actor.user.id:
@@ -517,6 +349,10 @@ def delete_event(
     if not can_del:
         raise Forbidden("delete_forbidden", "You cannot delete this event.")
 
-    db.delete(event)
+    if event.revision != revision:
+        raise Conflict("stale_revision", "This event changed. Reopen it before cancelling.")
+    event.cancelled_at = utcnow()
+    event.updated_at = event.cancelled_at
+    event.revision += 1
     db.commit()
     return {"ok": True}

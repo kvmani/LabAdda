@@ -15,9 +15,10 @@ export type RealtimeEvent =
     }
   | { type: "chat.message"; message: ChatMessage }
   | { type: "board.op"; workspace_id: string; op: BoardOp }
-  | { type: "board.epoch"; workspace_id: string; epoch: number }
+  | { type: "board.epoch"; workspace_id: string; epoch: number; board_index?: number }
   | {
       type: "board.preview";
+      board_index?: number;
       workspace_id: string;
       actor_id: string;
       stroke: StrokePreview | null;

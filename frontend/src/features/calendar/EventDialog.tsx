@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
+import { useFocusTrap } from "../../ui/focus";
 import type { CalendarEvent, CalendarScopeKind, CalendarSource, EventFormData } from "./types";
 
 type Props = {
@@ -70,13 +71,8 @@ function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: P
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  const panel = useRef<HTMLDivElement>(null);
+  useFocusTrap(panel, true, onClose);
 
   const writableSources = sources.filter((s) => s.can_write);
 
@@ -105,6 +101,7 @@ function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: P
     try {
       await onSave({
         id: event?.id,
+        revision: event?.revision,
         scope_kind: scopeKind,
         workspace_id: scopeKind === "workspace" ? workspaceId : "",
         title: title.trim(),
@@ -128,7 +125,7 @@ function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: P
 
   const handleDelete = async () => {
     if (!event || !onDelete) return;
-    if (!window.confirm("Are you sure you want to delete this event?")) return;
+    if (!window.confirm("Are you sure you want to cancel this event?")) return;
     setSaving(true);
     try {
       await onDelete(event.id);
@@ -149,7 +146,14 @@ function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: P
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="cal-modal-card" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">
+      <div
+        ref={panel}
+        tabIndex={-1}
+        className="cal-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cal-modal-title"
+      >
         <div className="cal-modal-header">
           <h3 id="cal-modal-title">{event ? "Edit Event" : "Create Event"}</h3>
           <button type="button" className="cal-modal-close-btn" onClick={onClose} aria-label="Close dialog">
@@ -239,7 +243,7 @@ function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: P
               </div>
               {!allDay && (
                 <div className="cal-form-group">
-                  <label htmlFor="cal-start-time">Start Time (IST)</label>
+                  <label htmlFor="cal-start-time">Start Time (browser local)</label>
                   <input
                     id="cal-start-time"
                     className="cal-input"
@@ -266,7 +270,7 @@ function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: P
               </div>
               {!allDay && (
                 <div className="cal-form-group">
-                  <label htmlFor="cal-end-time">End Time (IST)</label>
+                  <label htmlFor="cal-end-time">End Time (browser local)</label>
                   <input
                     id="cal-end-time"
                     className="cal-input"
@@ -323,7 +327,7 @@ function EventForm({ onClose, onSave, onDelete, event, defaultDate, sources }: P
           <div className="cal-modal-footer">
             {event && event.can_delete && onDelete ? (
               <button type="button" className="cal-btn-danger" onClick={handleDelete} disabled={saving}>
-                Delete
+                Cancel event
               </button>
             ) : (
               <div />

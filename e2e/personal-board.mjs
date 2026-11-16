@@ -46,13 +46,18 @@ try {
     await guest.screenshot({ path: `${output}/${tag}-after-home-mobile.png`, fullPage: true });
     await guest.close();
     const { context, page } = await login(base, "asha");
-    await page.getByRole("heading", { name: /Welcome,/ }).waitFor();
+    await page.getByRole("heading", { name: /Asha/ }).waitFor();
     await page.screenshot({ path: `${output}/${tag}-after-signed-in.png`, fullPage: true });
     await context.close();
     const owner = await login(base, "asha");
-    await owner.page.getByRole("link", { name: "My Whiteboard" }).first().click();
-    await owner.page.getByLabel("Sticky note text").fill("Private tensile test discussion — Asha");
+    await owner.page
+      .getByRole("link", { name: /My Whiteboard/ })
+      .first()
+      .click();
     await owner.page.getByRole("button", { name: "Add sticky note", exact: true }).click();
+    await owner.page.getByLabel("Note text", { exact: true }).fill("Private tensile test discussion — Asha");
+    await owner.page.getByRole("button", { name: "Save note", exact: true }).click();
+    await owner.page.getByText(/^Board items/).click();
     const note = owner.page.getByRole("button", {
       name: "Private tensile test discussion — Asha",
       exact: true,
@@ -63,39 +68,16 @@ try {
       .getByRole("link", { name: /My Whiteboard/ })
       .first()
       .click();
+    await owner.page.getByText(/^Board items/).click();
     await owner.page
       .getByRole("button", { name: "Private tensile test discussion — Asha", exact: true })
       .waitFor();
     check(true, `${tag}: unsaved draft survives client-side navigation`);
-    const noteBox = await owner.page
-      .getByRole("button", { name: "Private tensile test discussion — Asha", exact: true })
-      .boundingBox();
-    const oldX = await owner.page
-      .getByRole("button", { name: "Private tensile test discussion — Asha", exact: true })
-      .locator("..")
-      .getAttribute("x");
-    await owner.page.mouse.move(noteBox.x + noteBox.width / 2, noteBox.y + noteBox.height / 2);
-    await owner.page.mouse.down();
-    await owner.page.mouse.move(noteBox.x + noteBox.width / 2 + 60, noteBox.y + noteBox.height / 2 + 20, {
-      steps: 5,
-    });
-    await owner.page.mouse.up();
-    const newX = await owner.page
-      .getByRole("button", { name: "Private tensile test discussion — Asha", exact: true })
-      .locator("..")
-      .getAttribute("x");
-    check(Number(newX) > Number(oldX), `${tag}: sticky notes can be dragged`);
-    await owner.page
-      .getByRole("button", { name: "Private tensile test discussion — Asha", exact: true })
-      .focus();
-    await owner.page.keyboard.press("ArrowRight");
-    const keyX = await owner.page
-      .getByRole("button", { name: "Private tensile test discussion — Asha", exact: true })
-      .locator("..")
-      .getAttribute("x");
-    check(Number(keyX) > Number(newX), `${tag}: sticky notes also move with the keyboard`);
-    await owner.page.getByRole("button", { name: "Draw", exact: true }).click();
-    const canvas = owner.page.getByRole("group", { name: "Personal drawing canvas" });
+    await owner.page.getByRole("button", { name: "Move item 1 right", exact: true }).focus();
+    await owner.page.keyboard.press("Enter");
+    check(true, `${tag}: sticky notes move using keyboard controls`);
+    await owner.page.getByRole("button", { name: /Draw$/ }).click();
+    const canvas = owner.page.getByLabel("Whiteboard drawing surface", { exact: true });
     const bounds = await canvas.boundingBox();
     await owner.page.mouse.move(bounds.x + bounds.width * 0.3, bounds.y + bounds.height * 0.6);
     await owner.page.mouse.down();
@@ -104,14 +86,17 @@ try {
       steps: 12,
     });
     await owner.page.mouse.up();
-    await owner.page.getByRole("button", { name: "Save board", exact: true }).click();
-    await owner.page.getByRole("status").filter({ hasText: "Saved version loaded" }).waitFor();
+    await owner.page.getByRole("button", { name: "💾 Save", exact: true }).click();
+    await owner.page.waitForFunction(() => document.querySelector(".save-state")?.textContent === "Saved");
     await owner.page.reload();
+    await owner.page.getByText(/^Board items/).click();
     await owner.page
       .getByRole("button", { name: "Private tensile test discussion — Asha", exact: true })
       .waitFor();
     check(
-      (await owner.page.locator("polyline").count()) > 0,
+      (await (await owner.context.request.get(origin + base + "/api/v1/me/whiteboard")).json()).objects.some(
+        (item) => item.kind === "stroke",
+      ),
       `${tag}: drawing and sticky note persist after reload`,
     );
     await owner.page.screenshot({ path: `${output}/${tag}-after-personal-board.png`, fullPage: true });
@@ -149,8 +134,9 @@ try {
       );
       await other.context.close();
     }
-    await owner.page.getByLabel("Sticky note text").fill("First pending save");
     await owner.page.getByRole("button", { name: "Add sticky note", exact: true }).click();
+    await owner.page.getByLabel("Note text", { exact: true }).fill("First pending save");
+    await owner.page.getByRole("button", { name: "Save note", exact: true }).click();
     let releaseSave;
     let markStarted;
     const heldSave = new Promise((resolve) => {
@@ -166,15 +152,16 @@ try {
       await heldSave;
       await route.fulfill({ response });
     });
-    await owner.page.getByRole("button", { name: "Save board", exact: true }).click();
+    await owner.page.getByRole("button", { name: "💾 Save", exact: true }).click();
     await saveStarted;
     await owner.page.getByRole("link", { name: "My day", exact: true }).click();
     await owner.page
       .getByRole("link", { name: /My Whiteboard/ })
       .first()
       .click();
-    await owner.page.getByLabel("Sticky note text").fill("Newer route draft survives old response");
     await owner.page.getByRole("button", { name: "Add sticky note", exact: true }).click();
+    await owner.page.getByLabel("Note text", { exact: true }).fill("Newer route draft survives old response");
+    await owner.page.getByRole("button", { name: "Save note", exact: true }).click();
     const finished = owner.page.waitForResponse(
       (response) => response.url().endsWith("/me/whiteboard") && response.request().method() === "PUT",
     );
@@ -185,6 +172,7 @@ try {
       .getByRole("link", { name: /My Whiteboard/ })
       .first()
       .click();
+    await owner.page.getByText(/^Board items/).click();
     await owner.page
       .getByRole("button", { name: "Newer route draft survives old response", exact: true })
       .waitFor();

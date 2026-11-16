@@ -11,6 +11,7 @@ export type CalendarSource = {
 };
 
 export type CalendarEvent = {
+  revision: number;
   id: string;
   scope_kind: CalendarScopeKind;
   workspace_id: string | null;
@@ -34,6 +35,7 @@ export type CalendarEvent = {
 export type CalendarViewMode = "month" | "week" | "day" | "agenda";
 
 export type EventFormData = {
+  revision?: number;
   id?: string;
   scope_kind: CalendarScopeKind;
   workspace_id: string;
