@@ -14,7 +14,7 @@ SMTP_RELAY=smtp.domain.xx.in:25
 SMTP_FROM=admin.labadda@domain.xx.in
 SMTP_STARTTLS=false
 SMTP_USER=none
-# Only used in mirror mode; offline-kit mode installs the included Python wheels.
+# Required: all pinned Python packages are installed from this internal mirror.
 # REPLACE with the actual internal Python index. Keep certificate verification enabled.
 PIP_INDEX_URL=https://pypi.domain.xx.in/simple
 PIP_TRUSTED_HOST=

@@ -43,15 +43,16 @@ python3.12 -m venv .venv
 # Disposable test databases are required; see README. Never point tests at office data.
 LABADDA_RECOVERY_TESTS=1 scripts/verify.sh --e2e
 .venv/bin/python scripts/check_advisories.py --output /tmp/labadda-advisory-report.json
-scripts/make-release-bundle.sh /tmp/labadda-office-kit --offline-kit
+scripts/make-release-bundle.sh /tmp/labadda-office-kit
 ```
 
-The full kit carries the frontend, exact Python wheels, dependency licences, release manifest,
-checksums, tools and OS package inventory. **Install missing OS packages only from the office's
-signed internal apt mirror.** The installer no longer trusts the kit's unsigned apt pool.
-This works without public internet: preinstall OS packages from the internal mirror, then use
-`--offline-kit` for local Python wheels. Mirror-mode bundles are also supported if the internal
-Python index has every locked pin. Do not disable certificate checks or skip the age gate. The 30-day age rule does not establish vulnerability safety; the separate advisory check must also pass.
+The owner selected **mirror mode**: the bundle carries the prebuilt frontend, exact dependency
+lock, licences, manifest, checksums and operator tools, **without Python wheels or OS packages**.
+OS packages come from the signed internal Ubuntu mirror; Python packages come from the configured
+internal Python mirror. The office server needs no public internet or npm. Before rollout, ensure
+that mirror contains every entry in `backend/requirements.lock`, including the approved security
+updates. Preserve certificate verification and the age/advisory checks. Do not use `--offline-kit`
+with this mirror-mode bundle.
 
 Copy the whole kit, this guide, the three office templates and the candidate validation report to
 approved transfer media. Record the SHA256SUMS fingerprint separately, through a trusted channel.
@@ -131,7 +132,7 @@ Reserve the chosen sender with IT; mail configuration does not create the mailbo
 
 ```bash
 chmod 0600 /root/labadda-rollout/labadda-install.conf
-cd /media/transfer/labadda-0.0.2-beta-offline-kit
+cd /media/transfer/labadda-0.0.2-beta-bundle
 sha256sum SHA256SUMS
 sha256sum -c SHA256SUMS
 python3.12 tools/scripts/kit.py verify .
@@ -149,17 +150,17 @@ sudo update-ca-certificates
 ## 3. Rehearse the plan, then install
 
 Use a dedicated hostname and a CA-issued certificate. Avoid the installer's self-signed fallback
-for real users. `--skip-os-packages` makes missing prerequisites fail instead of changing the host.
+for real users. `--skip-os-packages` makes missing OS prerequisites fail instead of changing the host. Python pins are installed from PIP_INDEX_URL in the answers file.
 `--no-timer` lets you review backup timing before enabling it. Installer scripts preserve unrelated
 nginx files and refuse an occupied new-instance port. Keep the whole terminal transcript private:
 the first administrator activation code is printed once.
 
 ```bash
-sudo bash install.sh --site main --answers /root/labadda-rollout/labadda-install.conf --offline-kit \
+sudo bash install.sh --site main --answers /root/labadda-rollout/labadda-install.conf \
   --skip-os-packages --no-timer --cert /root/labadda-rollout/labadda.crt --key /root/labadda-rollout/labadda.key \
   --ca-file /root/labadda-rollout/office-ca.crt --kit-fingerprint REPLACE_WITH_RECORDED_64_HEX_DIGEST --dry-run
 # Review output, then repeat without --dry-run; interactive administrator details may be requested.
-sudo bash install.sh --site main --answers /root/labadda-rollout/labadda-install.conf --offline-kit \
+sudo bash install.sh --site main --answers /root/labadda-rollout/labadda-install.conf \
   --skip-os-packages --no-timer --cert /root/labadda-rollout/labadda.crt --key /root/labadda-rollout/labadda.key \
   --ca-file /root/labadda-rollout/office-ca.crt --kit-fingerprint REPLACE_WITH_RECORDED_64_HEX_DIGEST
 sudo labadda-status --site main
@@ -234,9 +235,9 @@ the original hostname's HTTPS checks do not qualify a separate restored browser 
 
 ```bash
 # Run from the verified kit; substitute the off-host backup folder and its separately recorded digest.
-sudo bash restore.sh --site main --test-site mainrestore --port 8101 --offline-kit \
+sudo bash restore.sh --site main --test-site mainrestore --port 8101 \
   --bundle /mnt/approved-offhost/labadda/BACKUP_FOLDER --manifest-sha256 RECORDED_MANIFEST_DIGEST --dry-run
-sudo bash restore.sh --site main --test-site mainrestore --port 8101 --offline-kit \
+sudo bash restore.sh --site main --test-site mainrestore --port 8101 \
   --bundle /mnt/approved-offhost/labadda/BACKUP_FOLDER --manifest-sha256 RECORDED_MANIFEST_DIGEST
 curl --fail http://127.0.0.1:8101/readyz
 # Confirm the restored DB/assets/metadata and revoked old credentials; record the measured duration.
