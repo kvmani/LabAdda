@@ -1,3 +1,6 @@
+import styles from "./TextEditors.module.css";
+import { TextStyleFields } from "./TextStyleFields";
+import { type TextStyle } from "./textStyle";
 import { useState, useEffect } from "react";
 import { Button, Dialog, TextArea } from "../../ui";
 import { STICKY_SHAPES, STICKY_SIZES } from "./shapes";
@@ -5,6 +8,7 @@ import { STICKY_COLORS, type StickyConfig, type StickyShape, type StickySize } f
 
 type Props = {
   open: boolean;
+  canEdit?: boolean;
   title?: string;
   initialConfig: StickyConfig;
   authorInfo?: { name: string; time: string };
@@ -15,6 +19,7 @@ type Props = {
 
 export function StickyEditDialog({
   open,
+  canEdit = true,
   title = "Edit sticky note",
   initialConfig,
   authorInfo,
@@ -22,6 +27,10 @@ export function StickyEditDialog({
   onSave,
   onDelete,
 }: Props) {
+  const [textStyle, setTextStyle] = useState<TextStyle>({
+    font_family: initialConfig.font_family ?? "sans",
+    font_size: initialConfig.font_size ?? 16,
+  });
   const [text, setText] = useState(initialConfig.text);
   const [shape, setShape] = useState<StickyShape>(initialConfig.shape);
   const [size, setSize] = useState<StickySize>(initialConfig.size);
@@ -29,16 +38,34 @@ export function StickyEditDialog({
 
   useEffect(() => {
     if (open) {
+      setTextStyle({
+        font_family: initialConfig.font_family ?? "sans",
+        font_size: initialConfig.font_size ?? 16,
+      });
       setText(initialConfig.text);
       setShape(initialConfig.shape);
       setSize(initialConfig.size);
       setColor(initialConfig.color);
     }
-  }, [open, initialConfig]);
+  }, [
+    open,
+    initialConfig.text,
+    initialConfig.shape,
+    initialConfig.size,
+    initialConfig.color,
+    initialConfig.font_family,
+    initialConfig.font_size,
+  ]);
 
   function handleSave() {
-    if (!text.trim()) return;
-    onSave({ text: text.trim().slice(0, 1000), shape, size, color });
+    if (!canEdit || !text.trim()) return;
+    onSave({
+      text: text.trim().slice(0, 1000),
+      shape,
+      size,
+      color,
+      ...textStyle,
+    });
     onClose();
   }
 
@@ -50,9 +77,14 @@ export function StickyEditDialog({
       size="md"
       footer={
         <div
-          style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            width: "100%",
+            alignItems: "center",
+          }}
         >
-          {onDelete ? (
+          {onDelete && canEdit ? (
             <Button variant="danger" onClick={onDelete}>
               Erase note
             </Button>
@@ -63,26 +95,18 @@ export function StickyEditDialog({
             <Button variant="quiet" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleSave} disabled={!text.trim()}>
-              Save note
-            </Button>
+            {canEdit && (
+              <Button variant="primary" onClick={handleSave} disabled={!text.trim()}>
+                Save note
+              </Button>
+            )}
           </div>
         </div>
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {authorInfo && (
-          <div
-            style={{
-              padding: "8px 12px",
-              background: "var(--color-bg-secondary, #f0f4f8)",
-              borderRadius: "6px",
-              fontSize: "13px",
-              color: "var(--color-text-secondary, #627d98)",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
+          <div className={styles.author}>
             <span>
               Added by <strong>{authorInfo.name}</strong>
             </span>
@@ -90,16 +114,30 @@ export function StickyEditDialog({
           </div>
         )}
 
+        {!canEdit && (
+          <p role="status">
+            Your contribution permission changed. Copy your draft before closing this window.
+          </p>
+        )}
+        <TextStyleFields style={textStyle} onChange={setTextStyle} />
         <TextArea
           label="Note text"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          readOnly={!canEdit}
           maxLength={1000}
           rows={4}
         />
 
         <div>
-          <span style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>
+          <span
+            style={{
+              display: "block",
+              fontSize: "13px",
+              fontWeight: 600,
+              marginBottom: "8px",
+            }}
+          >
             Note shape
           </span>
           <div
@@ -135,7 +173,14 @@ export function StickyEditDialog({
         </div>
 
         <div>
-          <span style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>
+          <span
+            style={{
+              display: "block",
+              fontSize: "13px",
+              fontWeight: 600,
+              marginBottom: "8px",
+            }}
+          >
             Note size
           </span>
           <div style={{ display: "flex", gap: "8px" }} role="radiogroup" aria-label="Sticky note size">
@@ -163,7 +208,14 @@ export function StickyEditDialog({
         </div>
 
         <div>
-          <span style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>
+          <span
+            style={{
+              display: "block",
+              fontSize: "13px",
+              fontWeight: 600,
+              marginBottom: "8px",
+            }}
+          >
             Pastel color
           </span>
           <div style={{ display: "flex", gap: "10px" }} role="radiogroup" aria-label="Sticky note colour">

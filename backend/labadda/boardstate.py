@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from .board_fonts import board_font
 from .errors import Invalid
 from .models import Board, BoardOp, BoardSnapshot, WorkspaceBoard
 
@@ -389,7 +390,10 @@ def bounds(o: dict) -> tuple[float, float, float, float]:
     if o["kind"] == "sticky":
         w, h = sticky_dimensions(d.get("shape", "rectangle"), d.get("size", "medium"))
         return d["x"] + dx, d["y"] + dy, d["x"] + dx + w, d["y"] + dy + h
-    return d["x"] + dx, d["y"] + dy, d["x"] + dx + max(40, len(d["text"]) * 9), d["y"] + dy + 24
+    size = d.get("font_size", 16)
+    lines = d["text"].split("\n")
+    width = max(40, *(len(line) * size * 0.65 for line in lines))
+    return d["x"] + dx, d["y"] + dy, d["x"] + dx + width, d["y"] + dy + max(24, len(lines) * size * 1.3)
 
 
 def _hex(color: str) -> tuple[int, int, int]:
@@ -459,7 +463,7 @@ def render_png(
     scale = min(1.0, MAX_RENDER_PX / max(w, h))
     img = Image.new("RGB", (max(1, round(w * scale)), max(1, round(h * scale))), "white")
     draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default(size=max(8, round(16 * scale)))
+    fonts: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
 
     def pt(px: float, py: float) -> tuple[float, float]:
         return (px - x0) * scale, (py - y0) * scale
@@ -493,6 +497,10 @@ def render_png(
             img.paste(tile, (round(a[0]), round(a[1])), tile)
         else:
             a = pt(d["x"] + dx, d["y"] + dy)
+            font_key = (d.get("font_family", "sans"), d.get("font_size", 16))
+            font = fonts.get(font_key)
+            if font is None:
+                font = fonts[font_key] = board_font(d, scale)
             if o["kind"] == "sticky":
                 _draw_sticky(draw, font, scale, a, d)
             else:

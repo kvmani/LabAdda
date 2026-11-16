@@ -269,3 +269,15 @@ normal/panel/signed-out/deactivated denial and panel write rejection before CSRF
 basic tools, role filtering, redirects, delayed authority, unavailable/retry,
 revocation, mobile overflow and WCAG checks. Existing tools keep their original
 assertions at the relocated routes; details in the [console guide](docs/development/admin-console.md).
+
+## Representative posting and board editing
+
+The [working ledger](docs/development/representative-posting.md) records final validation.
+`backend/tests/test_representative_posting.py` covers hierarchy/direct grants, multiple
+appointments, denied actors, expiry, both socket permission paths, permanent invalidation,
+migration history and owner/current-steward mutations including undo. `test_board_editing.py`
+covers bounded font validation, shared/private round trips and local PNG rendering.
+Frontend tests cover stale permission responses, draft preservation, object movement and
+read-only chat/summary destinations. Browser scripts `e2e/representative-posting.mjs` and
+`e2e/board-editing.mjs` exercise root/prefix deployments with accessibility checks; each expects
+a freshly seeded proxy stack, as provided by the full simulation profile.

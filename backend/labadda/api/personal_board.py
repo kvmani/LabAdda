@@ -43,6 +43,8 @@ class BoardObject(BaseModel):
     color: str = Field(default="#1f2933", min_length=1, max_length=32)
     shape: Literal["rectangle", "circle", "hexagon", "diamond", "cloud", "star"] = "rectangle"
     size: Literal["small", "medium", "large"] = "medium"
+    font_family: Literal["sans", "serif", "mono", "handwritten"] = "sans"
+    font_size: int = Field(default=16, ge=8, le=48, strict=True)
     x: float = Field(default=0, ge=0, le=1000)
     y: float = Field(default=0, ge=0, le=600)
     w: float = Field(default=0, ge=0, le=1000)

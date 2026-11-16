@@ -1283,3 +1283,17 @@ Board and panel JSON `can_write` describes contribution permission; workspace JS
 chat. Socket `access_changed` triggers a workspace refresh; current permissions are checked
 again for every write and live preview. Expiry is enforced immediately by the server and
 refreshed in visible browser tabs at most 30 seconds later.
+
+## Board text styling and object movement
+
+Shared `add`/`update` note and text data accept optional `font_family` (`sans`, `serif`,
+`mono`, `handwritten`) and `font_size` (whole number 8–48, booleans and strings rejected).
+Unsupported families/sizes return 422 `invalid_board_op`, before any edit is committed.
+Private `/me/whiteboard` objects accept these fields with the same allowlist and size bounds;
+invalid private documents return the existing validation 422. Legacy documents remain readable.
+Both families and sizes persist through replay, retained revisions and recovery. Server PNG
+snapshots use bundled fonts matching browser font assets; arbitrary font paths/URLs are rejected.
+Selection is local UI state. Shared dragging/movement uses the existing `move` operation with
+the selected object's expected `base_revision`; only its author or current workspace steward
+may update, move, erase or undo an operation affecting it (403 `author_required`). Private
+movement changes the owner-only document and requires the existing explicit save/revision.

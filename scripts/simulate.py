@@ -24,6 +24,7 @@ PROFILES = {
     "full": (
         "personal-board",
         "representative-posting",
+        "board-editing",
         "admin-console",
         "people",
         "flows",

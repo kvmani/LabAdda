@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { PublishSummary } from "../features/chat/PublishSummary";
+import { MessageOptions } from "../features/chat/MessageOptions";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invalidate } from "../generation";
 import { ChatFiles } from "../components/ChatFiles";
 import { ChatComposer } from "../components/ChatComposer";
 import { ChatThread } from "../components/ChatThread";
 import { ConversationTask } from "../components/ConversationTask";
-import { accessDenied, api, errorMessage, newId } from "../api";
+import { accessDenied, api, errorMessage } from "../api";
 import { fmtClockTimeIST, fmtDateBadgeIST } from "../format";
 import { realtime } from "../realtime";
 import { useSession } from "../session";
 import { useWorkspaces } from "../workspaces";
 import type { ChatMessage, ChatPage, Workspace } from "../types";
-import { Button, Checkbox, Dialog, EmptyState, Select, TextArea } from "../ui";
+import { Button, EmptyState } from "../ui";
 import "../components/chat.css";
 
 function parseQuote(body: string, messages: ChatMessage[], parentId: string | null) {
@@ -366,16 +368,20 @@ export function Chat({ ws }: { ws: Workspace }) {
                         onMouseLeave={() => activeMenuId === message.id && setActiveMenuId(null)}
                       >
                         {/* Author name for incoming messages */}
-                        {!isMe && message.author && (
-                          <button
-                            type="button"
-                            className="chat-bubble__author"
-                            onClick={() => ws.can_contribute && setReplyingTo(message)}
-                            title="Click to reply"
-                          >
-                            {message.author.display_name}
-                          </button>
-                        )}
+                        {!isMe &&
+                          message.author &&
+                          (ws.can_contribute ? (
+                            <button
+                              type="button"
+                              className="chat-bubble__author"
+                              onClick={() => ws.can_contribute && setReplyingTo(message)}
+                              title="Click to reply"
+                            >
+                              {message.author.display_name}
+                            </button>
+                          ) : (
+                            <span className="chat-bubble__author">{message.author.display_name}</span>
+                          ))}
 
                         {message.parent_id && <span className="chat__meta">Thread reply</span>}
 
@@ -414,67 +420,39 @@ export function Chat({ ws }: { ws: Workspace }) {
                         )}
 
                         {/* Hover dropdown button */}
-                        {ws.can_contribute && (
-                          <button
-                            type="button"
-                            className="chat-bubble__actions-btn"
-                            aria-label="Message options"
-                            onClick={() =>
-                              setActiveMenuId((curr) => (curr === message.id ? null : message.id))
-                            }
-                          >
-                            ⌄
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="chat-bubble__actions-btn"
+                          aria-label="Message options"
+                          onClick={() => setActiveMenuId((curr) => (curr === message.id ? null : message.id))}
+                        >
+                          ⌄
+                        </button>
 
                         {/* Hover dropdown menu */}
-                        {ws.can_contribute && activeMenuId === message.id && (
-                          <div className="chat-bubble__actions-menu">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setReplyingTo(message);
-                                setActiveMenuId(null);
-                              }}
-                            >
-                              ↩️ Reply
-                            </button>
-                            <button type="button" onClick={() => addReaction(message.id, "👍")}>
-                              👍 React 👍
-                            </button>
-                            <button type="button" onClick={() => addReaction(message.id, "❤️")}>
-                              ❤️ React ❤️
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setThread(message.parent_id ?? message.id);
-                                setActiveMenuId(null);
-                              }}
-                            >
-                              🧵 Open thread
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSummary(
-                                  `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
-                                );
-                                setActiveMenuId(null);
-                              }}
-                            >
-                              📢 Share to noticeboard
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTaskSource(message);
-                                setActiveMenuId(null);
-                              }}
-                            >
-                              📋 Create task
-                            </button>
-                          </div>
+                        {activeMenuId === message.id && (
+                          <MessageOptions
+                            canContribute={ws.can_contribute}
+                            onReply={() => {
+                              setReplyingTo(message);
+                              setActiveMenuId(null);
+                            }}
+                            onReact={(reaction) => addReaction(message.id, reaction)}
+                            onThread={() => {
+                              setThread(message.parent_id ?? message.id);
+                              setActiveMenuId(null);
+                            }}
+                            onShare={() => {
+                              setSummary(
+                                `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
+                              );
+                              setActiveMenuId(null);
+                            }}
+                            onTask={() => {
+                              setTaskSource(message);
+                              setActiveMenuId(null);
+                            }}
+                          />
                         )}
                       </div>
                     </li>
@@ -518,71 +496,5 @@ export function Chat({ ws }: { ws: Workspace }) {
         <ChatThread key={thread} ws={ws} rootId={thread} close={() => setThread(null)} />
       )}
     </>
-  );
-}
-
-function PublishSummary({ source, text, onClose }: { source: Workspace; text: string; onClose: () => void }) {
-  const { workspaces } = useWorkspaces();
-  const targets = workspaces.filter((w) => w.can_contribute);
-  const [dest, setDest] = useState(source.id);
-  const [body, setBody] = useState(text);
-  const [confirmed, setConfirmed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const clientId = useRef(newId("s"));
-  const formId = useId();
-  const target = workspaces.find((w) => w.id === dest);
-  const broader = dest !== source.id;
-
-  async function publish(e: FormEvent) {
-    e.preventDefault();
-    try {
-      await api(`/workspaces/${dest}/posts`, { body: { body, client_id: clientId.current } });
-      onClose();
-    } catch (err: unknown) {
-      setError(errorMessage(err));
-    }
-  }
-
-  return (
-    <Dialog
-      open
-      title="Publish summary to a noticeboard"
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="quiet" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form={formId} disabled={(broader && !confirmed) || !target}>
-            Post to {target?.name}
-          </Button>
-        </>
-      }
-    >
-      <form id={formId} className="chat__form" onSubmit={publish} aria-label="Publish chat summary">
-        <Select
-          label="Destination"
-          value={dest}
-          onChange={(e) => {
-            setDest(e.target.value);
-            setConfirmed(false);
-          }}
-          options={targets.map((w) => ({ value: w.id, label: w.name }))}
-        />
-        <TextArea label="Summary" value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
-        {broader && (
-          <Checkbox
-            label={`I understand this copy will be visible to everyone who can read ${target?.name}, a different audience from ${source.name}.`}
-            checked={confirmed}
-            onChange={(e) => setConfirmed(e.target.checked)}
-          />
-        )}
-        {error && (
-          <p className="chat__error" role="alert">
-            {error}
-          </p>
-        )}
-      </form>
-    </Dialog>
   );
 }

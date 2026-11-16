@@ -34,6 +34,25 @@ try {
     const list = await get(member.page, base, "/workspaces");
     const division = list.workspaces.find((unit) => unit.name === "Surface Engineering Division");
     const section = list.workspaces.find((unit) => unit.name === "Thin Films Section");
+    const parentSteward = await login(base, "deepa");
+    const seeded = await parentSteward.page.evaluate(
+      async ({ base, divisionId }) => {
+        const session = await (await fetch(`${base}/api/v1/auth/session`)).json();
+        return (
+          await fetch(`${base}/api/v1/workspaces/${divisionId}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrf_token },
+            body: JSON.stringify({
+              body: "Division discussion for readers",
+              client_id: "reader-thread-pilot",
+            }),
+          })
+        ).status;
+      },
+      { base, divisionId: division.id },
+    );
+    check(seeded === 201, "parent steward can start a discussion");
+    await parentSteward.context.close();
     await member.page.goto(`${origin}${base}/w/${division.id}/board`);
     await member.page
       .getByText(/Contributions are limited to unit representatives/)
@@ -48,6 +67,27 @@ try {
       (await member.page.getByRole("button", { name: "Send", exact: true }).count()) === 0,
       "ancestor chat hides sending controls",
     );
+    await member.page.getByText("Division discussion for readers", { exact: true }).waitFor();
+    await member.page.getByRole("button", { name: "Message options", exact: true }).click();
+    check(
+      (await member.page.getByRole("button", { name: /Open thread/ }).count()) === 1,
+      "readers retain thread access",
+    );
+    check(
+      (await member.page.getByRole("button", { name: /↩️ Reply|React/ }).count()) === 0,
+      "readers cannot reply or react",
+    );
+    await member.page.getByRole("button", { name: /Share to noticeboard/ }).click();
+    const summary = member.page.getByRole("dialog", { name: "Publish summary to a noticeboard" });
+    check(
+      (await summary.getByLabel("Destination").inputValue()) === section.id,
+      "summary starts at an eligible destination",
+    );
+    check(
+      await summary.getByRole("button", { name: "Post to Thin Films Section", exact: true }).isDisabled(),
+      "different summary audience requires confirmation",
+    );
+    await summary.getByRole("button", { name: "Cancel", exact: true }).click();
     await steward.page.goto(`${origin}${base}/w/${section.id}/members`);
     await steward.page
       .getByLabel("Reason for appointment or revocation")

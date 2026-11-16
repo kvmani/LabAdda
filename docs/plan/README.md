@@ -120,5 +120,5 @@ records it in the handoff entry and stops; it does not invent a package.
 ## Owner-requested pilot changes (16 November 2026)
 
 Representative contribution policy, delegation management and board editing improvements are
-**in progress**. Scope, acceptance and resumable progress are in the
+**done**. Scope, acceptance and validation are in the
 [working ledger](../development/representative-posting.md).

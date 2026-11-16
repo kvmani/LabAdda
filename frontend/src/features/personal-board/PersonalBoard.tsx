@@ -1,3 +1,6 @@
+import { moveObject } from "./move";
+import { SelectedObjectControls } from "../whiteboard/SelectedObjectControls";
+import { canvasFont, loadBoardFonts, type TextStyle } from "../whiteboard/textStyle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "../../session";
 import { boardDraft, clearSavedBoard, rememberBoard } from "./draft";
@@ -50,6 +53,7 @@ export function PersonalBoard() {
     { board_index: 0, title: "WhiteBoard_1" },
   ]);
   const [maxWhiteboards, setMaxWhiteboards] = useState(5);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [objects, setObjects] = useState<BoardObject[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -58,7 +62,10 @@ export function PersonalBoard() {
 
   useEffect(() => {
     api<
-      | { boards?: { board_index: number; title: string }[]; max_whiteboards?: number }
+      | {
+          boards?: { board_index: number; title: string }[];
+          max_whiteboards?: number;
+        }
       | { board_index: number; title: string }[]
     >("/me/whiteboard/tabs")
       .then((res) => {
@@ -76,6 +83,7 @@ export function PersonalBoard() {
     const cached = boardDraft(`${draftKey}:${boardIndex}`);
     setError("");
     setBusy(false);
+    setSelectedId(null);
     setEditingSticky(null);
     setEditingText(null);
     setCreatingStickyAt(null);
@@ -136,14 +144,22 @@ export function PersonalBoard() {
     id: string;
     text: string;
     color: string;
+    font_family?: TextStyle["font_family"];
+    font_size?: number;
     authorInfo?: { name: string; time: string };
   } | null>(null);
   const [creatingTextAt, setCreatingTextAt] = useState<[number, number] | null>(null);
 
-  const drawing = useRef<{ id: string; points: [number, number][]; last: number } | null>(null);
-  const shapeDrawing = useRef<{ id: string; start: [number, number]; points: [number, number][] } | null>(
-    null,
-  );
+  const drawing = useRef<{
+    id: string;
+    points: [number, number][];
+    last: number;
+  } | null>(null);
+  const shapeDrawing = useRef<{
+    id: string;
+    start: [number, number];
+    points: [number, number][];
+  } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
   const draggingObj = useRef<{
     id: string;
@@ -151,8 +167,12 @@ export function PersonalBoard() {
     startY: number;
     origX: number;
     origY: number;
+    original: BoardObject;
   } | null>(null);
   const [, force] = useState(0);
+  useEffect(() => {
+    void loadBoardFonts().then(() => force((value) => value + 1));
+  }, []);
 
   // Persist draft in session
   useEffect(() => {
@@ -326,16 +346,24 @@ export function PersonalBoard() {
       } else if (o.kind === "sticky") {
         const shape = o.shape ?? "rectangle";
         const [w, h] = getStickyDimensions(shape, o.size ?? "medium");
-        drawStickyCanvas(ctx, o.x ?? 0, o.y ?? 0, w, h, shape, o.color, o.text ?? "");
+        drawStickyCanvas(ctx, o.x ?? 0, o.y ?? 0, w, h, shape, o.color, o.text ?? "", o);
       } else if (o.kind === "text") {
         ctx.fillStyle = o.color;
-        ctx.font = "16px system-ui, sans-serif";
+        ctx.font = canvasFont(o);
         ctx.textAlign = "left";
         const lines = (o.text ?? "").split("\n");
-        lines.forEach((t: string, i: number) => ctx.fillText(t, o.x ?? 0, (o.y ?? 0) + 20 + i * 20));
+        lines.forEach((t: string, i: number) =>
+          ctx.fillText(t, o.x ?? 0, (o.y ?? 0) + (o.font_size ?? 16) * 1.25 + i * (o.font_size ?? 16) * 1.3),
+        );
       }
     }
 
+    if (selected) {
+      const [x0, y0, x1, y1] = bounds(selected);
+      ctx.strokeStyle = PEN_COLORS[2];
+      ctx.lineWidth = 2 / view.scale;
+      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    }
     if (shapeDrawing.current) {
       line(shapeDrawing.current.points, color, 3);
     }
@@ -358,7 +386,52 @@ export function PersonalBoard() {
     [view],
   );
 
+  const selected = objects.find((object) => object.id === selectedId);
+  function editSelected() {
+    const target = selected;
+    if (!target || busy) return;
+    if (target.kind === "sticky") {
+      setEditingSticky({
+        id: target.id,
+        config: {
+          text: target.text ?? "",
+          shape: target.shape ?? "rectangle",
+          size: target.size ?? "medium",
+          color: target.color,
+          font_family: target.font_family,
+          font_size: target.font_size,
+        },
+        authorInfo: {
+          name: target.author ?? userName,
+          time: target.created_at ? new Date(target.created_at).toLocaleString() : "Saved revision",
+        },
+      });
+      return;
+    }
+    if (target.kind === "text") {
+      setEditingText({
+        id: target.id,
+        text: target.text ?? "",
+        color: target.color,
+        font_family: target.font_family,
+        font_size: target.font_size,
+        authorInfo: {
+          name: target.author ?? userName,
+          time: target.created_at ? new Date(target.created_at).toLocaleString() : "Saved revision",
+        },
+      });
+      return;
+    }
+  }
+  function moveSelected(dx: number, dy: number) {
+    if (!busy)
+      changeObjects(
+        objects.map((object) => (object.id === selectedId ? moveObject(object, dx, dy) : object)),
+      );
+  }
+
   function onDown(e: React.PointerEvent) {
+    if (busy) return;
     const [x, y] = toWorld(e);
     if (tool === "pan" || e.button === 1) {
       panning.current = { x: e.clientX - view.x, y: e.clientY - view.y };
@@ -367,45 +440,17 @@ export function PersonalBoard() {
     if (tool === "select") {
       const target = [...objects].reverse().find((o) => hit(o, x, y, 6 / view.scale));
       if (target) {
-        if (target.kind === "sticky") {
-          setEditingSticky({
-            id: target.id,
-            config: {
-              text: target.text ?? "",
-              shape: target.shape ?? "rectangle",
-              size: target.size ?? "medium",
-              color: target.color,
-            },
-            authorInfo: {
-              name: target.author ?? userName,
-              time: target.created_at ? new Date(target.created_at).toLocaleString() : "Saved revision",
-            },
-          });
-          return;
-        }
-        if (target.kind === "text") {
-          setEditingText({
-            id: target.id,
-            text: target.text ?? "",
-            color: target.color,
-            authorInfo: {
-              name: target.author ?? userName,
-              time: target.created_at ? new Date(target.created_at).toLocaleString() : "Saved revision",
-            },
-          });
-          return;
-        }
-        if (target.kind === "image" || target.kind === "stroke") {
-          draggingObj.current = {
-            id: target.id,
-            startX: x,
-            startY: y,
-            origX: target.x ?? 0,
-            origY: target.y ?? 0,
-          };
-          (e.target as Element).setPointerCapture(e.pointerId);
-          return;
-        }
+        setSelectedId(target.id);
+        draggingObj.current = {
+          id: target.id,
+          startX: x,
+          startY: y,
+          origX: target.x ?? 0,
+          origY: target.y ?? 0,
+          original: target,
+        };
+        (e.target as Element).setPointerCapture(e.pointerId);
+        return;
       }
       return;
     }
@@ -429,7 +474,11 @@ export function PersonalBoard() {
           ],
         };
       } else {
-        drawing.current = { id: crypto.randomUUID(), points: [[x, y]], last: 0 };
+        drawing.current = {
+          id: crypto.randomUUID(),
+          points: [[x, y]],
+          last: 0,
+        };
       }
       return;
     }
@@ -443,7 +492,11 @@ export function PersonalBoard() {
 
   function onMove(e: React.PointerEvent) {
     if (panning.current) {
-      setView((v) => ({ ...v, x: e.clientX - panning.current!.x, y: e.clientY - panning.current!.y }));
+      setView((v) => ({
+        ...v,
+        x: e.clientX - panning.current!.x,
+        y: e.clientY - panning.current!.y,
+      }));
       return;
     }
     if (draggingObj.current) {
@@ -451,9 +504,7 @@ export function PersonalBoard() {
       const drag = draggingObj.current;
       const dx = x - drag.startX;
       const dy = y - drag.startY;
-      changeObjects(
-        objects.map((o) => (o.id === drag.id ? { ...o, x: drag.origX + dx, y: drag.origY + dy } : o)),
-      );
+      changeObjects(objects.map((o) => (o.id === drag.id ? moveObject(drag.original, dx, dy) : o)));
       return;
     }
     if (shapeDrawing.current) {
@@ -556,6 +607,8 @@ export function PersonalBoard() {
                 shape: cfg.shape,
                 size: cfg.size,
                 color: cfg.color,
+                font_family: cfg.font_family,
+                font_size: cfg.font_size,
               }
             : o,
         ),
@@ -574,6 +627,8 @@ export function PersonalBoard() {
           shape: cfg.shape,
           size: cfg.size,
           color: cfg.color,
+          font_family: cfg.font_family,
+          font_size: cfg.font_size,
           author: userName,
           created_at: new Date().toISOString(),
         },
@@ -582,9 +637,11 @@ export function PersonalBoard() {
     }
   }
 
-  function handleSaveText(txt: string, textCol: string) {
+  function handleSaveText(txt: string, textCol: string, style: TextStyle) {
     if (editingText) {
-      changeObjects(objects.map((o) => (o.id === editingText.id ? { ...o, text: txt, color: textCol } : o)));
+      changeObjects(
+        objects.map((o) => (o.id === editingText.id ? { ...o, ...style, text: txt, color: textCol } : o)),
+      );
       setEditingText(null);
     } else if (creatingTextAt) {
       const [x, y] = creatingTextAt;
@@ -595,6 +652,7 @@ export function PersonalBoard() {
           kind: "text",
           x: Math.min(900, Math.max(0, x)),
           y: Math.min(560, Math.max(0, y)),
+          ...style,
           text: txt,
           color: textCol,
           author: userName,
@@ -675,6 +733,7 @@ export function PersonalBoard() {
         <canvas
           ref={canvasRef}
           className={"canvas" + (tool === "pan" ? " tool-pan" : "")}
+          onDoubleClick={editSelected}
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
@@ -685,6 +744,18 @@ export function PersonalBoard() {
           aria-label="Whiteboard drawing surface"
         />
 
+        {selected && !busy && (
+          <SelectedObjectControls
+            label={selected.text || selected.kind}
+            canEditText={selected.kind === "text" || selected.kind === "sticky"}
+            onEdit={editSelected}
+            onMove={moveSelected}
+            onErase={() => {
+              changeObjects(objects.filter((object) => object.id !== selectedId));
+              setSelectedId(null);
+            }}
+          />
+        )}
         <details>
           <summary>Board items ({objects.length})</summary>
           <ul>
@@ -701,11 +772,18 @@ export function PersonalBoard() {
                           config: {
                             text: object.text ?? "",
                             color: object.color,
+                            font_family: object.font_family,
+                            font_size: object.font_size,
                             shape: object.shape ?? "rectangle",
                             size: object.size ?? "medium",
                           },
                         });
-                      else setEditingText({ id: object.id, text: object.text ?? "", color: object.color });
+                      else
+                        setEditingText({
+                          id: object.id,
+                          text: object.text ?? "",
+                          color: object.color,
+                        });
                     }}
                   >
                     {object.text || `Item ${index + 1}`}
@@ -713,6 +791,9 @@ export function PersonalBoard() {
                 ) : (
                   <span>Drawing {index + 1}</span>
                 )}
+                <Button size="sm" disabled={busy} onClick={() => setSelectedId(object.id)}>
+                  Select item
+                </Button>
                 <Button
                   size="sm"
                   disabled={busy}
@@ -728,7 +809,10 @@ export function PersonalBoard() {
                               ([x, y]) => [Math.min(1000, x + 10), y] as [number, number],
                             ),
                           };
-                        return { ...item, x: Math.min(1000, (item.x ?? 0) + 10) };
+                        return {
+                          ...item,
+                          x: Math.min(1000, (item.x ?? 0) + 10),
+                        };
                       }),
                     )
                   }
@@ -757,7 +841,12 @@ export function PersonalBoard() {
         initialConfig={
           editingSticky
             ? editingSticky.config
-            : { text: "", shape: stickyShape, size: stickySize, color: stickyColor }
+            : {
+                text: "",
+                shape: stickyShape,
+                size: stickySize,
+                color: stickyColor,
+              }
         }
         authorInfo={editingSticky?.authorInfo}
         onClose={() => {
@@ -780,6 +869,7 @@ export function PersonalBoard() {
         open={editingText !== null || creatingTextAt !== null}
         initialText={editingText?.text ?? ""}
         initialColor={editingText?.color ?? color}
+        initialStyle={objects.find((object) => object.id === editingText?.id)}
         authorInfo={editingText?.authorInfo}
         onClose={() => {
           setEditingText(null);

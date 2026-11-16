@@ -315,3 +315,10 @@
   flex-wrap: wrap;
   gap: var(--space-1);
 }
+
+.canvas.tool-select {
+  cursor: grab;
+}
+.canvas.tool-select:active {
+  cursor: grabbing;
+}

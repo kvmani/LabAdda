@@ -1,3 +1,4 @@
+import { canvasFont, type TextStyle } from "./textStyle";
 import type { DrawMode, StickyShape, StickySize } from "./types";
 
 export const STICKY_SHAPES: { id: StickyShape; label: string; icon: string }[] = [
@@ -57,6 +58,7 @@ export function drawStickyCanvas(
   shape: StickyShape,
   color: string,
   text: string,
+  style: Partial<TextStyle> = {},
 ): void {
   ctx.fillStyle = color;
   ctx.strokeStyle = "#00000033";
@@ -106,7 +108,9 @@ export function drawStickyCanvas(
     ctx.closePath();
   } else {
     const roundRect = (
-      ctx as unknown as { roundRect?: (rx: number, ry: number, rw: number, rh: number, rad: number) => void }
+      ctx as unknown as {
+        roundRect?: (rx: number, ry: number, rw: number, rh: number, rad: number) => void;
+      }
     ).roundRect;
     if (typeof roundRect === "function") {
       roundRect.call(ctx, x, y, w, h, 8);
@@ -120,18 +124,19 @@ export function drawStickyCanvas(
 
   // Text inside shape
   ctx.fillStyle = "#1f2933";
-  ctx.font = shape === "star" ? "12px system-ui, sans-serif" : "14px system-ui, sans-serif";
+  ctx.font = canvasFont(style);
+  const lineHeight = (style.font_size ?? 16) * 1.3;
   const lines = text.split("\n");
   if (shape === "rectangle") {
     ctx.textAlign = "left";
     lines.forEach((t: string, i: number) => {
-      ctx.fillText(t, x + 12, y + 24 + i * 20, w - 24);
+      ctx.fillText(t, x + 12, y + 24 + i * lineHeight, w - 24);
     });
   } else {
     ctx.textAlign = "center";
-    const startY = y + Math.max(24, (h - lines.length * 20) / 2 + 14);
+    const startY = y + Math.max(24, (h - lines.length * lineHeight) / 2 + 14);
     lines.forEach((t: string, i: number) => {
-      ctx.fillText(t, x + w / 2, startY + i * 20, w - 32);
+      ctx.fillText(t, x + w / 2, startY + i * lineHeight, w - 32);
     });
     ctx.textAlign = "left";
   }
@@ -207,6 +212,7 @@ export type BoundsTarget = {
     points?: [number, number][];
     color?: string;
     width?: number;
+    font_size?: number;
     shape?: StickyShape;
     size?: StickySize;
     text?: string;
@@ -224,6 +230,7 @@ export type BoundsTarget = {
   size?: StickySize;
   text?: string;
   width?: number;
+  font_size?: number;
   dx?: number;
   dy?: number;
 };
@@ -254,8 +261,10 @@ export function bounds(o: BoundsTarget): [number, number, number, number] {
   }
   // text
   const txt = d.text ?? o.text ?? "";
-  const w = Math.max(40, txt.length * 9);
-  const h = 24;
+  const fontSize = d.font_size ?? o.font_size ?? 16;
+  const lines = txt.split("\n");
+  const w = Math.max(40, ...lines.map((line) => line.length * fontSize * 0.65));
+  const h = Math.max(24, lines.length * fontSize * 1.3);
   return [x, y, x + w, y + h];
 }
 

@@ -1,4 +1,9 @@
-export type User = { id: string; username: string; display_name: string; is_active: boolean };
+export type User = {
+  id: string;
+  username: string;
+  display_name: string;
+  is_active: boolean;
+};
 export type SessionInfo = {
   user: User & { is_admin: boolean; home_workspace_id: string | null };
   csrf_token: string;
@@ -74,6 +79,8 @@ export type StickyShape = "rectangle" | "circle" | "hexagon" | "diamond" | "clou
 export type StickySize = "small" | "medium" | "large";
 /** Typed notes and stickies share one shape and optional size. */
 export type NoteData = {
+  font_family?: "sans" | "serif" | "mono" | "handwritten";
+  font_size?: number;
   x: number;
   y: number;
   text: string;
@@ -81,7 +88,13 @@ export type NoteData = {
   shape?: StickyShape;
   size?: StickySize;
 };
-export type BoardImageData = { x: number; y: number; w: number; h: number; asset_id: string };
+export type BoardImageData = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  asset_id: string;
+};
 /** A board object's kind with the data the server validated for that kind (api/board.py). */
 export type BoardObjectContent =
   | { kind: "stroke"; data: StrokeData }
@@ -117,9 +130,18 @@ export type NotificationLink =
   | { view: "noticeboard"; workspace_id: string; post_id: string }
   | { view: "chat"; workspace_id: string; seq: number }
   | { view: "todos"; workspace_id: string };
-export type OpenedNotification = { id: string; kind: string; link: NotificationLink };
+export type OpenedNotification = {
+  id: string;
+  kind: string;
+  link: NotificationLink;
+};
 
-type SearchHit = { id: string; body: string; created_at: string; author: User | null };
+type SearchHit = {
+  id: string;
+  body: string;
+  created_at: string;
+  author: User | null;
+};
 /** Workspace-local search (GET /workspaces/{id}/search). */
 export type SearchResults = {
   counts: { posts: number; chat: number };

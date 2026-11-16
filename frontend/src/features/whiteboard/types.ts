@@ -4,6 +4,8 @@ export type DrawMode = "pen" | "pencil" | "brush" | "line" | "arrow" | "rect" | 
 export type WhiteboardTool = "select" | "pen" | "eraser" | "text" | "sticky" | "image" | "pan";
 
 export type StickyConfig = {
+  font_family?: "sans" | "serif" | "mono" | "handwritten";
+  font_size?: number;
   shape: StickyShape;
   size: StickySize;
   color: string;
@@ -40,6 +42,8 @@ export type HoverTooltipData = {
 };
 
 export type WhiteboardCanvasObject = {
+  font_family?: "sans" | "serif" | "mono" | "handwritten";
+  font_size?: number;
   id: string;
   kind: "stroke" | "sticky" | "text" | "image";
   color: string;

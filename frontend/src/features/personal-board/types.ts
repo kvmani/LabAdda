@@ -3,6 +3,8 @@ import type { StickyShape, StickySize } from "../whiteboard/types";
 export type BoardColor = string;
 
 export type BoardObject = {
+  font_family?: "sans" | "serif" | "mono" | "handwritten";
+  font_size?: number;
   id: string;
   kind: "stroke" | "sticky" | "text" | "image";
   color: BoardColor;

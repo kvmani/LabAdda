@@ -174,3 +174,27 @@
 :root {
   --board-violet: #7550ac;
 }
+
+@font-face {
+  font-family: "LabAdda Sans";
+  src: url("../../../backend/labadda/fonts/DejaVuSans.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LabAdda Serif";
+  src: url("../../../backend/labadda/fonts/DejaVuSerif.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LabAdda Mono";
+  src: url("../../../backend/labadda/fonts/DejaVuSansMono.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LabAdda Handwriting";
+  src: url("../../../backend/labadda/fonts/Kalam-Regular.ttf") format("truetype");
+  font-display: swap;
+}

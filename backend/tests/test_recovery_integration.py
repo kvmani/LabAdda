@@ -65,6 +65,8 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
                     "kind": "sticky",
                     "color": "mint",
                     "text": "Private recovery sketch",
+                    "font_family": "handwritten",
+                    "font_size": 24,
                 }
             ],
         },
@@ -340,6 +342,9 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
                 for p in api.get(f"/workspaces/{workspace}/posts").json()["posts"]
             )
             assert api.get("/me/whiteboard").json() == personal_board
+            restored_board = api.get("/me/whiteboard").json()["objects"]
+            assert restored_board[0]["font_family"] == "handwritten"
+            assert restored_board[0]["font_size"] == 24
             assert api.get(f"/notes/{note.json()['id']}").json()["title"] == "Private recovery note"
             assert api.get(f"/files/{asset['id']}").content == pdf
             assert api.get(f"/files/{picture_id}/preview").content == preview

@@ -21,6 +21,16 @@ administrators cannot read it. It is separate from shared workspace whiteboards 
 6. Use the board tabs to keep separate drawings; unsaved work stays in its own tab.
 7. Use **Undo** to remove the most recently added object from your draft.
 
+### Select and edit an item
+
+Choose Select, click a note, text label, image or drawing, and drag it to move it. You can
+also open Board items, choose **Select item**, and use **Move left**, **Move right**,
+**Move up** and **Move down**. Drawings move as a complete shape.
+
+Choose **Edit selected item** to change a note or text label. **Font** and **Font size**
+provide four fonts, including Handwritten (Kalam), and sizes from 8 to 48. Double-clicking
+also opens the editor. Use Save on your private board to keep these changes on the server.
+
 ## What happens next
 
 Images can be uploaded to team boards. Personal boards currently support drawings, text and sticky notes.

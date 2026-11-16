@@ -1,3 +1,5 @@
+import { SelectedObjectControls } from "../features/whiteboard/SelectedObjectControls";
+import { canvasFont, loadBoardFonts } from "../features/whiteboard/textStyle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorCode, errorMessage, newId, outcomeUnknown } from "../api";
 import { API, BASE } from "../config";
@@ -123,8 +125,10 @@ function bounds(o: Obj): [number, number, number, number] {
   if (o.kind === "sticky") {
     [w, h] = getStickyDimensions(o.data.shape, o.data.size);
   } else {
-    w = Math.max(40, o.data.text.length * 9);
-    h = 24;
+    const fontSize = o.data.font_size ?? 16;
+    const lines = o.data.text.split("\n");
+    w = Math.max(40, ...lines.map((line) => line.length * fontSize * 0.65));
+    h = Math.max(24, lines.length * fontSize * 1.3);
   }
   return [o.data.x + o.dx, o.data.y + o.dy, o.data.x + o.dx + w, o.data.y + o.dy + h];
 }
@@ -152,11 +156,31 @@ export function Board({
   maxUploadBytes?: number;
 }) {
   const [serverCanContribute, setServerCanContribute] = useState(workspace.can_contribute);
-  const ws = { ...workspace, can_contribute: workspace.can_contribute && serverCanContribute };
+  const ws = {
+    ...workspace,
+    can_contribute: workspace.can_contribute && serverCanContribute,
+  };
   useEffect(() => setServerCanContribute(workspace.can_contribute), [workspace.can_contribute]);
-  const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
+  useEffect(() => {
+    void loadBoardFonts().then(() => force((value) => value + 1));
+  }, []);
+  const [pairing, setPairing] = useState<{
+    code: string;
+    expires_at: string;
+  } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const dragging = useRef<{
+    id: string;
+    start: Point;
+    dx: number;
+    dy: number;
+    revision: number;
+  } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [taskContext, setTaskContext] = useState<{ epoch: number; revision: number } | null>(null);
+  const [taskContext, setTaskContext] = useState<{
+    epoch: number;
+    revision: number;
+  } | null>(null);
   const taskFormRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (taskContext) taskFormRef.current?.scrollIntoView({ block: "start" });
@@ -195,7 +219,11 @@ export function Board({
     kind: string;
   } | null>(null);
   const [members, setMembers] = useState<Map<string, string>>(new Map());
-  const shapeDrawing = useRef<{ id: string; start: Point; points: Point[] } | null>(null);
+  const shapeDrawing = useRef<{
+    id: string;
+    start: Point;
+    points: Point[];
+  } | null>(null);
 
   useEffect(() => {
     if (panel) return;
@@ -242,7 +270,10 @@ export function Board({
   useEffect(() => {
     if (panel) return;
     api<
-      | { boards?: { board_index: number; title: string }[]; max_whiteboards?: number }
+      | {
+          boards?: { board_index: number; title: string }[];
+          max_whiteboards?: number;
+        }
       | { board_index: number; title: string }[]
     >(`/workspaces/${ws.id}/boards`)
       .then((res) => {
@@ -259,7 +290,9 @@ export function Board({
     async (full = false) => {
       const sequence = ++loadSequence.current;
       const scope = `${ws.id}:${boardIndex}`;
-      const params: Record<string, string | number> = { board_index: boardIndex };
+      const params: Record<string, string | number> = {
+        board_index: boardIndex,
+      };
       if (!full) {
         params.epoch = state.current.epoch;
         params.after = state.current.revision;
@@ -342,7 +375,11 @@ export function Board({
   }, [ws.id, apply, load, boardIndex]);
 
   const submit = (op: Omit<PendingOp, "op_id" | "epoch">) => {
-    pending.current.push({ op_id: newId("op"), epoch: state.current.epoch, ...op });
+    pending.current.push({
+      op_id: newId("op"),
+      epoch: state.current.epoch,
+      ...op,
+    });
     void flush();
   };
 
@@ -353,6 +390,8 @@ export function Board({
     setSelection(null);
     setPairing(null);
     setTaskContext(null);
+    setSelectedId(null);
+    dragging.current = null;
     setEditingSticky(null);
     setEditingText(null);
     setCreatingStickyAt(null);
@@ -465,7 +504,16 @@ export function Board({
       if (pts.length === 1 && only) ctx.lineTo(only[0] + dx + 0.1, only[1] + dy);
       ctx.stroke();
     };
-    for (const o of [...objects.values()].sort((a, b) => a.rev - b.rev)) {
+    for (const original of [...objects.values()].sort((a, b) => a.rev - b.rev)) {
+      const drag = dragging.current;
+      const o =
+        drag && original === selected
+          ? {
+              ...original,
+              dx: original.dx + drag.dx,
+              dy: original.dy + drag.dy,
+            }
+          : original;
       if (!o.alive) continue;
       if (o.kind === "image") {
         const id = o.data.asset_id;
@@ -489,13 +537,15 @@ export function Board({
         if (o.kind === "sticky") {
           const shape = o.data.shape ?? "rectangle";
           const [w, h] = getStickyDimensions(shape, o.data.size);
-          drawStickyCanvas(ctx, x, y, w, h, shape, o.data.color, o.data.text);
+          drawStickyCanvas(ctx, x, y, w, h, shape, o.data.color, o.data.text, o.data);
         } else {
           ctx.fillStyle = o.data.color;
-          ctx.font = "16px system-ui, sans-serif";
+          ctx.font = canvasFont(o.data);
           ctx.textAlign = "left";
           const lines = o.data.text.split("\n");
-          lines.forEach((t: string, i: number) => ctx.fillText(t, x, y + 20 + i * 20));
+          lines.forEach((t: string, i: number) =>
+            ctx.fillText(t, x, y + (o.data.font_size ?? 16) * 1.25 + i * (o.data.font_size ?? 16) * 1.3),
+          );
         }
       }
     }
@@ -504,6 +554,13 @@ export function Board({
     }
     for (const p of previews.current.values()) line(p.points, p.color ?? "#999", 3);
     if (drawing.current) line(drawing.current.points, color, 3);
+    if (selected?.alive) {
+      const [x0, y0, x1, y1] = bounds(selected);
+      const drag = dragging.current;
+      ctx.strokeStyle = PEN_COLORS[2];
+      ctx.lineWidth = 2 / view.scale;
+      ctx.strokeRect(x0 + (drag?.dx ?? 0), y0 + (drag?.dy ?? 0), x1 - x0, y1 - y0);
+    }
     if (selection) {
       ctx.setLineDash([8 / view.scale, 6 / view.scale]);
       ctx.strokeStyle = "#1d4ed8";
@@ -517,6 +574,47 @@ export function Board({
     const r = canvasRef.current!.getBoundingClientRect();
     return [(e.clientX - r.left - view.x) / view.scale, (e.clientY - r.top - view.y) / view.scale];
   };
+
+  function openObjectEditor(targetId: string, targetObj: Obj) {
+    if (targetObj.kind === "sticky") {
+      setEditingSticky({
+        id: targetId,
+        obj: targetObj as Obj & { kind: "sticky"; data: NoteData },
+        config: {
+          text: targetObj.data.text,
+          shape: targetObj.data.shape ?? "rectangle",
+          size: targetObj.data.size ?? "medium",
+          color: targetObj.data.color,
+          font_family: targetObj.data.font_family,
+          font_size: targetObj.data.font_size,
+        },
+      });
+      return;
+    }
+    if (targetObj.kind === "text") {
+      setEditingText({
+        id: targetId,
+        obj: targetObj as Obj & { kind: "text"; data: NoteData },
+        text: targetObj.data.text,
+        color: targetObj.data.color,
+      });
+      return;
+    }
+  }
+  const selected = selectedId ? objects.get(selectedId) : undefined;
+  function editSelected() {
+    if (selectedId && selected && ws.can_contribute && (selected.author === userId || ws.can_moderate))
+      openObjectEditor(selectedId, selected);
+  }
+  function moveSelected(dx: number, dy: number) {
+    if (selectedId && selected)
+      submit({
+        type: "move",
+        object_id: selectedId,
+        base_revision: selected.rev,
+        payload: { dx, dy },
+      });
+  }
 
   function onDown(e: React.PointerEvent) {
     const [x, y] = toWorld(e);
@@ -542,28 +640,20 @@ export function Board({
           setMessage("Only the author or a steward can change this item.");
           return;
         }
-        if (targetObj.kind === "sticky") {
-          setEditingSticky({
+        if (tool === "select") {
+          setSelectedId(targetId);
+          dragging.current = {
             id: targetId,
-            obj: targetObj as Obj & { kind: "sticky"; data: NoteData },
-            config: {
-              text: targetObj.data.text,
-              shape: targetObj.data.shape ?? "rectangle",
-              size: targetObj.data.size ?? "medium",
-              color: targetObj.data.color,
-            },
-          });
+            start: [x, y],
+            dx: 0,
+            dy: 0,
+            revision: targetObj.rev,
+          };
+          (e.target as Element).setPointerCapture(e.pointerId);
           return;
         }
-        if (targetObj.kind === "text") {
-          setEditingText({
-            id: targetId,
-            obj: targetObj as Obj & { kind: "text"; data: NoteData },
-            text: targetObj.data.text,
-            color: targetObj.data.color,
-          });
-          return;
-        }
+        openObjectEditor(targetId, targetObj);
+        return;
       }
       if (tool === "sticky") {
         setCreatingStickyAt([x, y]);
@@ -597,8 +687,19 @@ export function Board({
   }
 
   function onMove(e: React.PointerEvent) {
+    if (dragging.current) {
+      const point = toWorld(e);
+      dragging.current.dx = point[0] - dragging.current.start[0];
+      dragging.current.dy = point[1] - dragging.current.start[1];
+      force((value) => value + 1);
+      return;
+    }
     if (panning.current) {
-      setView((v) => ({ ...v, x: e.clientX - panning.current!.x, y: e.clientY - panning.current!.y }));
+      setView((v) => ({
+        ...v,
+        x: e.clientX - panning.current!.x,
+        y: e.clientY - panning.current!.y,
+      }));
       return;
     }
     if (selecting.current) {
@@ -677,6 +778,19 @@ export function Board({
   }
 
   function onUp() {
+    const drag = dragging.current;
+    dragging.current = null;
+    if (drag) {
+      if (Math.abs(drag.dx) + Math.abs(drag.dy) > 2)
+        submit({
+          type: "move",
+          object_id: drag.id,
+          base_revision: drag.revision,
+          payload: { dx: drag.dx, dy: drag.dy },
+        });
+      force((value) => value + 1);
+      return;
+    }
     panning.current = null;
     if (selecting.current) {
       selecting.current = null;
@@ -690,7 +804,10 @@ export function Board({
         submit({
           type: "add",
           object_id: sd.id,
-          payload: { kind: "stroke", data: { points: sd.points, color, width: 3 } },
+          payload: {
+            kind: "stroke",
+            data: { points: sd.points, color, width: 3 },
+          },
         });
       }
       return;
@@ -709,7 +826,10 @@ export function Board({
     submit({
       type: "add",
       object_id: d.id,
-      payload: { kind: "stroke", data: { points: d.points, color, width: strokeW } },
+      payload: {
+        kind: "stroke",
+        data: { points: d.points, color, width: strokeW },
+      },
     });
   }
 
@@ -774,7 +894,11 @@ export function Board({
     if (answer === null) return;
     try {
       await api(`/workspaces/${ws.id}/board/restore`, {
-        body: { board_index: boardIndex, revision: Number(answer), reason: "Restored from board view" },
+        body: {
+          board_index: boardIndex,
+          revision: Number(answer),
+          reason: "Restored from board view",
+        },
       });
       await load(true);
     } catch (e: unknown) {
@@ -783,10 +907,7 @@ export function Board({
   }
 
   const mine = ops.some((o) => o.actor_id === userId && o.type !== "undo");
-  const typed = [...objects.entries()].filter(
-    (entry): entry is [string, Obj & { kind: "text" | "sticky" }] =>
-      entry[1].alive && (entry[1].kind === "text" || entry[1].kind === "sticky"),
-  );
+  const listedObjects = [...objects.entries()].filter(([, object]) => object.alive);
   const imageCount = [...objects.values()].filter((o) => o.alive && o.kind === "image").length;
 
   return (
@@ -1072,6 +1193,7 @@ export function Board({
         <canvas
           ref={canvasRef}
           className={`canvas tool-${tool}`}
+          onDoubleClick={editSelected}
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
@@ -1085,6 +1207,17 @@ export function Board({
           aria-label="Drawing canvas. Use the list view for a text alternative."
           role="img"
         />
+        {selected?.alive && ws.can_contribute && (selected.author === userId || ws.can_moderate) && (
+          <SelectedObjectControls
+            label={
+              selected.kind === "sticky" || selected.kind === "text" ? selected.data.text : selected.kind
+            }
+            canEditText={selected.kind === "sticky" || selected.kind === "text"}
+            onEdit={editSelected}
+            onMove={moveSelected}
+            onErase={() => submit({ type: "erase", object_id: selectedId ?? undefined })}
+          />
+        )}
         {showList && (
           <div className="board-list">
             <Card title="Board items">
@@ -1093,13 +1226,22 @@ export function Board({
                   {[...objects.values()].filter((o) => o.alive && o.kind === "stroke").length} drawn strokes ·{" "}
                   {imageCount} images
                 </p>
-                {typed.length === 0 ? (
-                  <p className="board-dialog__muted">No text or sticky notes.</p>
+                {listedObjects.length === 0 ? (
+                  <p className="board-dialog__muted">No items on this board.</p>
                 ) : (
                   <ul className="board-dialog__items">
-                    {typed.map(([id, o]) => (
+                    {listedObjects.map(([id, o]) => (
                       <li key={id}>
-                        {o.kind === "sticky" ? "Sticky" : "Text"}: {o.data.text}
+                        {o.kind === "sticky" || o.kind === "text"
+                          ? `${o.kind === "sticky" ? "Sticky" : "Text"}: ${o.data.text}`
+                          : o.kind === "image"
+                            ? "Image"
+                            : "Drawing stroke"}
+                        {ws.can_contribute && (o.author === userId || ws.can_moderate) && (
+                          <Button size="sm" onClick={() => setSelectedId(id)}>
+                            Select item
+                          </Button>
+                        )}
                         {ws.can_contribute && (o.author === userId || ws.can_moderate) && (
                           <Button
                             variant="quiet"
@@ -1127,6 +1269,7 @@ export function Board({
         )}
         {editingSticky && (
           <StickyEditDialog
+            canEdit={ws.can_contribute}
             open={true}
             title="Edit sticky note"
             initialConfig={editingSticky.config}
@@ -1154,6 +1297,8 @@ export function Board({
                     shape: cfg.shape,
                     size: cfg.size,
                     color: cfg.color,
+                    font_family: cfg.font_family,
+                    font_size: cfg.font_size,
                   },
                 },
               });
@@ -1166,6 +1311,7 @@ export function Board({
         )}
         {creatingStickyAt && (
           <StickyEditDialog
+            canEdit={ws.can_contribute}
             open={true}
             title="Add sticky note"
             initialConfig={{
@@ -1188,6 +1334,8 @@ export function Board({
                     shape: cfg.shape,
                     size: cfg.size,
                     color: cfg.color,
+                    font_family: cfg.font_family,
+                    font_size: cfg.font_size,
                   },
                 },
               });
@@ -1196,9 +1344,11 @@ export function Board({
         )}
         {editingText && (
           <TextEditDialog
+            canEdit={ws.can_contribute}
             open={true}
             initialText={editingText.text}
             initialColor={editingText.color}
+            initialStyle={editingText.obj.data}
             authorInfo={{
               name:
                 editingText.obj.author === userId
@@ -1209,7 +1359,7 @@ export function Board({
                 : "Saved revision",
             }}
             onClose={() => setEditingText(null)}
-            onSave={(t, c) => {
+            onSave={(t, c, style) => {
               submit({
                 type: "update",
                 object_id: editingText.id,
@@ -1219,6 +1369,7 @@ export function Board({
                   data: {
                     x: editingText.obj.data.x,
                     y: editingText.obj.data.y,
+                    ...style,
                     text: t,
                     color: c,
                   },
@@ -1233,10 +1384,11 @@ export function Board({
         )}
         {creatingTextAt && (
           <TextEditDialog
+            canEdit={ws.can_contribute}
             open={true}
             initialColor={color}
             onClose={() => setCreatingTextAt(null)}
-            onSave={(t, c) => {
+            onSave={(t, c, style) => {
               submit({
                 type: "add",
                 object_id: newId("t"),
@@ -1245,6 +1397,7 @@ export function Board({
                   data: {
                     x: creatingTextAt[0],
                     y: creatingTextAt[1],
+                    ...style,
                     text: t,
                     color: c,
                   },

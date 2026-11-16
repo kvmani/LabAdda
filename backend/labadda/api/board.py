@@ -26,6 +26,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from .. import audit, metrics, policy
+from ..board_fonts import validate_style
 from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target, with_op
 from ..charges import charge_board_object, recharge_board
 from ..config import Settings
@@ -196,6 +197,8 @@ def _validate_sticky_or_text(kind: str, data: dict, color: str) -> dict:
     if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
         raise Invalid("invalid_board_op", "Text must be 1-1000 characters.")
     item_data = {"x": _num(data.get("x")), "y": _num(data.get("y")), "text": text, "color": color}
+    if "font_family" in data or "font_size" in data:
+        item_data.update(validate_style(data))
     if kind == "sticky":
         if "shape" in data:
             shape = data["shape"]

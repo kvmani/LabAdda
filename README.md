@@ -6,6 +6,11 @@ LabAdda is a browser-based collaboration workspace for research teams on an air-
 and colored sticky notes, separate from team boards. The branded home page links to personal
 tools and current team spaces. See [the private-board guide](docs/development/personal-whiteboard.md).
 
+Shared boards, noticeboards and chat use [representative posting](docs/development/representative-posting.md):
+direct members contribute in their own unit; immediate child stewards and explicitly appointed
+representatives contribute at its parent. Several delegates may represent each unit independently.
+Boards support selection, dragging, keyboard movement and locally bundled text fonts, including handwriting.
+
 Users can also create **collaborative groups** with chosen colleagues from any unit. A group has the same noticeboard, whiteboard and chat as a section, without hierarchy.
 
 Chat supports **threads and validated file attachments**, including private-group conversations. Personal/shared to-do lists include assignment, workflow and discussion; posts/chat and board context can become reviewed tasks. **My day** combines current-access work, private deadlines, mentions and unread conversations; **Alert preferences** controls your in-app categories. See the in-app help: [chat](frontend/src/help/using/chat-and-threads.md), [tasks](frontend/src/help/using/tasks.md) and [My day](frontend/src/help/using/my-day.md).

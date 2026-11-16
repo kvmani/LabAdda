@@ -77,3 +77,6 @@ extend-immutable-calls = [
 "**/labadda/changes/**/*.py" = ["PLR0917"]
 "**/labadda/health/backups.py" = ["PLR0911"]
 "**/labadda/health/certificate.py" = ["PLR0911"]
+
+[tool.setuptools.package-data]
+labadda = ["fonts/*.ttf", "fonts/*.txt", "fonts/README.md"]
