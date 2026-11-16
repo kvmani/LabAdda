@@ -1112,3 +1112,18 @@ class CalendarEvent(Base):
         Index("ix_calendar_events_owner", "owner_id", "starts_at"),
         Index("ix_calendar_events_scope", "scope_kind", "starts_at"),
     )
+
+
+class ContributionDelegation(Base):
+    """A child unit's revocable representation at its immediate parent."""
+
+    __tablename__ = "contribution_delegations"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False, index=True)
+    destination_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    granted_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = _created()
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")

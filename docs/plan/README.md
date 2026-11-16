@@ -116,3 +116,9 @@ short contract (CT-16) agreed with the owner before work starts.
 
 Only the owner adds, removes or reorders packages. An agent that finds a missing prerequisite
 records it in the handoff entry and stops; it does not invent a package.
+
+## Owner-requested pilot changes (16 November 2026)
+
+Representative contribution policy, delegation management and board editing improvements are
+**in progress**. Scope, acceptance and resumable progress are in the
+[working ledger](../development/representative-posting.md).
