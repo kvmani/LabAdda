@@ -36,6 +36,7 @@ from .api import (
     governance,
     groups,
     inventory_jobs,
+    join_requests,
     me,
     notes,
     notifications,
@@ -287,8 +288,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 â€
         panel,
         me,
         calendar_api,
+        join_requests,
     ):
         api.include_router(module.router)
+    api.include_router(join_requests.admin_router)
     api.include_router(people.directory_router)
     app.include_router(api)
 

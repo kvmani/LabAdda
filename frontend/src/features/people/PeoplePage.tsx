@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
+import { api } from "../../api";
 import { BASE } from "../../config";
 import { Button, ErrorState, PageHeader } from "../../ui";
 import { peopleUrl } from "./model";
@@ -15,6 +16,7 @@ import { AddPersonDialog } from "./AddPersonDialog";
 import { BulkActions, MAX_SELECTED } from "./BulkActions";
 import { ExcelImportDialog } from "./ExcelImportDialog";
 import { ImportDialog } from "./ImportDialog";
+import { JoinRequestsView } from "./JoinRequestsView";
 import type { ConsoleAccess } from "../admin/console";
 import type { OrgTree } from "../org/types";
 import type { Directory, Unit } from "./types";
@@ -64,6 +66,17 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
   const [importingExcel, setImportingExcel] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [listVersion, setListVersion] = useState(0);
+  const [activeTab, setActiveTab] = useState<"directory" | "join-requests">("directory");
+  const [pendingJoinCount, setPendingJoinCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!unitAdmin) {
+      api<{ counts: { pending: number } }>("/admin/join-requests?status=pending")
+        .then((res) => setPendingJoinCount(res.counts.pending))
+        .catch(() => {});
+    }
+  }, [unitAdmin]);
+
   const refreshAll = () => {
     directory.refresh();
     setListVersion((version) => version + 1);
@@ -118,52 +131,82 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
           onDone={directory.refresh}
         />
       )}
-      {!unitAdmin && <AttentionList key={`attention-${listVersion}`} onDenied={onDenied} />}
-      <ScheduledChanges key={`scheduled-${listVersion}`} onDenied={onDenied} onChanged={refreshAll} />
-      <PeopleFilters
-        params={params}
-        units={units.data?.workspaces ?? null}
-        unitError={units.error}
-        onRetryUnits={units.refresh}
-        resultCount={
-          directory.data && !directory.data.next_cursor && !params.has("cursor")
-            ? directory.data.people.length
-            : null
-        }
-        onChange={change}
-        onReset={reset}
-      />
-      <Button variant="quiet" icon="refresh" onClick={directory.refresh}>
-        Refresh directory
-      </Button>
-      {directory.error ? (
-        <ErrorState message={directory.error} onRetry={directory.refresh} />
+      <div className="people-nav-tabs" role="tablist" aria-label="People sections">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "directory"}
+          className={`people-nav-tab ${activeTab === "directory" ? "people-nav-tab--active" : ""}`}
+          onClick={() => setActiveTab("directory")}
+        >
+          Staff Directory
+        </button>
+        {!unitAdmin && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "join-requests"}
+            className={`people-nav-tab ${activeTab === "join-requests" ? "people-nav-tab--active" : ""}`}
+            onClick={() => setActiveTab("join-requests")}
+          >
+            Join Applications
+            {pendingJoinCount > 0 && <span className="join-nav-badge">{pendingJoinCount}</span>}
+          </button>
+        )}
+      </div>
+
+      {activeTab === "join-requests" ? (
+        <JoinRequestsView onCountChange={setPendingJoinCount} />
       ) : (
-        <PeopleTable
-          data={directory.data}
-          loading={directory.loading}
-          onOpen={(id) => profile("person", id)}
-          onNext={(cursor) => change("cursor", cursor)}
-          onFirst={() => change("cursor", "")}
-          hasCursor={params.has("cursor")}
-          selected={selected}
-          onSelect={select}
-          selectionFull={selected.size >= MAX_SELECTED}
-          onReset={reset}
-        />
-      )}
-      {identity && (
-        <StaffProfile
-          key={identity}
-          identity={identity}
-          view={params.get("view") ?? "record"}
-          onView={(view) => profile("view", view)}
-          onClose={() => profile("person")}
-          onDenied={onDenied}
-          units={unitList}
-          canAppoint={!unitAdmin}
-          onChanged={refreshAll}
-        />
+        <>
+          {!unitAdmin && <AttentionList key={`attention-${listVersion}`} onDenied={onDenied} />}
+          <ScheduledChanges key={`scheduled-${listVersion}`} onDenied={onDenied} onChanged={refreshAll} />
+          <PeopleFilters
+            params={params}
+            units={units.data?.workspaces ?? null}
+            unitError={units.error}
+            onRetryUnits={units.refresh}
+            resultCount={
+              directory.data && !directory.data.next_cursor && !params.has("cursor")
+                ? directory.data.people.length
+                : null
+            }
+            onChange={change}
+            onReset={reset}
+          />
+          <Button variant="quiet" icon="refresh" onClick={directory.refresh}>
+            Refresh directory
+          </Button>
+          {directory.error ? (
+            <ErrorState message={directory.error} onRetry={directory.refresh} />
+          ) : (
+            <PeopleTable
+              data={directory.data}
+              loading={directory.loading}
+              onOpen={(id) => profile("person", id)}
+              onNext={(cursor) => change("cursor", cursor)}
+              onFirst={() => change("cursor", "")}
+              hasCursor={params.has("cursor")}
+              selected={selected}
+              onSelect={select}
+              selectionFull={selected.size >= MAX_SELECTED}
+              onReset={reset}
+            />
+          )}
+          {identity && (
+            <StaffProfile
+              key={identity}
+              identity={identity}
+              view={params.get("view") ?? "record"}
+              onView={(view) => profile("view", view)}
+              onClose={() => profile("person")}
+              onDenied={onDenied}
+              units={unitList}
+              canAppoint={!unitAdmin}
+              onChanged={refreshAll}
+            />
+          )}
+        </>
       )}
     </>
   );

@@ -75,6 +75,14 @@ export function Login({ next, embedded = false }: { next: string; embedded?: boo
           <p className="auth__aside">
             First time here? Use the <Link to="/activate">activation link</Link> from your administrator.
           </p>
+          <div className="auth__join-prompt">
+            <p className="auth__join-prompt-text">
+              Want to participate? Joining is voluntary for all laboratory staff.
+            </p>
+            <Link to="/join" className="auth__join-prompt-link">
+              Apply to join LabAdda →
+            </Link>
+          </div>
         </form>
       </Card>
       {!embedded && <BuildFooter />}

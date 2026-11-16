@@ -40,3 +40,28 @@
   border-radius: var(--radius-sm);
   background: var(--warn-soft);
 }
+.auth__join-prompt {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.auth__join-prompt-text {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.auth__join-prompt-link {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--primary);
+  text-decoration: none;
+}
+.auth__join-prompt-link:hover {
+  text-decoration: underline;
+}

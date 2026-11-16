@@ -1127,3 +1127,28 @@ class ContributionDelegation(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+
+
+class JoinRequest(Base):
+    """A staff member's voluntary application to join the platform."""
+
+    __tablename__ = "join_requests"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    created_at: Mapped[datetime] = _created()
+    full_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    username: Mapped[str] = mapped_column(String(63), nullable=False, index=True)
+    employee_no: Mapped[str | None] = mapped_column(String(64), index=True)
+    contact_email: Mapped[str | None] = mapped_column(String(254))
+    contact_phone: Mapped[str | None] = mapped_column(String(64))
+    designation: Mapped[str | None] = mapped_column(String(120))
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("workspaces.id"))
+    unit_name: Mapped[str | None] = mapped_column(String(120))
+    statement_of_interest: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", server_default="pending", index=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    review_note: Mapped[str | None] = mapped_column(String(500))
+    created_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+

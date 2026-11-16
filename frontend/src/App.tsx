@@ -6,6 +6,7 @@ import { Shell } from "./features/shell/Shell";
 import { useSession } from "./session";
 import { WorkspaceProvider } from "./workspaces";
 import { Activate, Login } from "./pages/Login";
+import { JoinPage } from "./pages/JoinPage";
 import { WorkspaceView } from "./pages/WorkspaceView";
 import { MyTasks } from "./pages/MyTasks";
 import { Todos } from "./pages/Todos";
@@ -47,6 +48,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/activate" element={<Activate />} />
+        <Route path="/join" element={<JoinPage />} />
         <Route path="*" element={<Login next={location.pathname + location.search} />} />
       </Routes>
     );
@@ -62,6 +64,7 @@ export function App() {
             element={<Navigate to={new URLSearchParams(location.search).get("next") || "/"} replace />}
           />
           <Route path="/activate" element={<Navigate to="/" replace />} />
+          <Route path="/join" element={<Navigate to="/" replace />} />
           <Route path="/w/:workspaceId" element={<WorkspaceView />} />
           <Route path="/w/:workspaceId/:tab" element={<WorkspaceView />} />
           <Route path="/calendar" element={<CalendarPage />} />

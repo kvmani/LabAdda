@@ -56,6 +56,7 @@ def fixture_password() -> str:
 
 def reset_database(db: Session) -> None:
     tables = [
+        "join_requests",
         "contribution_delegations",
         "calendar_events",
         "feedback_mail",

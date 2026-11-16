@@ -106,8 +106,8 @@ REQUIRED_PAGES: tuple[str, ...] = (
     "operator/moving-to-a-new-server.md",
 )
 # Routes with no page of their own: redirects, the catch-all, the help centre (which never explains
-# itself) and the activation form, which the signing-in page explains from the sign-in screen.
-ROUTES_WITHOUT_PAGE = {"*", "/", "/activate", "/operations", "/help/*"}
+# itself) and the activation and voluntary join forms, which the sign-in page explains.
+ROUTES_WITHOUT_PAGE = {"*", "/", "/activate", "/join", "/operations", "/help/*"}
 # Administration routes are explained by pages whose screen is "none", so they need no route match.
 ROUTE_PAGES_EXEMPT_PREFIX = "/admin"
 HEALTH_DIRECTORY = "backend/labadda/health"
