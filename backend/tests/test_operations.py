@@ -102,3 +102,29 @@ def test_probe_requires_exact_payload_and_no_redirect(tmp_path):
         assert opener.open.call_args.args[0] == "http://127.0.0.1:8102/labadda-staging/readyz"
         assert opener.open.call_args.kwargs["timeout"] == 10
     assert ops.NoRedirect().redirect_request(None, None, 302, "", {}, "https://other") is None
+
+
+def test_shared_http_renders_locations_only_and_probes_over_http(tmp_path):
+    config = ops.load_site(
+        site(tmp_path, web_access="shared-http", base_path="/labadda", server_name="10.20.30.40")
+    )
+    files = ops.render(config)
+    locations = files["locations.conf"]
+    assert "server {" not in locations
+    assert "listen" not in locations
+    assert "location ^~ /labadda/ {" in locations
+    assert "location = /labadda {" in locations
+    assert locations.count("if (-f /srv/labadda/staging/traffic/maintenance) { return 503; }") == 2
+    assert "client_max_body_size 25m;" in locations
+    assert "server {" not in files["nginx.conf"]
+    assert "map $http_upgrade $labadda_staging_upgrade" in files["nginx.conf"]
+    with patch.object(ops.urllib.request.OpenerDirector, "open", side_effect=OSError("down")) as opened:
+        report = ops.probe(config)
+    assert report["route"] == "shared-http"
+    assert opened.call_args_list[0].args[0] == "http://10.20.30.40/labadda/healthz"
+
+
+@pytest.mark.parametrize("change", [{"web_access": "shared-http", "base_path": ""}, {"web_access": "plain"}])
+def test_shared_http_needs_a_prefix_and_a_known_mode(tmp_path, change):
+    with pytest.raises(ops.OperationsError):
+        ops.load_site(site(tmp_path, **change))

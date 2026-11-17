@@ -277,20 +277,40 @@ def check_proxy(host: Host, settings: Settings) -> CheckResult:
     )
 
 
+def _shared_plain_http(settings: Settings) -> bool:
+    """The deliberate shared-site layout: a URL prefix, no Secure cookie and only http:// origins."""
+    return (
+        bool(settings.base_path)
+        and not settings.cookie_secure
+        and all(origin.startswith("http://") for origin in settings.trusted_origins)
+    )
+
+
+def _tls_not_in_use(settings: Settings, title: str) -> CheckResult:
+    if settings.environment in SITE_ENVIRONMENTS and _shared_plain_http(settings):
+        return _skipped(
+            "tls",
+            title,
+            f"Not in use: the site is plain HTTP under {settings.base_path}, sharing another "
+            "application's address. Sign-in and content cross the office network unencrypted.",
+        )
+    if settings.environment in SITE_ENVIRONMENTS:
+        return CheckResult(
+            "tls",
+            title,
+            "fail",
+            "The site address does not use HTTPS.",
+            "Set up a certificate and list the https:// address in LABADDA_TRUSTED_ORIGINS.",
+        )
+    return _skipped("tls", title, "Not in use: no https:// address is configured.")
+
+
 def check_tls(host: Host, settings: Settings) -> CheckResult:
     """When the site uses HTTPS: cookies are secure and the certificate is trusted and not expiring."""
     title = "Secure connection"
     secure = [origin for origin in settings.trusted_origins if origin.startswith("https://")]
     if not secure:
-        if settings.environment in SITE_ENVIRONMENTS:
-            return CheckResult(
-                "tls",
-                title,
-                "fail",
-                "The site address does not use HTTPS.",
-                "Set up a certificate and list the https:// address in LABADDA_TRUSTED_ORIGINS.",
-            )
-        return _skipped("tls", title, "Not in use: no https:// address is configured.")
+        return _tls_not_in_use(settings, title)
     if not settings.cookie_secure:
         return CheckResult(
             "tls",

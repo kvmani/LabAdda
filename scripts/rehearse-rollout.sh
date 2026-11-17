@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Rehearse the whole intranet rollout from a built offline kit, on this machine, in a scratch folder.
-#   sudo scripts/rehearse-rollout.sh KIT_DIR [--upgrade-kit KIT2_DIR] [--keep]
+#   sudo scripts/rehearse-rollout.sh KIT_DIR [--upgrade-kit KIT2_DIR] [--keep] [--shared-http]
+# --shared-http installs under http://127.0.0.1/labadda/ inside a stand-in for project_management_software's
+# plain-HTTP default site on port 80, and checks that site keeps answering and is restored on uninstall.
 # It runs install.sh (dry run, then for real), status, a second install run (idempotence), a backup with an
 # off-server copy, a test restore, an optional upgrade, then removes everything it made. Everything lives
 # under LABADDA_ROOT_PREFIX=/srv/rollout-rehearsal-N; the database is labadda_rollout; systemctl is replaced by
@@ -11,9 +13,9 @@ export PYTHONDONTWRITEBYTECODE=1
 # This machine's own package access stands in for the office mirror (public index allowed for the rehearsal only).
 export LABADDA_ALLOW_PUBLIC_INDEX=1
 HERE="$(cd "$(dirname "$0")" && pwd)"
-KIT="" KIT2="" KEEP=0 OFFLINE=0 ORIGINAL=("$@")
+KIT="" KIT2="" KEEP=0 OFFLINE=0 SHARED=0 ORIGINAL=("$@")
 while (($#)); do
-  case $1 in --upgrade-kit) KIT2=$2; shift ;; --keep) KEEP=1 ;; --offline-kit) OFFLINE=1 ;; *) KIT=$1 ;; esac; shift
+  case $1 in --upgrade-kit) KIT2=$2; shift ;; --keep) KEEP=1 ;; --offline-kit) OFFLINE=1 ;; --shared-http) SHARED=1 ;; *) KIT=$1 ;; esac; shift
 done
 [[ -d $KIT && $(id -u) -eq 0 ]] || { sed -n '2,3p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 if [[ -z ${REHEARSAL_INNER:-} ]]; then
@@ -44,8 +46,25 @@ http {
   uwsgi_temp_path $P/run/tmp; scgi_temp_path $P/run/tmp;
   include /etc/nginx/mime.types;
   include $P/etc/nginx/conf.d/*.conf;
+  include $P/etc/nginx/sites-enabled/*;
 }
 NGINX
+mkdir -p "$P/etc/nginx/sites-available" "$P/etc/nginx/sites-enabled"
+if ((SHARED)); then
+  # Stand-in for project_management_software: the plain-HTTP default site on port 80, enabled by symlink.
+  cat >"$P/etc/nginx/sites-available/apex_pm" <<'PM'
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location ^~ /production/ {
+        return 200 "project management production\n";
+    }
+}
+PM
+  ln -s "$P/etc/nginx/sites-available/apex_pm" "$P/etc/nginx/sites-enabled/apex_pm"
+  cp -p "$P/etc/nginx/sites-available/apex_pm" "$P/pm-site.original"
+fi
 cat >"$P/answers" <<ANS
 SITE_TITLE=LabAdda Rehearsal
 HOSTNAME_=localhost
@@ -62,6 +81,10 @@ SERVICE_USER=labadda-rh
 ADMIN_USER=asha.rollout
 ADMIN_NAME=Asha Rollout
 ANS
+if ((SHARED)); then
+  sed -i 's/^HOSTNAME_=localhost$/HOSTNAME_=127.0.0.1/' "$P/answers"
+  printf 'WEB_ACCESS=shared-http\nURL_PATH=/labadda\nSHARED_SITE=/etc/nginx/sites-enabled/apex_pm\n' >>"$P/answers"
+fi
 
 cleanup() {
   ((KEEP)) && { echo "Kept $P (database labadda_rollout, user labadda-rh)"; return; }
@@ -79,6 +102,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# The page names its scripts relative to <base href="/labadda/">; fetch one through nginx's alias.
+shell_under_prefix() {
+  local page asset
+  page=$(curl -sf --noproxy '*' http://127.0.0.1/labadda/) || return 1
+  grep -q '<base href="/labadda/">' <<<"$page" || return 1
+  asset=$(grep -o 'assets/[A-Za-z0-9._-]*\.js' <<<"$page" | head -1)
+  [[ -n $asset ]] && curl -sf --noproxy '*' -o /dev/null "http://127.0.0.1/labadda/$asset"
+}
+
 INSTALL=(bash "$KIT/install.sh" --answers "$P/answers" --yes --skip-os-packages)
 ((OFFLINE)) && INSTALL+=(--offline-kit)
 check "install.sh --dry-run runs" "${INSTALL[@]}" --dry-run
@@ -88,7 +120,15 @@ check "install.sh (real run)" "${INSTALL[@]}"
 cp "$P/last.log" "$P/install.log"
 check "installed files exist" bash -c "test -L $P/srv/labadda/rollout/current && test -f $P/etc/labadda/rollout.env && test -f $P/etc/labadda/secrets/rollout.db-password && test \$(stat -c %a $P/etc/labadda/rollout.env) = 600"
 check "activation token was printed once" grep -q -i "activation\|token" "$P/install.log"
-check "HTTPS answers through real nginx" env LABADDA_PROBE_CA_FILE="$P/etc/ssl/labadda/server.crt" python3.12 "$HERE/operations.py" --site "$P/etc/labadda/rollout.site.json" probe
+if ((SHARED)); then
+  check "http://127.0.0.1/labadda/ answers through real nginx" python3.12 "$HERE/operations.py" --site "$P/etc/labadda/rollout.site.json" probe
+  check "sign-in page and its script load under /labadda/" shell_under_prefix
+  check "the shared site still serves its own routes" bash -c "curl -sf --noproxy '*' http://127.0.0.1/production/ | grep -q 'project management production'"
+  check "the shared site gained exactly one include line" bash -c "diff '$P/pm-site.original' '$P/etc/nginx/sites-available/apex_pm' | grep -c '^>' | grep -qx 1"
+  check "the shared site is still a symlink" test -L "$P/etc/nginx/sites-enabled/apex_pm"
+else
+  check "HTTPS answers through real nginx" env LABADDA_PROBE_CA_FILE="$P/etc/ssl/labadda/server.crt" python3.12 "$HERE/operations.py" --site "$P/etc/labadda/rollout.site.json" probe
+fi
 check "status.sh" bash "$KIT/status.sh" --site rollout
 cp "$P/last.log" "$P/status.log"; cat "$P/status.log"
 check "install.sh again is a no-op" "${INSTALL[@]}"
@@ -106,6 +146,15 @@ if [[ -n $KIT2 ]]; then
   cp "$P/last.log" "$P/upgrade.log"; tail -12 "$P/upgrade.log"
   check "status after upgrade names the new release" bash -c "bash '$KIT2/status.sh' --site rollout | grep -q \"$(python3.12 -c 'import json,sys;print(json.load(open(sys.argv[1]+"/MANIFEST.json"))["release"])' "$KIT2")\""
 fi
+if ((SHARED)); then
+  # The owning application rewrites its site (as deploy_all does); reattach must restore LabAdda only.
+  cp -p "$P/pm-site.original" "$P/etc/nginx/sites-available/apex_pm"
+  check "reattach after the shared site was rewritten" bash "$KIT/reattach-nginx.sh" --site rollout
+fi
 check "uninstall-keep-data keeps the data" bash -c "bash '$KIT/uninstall-keep-data.sh' --site rollout --yes && test -d $P/srv/labadda/rollout/releases && test ! -e $P/etc/systemd/system/labadda-rollout.service"
+if ((SHARED)); then
+  check "uninstall restores the shared site byte for byte" cmp "$P/pm-site.original" "$P/etc/nginx/sites-available/apex_pm"
+  check "nginx still accepts the configuration" nginx -t -c "$P/etc/nginx/nginx.conf"
+fi
 echo; echo "Rehearsal finished with $FAILS failing check(s)."
 exit "$FAILS"

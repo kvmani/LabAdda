@@ -4,14 +4,17 @@
 install_helpers.py site-json ...   print the site description lifecycle.py and operations.py read
 install_helpers.py env-file ...    print the private settings file from deploy/labadda.env.example
 install_helpers.py status ...      print the one-screen summary facts as JSON
+install_helpers.py attach-site ... add (or --remove) LabAdda's include line in a shared nginx site
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -27,6 +30,9 @@ ZONE = re.compile(r"[A-Za-z][A-Za-z0-9_+-]*(?:/[A-Za-z0-9_+-]+){0,2}\Z")
 EMAIL = re.compile(r"[^@\s]+@[a-z0-9]+(?:[.-][a-z0-9]+)*\Z")
 
 
+URL_PATH = re.compile(r"(?:/[a-z0-9][a-z0-9_-]*)+\Z")
+WEB_ACCESS = ("https", "shared-http")
+SERVER_BLOCK = re.compile(r"^\s*server\s*\{", re.MULTILINE)
 SMTP_HOST = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*\Z")
 
 
@@ -34,11 +40,22 @@ class InputError(ValueError):
     """An answer that cannot be used, phrased for the person typing it."""
 
 
+def check_web(web_access: str, base_path: str) -> None:
+    if web_access not in WEB_ACCESS:
+        raise InputError("Web access: https (own hostname) or shared-http (another application's address).")
+    if base_path and not URL_PATH.fullmatch(base_path):
+        raise InputError("Address path: a path such as /labadda (lowercase, starting with /).")
+    if web_access == "shared-http" and not base_path:
+        raise InputError("Address path: a shared address needs its own path, for example /labadda.")
+
+
 def check_answers(site: str, hostname: str, zone: str, domain: str, feedback: str = "") -> None:
     if not SITE.fullmatch(site):
         raise InputError("Site name: 1-20 lowercase letters or digits, starting with a letter.")
     if not HOST.fullmatch(hostname) or len(hostname) > 253:
-        raise InputError("Server hostname: lowercase letters, digits, dots and hyphens only.")
+        raise InputError(
+            "Server address: a hostname or IP address (lowercase letters, digits, dots, hyphens)."
+        )
     if not ZONE.fullmatch(zone):
         raise InputError("Time zone: a name such as Asia/Kolkata.")
     if domain and not DOMAIN.fullmatch(domain.lstrip("@")):
@@ -72,9 +89,18 @@ def smtp_settings(
     return values
 
 
-def site_json(site: str, prefix: str, hostname: str, port: int, user: str) -> dict:
+def site_json(  # noqa: PLR0917 — one value per installer answer
+    site: str,
+    prefix: str,
+    hostname: str,
+    port: int,
+    user: str,
+    base_path: str = "",
+    web_access: str = "https",
+) -> dict:
     """The reviewed site description; every path sits under `prefix` (empty on a real server)."""
-    return {
+    shared = {"web_access": web_access} if web_access == "shared-http" else {}
+    return shared | {
         "instance": site,
         "root": f"{prefix}/srv/labadda/{site}",
         "user": user,
@@ -82,7 +108,7 @@ def site_json(site: str, prefix: str, hostname: str, port: int, user: str) -> di
         "env_file": f"{prefix}/etc/labadda/{site}.env",
         "server_name": hostname,
         "port": port,
-        "base_path": "",
+        "base_path": base_path,
         "tls_certificate": f"{prefix}/etc/ssl/labadda/server.crt",
         "tls_key": f"{prefix}/etc/ssl/labadda/server.key",
         "backup_root": f"{prefix}/srv/labadda-backups/{site}",
@@ -107,17 +133,28 @@ def env_file(example: str, values: dict[str, str]) -> str:
 
 
 def env_values(
-    site: str, root: str, port: int, hostname: str, *, zone: str, domain: str, db_url: str
+    site: str,
+    root: str,
+    port: int,
+    hostname: str,
+    *,
+    zone: str,
+    domain: str,
+    db_url: str,
+    base_path: str = "",
+    web_access: str = "https",
 ) -> dict:
+    # A shared plain-HTTP site cannot carry Secure cookies; the cookie path is still the prefix.
+    shared = web_access == "shared-http"
     return {
         "LABADDA_ENV": "pilot",
         "LABADDA_INSTANCE": site,
         "LABADDA_PORT": str(port),
-        "LABADDA_BASE_PATH": "",
+        "LABADDA_BASE_PATH": base_path,
         "LABADDA_DATABASE_URL": db_url,
         "LABADDA_COOKIE_NAME": f"labadda_{site}",
-        "LABADDA_COOKIE_SECURE": "true",
-        "LABADDA_TRUSTED_ORIGINS": f"https://{hostname}",
+        "LABADDA_COOKIE_SECURE": "false" if shared else "true",
+        "LABADDA_TRUSTED_ORIGINS": f"{'http' if shared else 'https'}://{hostname}",
         "LABADDA_ASSET_DIR": f"{root}/assets",
         "LABADDA_FRONTEND_DIST": f"{root}/current/frontend/dist",
         "LABADDA_TIMEZONE": zone,
@@ -142,6 +179,45 @@ def status_facts(status_dir: Path, now: datetime | None = None) -> dict:
     }
 
 
+def attach_site(site_file: Path, include: str, *, remove: bool = False) -> str:
+    """Add or remove `include <file>;` inside the single server block of another application's site.
+
+    Only this one line is ever written, so the other application's routes stay byte-for-byte the
+    same; the caller keeps a backup and runs nginx -t before reloading."""
+    text = site_file.read_text()
+    marker = f"include {include};"
+    lines = text.splitlines(keepends=True)
+    if remove:
+        kept = [line for line in lines if marker not in line]
+        if len(kept) == len(lines):
+            return "absent"
+        _replace(site_file, "".join(kept))
+        return "removed"
+    if marker in text:
+        return "present"
+    blocks = len(SERVER_BLOCK.findall(text))
+    if blocks != 1:
+        raise InputError(
+            f"{site_file} has {blocks} server blocks; add the line '{marker}' by hand inside the "
+            "plain-HTTP one, then run the installer again."
+        )
+    closing = max(i for i, line in enumerate(lines) if line.strip())
+    if lines[closing].strip() != "}":
+        raise InputError(f"{site_file} does not end with the server block's closing brace.")
+    lines.insert(closing, f"    {marker}  # LabAdda under its own path; added by the LabAdda installer\n")
+    _replace(site_file, "".join(lines))
+    return "added"
+
+
+def _replace(path: Path, text: str) -> None:
+    mode = path.stat().st_mode & 0o7777
+    handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    with os.fdopen(handle, "w") as stream:
+        stream.write(text)
+    os.chmod(temporary, mode)
+    os.replace(temporary, path)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -153,6 +229,9 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--hostname", required=True)
         p.add_argument("--port", type=int, required=True)
     one.add_argument("--user", required=True)
+    for p in (one, env):
+        p.add_argument("--base-path", default="")
+        p.add_argument("--web-access", choices=WEB_ACCESS, default="https")
     env.add_argument("--example", type=Path, required=True)
     env.add_argument("--zone", required=True)
     env.add_argument("--domain", default="")
@@ -163,15 +242,22 @@ def main(argv: list[str] | None = None) -> int:
     env.add_argument("--run-scheduler", choices=("true", "false"), default="true")
     stat = sub.add_parser("status")
     stat.add_argument("--status-dir", type=Path, required=True)
+    attach = sub.add_parser("attach-site")
+    attach.add_argument("--site-file", type=Path, required=True)
+    attach.add_argument("--include", required=True)
+    attach.add_argument("--remove", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.command == "site-json":
             check_answers(args.site, args.hostname, "UTC", "")
-            print(
-                json.dumps(site_json(args.site, args.prefix, args.hostname, args.port, args.user), indent=2)
+            check_web(args.web_access, args.base_path)
+            description = site_json(
+                args.site, args.prefix, args.hostname, args.port, args.user, args.base_path, args.web_access
             )
+            print(json.dumps(description, indent=2))
         elif args.command == "env-file":
             check_answers(args.site, args.hostname, args.zone, args.domain)
+            check_web(args.web_access, args.base_path)
             root = f"{args.prefix}/srv/labadda/{args.site}"
             values = env_values(
                 args.site,
@@ -181,6 +267,8 @@ def main(argv: list[str] | None = None) -> int:
                 zone=args.zone,
                 domain=args.domain,
                 db_url=args.database_url,
+                base_path=args.base_path,
+                web_access=args.web_access,
             )
             values["LABADDA_RUN_SCHEDULER"] = args.run_scheduler
             values |= smtp_settings(
@@ -188,6 +276,8 @@ def main(argv: list[str] | None = None) -> int:
                 starttls=args.smtp_starttls, user=args.smtp_user, password_file=args.smtp_password_file,
             )  # fmt: skip
             sys.stdout.write(env_file(args.example.read_text(), values))
+        elif args.command == "attach-site":
+            print(attach_site(args.site_file, args.include, remove=args.remove))
         else:
             print(json.dumps(status_facts(args.status_dir)))
         return 0

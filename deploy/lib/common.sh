@@ -120,7 +120,7 @@ load_answers() {
   while IFS='=' read -r key value; do
     [[ -z $key || $key == \#* ]] && continue
     case $key in
-      RUN_SCHEDULER | SITE_TITLE | HOSTNAME_ | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | SMTP_FROM | SMTP_STARTTLS | SMTP_USER | PIP_INDEX_URL | PIP_TRUSTED_HOST | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
+      RUN_SCHEDULER | SITE_TITLE | HOSTNAME_ | WEB_ACCESS | URL_PATH | SHARED_SITE | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | SMTP_FROM | SMTP_STARTTLS | SMTP_USER | PIP_INDEX_URL | PIP_TRUSTED_HOST | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
         [[ $value =~ ^[A-Za-z0-9@._:/\ -]*$ ]] || die "Answers file: odd characters in $key"
         [[ -n ${!key:-} ]] || printf -v "$key" '%s' "$value" ;;
       *) die "Answers file: unknown setting $key" ;;
@@ -137,6 +137,9 @@ verify_kit() {
 }
 
 kit_field() { "$PYTHON" -c 'import json,sys;print(json.load(open(sys.argv[1]+"/MANIFEST.json"))[sys.argv[2]])' "$1" "$2"; }
+
+is_shared_http() { [[ ${WEB_ACCESS:-https} == shared-http ]]; }
+site_url() { if is_shared_http; then echo "http://$HOSTNAME_${URL_PATH:-}/"; else echo "https://$HOSTNAME_/"; fi; }
 
 blank_if_none() { if [[ $1 == none ]]; then echo ""; else echo "$1"; fi; }
 

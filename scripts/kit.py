@@ -32,7 +32,15 @@ VERSION_FILE = "backend/labadda/__init__.py"
 PACKAGE_LIST = "deploy/os-packages.txt"
 APT_CLOSURE = "--recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances"
 # Scripts the kit puts at its top level; they are copied from deploy/ in the same commit.
-LAUNCHERS = ("install.sh", "upgrade.sh", "status.sh", "backup-now.sh", "restore.sh", "uninstall-keep-data.sh")
+LAUNCHERS = (
+    "install.sh",
+    "upgrade.sh",
+    "status.sh",
+    "backup-now.sh",
+    "restore.sh",
+    "uninstall-keep-data.sh",
+    "reattach-nginx.sh",
+)
 # Operator tools copied out of the release archive so the server never runs unverified code.
 TOOL_SCRIPTS = (
     "release.py",

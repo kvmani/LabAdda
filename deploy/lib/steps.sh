@@ -56,9 +56,9 @@ step_tools() {
     mv "$next" "$TOOLS_DIR"
     mkdir -p "$SBIN_DIR"
     local n
-    for n in status backup-now restore upgrade; do ln -sfn "$TOOLS_DIR/bin/$n.sh" "$SBIN_DIR/labadda-$n"; done
+    for n in status backup-now restore upgrade reattach-nginx; do ln -sfn "$TOOLS_DIR/bin/$n.sh" "$SBIN_DIR/labadda-$n"; done
   fi
-  ok "tools in $TOOLS_DIR; commands labadda-status, labadda-backup-now, labadda-restore, labadda-upgrade"
+  ok "tools in $TOOLS_DIR; commands labadda-status, labadda-backup-now, labadda-restore, labadda-upgrade, labadda-reattach-nginx"
 }
 
 step_database() {
@@ -98,14 +98,16 @@ step_config() {
   if [[ -f $ENV_FILE ]]; then ok "$ENV_FILE exists and is kept (edit it by hand to change settings)"
   else
     $helper env-file "${smtp[@]}" --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" --run-scheduler "${RUN_SCHEDULER:-true}" \
+      --base-path "${URL_PATH:-}" --web-access "${WEB_ACCESS:-https}" \
       --domain "$EMAIL_DOMAIN" --database-url "$url" --example "$TOOLS_DIR/deploy/labadda.env.example" \
       | write_file 0600 root:root "$ENV_FILE"
   fi
   if [[ -f $SITE_JSON ]]; then ok "$SITE_JSON exists and is kept"
   else $helper site-json --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --user "$SERVICE_USER" \
+    --base-path "${URL_PATH:-}" --web-access "${WEB_ACCESS:-https}" \
     | write_file 0644 root:root "$SITE_JSON"; fi
-  printf 'SITE_TITLE=%s\nHOSTNAME_=%s\nTIMEZONE_=%s\nEMAIL_DOMAIN=%s\nFEEDBACK_EMAIL=%s\nSMTP_RELAY=%s\nSMTP_FROM=%s\nSMTP_STARTTLS=%s\nSMTP_USER=%s\nPIP_INDEX_URL=%s\nPIP_TRUSTED_HOST=%s\nPORT=%s\nSERVICE_USER=%s\n' \
-    "$SITE_TITLE" "$HOSTNAME_" "$TIMEZONE_" "$EMAIL_DOMAIN" "$FEEDBACK_EMAIL" "$SMTP_RELAY" "$smtp_from" "${SMTP_STARTTLS:-false}" \
+  printf 'SITE_TITLE=%s\nHOSTNAME_=%s\nWEB_ACCESS=%s\nURL_PATH=%s\nSHARED_SITE=%s\nTIMEZONE_=%s\nEMAIL_DOMAIN=%s\nFEEDBACK_EMAIL=%s\nSMTP_RELAY=%s\nSMTP_FROM=%s\nSMTP_STARTTLS=%s\nSMTP_USER=%s\nPIP_INDEX_URL=%s\nPIP_TRUSTED_HOST=%s\nPORT=%s\nSERVICE_USER=%s\n' \
+    "$SITE_TITLE" "$HOSTNAME_" "${WEB_ACCESS:-https}" "${URL_PATH:-}" "${SHARED_SITE:-}" "$TIMEZONE_" "$EMAIL_DOMAIN" "$FEEDBACK_EMAIL" "$SMTP_RELAY" "$smtp_from" "${SMTP_STARTTLS:-false}" \
     "${SMTP_USER:-none}" "$PIP_INDEX_URL" "$PIP_TRUSTED_HOST" "$PORT" "$SERVICE_USER" \
     | write_file 0600 root:root "$ANSWERS_FILE"
   ok "answers recorded in $ANSWERS_FILE (feedback e-mail settings are also in the env file)"
@@ -127,6 +129,7 @@ step_release() {
 
 step_tls() {
   step "Certificate"
+  if is_shared_http; then ok "not used: LabAdda is served over plain HTTP inside $SHARED_SITE"; return 0; fi
   local crt="$CERT_DIR/server.crt" key="$CERT_DIR/server.key"
   run install -d -m 0755 "$CERT_DIR"
   if [[ -n ${CERT_FILE:-} ]]; then
@@ -162,7 +165,9 @@ step_render_units() {
   install -m 0644 "$out/service.conf" "$SYSTEMD_DIR/$UNIT"
   install -m 0644 "$TOOLS_DIR/deploy/systemd/labadda-backup@.service" "$SYSTEMD_DIR/"
   install -m 0644 "$TOOLS_DIR/deploy/systemd/labadda-backup@.timer" "$SYSTEMD_DIR/"
-  if ((NO_NGINX)); then ok "web server site skipped on request"; else
+  if ((NO_NGINX)); then ok "web server site skipped on request"
+  elif is_shared_http; then attach_shared_site "$out"
+  else
     install -d "$NGINX_DIR/conf.d"; install -m 0644 "$out/nginx.conf" "$NGINX_DIR/conf.d/labadda-$SITE.conf"
     # Other applications may own the default site on this shared server.
     nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}" >/dev/null 2>&1 \
@@ -221,8 +226,8 @@ step_start() {
   rm -f "$INSTANCE_ROOT/traffic/maintenance"
   if ((NO_NGINX)); then return 0; fi
   "$SYSTEMCTL" enable --now nginx >/dev/null; "$SYSTEMCTL" reload nginx
-  operations probe >/dev/null || die "The service is up but the HTTPS address https://$HOSTNAME_ does not answer; check DNS and nginx."
-  ok "https://$HOSTNAME_ answers"
+  operations probe >/dev/null || die "The service is up but $(site_url) does not answer; check the address and nginx."
+  ok "$(site_url) answers"
 }
 
 step_backup_and_doctor() {
@@ -233,4 +238,27 @@ step_backup_and_doctor() {
   if ((NO_TIMER)); then ok "nightly timer skipped on request"; else "$SYSTEMCTL" enable --now "labadda-backup@$SITE.timer" >/dev/null; fi
   ( cd "$INSTANCE_ROOT/current/backend" && "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) \
     || die "Doctor failed. Do not admit users; fix the reported problems and run labadda-status."
+}
+
+# Plain HTTP under a path inside another application's nginx site (for example the IP address that
+# project_management_software already serves). Only LabAdda's own files and one include line change.
+attach_shared_site() {
+  local out=$1 snippet="$NGINX_DIR/snippets/labadda-$SITE.conf" map="$NGINX_DIR/conf.d/labadda-$SITE.conf"
+  local target before result main_conf="${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}"
+  target=$(readlink -f "$PREFIX$SHARED_SITE") && [[ -f $target ]] \
+    || die "The shared web site file $SHARED_SITE was not found. Give the nginx site file of the application that owns this address."
+  install -d "$NGINX_DIR/snippets" "$NGINX_DIR/conf.d"
+  install -m 0644 "$out/locations.conf" "$snippet"; install -m 0644 "$out/nginx.conf" "$map"
+  # The very first original is kept for the operator; each run can also undo just its own change.
+  [[ -f $ETC_DIR/$SITE.shared-site.original ]] || cp -p "$target" "$ETC_DIR/$SITE.shared-site.original"
+  before=$(mktemp); cp -p "$target" "$before"
+  result=$("$PYTHON" "$TOOLS_DIR/scripts/install_helpers.py" attach-site --site-file "$target" --include "$snippet") \
+    || { rm -f "$snippet" "$map" "$before"; die "Could not add LabAdda to $SHARED_SITE (see above). Nothing in it was changed."; }
+  if ! nginx -t -c "$main_conf" >/dev/null 2>&1; then
+    cp -p "$before" "$target"; rm -f "$snippet" "$map" "$before"
+    nginx -t -c "$main_conf" || true
+    die "nginx rejected the change; $SHARED_SITE was put back exactly as it was and LabAdda's nginx files were removed."
+  fi
+  rm -f "$before"
+  ok "nginx accepts LabAdda at $(site_url) inside $SHARED_SITE (include line $result)"
 }

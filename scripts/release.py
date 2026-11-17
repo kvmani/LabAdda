@@ -463,8 +463,13 @@ def require(condition, message):
 require(s.environment in ('staging', 'pilot'), 'Set LABADDA_ENV to staging or pilot')
 require(s.instance and s.instance != 'dev', 'Set a distinct instance name')
 require(s.cookie_name != 'labadda_session', 'Set a distinct instance cookie')
-require(s.cookie_secure and s.trusted_origins, 'Configure TLS cookies and trusted origins')
-require(all(o.startswith('https://') for o in s.trusted_origins), 'Trusted origins must use HTTPS')
+require(bool(s.trusted_origins), 'Configure trusted origins')
+# Either HTTPS with Secure cookies, or (shared plain-HTTP site) a URL prefix, no Secure flag and only
+# http:// origins. A mixture would drop the session cookie or trust the wrong scheme.
+secure = s.cookie_secure and all(o.startswith('https://') for o in s.trusted_origins)
+shared = (not s.cookie_secure and bool(s.base_path)
+          and all(o.startswith('http://') for o in s.trusted_origins))
+require(secure or shared, 'Use HTTPS with Secure cookies, or plain HTTP only under a URL prefix')
 assets = s.asset_dir.resolve()
 writable = s.asset_dir.is_absolute() and assets.is_dir() and os.access(assets, os.W_OK)
 require(writable, 'Configure writable absolute asset directory')

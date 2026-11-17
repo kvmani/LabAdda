@@ -26,7 +26,10 @@ line "labadda" "$(active "$UNIT")"; line "nginx" "$(active nginx)"; line "postgr
 line "nightly backup" "$(active "labadda-backup@$SITE.timer")"
 say ""; say "Health"
 if operations probe --direct >/dev/null 2>&1; then line "app (private)" "ready"; else line "app (private)" "NOT ANSWERING"; fi
-if operations probe >/dev/null 2>&1; then line "web address" "answers"; else line "web address" "not confirmed (self-signed certificate or nginx down)"; fi
+[[ ! -f $ANSWERS_FILE ]] || load_answers "$ANSWERS_FILE"
+if operations probe >/dev/null 2>&1; then line "web address" "$(site_url) answers"
+elif is_shared_http; then line "web address" "NOT ANSWERING at $(site_url) - if the other application rewrote its nginx site, run: sudo labadda-reattach-nginx"
+else line "web address" "not confirmed (self-signed certificate or nginx down)"; fi
 [[ -e $INSTANCE_ROOT/traffic/maintenance ]] && line "maintenance" "ON - site closed to users (an upgrade or backup was interrupted)"
 say ""; say "Backups"
 facts=$("$PYTHON" "$TOOLS_DIR/scripts/install_helpers.py" status --status-dir "$INSTANCE_ROOT/status" 2>/dev/null)

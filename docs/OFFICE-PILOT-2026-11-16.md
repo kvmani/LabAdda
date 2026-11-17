@@ -5,17 +5,23 @@ already serving project_management_software (PM). The owner confirmed the OS on 
 The office hostname, IP, SMTP relay and available resources remain operator inputs.
 Do not install over an existing LabAdda instance: use the verified upgrade procedure instead.
 
+**17 November decision (owner): no LabAdda hostname or certificate.** LabAdda is served at
+`http://<server-IP>/labadda/` — the same address and plain-HTTP nginx site PM already uses — with
+installer answer `WEB_ACCESS=shared-http`. Follow [the shared-address layout](#shared-address-layout)
+and skip every step marked *dedicated hostname only*.
+
 ## Decisions and shared-server boundaries
 
 | Item | LabAdda pilot | Existing PM baseline to preserve |
 | --- | --- | --- |
-| Browser address | `https://labadda.domain.xx.in/` — replace domain | Existing `/production`, `/staging`, `/chemistry` routes |
+| Browser address | `http://<server-IP>/labadda/` (shared address; same IP as PM) | Existing `/production`, `/staging`, `/chemistry` routes |
 | Backend | `127.0.0.1:8100`, one process | Backend ports 8000/8001/8002; frontend 4173/4174/4175 |
 | Service | System unit `labadda-main.service`, Unix user `labadda` | Existing user units named `ipms-*` |
 | Persistent root | `/srv/labadda/main` | `/srv/apex_pm/*` |
 | Config | `/etc/labadda/main.env`, `main.site.json` | PM's per-instance `project_config.yml` and `env.sh` |
 | Database and role | `labadda_main` on local PostgreSQL 16 | Existing PM data/config/venvs stay in place |
-| Cookie | `labadda_main`, Secure, host-only, path `/` | Existing PM sessions |
+| Cookie | `labadda_main`, HttpOnly, SameSite=Strict, path `/labadda`, not Secure (plain HTTP) | Existing PM sessions (paths `/production` etc.) |
+| nginx | One `include` line added inside PM's `apex_pm` server block; LabAdda's own files in `snippets/` and `conf.d/` | Every PM route unchanged |
 | Backups | `/srv/labadda-backups/main`, separate off-host copy | Existing PM backup jobs |
 | Nightly time | Proposed 03:40 IST, verify non-overlap | Record actual PM/host backup windows first |
 | Mail sender | `admin.labadda@domain.xx.in` | Existing PM mail configuration |
@@ -27,6 +33,28 @@ service-admin and rollout documents and **sanitized** deployment examples. The d
 production baseline is v1.9.0 (`f8cd28a`). These are repository facts, not observations of the
 live server. Do not copy PM's virtualenv, database, password, nginx default site or configuration.
 Do not upgrade its OS, Python environment or PostgreSQL cluster as part of this rollout.
+
+## Shared-address layout
+
+What the installer does with `WEB_ACCESS=shared-http`, `URL_PATH=/labadda` and
+`SHARED_SITE=/etc/nginx/sites-enabled/apex_pm`:
+
+- writes LabAdda's locations to `/etc/nginx/snippets/labadda-main.conf` and one `map` line to
+  `/etc/nginx/conf.d/labadda-main.conf`;
+- keeps the untouched original as `/etc/labadda/main.shared-site.original`, then adds exactly one
+  line, `include /etc/nginx/snippets/labadda-main.conf;`, before the closing `}` of PM's site file
+  (it refuses a file with more than one server block);
+- runs `nginx -t`; on any failure it puts PM's file back exactly as it was and stops;
+- sets `LABADDA_COOKIE_SECURE=false` and `LABADDA_TRUSTED_ORIGINS=http://<server-IP>`. The doctor
+  reports **Secure connection: not in use** — sign-in and content cross the office network
+  unencrypted, exactly as PM's do today. Move to a hostname and certificate when IT can issue one.
+
+**After PM regenerates its nginx file** (for example `pm_instance.py deploy_all`), the include
+line is gone: PM keeps working, LabAdda's address stops answering and `labadda-status` says so.
+Run `sudo labadda-reattach-nginx --site main`; it changes only that one line and reloads nginx.
+`uninstall-keep-data.sh` removes the line again and leaves PM's file byte-for-byte as before.
+Verified by `sudo scripts/rehearse-rollout.sh KIT --shared-http` (22 checks, including PM's own
+route still answering, reattach and the byte-for-byte restore).
 
 ## Prepare before leaving the connected build machine
 
@@ -86,8 +114,9 @@ Record the status of PM's actual user units as their owning account, and open it
 staging and chemistry browser pages. Establish a known-good PM backup using its own runbook.
 Do not run PM's destructive demos or reset commands.
 
-Have IT create the LabAdda DNS record and certificate, confirm relay access from this host, and
-ensure that the new hostname is not already owned by another nginx server block. PM's site is a
+*Dedicated hostname only:* have IT create the LabAdda DNS record and certificate and ensure that the
+new hostname is not already owned by another nginx server block. In every layout, confirm mail relay
+access from this host. PM's site is a
 plain-HTTP `default_server` on port 80 (`/etc/nginx/sites-enabled/apex_pm`). LabAdda's generated
 `/etc/nginx/conf.d/labadda-main.conf` adds a port-80 block **for the LabAdda hostname only** that
 redirects to HTTPS, so a typed `http://` address reaches LabAdda instead of PM; PM's routes are
@@ -118,9 +147,10 @@ sudoedit /root/labadda-rollout/labadda-install.conf
 sudoedit /root/labadda-rollout/backup-schedule.conf
 ```
 
-Place the approved `labadda.crt`, `labadda.key` and `office-ca.crt` in that directory; keep the
-private key mode 0600. These files come from IT, not this repository. Copy [install answers](../deploy/office-pilot/install.conf.example) to a private working directory,
-replace every `domain.xx.in`, and choose the first administrator's actual display name.
+*Dedicated hostname only:* place the approved `labadda.crt`, `labadda.key` and `office-ca.crt` in that
+directory; keep the private key mode 0600. These files come from IT, not this repository. Copy [install answers](../deploy/office-pilot/install.conf.example) to a private working directory,
+replace every `domain.xx.in`, put the server's real IP address in `HOSTNAME_` (it ships as the
+documentation address 192.0.2.10), and choose the first administrator's actual display name.
 The [runtime reference](../deploy/office-pilot/main.env.example) shows the generated values and all
 supported main settings. The installer generates a random DB password; do not deploy that reference
 file literally. It writes the real env file mode 0600 and secret files outside the release.
@@ -143,8 +173,8 @@ sha256sum -c SHA256SUMS
 python3.12 tools/scripts/kit.py verify .
 ```
 
-Compare the fingerprint to the separately recorded value. Stop on any mismatch. Have the internal
-CA trusted by the server and pilot browsers. If it is not already trusted, the host administrator can
+Compare the fingerprint to the separately recorded value. Stop on any mismatch. *Dedicated hostname
+only:* have the internal CA trusted by the server and pilot browsers. If it is not already trusted, the host administrator can
 install the **approved public CA certificate**, never the server's private key:
 
 ```bash
@@ -154,7 +184,20 @@ sudo update-ca-certificates
 
 ## 3. Rehearse the plan, then install
 
-Use a dedicated hostname and a CA-issued certificate. Avoid the installer's self-signed fallback
+Shared address (the 17 November decision) — no certificate options:
+
+```bash
+sudo bash install.sh --site main --answers /root/labadda-rollout/labadda-install.conf \
+  --skip-os-packages --no-timer --kit-fingerprint REPLACE_WITH_RECORDED_64_HEX_DIGEST --dry-run
+# Review output, then repeat without --dry-run.
+sudo bash install.sh --site main --answers /root/labadda-rollout/labadda-install.conf \
+  --skip-os-packages --no-timer --kit-fingerprint REPLACE_WITH_RECORDED_64_HEX_DIGEST
+sudo labadda-status --site main
+sudo nginx -t
+curl --fail http://<server-IP>/production/   # PM still answers (use one of its real pages)
+```
+
+*Dedicated hostname only:* use a CA-issued certificate. Avoid the installer's self-signed fallback
 for real users. `--skip-os-packages` makes missing OS prerequisites fail instead of changing the host. Python pins are installed from PIP_INDEX_URL in the answers file.
 `--no-timer` lets you review backup timing before enabling it. Installer scripts preserve unrelated
 nginx files and refuse an occupied new-instance port. Keep the whole terminal transcript private:
@@ -219,8 +262,8 @@ Use fictional test content first; introduce the approved small real-data set onl
   and schedule the host-boot acceptance with the PM operator. Confirm the backup timer is enabled.
 
 ```bash
-curl --fail https://labadda.domain.xx.in/healthz
-curl --fail https://labadda.domain.xx.in/readyz
+curl --fail http://<server-IP>/labadda/healthz
+curl --fail http://<server-IP>/labadda/readyz
 sudo labadda-backup-now --site main --copy-to /mnt/approved-offhost/labadda
 sudo labadda-status --site main
 ```

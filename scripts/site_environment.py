@@ -108,14 +108,16 @@ def runtime_environment(site: dict) -> dict:
                 "Environment requires unique allowlisted unquoted KEY=value lines"
             )
         values[key] = value
+    shared = site.get("web_access") == "shared-http"
     required = {
         "LABADDA_INSTANCE": site["instance"],
         "LABADDA_PORT": str(site["port"]),
         "LABADDA_BASE_PATH": site["base_path"],
         "LABADDA_ASSET_DIR": site["root"] + "/assets",
         "LABADDA_FRONTEND_DIST": site["root"] + "/current/frontend/dist",
-        "LABADDA_COOKIE_SECURE": "true",
-        "LABADDA_TRUSTED_ORIGINS": "https://" + site["server_name"],
+        # A shared plain-HTTP site cannot carry Secure cookies; the cookie path is still the prefix.
+        "LABADDA_COOKIE_SECURE": "false" if shared else "true",
+        "LABADDA_TRUSTED_ORIGINS": ("http://" if shared else "https://") + site["server_name"],
     }
     # The generated unit passes the port explicitly; the environment need not repeat it.
     if "LABADDA_PORT" not in values:

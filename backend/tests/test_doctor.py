@@ -302,6 +302,18 @@ def test_tls_is_required_on_a_pilot_site_but_optional_in_development(assets, sta
     assert doctor.check_tls(development, doctor.load_settings(development.environ)).status == "skip"
 
 
+def test_shared_plain_http_under_a_prefix_is_reported_not_passed(assets, status_dir):
+    shared = site_environ(
+        assets, status_dir, LABADDA_TRUSTED_ORIGINS="http://10.20.30.40", LABADDA_COOKIE_SECURE="false"
+    )
+    host = healthy_host(assets, status_dir, environ=shared)
+    result = doctor.check_tls(host, doctor.load_settings(host.environ))
+    assert result.status == "skip"
+    assert "unencrypted" in result.summary
+    root = healthy_host(assets, status_dir, environ={**shared, "LABADDA_BASE_PATH": ""})
+    assert doctor.check_tls(root, doctor.load_settings(root.environ)).status == "fail"
+
+
 # --- backups -------------------------------------------------------------------------------
 
 

@@ -2,8 +2,13 @@
 # Copy outside the release, edit every domain.xx.in placeholder, chmod 0600.
 # Comments must occupy their own lines; do not add inline comments or shell substitutions.
 SITE_TITLE=LabAdda
-# Separate DNS name pointing to the existing office server; preserve all PM nginx sites.
-HOSTNAME_=labadda.domain.xx.in
+# REPLACE with the server's IP address (the one PM is already reached at); 192.0.2.10 is a
+# documentation-only address. LabAdda is then http://<IP>/labadda/ inside PM's nginx site.
+HOSTNAME_=192.0.2.10
+WEB_ACCESS=shared-http
+URL_PATH=/labadda
+# PM's enabled site file; the installer adds one include line to it and keeps the original.
+SHARED_SITE=/etc/nginx/sites-enabled/apex_pm
 TIMEZONE_=Asia/Kolkata
 EMAIL_DOMAIN=domain.xx.in
 # Actual operator mailbox/list that receives feedback; create/approve it before enabling mail.

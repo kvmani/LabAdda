@@ -264,3 +264,85 @@ def test_blank_relay_leaves_feedback_in_the_console_only():
         install_helpers.smtp_settings(
             "bad host:25", "a@b.in", "x@b.in", starttls=False, user="", password_file=""
         )
+
+
+def shared_site(tmp_path):
+    data = install_helpers.site_json(
+        "main", "", "10.20.30.40", 8100, "labadda", base_path="/labadda", web_access="shared-http"
+    )
+    path = tmp_path / "main.site.json"
+    path.write_text(json.dumps(data))
+    return data, path
+
+
+def test_shared_http_site_on_an_ip_address_loads_and_passes_the_environment_check(tmp_path):
+    _, path = shared_site(tmp_path)
+    site = operations.load_site(path)
+    assert (site["web_access"], site["server_name"], site["base_path"]) == (
+        "shared-http",
+        "10.20.30.40",
+        "/labadda",
+    )
+    values = install_helpers.env_values(
+        "main", site["root"], 8100, "10.20.30.40", zone="Asia/Kolkata", domain="lab.example.in",
+        db_url="postgresql+psycopg://labadda_main:secret@localhost:5432/labadda_main",
+        base_path="/labadda", web_access="shared-http",
+    )  # fmt: skip
+    assert values["LABADDA_COOKIE_SECURE"] == "false"
+    assert values["LABADDA_TRUSTED_ORIGINS"] == "http://10.20.30.40"
+    env_path = tmp_path / "main.env"
+    env_path.write_text(install_helpers.env_file((DEPLOY / "labadda.env.example").read_text(), values))
+    env_path.chmod(0o600)
+    environment = site_environment.runtime_environment({**site, "env_file": str(env_path)})
+    assert environment["LABADDA_BASE_PATH"] == "/labadda"
+
+
+def test_shared_site_refuses_https_environment_and_a_missing_path(tmp_path):
+    data, _ = shared_site(tmp_path)
+    values = install_helpers.env_values(
+        "main", data["root"], 8100, "10.20.30.40", zone="UTC", domain="",
+        db_url="postgresql+psycopg://labadda_main:secret@localhost:5432/labadda_main", base_path="/labadda",
+    )  # fmt: skip
+    env_path = tmp_path / "main.env"
+    env_path.write_text(install_helpers.env_file((DEPLOY / "labadda.env.example").read_text(), values))
+    env_path.chmod(0o600)
+    with pytest.raises(operations.OperationsError):
+        site_environment.runtime_environment({**data, "env_file": str(env_path)})
+    with pytest.raises(install_helpers.InputError):
+        install_helpers.check_web("shared-http", "")
+
+
+PM_SITE = """server {
+    listen 80 default_server;
+    server_name _;
+
+    location ^~ /production/ {
+        root /var/www/apex_pm;
+    }
+}
+"""
+
+
+def test_attach_site_adds_one_line_inside_the_server_block_and_removes_it_again(tmp_path):
+    site_file = tmp_path / "apex_pm"
+    site_file.write_text(PM_SITE)
+    site_file.chmod(0o644)
+    include = "/etc/nginx/snippets/labadda-main.conf"
+    assert install_helpers.attach_site(site_file, include) == "added"
+    text = site_file.read_text()
+    assert text.splitlines()[-1] == "}"
+    assert text.count(f"include {include};") == 1
+    assert text.replace(text.splitlines()[-2] + "\n", "") == PM_SITE
+    assert install_helpers.attach_site(site_file, include) == "present"
+    assert oct(site_file.stat().st_mode & 0o777) == "0o644"
+    assert install_helpers.attach_site(site_file, include, remove=True) == "removed"
+    assert site_file.read_text() == PM_SITE
+    assert install_helpers.attach_site(site_file, include, remove=True) == "absent"
+
+
+def test_attach_site_refuses_a_file_with_several_server_blocks(tmp_path):
+    site_file = tmp_path / "two"
+    site_file.write_text(PM_SITE + PM_SITE)
+    with pytest.raises(install_helpers.InputError, match="2 server blocks"):
+        install_helpers.attach_site(site_file, "/etc/nginx/snippets/labadda-main.conf")
+    assert site_file.read_text() == PM_SITE + PM_SITE

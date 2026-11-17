@@ -14,7 +14,7 @@ source "$KIT/lib/common.sh"
 # shellcheck source=lib/steps.sh
 source "$KIT/lib/steps.sh"
 
-SMTP_FROM="" SMTP_STARTTLS="" SMTP_USER="" SITE_TITLE="" HOSTNAME_="" TIMEZONE_="" EMAIL_DOMAIN="" FEEDBACK_EMAIL="" SMTP_RELAY="" PORT="" SERVICE_USER=""
+SMTP_FROM="" SMTP_STARTTLS="" SMTP_USER="" SITE_TITLE="" HOSTNAME_="" WEB_ACCESS="" URL_PATH="" SHARED_SITE="" TIMEZONE_="" EMAIL_DOMAIN="" FEEDBACK_EMAIL="" SMTP_RELAY="" PORT="" SERVICE_USER=""
 ADMIN_USER="" ADMIN_NAME="" CERT_FILE="" KEY_FILE="" RESTORE_BUNDLE="" RESTORE_SHA=""
 CA_FILE="" ANSWERS="" NO_NGINX=0 NO_TIMER=0 SKIP_OS_PACKAGES=0 EXPECT_FINGERPRINT=""
 
@@ -72,7 +72,12 @@ say "    Release: $VERSION"
 
 step "Questions about this site"
 ask SITE_TITLE "Site name shown to staff" "LabAdda"
-ask HOSTNAME_ "Server hostname people type in the browser (for example labadda.lab.example.in)" ""
+ask HOSTNAME_ "Server hostname or IP address people type in the browser (for example labadda.lab.example.in)" ""
+ask WEB_ACCESS "How people reach LabAdda: https (own hostname and certificate) or shared-http (same address as another application here)" "https"
+if [[ $WEB_ACCESS == shared-http ]]; then
+  ask URL_PATH "Path for LabAdda at that address" "/labadda"
+  ask SHARED_SITE "nginx site file of the application that already owns that address" "/etc/nginx/sites-enabled/apex_pm"
+fi
 ask TIMEZONE_ "Time zone" "Asia/Kolkata"
 ask EMAIL_DOMAIN "E-mail domain of staff addresses (the part after @)" ""
 ask FEEDBACK_EMAIL "Administrator e-mail that receives feedback (type none to skip)" "none"
@@ -85,7 +90,7 @@ fi
 ask PORT "Private port for the app on this server" "8100"
 ask SERVICE_USER "Service account name" "labadda"
 "$PYTHON" "$KIT/tools/scripts/install_helpers.py" site-json --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" \
-  --port "$PORT" --user "$SERVICE_USER" >/dev/null || die "One of the answers cannot be used (see above)."
+  --port "$PORT" --user "$SERVICE_USER" --base-path "$URL_PATH" --web-access "$WEB_ACCESS" >/dev/null || die "One of the answers cannot be used (see above)."
 "$PYTHON" -c 'import sys;sys.path.insert(0,sys.argv[1]);import install_helpers as h;h.check_answers(*sys.argv[2:])' \
   "$KIT/tools/scripts" "$SITE" "$HOSTNAME_" "$TIMEZONE_" "$EMAIL_DOMAIN" "$(blank_if_none "$FEEDBACK_EMAIL")" \
   || die "One of the answers cannot be used (see above)."
@@ -119,6 +124,6 @@ step_backup_and_doctor
 
 step "Finished"
 if ((DRY_RUN)); then say "    Dry run only: nothing was changed."; else
-  say "    Open https://$HOSTNAME_/ and sign in with the administrator account."
+  say "    Open $(site_url) and sign in with the administrator account."
   say "    Daily check: sudo labadda-status      Manual backup: sudo labadda-backup-now"
 fi
