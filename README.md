@@ -124,7 +124,7 @@ Frontend and browser-check code use ESLint and Prettier: `cd frontend && npm run
 .venv/bin/ruff check --config backend/pyproject.toml --fix backend scripts e2e
 ```
 
-`LABADDA_TEST_DATABASE_URL` selects the disposable test database. The default is `labadda_test` on localhost. The e2e stack uses `labadda_e2e_root` and `labadda_e2e_prefix`. Create both like `labadda_test`. CI (`.github/workflows/ci.yml`) runs `scripts/verify.sh` on the same locked dependencies.
+`LABADDA_TEST_DATABASE_URL` selects the disposable test database. The default is `labadda_test` on localhost. The e2e stack uses `labadda_e2e_root` and `labadda_e2e_prefix`. Create both like `labadda_test`. GitHub CI (`.github/workflows/ci.yml`) is **manual-only**. In GitHub, open **Actions → ci → Run workflow**, choose the branch and confirm. Pushes and pull requests do not start it. Manual runs execute `scripts/verify.sh` and the isolated collaboration simulation on the same locked dependencies.
 
 ## Operator commands
 
