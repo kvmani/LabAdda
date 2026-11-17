@@ -14,6 +14,7 @@ import { FirstUse } from "./FirstUse";
 import { RailNav } from "./RailNav";
 import { TopBar } from "./TopBar";
 import "./shell.css";
+import { AlertPopups } from "../alerts/AlertPopups";
 
 /** Refresh the unread count this often while a page stays open. */
 const UNREAD_POLL_MILLISECONDS = 30_000;
@@ -112,6 +113,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {notificationsOpen && (
           <Notifications onClose={() => setNotificationsOpen(false)} onChange={setUnread} />
         )}
+        <AlertPopups key={session?.user.id} onRead={() => setUnread((count) => Math.max(0, count - 1))} />
         <RailNav workspaces={workspaces} currentId={currentId} operations={operations} error={error} />
         <main className="shell-main" id="main" tabIndex={-1}>
           <FirstUse />

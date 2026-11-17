@@ -1096,6 +1096,7 @@ class CalendarEvent(Base):
     description: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(String(140))
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reminder_start_processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     color: Mapped[str | None] = mapped_column(String(32))

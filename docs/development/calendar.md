@@ -37,3 +37,6 @@ maintaining strict administrator content blindness.
 npm --prefix frontend test -- --run
 npm --prefix frontend run build
 ```
+
+Timed events now deliver in-app reminders fifteen minutes before starting; see
+[notification delivery](alert-preferences.md#live-pop-ups). All-day/cancelled events are excluded.

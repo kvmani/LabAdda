@@ -23,3 +23,17 @@ selection for My day/preferences/private-group creation. Tests cover actual aler
 creation, scheduler consumption, concurrent revisions and real recovery plus web
 lost replies/conflicts/ownership/mobile accessibility. Physical device and manual
 screen-reader/site qualification remain open.
+
+
+## Live pop-ups
+
+`features/alerts/AlertPopups.tsx` polls authorized unread notifications every ten seconds
+and subscribes to existing chat events. It renders three persistent cards and queues up to
+100; dismissing changes only tab state. Open/read use current-access server endpoints.
+Sound is opt-in per tab (browser gesture requirement), synthesized with Web Audio and
+limited to one two-note chime per eight seconds. No external assets or dependencies.
+`calendar_reminders.py` processes 100 timed events per tick, fifteen minutes ahead; migration
+0049 remembers processed start times, including muted occurrences. A changed start queues
+a new occurrence; old-start alerts are hidden. All-day and cancelled events are excluded.
+Tests: `test_calendar_reminders.py`, `features/alerts/AlertPopups.test.tsx`,
+`e2e/alert-popups.mjs` against root and prefixed servers.

@@ -22,6 +22,9 @@ Outside v1.0 (kept specified, not scheduled): storage quotas and enforcement, re
 purge, portable archives and re-import (P5.2–P5.7), identity federation, direct messages
 outside groups, e-mail delivery, multi-site federation (P6).
 
+Owner-requested live alert pop-ups and calendar reminder delivery are implemented;
+validation and independent delivery review are recorded in the handoff ledger.
+
 ## Status at a glance
 
 Last updated: 2026-11-15 (all of tracks A, H and U done; P1–P6 done, P7 awaiting owner decisions; Q3 partial; pilot rehearsal passed locally). Percentages are judged against the v1.0 definition above, weighted by

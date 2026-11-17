@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from . import notify, policy
+from .calendar_reminders import process_calendar_reminders
 from .health.heartbeat import HEARTBEAT
 from .models import Note, Post, Workspace
 from .security import utcnow
@@ -61,6 +62,7 @@ def process_due_reminders(db: Session, now: datetime | None = None, batch: int =
             occurrence=note.remind_at.isoformat(),
         )
         note.reminder_processed_at = now
+    created += process_calendar_reminders(db, now)
     db.commit()
     return created
 

@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from .. import policy
+from ..calendar_access import lock_calendar
 from ..changes.kinds.common import open_task_counts
 from ..deps import Actor, current_actor, get_db
 from ..errors import NotFound
-from ..models import ChatMessage, Note, Notification, Post, User, Workspace
+from ..models import CalendarEvent, ChatMessage, Note, Notification, Post, User, Workspace
 from ..security import utcnow
 from ..serialize import iso
 
@@ -61,8 +62,25 @@ def _resolve_chat(db: Session, n: Notification, readable: dict) -> dict | None:
     }
 
 
+def _resolve_calendar(db: Session, actor: Actor, n: Notification, readable: dict) -> dict | None:
+    event = db.get(CalendarEvent, n.source_id)
+    if (
+        event is None
+        or event.cancelled_at is not None
+        or not n.dedupe_key.endswith(f":{event.starts_at.isoformat()}:{actor.id}")
+    ):
+        return None
+    if event.scope_kind == "personal" and event.owner_id != actor.id:
+        return None
+    if event.scope_kind == "workspace" and event.workspace_id not in readable:
+        return None
+    return {"title": event.title, "workspace": None, "link": {"view": "calendar"}}
+
+
 def _resolve(db: Session, actor: Actor, n: Notification, readable: dict) -> dict | None:
     """Return display data if the recipient may still see the source, else None."""
+    if n.source_type == "calendar":
+        return _resolve_calendar(db, actor, n, readable)
     if n.source_type == "note":
         return _resolve_note(db, actor, n)
     if n.source_type == "post":
@@ -115,10 +133,12 @@ def _visible(db: Session, actor: Actor, limit: int, unread_only: bool = False):
 
 @router.get("")
 def list_notifications(
+    request: Request,
     limit: int = Query(default=30, le=100),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_db),
 ):
+    lock_calendar(request, actor, db)
     items = _visible(db, actor, limit)
     unread = len(_visible(db, actor, 100, unread_only=True))
     return {
@@ -138,8 +158,12 @@ def list_notifications(
 
 @router.post("/{notification_id}/open")
 def open_notification(
-    notification_id: uuid.UUID, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)
+    notification_id: uuid.UUID,
+    request: Request,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_db),
 ):
+    lock_calendar(request, actor, db)
     n = db.get(Notification, notification_id)
     if n is None or n.recipient_id != actor.id:
         raise NotFound()

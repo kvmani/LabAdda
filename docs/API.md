@@ -1335,3 +1335,13 @@ administration endpoints allow staff verification against official laboratory re
   credential, and update request status to approved. Optional body: `{ full_name?, employee_no?,
   designation?, unit_id?, custom_unit_name? }`.
 - `POST /api/v1/admin/join-requests/{id}/reject` — Decline application with review note (`{ reason? }`).
+
+### In-app reminder pop-ups
+
+Calendar reminders use the existing notification list and `POST /notifications/{id}/open`
+(read acknowledgement without requiring navigation). Timed calendar entries queue once per
+start time within 15 minutes of starting; all-day and cancelled events do not queue.
+`link: {view: "calendar"}` opens the calendar. Current owner/workspace access is checked
+when listing and acknowledging; cancellation hides an existing alert. Reminder preferences apply.
+Live chat pop-ups acknowledge through the existing chat read cursor (through that message).
+Dismissal is local to the tab and leaves server unread state unchanged.

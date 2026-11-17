@@ -126,6 +126,7 @@ export type BoardOp = {
 
 /** Where opening a notification leads (api/notifications.py). */
 export type NotificationLink =
+  | { view: "calendar" }
   | { view: "notes"; id: string }
   | { view: "noticeboard"; workspace_id: string; post_id: string }
   | { view: "chat"; workspace_id: string; seq: number }

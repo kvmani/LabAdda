@@ -4,10 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, errorMessage } from "../api";
 import { fmtTime } from "../format";
 import { Button, Card, ErrorState, PageHeader, Skeleton } from "../ui";
-import {
-  useDashboardOverview as useOverview,
-  type Overview,
-} from "../features/home/useDashboardOverview";
+import { useDashboardOverview as useOverview, type Overview } from "../features/home/useDashboardOverview";
 import "./dashboard.css";
 
 function dueLabel(dueDate: string, today: string): string {
@@ -130,7 +127,13 @@ export function Dashboard() {
       const result = await api<OpenedNotification>(`/notifications/${id}/open`, { method: "POST" });
       if (!isCurrent()) return;
       const link = result.link;
-      void navigate(link.view === "notes" ? "/notes" : `/w/${link.workspace_id}/${link.view}`);
+      void navigate(
+        link.view === "calendar"
+          ? "/calendar"
+          : link.view === "notes"
+            ? "/notes"
+            : `/w/${link.workspace_id}/${link.view}`,
+      );
     } catch (e: unknown) {
       if (isCurrent()) setError(errorMessage(e));
     }
