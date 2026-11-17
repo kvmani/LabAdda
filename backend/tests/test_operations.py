@@ -66,6 +66,8 @@ def test_render_prefix_and_maintenance(tmp_path, prefix):
     files = ops.render(config)
     assert f"location {prefix}/assets/" in files["nginx.conf"]
     assert "if (-f /srv/labadda/staging/traffic/maintenance) { return 503; }" in files["nginx.conf"]
+    redirect = f"listen 80;\n    server_name {config['server_name']};\n    return 301 https://"
+    assert redirect in files["nginx.conf"]
     assert "KillMode=control-group" in files["service.conf"]
     assert "ProtectSystem=strict" in files["service.conf"]
     assert "ReadWritePaths=/srv/labadda/staging/assets" in files["service.conf"]

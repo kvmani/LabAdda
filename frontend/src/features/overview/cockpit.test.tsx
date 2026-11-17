@@ -84,7 +84,13 @@ function mockOverview(): Overview {
         storage: {
           top_workspaces: [
             { id: "ws-tejas", name: "Project Tejas", kind: "project", bytes: 31457280, formatted: "30.0 MB" },
-            { id: "ws-corrosion", name: "Corrosion Section", kind: "org", bytes: 10485760, formatted: "10.0 MB" },
+            {
+              id: "ws-corrosion",
+              name: "Corrosion Section",
+              kind: "org",
+              bytes: 10485760,
+              formatted: "10.0 MB",
+            },
           ],
           headroom_status: "Storage usage is nominal across all teams.",
         },
@@ -117,8 +123,20 @@ function mockOverview(): Overview {
       },
       usage_patterns: {
         feature_distribution: [
-          { feature: "Chat Messages", count: 45, percentage: 53, icon: "💬", role: "Real-time lab discussion" },
-          { feature: "Noticeboard Posts", count: 25, percentage: 29, icon: "📢", role: "Official lab announcements" },
+          {
+            feature: "Chat Messages",
+            count: 45,
+            percentage: 53,
+            icon: "💬",
+            role: "Real-time lab discussion",
+          },
+          {
+            feature: "Noticeboard Posts",
+            count: 25,
+            percentage: 29,
+            icon: "📢",
+            role: "Official lab announcements",
+          },
           { feature: "Tasks & Checklists", count: 15, percentage: 18, icon: "📋", role: "Action tracking" },
         ],
         peak_summary: "Peak intranet activity: 10:00 AM - 12:30 PM & 3:00 PM - 5:30 PM",

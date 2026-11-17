@@ -1318,13 +1318,15 @@ administration endpoints allow staff verification against official laboratory re
 
 ### Public endpoints
 
-- `GET /api/v1/join-requests/units` — List active organisation units and research groups for dropdown
-  selection. Returns `{"units": [{"id": "...", "name": "...", "kind": "org"|"group", "level": "..."}]}`.
+- `GET /api/v1/join-requests/units` — List active organisation units for dropdown selection. Private
+  groups and projects are never listed. Returns `{"units": [{"id", "name", "kind": "org", "level"}]}`.
 - `POST /api/v1/join-requests` — Submit a voluntary membership application.
   Body: `{ full_name, username, employee_no?, contact_email?, contact_phone?, designation?, unit_id?, custom_unit_name?, statement_of_interest? }`.
-  Returns 200 with receipt `{ id, status: "pending", message: "..." }`.
-  Rejects duplicate active usernames with 409 `username_taken`, duplicate pending requests with 409
-  `already_applied`, or duplicate staff IDs with 409 `employee_no_taken`.
+  Returns 200 with receipt `{ id, status: "pending", message: "..." }`. The answer is the same when
+  the username or employee number is already known, so the form cannot reveal staff; clashes are
+  refused at approval. 403 `bad_origin` for an untrusted Origin, 429 `rate_limited` past
+  `LABADDA_LOGIN_ATTEMPTS_PER_WINDOW` per client address per window, 422 `invalid_unit` for a
+  closed unit, a group or a project.
 
 ### Administration endpoints (require people console authority)
 
@@ -1333,7 +1335,8 @@ administration endpoints allow staff verification against official laboratory re
 - `POST /api/v1/admin/join-requests/{id}/approve` — Verify records, create invited user account, assign
   unit (registering unlisted units dynamically under org root if needed), issue one-time activation
   credential, and update request status to approved. Optional body: `{ full_name?, employee_no?,
-  designation?, unit_id?, custom_unit_name? }`.
+  designation?, unit_id?, custom_unit_name? }`. The unit is always an organisation unit, never a
+  group. 409 `username_taken` or `employee_no_taken` when another account already uses them.
 - `POST /api/v1/admin/join-requests/{id}/reject` — Decline application with review note (`{ reason? }`).
 
 ### In-app reminder pop-ups

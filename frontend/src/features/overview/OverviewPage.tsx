@@ -188,7 +188,12 @@ export function OverviewPage() {
 
       {/* Tab Panel 3: Bottlenecks & SLA */}
       {activeTab === "bottlenecks" && (
-        <div id="panel-bottlenecks" role="tabpanel" aria-labelledby="tab-bottlenecks" className="cockpit-tabpanel">
+        <div
+          id="panel-bottlenecks"
+          role="tabpanel"
+          aria-labelledby="tab-bottlenecks"
+          className="cockpit-tabpanel"
+        >
           {data.cockpit ? (
             <BottlenecksView bottlenecks={data.cockpit.bottlenecks} />
           ) : (
@@ -199,7 +204,12 @@ export function OverviewPage() {
 
       {/* Tab Panel 4: Action & Diagnostics */}
       {activeTab === "diagnostics" && (
-        <div id="panel-diagnostics" role="tabpanel" aria-labelledby="tab-diagnostics" className="cockpit-tabpanel">
+        <div
+          id="panel-diagnostics"
+          role="tabpanel"
+          aria-labelledby="tab-diagnostics"
+          className="cockpit-tabpanel"
+        >
           <section className="cockpit-panel" aria-label="Administrator action guide">
             <div className="cockpit-panel__header">
               <div>
@@ -216,7 +226,9 @@ export function OverviewPage() {
               <div className="diagnostic-guide-grid">
                 <div className="diagnostic-guide-card">
                   <div className="diagnostic-guide-card__head">
-                    <span className="diagnostic-guide-card__icon" aria-hidden="true">💾</span>
+                    <span className="diagnostic-guide-card__icon" aria-hidden="true">
+                      💾
+                    </span>
                     <h4>Storage & Content Management</h4>
                   </div>
                   <p>
@@ -230,7 +242,9 @@ export function OverviewPage() {
 
                 <div className="diagnostic-guide-card">
                   <div className="diagnostic-guide-card__head">
-                    <span className="diagnostic-guide-card__icon" aria-hidden="true">🏛️</span>
+                    <span className="diagnostic-guide-card__icon" aria-hidden="true">
+                      🏛️
+                    </span>
                     <h4>Leadership & Governance</h4>
                   </div>
                   <p>
@@ -244,7 +258,9 @@ export function OverviewPage() {
 
                 <div className="diagnostic-guide-card">
                   <div className="diagnostic-guide-card__head">
-                    <span className="diagnostic-guide-card__icon" aria-hidden="true">🔒</span>
+                    <span className="diagnostic-guide-card__icon" aria-hidden="true">
+                      🔒
+                    </span>
                     <h4>Air-Gap & Backup Safety</h4>
                   </div>
                   <p>
@@ -258,7 +274,9 @@ export function OverviewPage() {
 
                 <div className="diagnostic-guide-card">
                   <div className="diagnostic-guide-card__head">
-                    <span className="diagnostic-guide-card__icon" aria-hidden="true">⚡</span>
+                    <span className="diagnostic-guide-card__icon" aria-hidden="true">
+                      ⚡
+                    </span>
                     <h4>Response Time & Capacity</h4>
                   </div>
                   <p>
@@ -274,7 +292,8 @@ export function OverviewPage() {
               {data.cockpit && data.cockpit.bottlenecks.reliability.open_events.length > 0 && (
                 <div className="open-events-section">
                   <h4 className="open-events-section__title">
-                    Active Operational Events Requiring Action ({data.cockpit.bottlenecks.reliability.open_events.length})
+                    Active Operational Events Requiring Action (
+                    {data.cockpit.bottlenecks.reliability.open_events.length})
                   </h4>
                   <ul className="remediation-list">
                     {data.cockpit.bottlenecks.reliability.open_events.map((ev) => (

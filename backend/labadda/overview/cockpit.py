@@ -160,9 +160,7 @@ def compute_bottlenecks(db: Session) -> dict[str, Any]:
 
     # 2. Governance bottlenecks: Unstaffed workspaces
     all_ws = db.scalars(select(Workspace).where(Workspace.archived == False)).all()  # noqa: E712
-    stewards = set(
-        db.scalars(select(Membership.workspace_id).where(Membership.role == "steward")).all()
-    )
+    stewards = set(db.scalars(select(Membership.workspace_id).where(Membership.role == "steward")).all())
 
     unstaffed_units = [ws.name for ws in all_ws if ws.kind == "org" and ws.id not in stewards]
     unstaffed_projects = [

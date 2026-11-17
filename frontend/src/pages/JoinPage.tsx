@@ -79,7 +79,7 @@ export function JoinPage() {
     if (!normUser) return setError("Please enter your desired username.");
     if (!/^[a-z0-9][a-z0-9._-]{1,62}$/.test(normUser)) {
       return setError(
-        "Username must be 2-63 characters, lowercase letters, numbers, dot, dash, or underscore."
+        "Username must be 2-63 characters, lowercase letters, numbers, dot, dash, or underscore.",
       );
     }
     if (!normEmp) return setError("Please enter your employee / staff identification number.");
@@ -92,13 +92,13 @@ export function JoinPage() {
 
     if (unitSelection === "OTHER" || units.length === 0) {
       if (!customUnitName.trim()) {
-        return setError("Please enter your Division, Section, or Group name.");
+        return setError("Please enter your division or section name.");
       }
       finalCustomUnit = customUnitName.trim();
       finalDisplayUnitName = `${finalCustomUnit} (Proposed new unit)`;
     } else {
       if (!unitSelection) {
-        return setError("Please select your research division, section, or group.");
+        return setError("Please select your division or section, or choose Other.");
       }
       finalUnitId = unitSelection;
       const found = units.find((u) => u.id === unitSelection);
@@ -106,9 +106,7 @@ export function JoinPage() {
     }
 
     if (!consented) {
-      return setError(
-        "Please confirm the voluntary participation acknowledgment before submitting."
-      );
+      return setError("Please confirm the voluntary participation acknowledgment before submitting.");
     }
 
     setBusy(true);
@@ -173,8 +171,11 @@ export function JoinPage() {
           <strong>purely professional research purposes</strong>.
         </p>
         <div className="join-notice__callout">
-          💡 <em>LabAdda functions as a digital equivalent of our laboratory whiteboards and noticeboards.
-          It is not intended for confidential, sensitive, or official secret records.</em>
+          💡{" "}
+          <em>
+            LabAdda functions as a digital equivalent of our laboratory whiteboards and noticeboards. It is
+            not intended for confidential, sensitive, or official secret records.
+          </em>
         </div>
       </section>
 
@@ -209,8 +210,8 @@ export function JoinPage() {
             <div className="join-faq-item">
               <p className="join-faq-q">Where is my data stored?</p>
               <p className="join-faq-a">
-                Exclusively on our internal laboratory VM on the air-gapped intranet. Zero data ever leaves the
-                premises.
+                Exclusively on our internal laboratory VM on the air-gapped intranet. Zero data ever leaves
+                the premises.
               </p>
             </div>
           </div>
@@ -224,23 +225,37 @@ export function JoinPage() {
           <ul className="join-features-list">
             <li className="join-feature-item">
               <span aria-hidden="true">📢</span>
-              <span><strong>Noticeboard:</strong> Official lab announcements, pinned notices, and attachments.</span>
+              <span>
+                <strong>Noticeboard:</strong> Official lab announcements, pinned notices, and attachments.
+              </span>
             </li>
             <li className="join-feature-item">
               <span aria-hidden="true">🎨</span>
-              <span><strong>Live Whiteboard:</strong> Multi-user scientific sketching, equations, and sticky notes.</span>
+              <span>
+                <strong>Live Whiteboard:</strong> Multi-user scientific sketching, equations, and sticky
+                notes.
+              </span>
             </li>
             <li className="join-feature-item">
               <span aria-hidden="true">📋</span>
-              <span><strong>Tasks & Checklists:</strong> Research action items, assigned tasks, and deadline reminders.</span>
+              <span>
+                <strong>Tasks & Checklists:</strong> Research action items, assigned tasks, and deadline
+                reminders.
+              </span>
             </li>
             <li className="join-feature-item">
               <span aria-hidden="true">💬</span>
-              <span><strong>Intranet Chat:</strong> Focused, searchable laboratory discussions and project threads.</span>
+              <span>
+                <strong>Intranet Chat:</strong> Focused, searchable laboratory discussions and project
+                threads.
+              </span>
             </li>
             <li className="join-feature-item">
               <span aria-hidden="true">🔒</span>
-              <span><strong>Privacy-First:</strong> Administrators never inspect personal notes or private whiteboard drawings.</span>
+              <span>
+                <strong>Privacy-First:</strong> Administrators never inspect personal notes or private
+                whiteboard drawings.
+              </span>
             </li>
           </ul>
         </div>
@@ -366,10 +381,10 @@ export function JoinPage() {
               <p className="join-form__hint">Your current scientific or technical designation.</p>
             </div>
 
-            {/* Unit / Division / Group Select */}
+            {/* Unit / Division Select */}
             <div className="join-form__field join-form__field--full">
               <label htmlFor="unit-selection" className="join-form__label">
-                Home Division, Section, or Group <span className="join-form__required">*</span>
+                Home Division or Section <span className="join-form__required">*</span>
               </label>
               <select
                 id="unit-selection"
@@ -380,35 +395,19 @@ export function JoinPage() {
                 required
               >
                 {units.length > 0 && (
-                  <>
-                    {units.some((u) => u.kind === "org") && (
-                      <optgroup label="Divisions & Sections">
-                        {units
-                          .filter((u) => u.kind === "org")
-                          .map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-                    {units.some((u) => u.kind === "group") && (
-                      <optgroup label="Research Groups">
-                        {units
-                          .filter((u) => u.kind === "group")
-                          .map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-                  </>
+                  <optgroup label="Divisions & Sections">
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 )}
                 <option value="OTHER">➕ Other / Not Listed (Enter below)</option>
               </select>
               <p className="join-form__hint">
-                Select your unit from the list, or choose "Other / Not Listed" if your unit has not been registered yet.
+                Select your unit from the list, or choose "Other / Not Listed" if your unit has not been
+                registered yet.
               </p>
             </div>
 
@@ -428,7 +427,8 @@ export function JoinPage() {
                   required
                 />
                 <p className="join-form__hint">
-                  Your proposed unit will be verified by the administrator against official records and registered upon account approval.
+                  Your proposed unit will be verified by the administrator against official records and
+                  registered upon account approval.
                 </p>
               </div>
             )}
@@ -461,8 +461,9 @@ export function JoinPage() {
             />
             <label htmlFor="consent-check" className="join-form__consent-text">
               I understand that joining LabAdda is <strong>purely voluntary</strong>. I agree to use this
-              platform responsibly for <strong>professional research collaboration and collective productivity</strong>,
-              and understand that it is an air-gapped digital whiteboard not intended for official confidential records.
+              platform responsibly for{" "}
+              <strong>professional research collaboration and collective productivity</strong>, and understand
+              that it is an air-gapped digital whiteboard not intended for official confidential records.
             </label>
           </div>
 
@@ -484,8 +485,8 @@ export function JoinPage() {
           </div>
           <h2 className="join-success__title">Application Submitted Successfully!</h2>
           <p className="join-success__text">
-            Thank you, <strong>{submitted.fullName}</strong>. Your voluntary application to join LabAdda
-            has been recorded and forwarded to the laboratory administrators for verification.
+            Thank you, <strong>{submitted.fullName}</strong>. Your voluntary application to join LabAdda has
+            been recorded and forwarded to the laboratory administrators for verification.
           </p>
 
           <div className="join-success__card">
@@ -506,15 +507,21 @@ export function JoinPage() {
           <div className="join-success__steps">
             <div className="join-success__step-item">
               <span className="join-success__step-num">1</span>
-              <span><strong>Verification:</strong> Administrator verifies your staff affiliation.</span>
+              <span>
+                <strong>Verification:</strong> Administrator verifies your staff affiliation.
+              </span>
             </div>
             <div className="join-success__step-item">
               <span className="join-success__step-num">2</span>
-              <span><strong>Activation Code:</strong> You will be issued a one-time activation code.</span>
+              <span>
+                <strong>Activation Code:</strong> You will be issued a one-time activation code.
+              </span>
             </div>
             <div className="join-success__step-item">
               <span className="join-success__step-num">3</span>
-              <span><strong>Sign In:</strong> Set your password at <code>/activate</code> and start collaborating!</span>
+              <span>
+                <strong>Sign In:</strong> Set your password at <code>/activate</code> and start collaborating!
+              </span>
             </div>
           </div>
 

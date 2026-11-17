@@ -87,7 +87,12 @@ staging and chemistry browser pages. Establish a known-good PM backup using its 
 Do not run PM's destructive demos or reset commands.
 
 Have IT create the LabAdda DNS record and certificate, confirm relay access from this host, and
-ensure that the new hostname is not already owned by another nginx server block. Retain 80/443
+ensure that the new hostname is not already owned by another nginx server block. PM's site is a
+plain-HTTP `default_server` on port 80 (`/etc/nginx/sites-enabled/apex_pm`). LabAdda's generated
+`/etc/nginx/conf.d/labadda-main.conf` adds a port-80 block **for the LabAdda hostname only** that
+redirects to HTTPS, so a typed `http://` address reaches LabAdda instead of PM; PM's routes are
+unchanged. PM's `pm_instance.py deploy_all` rewrites only its own `apex_pm` site file, so it
+does not remove the LabAdda file. Retain 80/443
 as shared nginx listeners; **do not expose 8100/8101 to the LAN**. Keep existing firewall rules.
 If OS packages are missing, ask the host administrator to review apt's proposed changes first:
 

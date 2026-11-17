@@ -23,7 +23,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([A-Za-z0-9][A-Za-z0-9.!+_-]*)\s*(?:#.*)?$")
+# An optional environment marker (uvloop has no Windows build) still counts as a pin to check.
+PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([A-Za-z0-9][A-Za-z0-9.!+_-]*)\s*(?:;[^#]*)?(?:#.*)?$")
 Fetch = Callable[[str, str], dict | None]
 
 

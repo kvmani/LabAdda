@@ -24,7 +24,8 @@ export const RESEARCH_SPARKS: ResearchSpark[] = [
     context: "Pioneer in Radio & Plant Physiology",
   },
   {
-    quote: "Science knows no country, because knowledge belongs to humanity, and is the torch which illuminates the world.",
+    quote:
+      "Science knows no country, because knowledge belongs to humanity, and is the torch which illuminates the world.",
     author: "Louis Pasteur",
   },
   {
@@ -33,12 +34,14 @@ export const RESEARCH_SPARKS: ResearchSpark[] = [
     context: "Aerospace Scientist & 11th President of India",
   },
   {
-    quote: "Nothing in life is to be feared, it is only to be understood. Now is the time to understand more, so that we may fear less.",
+    quote:
+      "Nothing in life is to be feared, it is only to be understood. Now is the time to understand more, so that we may fear less.",
     author: "Marie Curie",
     context: "Two-time Nobel Laureate",
   },
   {
-    quote: "Nature uses only the longest threads to weave her patterns, so that each small piece reveals the entire tapestry.",
+    quote:
+      "Nature uses only the longest threads to weave her patterns, so that each small piece reveals the entire tapestry.",
     author: "Richard Feynman",
   },
   {
@@ -51,7 +54,8 @@ export const RESEARCH_SPARKS: ResearchSpark[] = [
     context: "Father of Indian Nuclear Research",
   },
   {
-    quote: "Equipped with his five senses, man explores the universe around him and calls the adventure Science.",
+    quote:
+      "Equipped with his five senses, man explores the universe around him and calls the adventure Science.",
     author: "Edwin Hubble",
   },
   {

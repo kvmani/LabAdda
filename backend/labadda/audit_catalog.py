@@ -28,6 +28,9 @@ CATALOG: dict[str, Entry] = {
     "identity.update": Entry("people", "{actor} changed the account details of {target}."),
     "identity.reset": Entry("people", "{actor} issued a password reset link for {target}."),
     "identity.activation_reissued": Entry("people", "{actor} issued a new activation code for {target}."),
+    "join_request.approved": Entry("people", "{actor} approved a join application and created {target}."),
+    # The target of a declined application is the application, not an account, so it is not named.
+    "join_request.rejected": Entry("people", "{actor} declined a join application."),
     "people.change": Entry("people", "{actor} applied a reviewed staff change for {target}."),
     "people.schedule": Entry("people", "{actor} scheduled a reviewed staff change for {target}."),
     "people.schedule_apply": Entry("people", "{actor}'s scheduled staff change for {target} took effect."),

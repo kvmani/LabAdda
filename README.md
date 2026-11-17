@@ -52,6 +52,8 @@ The product display name and GitHub repository slug are both **LabAdda**. Use lo
 
 Prerequisites: Ubuntu 24.04, Python 3.12, PostgreSQL 16, Node 22 (build-time only), system IANA tzdata, nginx (only for proxy tests).
 
+Testing on a Windows PC (fictional data only): see [the Windows testing guide](docs/development/windows-testing.md).
+
 ```bash
 # 1. Disposable databases (development only)
 sudo -u postgres psql -c "create role labadda login password 'labadda-dev' createdb"

@@ -5,7 +5,10 @@ const origin = process.env.LABADDA_E2E_ORIGIN ?? "http://127.0.0.1:8010";
 const bases = process.argv.slice(2);
 const shots = process.env.LABADDA_E2E_SHOTS ?? "/tmp/labadda-screenshots";
 mkdirSync(shots, { recursive: true });
-const browser = await chromium.launch({ executablePath: "/usr/bin/chromium", args: ["--no-sandbox"] });
+const browser = await chromium.launch({
+  executablePath: process.env.LABADDA_CHROMIUM ?? "/usr/bin/chromium",
+  args: ["--no-sandbox"],
+});
 function check(value, label) {
   if (!value) throw new Error(label);
   console.log(`PASS ${label}`);

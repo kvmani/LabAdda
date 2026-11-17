@@ -2,10 +2,9 @@
 
 import re
 import uuid
-from datetime import date
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -13,10 +12,10 @@ from sqlalchemy.orm import Session
 from .. import audit, memberships, people
 from ..config import Settings
 from ..credentials import issue_credential
-from ..deps import Actor, get_db, get_settings, require_console
-from ..errors import Conflict, Invalid, NotFound
+from ..deps import Actor, get_db, get_settings, origin_allowed, require_console
+from ..errors import Conflict, Forbidden, Invalid, NotFound, TooMany
 from ..models import JoinRequest, User, Workspace
-from ..security import utcnow
+from ..security import login_limiter, utcnow
 from ..serialize import iso
 
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}$")
@@ -81,10 +80,11 @@ class ApproveRequest(BaseModel):
 
 @router.get("/units")
 def available_units(db: Session = Depends(get_db)) -> dict:
-    """Return active laboratory organisation units and groups so applicants can select their affiliation."""
+    """Return active organisation units so signed-out applicants can select their affiliation."""
+    # Groups and projects are private: a signed-out caller must not learn that they exist.
     rows = db.scalars(
         select(Workspace)
-        .where(Workspace.kind.in_(["org", "group"]), Workspace.archived.is_(False))
+        .where(Workspace.kind == "org", Workspace.archived.is_(False))
         .order_by(Workspace.kind, Workspace.name)
     ).all()
     units = [
@@ -92,7 +92,7 @@ def available_units(db: Session = Depends(get_db)) -> dict:
             "id": str(w.id),
             "name": w.name,
             "kind": w.kind,
-            "level": w.level or ("group" if w.kind == "group" else "unit"),
+            "level": w.level or "unit",
         }
         for w in rows
     ]
@@ -102,43 +102,25 @@ def available_units(db: Session = Depends(get_db)) -> dict:
 @router.post("")
 def submit_join_request(
     body: JoinRequestCreate,
+    request: Request,
     db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> dict:
     """Accept and record a voluntary application to join LabAdda."""
-    existing_user = db.scalar(select(User.id).where(User.username == body.username))
-    if existing_user is not None:
-        raise Conflict(
-            code="username_taken",
-            message="That username is already in use by a registered user. Please choose another.",
-        )
-
-    pending_req = db.scalar(
-        select(JoinRequest.id).where(
-            JoinRequest.username == body.username,
-            JoinRequest.status == "pending",
-        )
-    )
-    if pending_req is not None:
-        raise Conflict(
-            code="already_applied",
-            message="An application with this username is already pending administrator review.",
-        )
-
-    if body.employee_no:
-        norm_emp = body.employee_no.strip()
-        existing_emp = db.scalar(
-            select(User.id).where(func.lower(User.employee_no) == func.lower(norm_emp))
-        )
-        if existing_emp is not None:
-            raise Conflict(
-                code="employee_no_taken",
-                message="A staff record with this employee number already exists.",
-            )
-
+    if not origin_allowed(request.headers.get("origin"), request.headers.get("host"), settings):
+        raise Forbidden("bad_origin", "Request origin is not trusted.")
+    client = request.client.host if request.client else "unknown"
+    if not login_limiter.hit(
+        f"join:{client}", settings.login_attempts_per_window, settings.login_window_seconds
+    ):
+        raise TooMany()
+    # A signed-out caller gets the same answer whether or not the username or employee number
+    # is already known, so the form cannot be used to discover staff. Clashes are refused when
+    # an administrator approves, and the administrator contacts the applicant.
     unit_name = None
     if body.unit_id:
         target_unit = db.get(Workspace, body.unit_id)
-        if target_unit and not target_unit.archived:
+        if target_unit and target_unit.kind == "org" and not target_unit.archived:
             unit_name = target_unit.name
         else:
             raise Invalid(code="invalid_unit", message="Selected unit is not valid or has been closed.")
@@ -208,17 +190,10 @@ def list_join_requests(
     requests = db.scalars(query).all()
 
     counts = {
-        "pending": db.scalar(
-            select(func.count(JoinRequest.id)).where(JoinRequest.status == "pending")
-        )
+        "pending": db.scalar(select(func.count(JoinRequest.id)).where(JoinRequest.status == "pending")) or 0,
+        "approved": db.scalar(select(func.count(JoinRequest.id)).where(JoinRequest.status == "approved"))
         or 0,
-        "approved": db.scalar(
-            select(func.count(JoinRequest.id)).where(JoinRequest.status == "approved")
-        )
-        or 0,
-        "rejected": db.scalar(
-            select(func.count(JoinRequest.id)).where(JoinRequest.status == "rejected")
-        )
+        "rejected": db.scalar(select(func.count(JoinRequest.id)).where(JoinRequest.status == "rejected"))
         or 0,
         "total": db.scalar(select(func.count(JoinRequest.id))) or 0,
     }
@@ -236,7 +211,7 @@ def _resolve_target_unit(
     chosen_id = body.unit_id if body and body.unit_id else None
     if chosen_id:
         ws = db.get(Workspace, chosen_id)
-        if not ws or ws.archived:
+        if not ws or ws.kind != "org" or ws.archived:
             raise Invalid(code="invalid_unit", message="Selected unit does not exist or is archived.")
         return ws.id, ws.name
 
@@ -248,16 +223,14 @@ def _resolve_target_unit(
         clean_name = custom_name.strip()
         existing = db.scalar(
             select(Workspace).where(
-                Workspace.kind.in_(["org", "group"]),
+                Workspace.kind == "org",
                 func.lower(Workspace.name) == func.lower(clean_name),
             )
         )
         if existing:
             return existing.id, existing.name
 
-        root = db.scalar(
-            select(Workspace).where(Workspace.kind == "org", Workspace.parent_id.is_(None))
-        )
+        root = db.scalar(select(Workspace).where(Workspace.kind == "org", Workspace.parent_id.is_(None)))
         new_ws = Workspace(
             kind="org",
             name=clean_name,
@@ -279,12 +252,10 @@ def _resolve_target_unit(
 
     if req.unit_id:
         ws = db.get(Workspace, req.unit_id)
-        if ws and not ws.archived:
+        if ws and ws.kind == "org" and not ws.archived:
             return ws.id, ws.name
 
-    root_unit = db.scalar(
-        select(Workspace).where(Workspace.kind == "org", Workspace.parent_id.is_(None))
-    )
+    root_unit = db.scalar(select(Workspace).where(Workspace.kind == "org", Workspace.parent_id.is_(None)))
     if not root_unit:
         raise NotFound()
     return root_unit.id, root_unit.name
@@ -309,7 +280,13 @@ def approve_join_request(
     employee_no = body.employee_no.strip() if body and body.employee_no else req.employee_no
     designation = body.designation.strip() if body and body.designation else req.designation
 
-    if employee_no and employee_no != req.employee_no:
+    if db.scalar(select(User.id).where(User.username == req.username)) is not None:
+        raise Conflict(
+            code="username_taken",
+            message="Another account already uses this username. Reject the application and "
+            "contact the applicant to choose a different one.",
+        )
+    if employee_no:
         existing_emp = db.scalar(
             select(User.id).where(func.lower(User.employee_no) == func.lower(employee_no))
         )
@@ -330,7 +307,7 @@ def approve_join_request(
         employee_no=employee_no,
         contact_email=req.contact_email,
         contact_phone=req.contact_phone,
-        joined_on=date.today(),
+        joined_on=people.site_date(settings),
         home_workspace_id=unit_id,
     )
     people.set_status(person, "invited", effective_on=people.site_date(settings))

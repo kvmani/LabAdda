@@ -29,7 +29,9 @@ export function UsagePatternsView({ patterns, peakSummary }: Props) {
             {patterns.map((item) => (
               <div key={item.feature} className="feature-pattern-card">
                 <div className="feature-pattern-card__header">
-                  <span className="feature-pattern-card__icon" aria-hidden="true">{item.icon}</span>
+                  <span className="feature-pattern-card__icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
                   <div>
                     <h4 className="feature-pattern-card__title">{item.feature}</h4>
                     <p className="feature-pattern-card__role">{item.role}</p>
@@ -41,7 +43,13 @@ export function UsagePatternsView({ patterns, peakSummary }: Props) {
                   <div className="feature-pattern-card__pct">{item.percentage}% of activity</div>
                 </div>
 
-                <div className="pattern-bar" role="progressbar" aria-valuenow={item.percentage} aria-valuemin={0} aria-valuemax={100}>
+                <div
+                  className="pattern-bar"
+                  role="progressbar"
+                  aria-valuenow={item.percentage}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
                   <div className="pattern-bar__fill" style={{ width: `${item.percentage}%` }} />
                 </div>
               </div>
@@ -50,14 +58,17 @@ export function UsagePatternsView({ patterns, peakSummary }: Props) {
 
           <div className="peak-hours-card">
             <div className="peak-hours-card__header">
-              <span className="peak-hours-card__icon" aria-hidden="true">⏰</span>
+              <span className="peak-hours-card__icon" aria-hidden="true">
+                ⏰
+              </span>
               <div>
                 <h4 className="peak-hours-card__title">Peak Activity Pattern</h4>
                 <p className="peak-hours-card__desc">{peakSummary}</p>
               </div>
             </div>
             <p className="cockpit-note">
-              Research staff activity naturally concentrates around morning planning sessions and afternoon experiment trials.
+              Research staff activity naturally concentrates around morning planning sessions and afternoon
+              experiment trials.
             </p>
           </div>
         </div>

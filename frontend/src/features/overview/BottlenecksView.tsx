@@ -44,7 +44,13 @@ export function BottlenecksView({ bottlenecks }: Props) {
                       </span>
                       <span className="storage-bottleneck-item__size">{ws.formatted}</span>
                     </div>
-                    <div className="storage-bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+                    <div
+                      className="storage-bar"
+                      role="progressbar"
+                      aria-valuenow={percent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
                       <div className="storage-bar__fill" style={{ width: `${percent}%` }} />
                     </div>
                   </div>
@@ -89,9 +95,7 @@ export function BottlenecksView({ bottlenecks }: Props) {
                       Appoint Heads →
                     </Link>
                   </div>
-                  <p className="gov-item__desc">
-                    {governance.unstaffed_units.join(", ")}
-                  </p>
+                  <p className="gov-item__desc">{governance.unstaffed_units.join(", ")}</p>
                 </div>
               )}
 
@@ -105,9 +109,7 @@ export function BottlenecksView({ bottlenecks }: Props) {
                       Assign Stewards →
                     </Link>
                   </div>
-                  <p className="gov-item__desc">
-                    {governance.unstaffed_projects.join(", ")}
-                  </p>
+                  <p className="gov-item__desc">{governance.unstaffed_projects.join(", ")}</p>
                 </div>
               )}
             </div>
@@ -140,7 +142,9 @@ export function BottlenecksView({ bottlenecks }: Props) {
             <div className="perf-card">
               <span className="perf-card__label">p95 Response Time</span>
               <span className="perf-card__val">
-                {performance.p95_latency_ms !== null ? `${Math.round(performance.p95_latency_ms)} ms` : "Not measured"}
+                {performance.p95_latency_ms !== null
+                  ? `${Math.round(performance.p95_latency_ms)} ms`
+                  : "Not measured"}
               </span>
             </div>
             <div className="perf-card">

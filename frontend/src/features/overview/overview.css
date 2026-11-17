@@ -120,7 +120,9 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .cockpit-kpi-card:hover {
   transform: translateY(-1px);

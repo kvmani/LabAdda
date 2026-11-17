@@ -35,6 +35,11 @@ def test_python_pins_read_every_transitive_pin_and_ignore_comments():
     ]
 
 
+def test_python_pins_keep_pins_that_carry_an_environment_marker():
+    text = 'uvloop==0.23.0 ; sys_platform != "win32"\nh11==0.16.0\n'
+    assert age.python_pins(text) == [("h11", "0.16.0"), ("uvloop", "0.23.0")]
+
+
 def test_npm_pins_use_the_package_name_from_the_node_modules_path():
     lock = {
         "packages": {

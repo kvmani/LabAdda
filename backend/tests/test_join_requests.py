@@ -3,15 +3,18 @@
 from labadda.models import JoinRequest, User, Workspace
 
 
-def test_public_units_list(make_client):
-    """Prospective applicants can query available org units and groups without signing in."""
+def test_public_units_list_hides_private_groups_and_projects(make_client, db_factory):
+    """Signed-out applicants see organisation units only; private groups and projects stay hidden."""
+    with db_factory() as db:
+        private = [w.name for w in db.query(Workspace).filter(Workspace.kind != "org").all()]
+    assert private
     anon = make_client()
     res = anon.get("/join-requests/units")
     assert res.status_code == 200
-    data = res.json()
-    assert "units" in data
-    assert len(data["units"]) > 0
-    assert all(u["kind"] in ("org", "group") for u in data["units"])
+    units = res.json()["units"]
+    assert units
+    assert all(u["kind"] == "org" for u in units)
+    assert not set(private) & {u["name"] for u in units}
 
 
 def test_submit_voluntary_join_request(make_client, db_factory):
@@ -51,33 +54,80 @@ def test_submit_voluntary_join_request(make_client, db_factory):
         assert req.unit_name == unit_name
 
 
-def test_submit_duplicate_username_conflicts(make_client):
-    """Submitting an existing username is refused with 409 username_taken."""
+def test_submit_does_not_reveal_existing_usernames_or_employee_numbers(make_client, db_factory):
+    """A known username, a known employee number and a fresh one all get the same answer."""
+    with db_factory() as db:
+        db.query(User).filter_by(username="bharat").one().employee_no = "EMP-1001"
+        db.commit()
     anon = make_client()
-    payload = {
-        "full_name": "Duplicate Admin",
-        "username": "admin",
-        "employee_no": "EMP-9999",
-    }
-    res = anon.post("/join-requests", json=payload)
+    known = anon.post("/join-requests", json={"full_name": "Bharat Two", "username": "admin"})
+    known_emp = anon.post(
+        "/join-requests", json={"full_name": "Kavya Rao", "username": "kavya.rao", "employee_no": "emp-1001"}
+    )
+    fresh = anon.post("/join-requests", json={"full_name": "Priya Nair", "username": "priya.nair"})
+    again = anon.post("/join-requests", json={"full_name": "Priya Nair", "username": "priya.nair"})
+    for res in (known, known_emp, fresh, again):
+        assert res.status_code == 200
+        assert set(res.json()) == {"id", "status", "message"}
+        assert res.json()["message"] == fresh.json()["message"]
+
+
+def test_submit_is_rate_limited_per_client(make_client):
+    anon = make_client()
+    codes = [
+        anon.post("/join-requests", json={"full_name": "Ravi Iyer", "username": f"ravi{n}"}).status_code
+        for n in range(11)
+    ]
+    assert codes[:10] == [200] * 10
+    assert codes[10] == 429
+
+
+def test_submit_refuses_untrusted_origin(make_client):
+    res = make_client().post(
+        "/join-requests",
+        json={"full_name": "Ravi Iyer", "username": "ravi.iyer"},
+        headers={"origin": "https://elsewhere.example"},
+    )
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "bad_origin"
+
+
+def test_submit_refuses_a_private_group_as_unit(make_client, db_factory):
+    with db_factory() as db:
+        group_id = str(db.query(Workspace).filter(Workspace.kind == "group").first().id)
+    res = make_client().post(
+        "/join-requests", json={"full_name": "Ravi Iyer", "username": "ravi.iyer", "unit_id": group_id}
+    )
+    assert res.status_code == 422
+    assert res.json()["error"]["code"] == "invalid_unit"
+
+
+def test_approval_never_joins_a_private_group_named_by_the_applicant(as_user, db_factory):
+    with db_factory() as db:
+        group = db.query(Workspace).filter(Workspace.kind == "group").first()
+        req = JoinRequest(full_name="Ravi Iyer", username="ravi.iyer", unit_name=group.name, status="pending")
+        db.add(req)
+        db.commit()
+        req_id, group_id = str(req.id), group.id
+    res = as_user("admin").post(f"/admin/join-requests/{req_id}/approve")
+    assert res.status_code == 200
+    with db_factory() as db:
+        created = db.query(User).filter_by(username="ravi.iyer").one()
+        assert created.home_workspace_id != group_id
+        assert db.get(Workspace, created.home_workspace_id).kind == "org"
+
+
+def test_approval_refuses_a_username_already_in_use(as_user, db_factory):
+    with db_factory() as db:
+        req = JoinRequest(full_name="Second Asha", username="asha", status="pending")
+        db.add(req)
+        db.commit()
+        req_id = str(req.id)
+    res = as_user("admin").post(f"/admin/join-requests/{req_id}/approve")
     assert res.status_code == 409
     assert res.json()["error"]["code"] == "username_taken"
-
-
-def test_submit_pending_duplicate_conflicts(make_client):
-    """Submitting twice with same username while pending is refused."""
-    anon = make_client()
-    payload = {
-        "full_name": "Priya Nair",
-        "username": "priya.nair",
-        "employee_no": "EMP-4888",
-    }
-    res1 = anon.post("/join-requests", json=payload)
-    assert res1.status_code == 200
-
-    res2 = anon.post("/join-requests", json=payload)
-    assert res2.status_code == 409
-    assert res2.json()["error"]["code"] == "already_applied"
+    with db_factory() as db:
+        assert db.get(JoinRequest, req.id).status == "pending"
 
 
 def test_admin_join_requests_authorization(make_client, as_user):

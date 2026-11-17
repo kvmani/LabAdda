@@ -1,0 +1,8 @@
+# Windows checkouts must keep LF: CRLF breaks the Ubuntu shell scripts, systemd units and nginx
+# templates copied to the server, and fails the Prettier/Ruff line-ending checks.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.ttf binary
+*.pdf binary
+*.xlsx binary

@@ -238,16 +238,16 @@ export function Home() {
           noteInputRef.current?.focus();
         } else if (e.key === "w" || e.key === "W") {
           e.preventDefault();
-          navigate("/whiteboard");
+          void navigate("/whiteboard");
         } else if (e.key === "t" || e.key === "T") {
           e.preventDefault();
-          navigate("/my-tasks");
+          void navigate("/my-tasks");
         } else if (e.key === "c" || e.key === "C") {
           e.preventDefault();
-          navigate("/calendar");
+          void navigate("/calendar");
         } else if (e.key === "o" || e.key === "O") {
           e.preventDefault();
-          navigate("/notes");
+          void navigate("/notes");
         } else if (e.key === "s" || e.key === "S") {
           e.preventDefault();
           setSparkOffset((prev) => prev + 1);
@@ -395,9 +395,13 @@ export function Home() {
           <div className="wb-hero__greeting-container">
             <h1 className="wb-hero__greeting">{greeting}</h1>
             <p className="wb-hero__date">
-              <span className="wb-hero__date-icon" aria-hidden="true">📅</span>
+              <span className="wb-hero__date-icon" aria-hidden="true">
+                📅
+              </span>
               <span>{todayFormatted}</span>
-              <span className="wb-hero__separator" aria-hidden="true">·</span>
+              <span className="wb-hero__separator" aria-hidden="true">
+                ·
+              </span>
               <span className="wb-airgap-pill">
                 <span className="wb-airgap-pill__dot" aria-hidden="true" />
                 Air-gapped Lab Intranet
@@ -406,7 +410,9 @@ export function Home() {
           </div>
           <div className="wb-hero__actions">
             <Link to="/whiteboard" className="wb-hero__cta-btn">
-              <span className="wb-hero__cta-icon" aria-hidden="true">🎨</span>
+              <span className="wb-hero__cta-icon" aria-hidden="true">
+                🎨
+              </span>
               <span>Open My Whiteboard</span>
             </Link>
           </div>
@@ -415,22 +421,30 @@ export function Home() {
         {/* Quick status summary chips & Shortcuts button */}
         <div className="wb-hero__stats" role="region" aria-label="Quick counts and tools">
           <Link to="/my-tasks" className="wb-stat-chip">
-            <span className="wb-stat-chip__icon" aria-hidden="true">📋</span>
+            <span className="wb-stat-chip__icon" aria-hidden="true">
+              📋
+            </span>
             <span className="wb-stat-chip__count">{activeTasks.length}</span>
             <span className="wb-stat-chip__label">Active Tasks</span>
           </Link>
           <Link to="/calendar" className="wb-stat-chip">
-            <span className="wb-stat-chip__icon" aria-hidden="true">🗓️</span>
+            <span className="wb-stat-chip__icon" aria-hidden="true">
+              🗓️
+            </span>
             <span className="wb-stat-chip__count">{todayEvents.length}</span>
             <span className="wb-stat-chip__label">Today’s Events</span>
           </Link>
           <Link to="/notes" className="wb-stat-chip">
-            <span className="wb-stat-chip__icon" aria-hidden="true">📝</span>
+            <span className="wb-stat-chip__icon" aria-hidden="true">
+              📝
+            </span>
             <span className="wb-stat-chip__count">{notes.length}</span>
             <span className="wb-stat-chip__label">Private Notes</span>
           </Link>
           <a href="#workspaces" className="wb-stat-chip">
-            <span className="wb-stat-chip__icon" aria-hidden="true">🏢</span>
+            <span className="wb-stat-chip__icon" aria-hidden="true">
+              🏢
+            </span>
             <span className="wb-stat-chip__count">{workspaces.length}</span>
             <span className="wb-stat-chip__label">Workspaces</span>
           </a>
@@ -440,8 +454,12 @@ export function Home() {
             onClick={() => setShowShortcuts(true)}
             aria-label="Open keyboard shortcuts cheat-sheet (Press ?)"
           >
-            <span className="wb-stat-chip__icon" aria-hidden="true">⌨️</span>
-            <span className="wb-stat-chip__label">Shortcuts <kbd>?</kbd></span>
+            <span className="wb-stat-chip__icon" aria-hidden="true">
+              ⌨️
+            </span>
+            <span className="wb-stat-chip__label">
+              Shortcuts <kbd>?</kbd>
+            </span>
           </button>
         </div>
       </section>
@@ -475,10 +493,15 @@ export function Home() {
       <section className="wb-guidance" aria-label="LabAdda collaboration guidelines">
         <div className="wb-guidance__bar">
           <div className="wb-guidance__summary">
-            <span className="wb-guidance__icon" aria-hidden="true">🤝</span>
+            <span className="wb-guidance__icon" aria-hidden="true">
+              🤝
+            </span>
             <div>
               <strong className="wb-guidance__title">LabAdda Guidelines:</strong>
-              <span className="wb-guidance__teaser"> Digital lab whiteboard · Zero sensitive data · Lightweight files · Constructive teamwork</span>
+              <span className="wb-guidance__teaser">
+                {" "}
+                Digital lab whiteboard · Zero sensitive data · Lightweight files · Constructive teamwork
+              </span>
             </div>
           </div>
           <button
@@ -494,20 +517,27 @@ export function Home() {
         {showGuidelines && (
           <div className="wb-guidance__body">
             <p className="wb-guidance__intro">
-              LabAdda is our internal digital whiteboard experiment designed for effortless day-to-day collaboration:
+              LabAdda is our internal digital whiteboard experiment designed for effortless day-to-day
+              collaboration:
             </p>
             <ul className="wb-guidance__list">
               <li>
-                <strong>Digital whiteboard for the lab:</strong> This is an informal, collaborative workspace for day-to-day lab ideas and quick drafts. It is not an official organizational reporting platform.
+                <strong>Digital whiteboard for the lab:</strong> This is an informal, collaborative workspace
+                for day-to-day lab ideas and quick drafts. It is not an official organizational reporting
+                platform.
               </li>
               <li>
-                <strong>No sensitive or official data:</strong> LabAdda is strictly for informal lab ideas, sketches, and task tracking. Never upload classified, sensitive, or official organizational records here.
+                <strong>No sensitive or official data:</strong> LabAdda is strictly for informal lab ideas,
+                sketches, and task tracking. Never upload classified, sensitive, or official organizational
+                records here.
               </li>
               <li>
-                <strong>Keep files light and relevant:</strong> Upload only necessary work-related diagrams and references. Avoiding huge attachments keeps our local intranet server fast and responsive.
+                <strong>Keep files light and relevant:</strong> Upload only necessary work-related diagrams
+                and references. Avoiding huge attachments keeps our local intranet server fast and responsive.
               </li>
               <li>
-                <strong>Warm and constructive etiquette:</strong> We thrive on mutual respect. Communicate with warmth, professional courtesy, and constructive suggestions.
+                <strong>Warm and constructive etiquette:</strong> We thrive on mutual respect. Communicate
+                with warmth, professional courtesy, and constructive suggestions.
               </li>
             </ul>
           </div>
@@ -520,7 +550,8 @@ export function Home() {
           <div className="wb-whiteboard-banner__tag">Private Thinking Space</div>
           <h2 className="wb-whiteboard-banner__title">My Whiteboard</h2>
           <p className="wb-whiteboard-banner__desc">
-            Your personal, persistent canvas for brainstorming, freehand sketching, chemical structures, and sticky notes. Everything here is strictly private to you.
+            Your personal, persistent canvas for brainstorming, freehand sketching, chemical structures, and
+            sticky notes. Everything here is strictly private to you.
           </p>
           <div className="wb-whiteboard-banner__actions">
             <Link to="/whiteboard" className="ui-button ui-button--primary ui-button--md">
@@ -571,7 +602,9 @@ export function Home() {
             <div className="wb-card__header">
               <div>
                 <h2 className="wb-card__title">
-                  <span className="wb-card__icon" aria-hidden="true">📋</span>
+                  <span className="wb-card__icon" aria-hidden="true">
+                    📋
+                  </span>
                   <span>My Tasks & Deadlines</span>
                 </h2>
                 <p className="wb-card__subtitle">Click checkbox to mark complete · Synced with team lists</p>
@@ -585,7 +618,9 @@ export function Home() {
               {/* Task Completed Feedback Toast */}
               {taskNotice && (
                 <div className="wb-task-toast" role="status">
-                  <span>✓ <strong>{taskNotice.title}</strong> marked as completed!</span>
+                  <span>
+                    ✓ <strong>{taskNotice.title}</strong> marked as completed!
+                  </span>
                   <button type="button" className="wb-task-toast__undo" onClick={undoTaskComplete}>
                     Undo
                   </button>
@@ -614,7 +649,9 @@ export function Home() {
                           title="Mark task as completed"
                           aria-label={`Mark task completed: ${task.title}`}
                         >
-                          <span className="wb-task-checkbox__mark" aria-hidden="true">✓</span>
+                          <span className="wb-task-checkbox__mark" aria-hidden="true">
+                            ✓
+                          </span>
                         </button>
                         <div className="wb-task-item__content">
                           <Link
@@ -657,7 +694,9 @@ export function Home() {
             <div className="wb-card__header">
               <div>
                 <h2 className="wb-card__title">
-                  <span className="wb-card__icon" aria-hidden="true">🗓️</span>
+                  <span className="wb-card__icon" aria-hidden="true">
+                    🗓️
+                  </span>
                   <span>Today’s Schedule</span>
                 </h2>
                 <p className="wb-card__subtitle">Seminars, meetings and deadlines for {todayFormatted}</p>
@@ -692,13 +731,13 @@ export function Home() {
                           {ev.location && (
                             <span className="wb-event-item__loc">
                               📍 {ev.location}
-                              <span className="wb-hero__separator" aria-hidden="true">·</span>
+                              <span className="wb-hero__separator" aria-hidden="true">
+                                ·
+                              </span>
                             </span>
                           )}
                           <span className="wb-badge wb-badge--scope">
-                            {ev.scope_kind === "site"
-                              ? "Site-wide"
-                              : ev.workspace_name || "Workspace"}
+                            {ev.scope_kind === "site" ? "Site-wide" : ev.workspace_name || "Workspace"}
                           </span>
                         </p>
                       </div>
@@ -717,7 +756,9 @@ export function Home() {
             <div className="wb-card__header">
               <div>
                 <h2 className="wb-card__title">
-                  <span className="wb-card__icon" aria-hidden="true">📝</span>
+                  <span className="wb-card__icon" aria-hidden="true">
+                    📝
+                  </span>
                   <span>My Notes</span>
                 </h2>
                 <p className="wb-card__subtitle">Private reminders · Press N to jot quickly</p>
@@ -806,7 +847,9 @@ export function Home() {
             <div className="wb-card__header">
               <div>
                 <h2 className="wb-card__title">
-                  <span className="wb-card__icon" aria-hidden="true">🏢</span>
+                  <span className="wb-card__icon" aria-hidden="true">
+                    🏢
+                  </span>
                   <span>Your Team Spaces</span>
                 </h2>
                 <p className="wb-card__subtitle">Divisions, sections, projects & groups</p>
@@ -904,9 +947,21 @@ export function Home() {
                     <li key={ws.id} className="wb-space-item">
                       <div className="wb-space-item__main">
                         <Link to={`/w/${ws.id}/noticeboard`} className="wb-space-item__name">
-                          {ws.kind === "project" && <span className="wb-space-kind-icon" aria-hidden="true">🚀 </span>}
-                          {ws.kind === "group" && <span className="wb-space-kind-icon" aria-hidden="true">👥 </span>}
-                          {ws.kind === "org" && <span className="wb-space-kind-icon" aria-hidden="true">🏢 </span>}
+                          {ws.kind === "project" && (
+                            <span className="wb-space-kind-icon" aria-hidden="true">
+                              🚀{" "}
+                            </span>
+                          )}
+                          {ws.kind === "group" && (
+                            <span className="wb-space-kind-icon" aria-hidden="true">
+                              👥{" "}
+                            </span>
+                          )}
+                          {ws.kind === "org" && (
+                            <span className="wb-space-kind-icon" aria-hidden="true">
+                              🏢{" "}
+                            </span>
+                          )}
                           {ws.name}
                         </Link>
                       </div>

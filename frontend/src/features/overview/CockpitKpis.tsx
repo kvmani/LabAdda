@@ -11,7 +11,9 @@ export function CockpitKpis({ kpis }: Props) {
       {/* 1. Staff Adoption KPI */}
       <div className="cockpit-kpi-card">
         <div className="cockpit-kpi-card__header">
-          <span className="cockpit-kpi-card__icon" aria-hidden="true">👥</span>
+          <span className="cockpit-kpi-card__icon" aria-hidden="true">
+            👥
+          </span>
           <span className="cockpit-kpi-card__title">Staff Adoption</span>
         </div>
         <div className="cockpit-kpi-card__value">
@@ -27,7 +29,9 @@ export function CockpitKpis({ kpis }: Props) {
       {/* 2. Collaboration Velocity KPI */}
       <div className="cockpit-kpi-card">
         <div className="cockpit-kpi-card__header">
-          <span className="cockpit-kpi-card__icon" aria-hidden="true">🚀</span>
+          <span className="cockpit-kpi-card__icon" aria-hidden="true">
+            🚀
+          </span>
           <span className="cockpit-kpi-card__title">Collaboration Items</span>
         </div>
         <div className="cockpit-kpi-card__value">{kpis.total_collaboration_items}</div>
@@ -40,7 +44,9 @@ export function CockpitKpis({ kpis }: Props) {
       {/* 3. Storage Footprint KPI */}
       <div className="cockpit-kpi-card">
         <div className="cockpit-kpi-card__header">
-          <span className="cockpit-kpi-card__icon" aria-hidden="true">💾</span>
+          <span className="cockpit-kpi-card__icon" aria-hidden="true">
+            💾
+          </span>
           <span className="cockpit-kpi-card__title">Content Storage</span>
         </div>
         <div className="cockpit-kpi-card__value">{kpis.total_storage_formatted}</div>
@@ -55,7 +61,9 @@ export function CockpitKpis({ kpis }: Props) {
       {/* 4. Operational Events KPI */}
       <div className="cockpit-kpi-card">
         <div className="cockpit-kpi-card__header">
-          <span className="cockpit-kpi-card__icon" aria-hidden="true">🛡️</span>
+          <span className="cockpit-kpi-card__icon" aria-hidden="true">
+            🛡️
+          </span>
           <span className="cockpit-kpi-card__title">System Events</span>
         </div>
         <div className="cockpit-kpi-card__value">

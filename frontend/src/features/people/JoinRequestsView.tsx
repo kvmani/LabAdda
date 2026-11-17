@@ -84,6 +84,7 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
 
   useEffect(() => {
     loadRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reloads when the status filter changes
   }, [filter]);
 
   useEffect(() => {
@@ -101,9 +102,7 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
       setVerifiedUnitId(item.unit_id);
       setVerifiedCustomUnit("");
     } else if (item.unit_name) {
-      const match = availableUnits.find(
-        (u) => u.name.toLowerCase() === item.unit_name?.toLowerCase()
-      );
+      const match = availableUnits.find((u) => u.name.toLowerCase() === item.unit_name?.toLowerCase());
       if (match) {
         setVerifiedUnitId(match.id);
         setVerifiedCustomUnit("");
@@ -172,9 +171,13 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
 
   function copyCode() {
     if (!activeSlip) return;
-    navigator.clipboard.writeText(activeSlip.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(activeSlip.code).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+      () => setCopied(false),
+    );
   }
 
   return (
@@ -220,7 +223,11 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
       </div>
 
       {loading && <p className="join-requests-muted">Loading applications…</p>}
-      {error && <p className="join-requests-error" role="alert">⚠️ {error}</p>}
+      {error && (
+        <p className="join-requests-error" role="alert">
+          ⚠️ {error}
+        </p>
+      )}
 
       {!loading && data && data.requests.length === 0 && (
         <Card>
@@ -303,10 +310,7 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
             {/* Action Buttons for Pending Applications */}
             {item.status === "pending" && (
               <div className="join-request-card__actions">
-                <Button
-                  variant="primary"
-                  onClick={() => startReview(item)}
-                >
+                <Button variant="primary" onClick={() => startReview(item)}>
                   ✓ Review, Verify & Approve
                 </Button>
                 <Button
@@ -381,8 +385,11 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
               </div>
 
               <div className="join-form__field">
-                <label className="join-form__label">Intranet Email (Read-only):</label>
+                <label htmlFor="rev-email" className="join-form__label">
+                  Intranet Email (Read-only):
+                </label>
                 <input
+                  id="rev-email"
                   type="text"
                   className="join-form__input"
                   value={reviewingItem.contact_email || "Not specified"}
@@ -392,7 +399,7 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
 
               <div className="join-form__field join-form__field--full">
                 <label htmlFor="rev-unit" className="join-form__label">
-                  Assigned Division, Section, or Group:
+                  Assigned Division or Section:
                 </label>
                 <select
                   id="rev-unit"
@@ -401,19 +408,17 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
                   onChange={(e) => setVerifiedUnitId(e.target.value)}
                 >
                   {availableUnits.length > 0 && (
-                    <optgroup label="Available Units & Groups">
+                    <optgroup label="Available Units">
                       {availableUnits.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {u.name} ({u.kind === "org" ? "Org Unit" : "Group"})
+                          {u.name}
                         </option>
                       ))}
                     </optgroup>
                   )}
                   <option value="NEW">➕ Register as New Lab Unit in Database</option>
                 </select>
-                <p className="join-form__hint">
-                  Selecting an existing unit prevents duplicates and typos.
-                </p>
+                <p className="join-form__hint">Selecting an existing unit prevents duplicates and typos.</p>
               </div>
 
               {verifiedUnitId === "NEW" && (
@@ -431,7 +436,8 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
                     required
                   />
                   <p className="join-form__hint">
-                    This unit will be created under the organization root and will be available in future dropdowns.
+                    This unit will be created under the organization root and will be available in future
+                    dropdowns.
                   </p>
                 </div>
               )}
@@ -470,14 +476,12 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
               <span className="activation-modal-slip__label">One-Time Activation Code</span>
               <div className="activation-modal-slip__code-row">
                 <span className="activation-modal-slip__code">{activeSlip.code}</span>
-                <Button onClick={copyCode}>
-                  {copied ? "Copied!" : "Copy code"}
-                </Button>
+                <Button onClick={copyCode}>{copied ? "Copied!" : "Copy code"}</Button>
               </div>
             </div>
             <p className="activation-modal-slip__note">
-              Provide this code to the user. They can open <code>/activate</code> on the intranet to set
-              their password and begin collaborating.
+              Provide this code to the user. They can open <code>/activate</code> on the intranet to set their
+              password and begin collaborating.
             </p>
             <div className="activation-modal-slip__actions">
               <Button variant="primary" onClick={() => setActiveSlip(null)}>
@@ -517,12 +521,7 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
               <Button variant="quiet" onClick={() => setRejectingItem(null)}>
                 Cancel
               </Button>
-              <Button
-                variant="danger"
-                busy={rejectBusy}
-                busyLabel="Declining…"
-                onClick={handleConfirmReject}
-              >
+              <Button variant="danger" busy={rejectBusy} busyLabel="Declining…" onClick={handleConfirmReject}>
                 Decline Application
               </Button>
             </div>

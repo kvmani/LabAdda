@@ -27,7 +27,7 @@ validation and independent delivery review are recorded in the handoff ledger.
 
 ## Status at a glance
 
-Last updated: 2026-11-15 (all of tracks A, H and U done; P1–P6 done, P7 awaiting owner decisions; Q3 partial; pilot rehearsal passed locally). Percentages are judged against the v1.0 definition above, weighted by
+Last updated: 2026-11-17 (rollout preparation review; all of tracks A, H and U done; P1–P6 done, P7 awaiting owner decisions; Q3 partial; pilot rehearsal passed locally). Percentages are judged against the v1.0 definition above, weighted by
 remaining effort, and are estimates — the package table below is the precise record.
 
 | Area | Weight | Done | Remaining in short |

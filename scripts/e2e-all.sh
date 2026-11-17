@@ -13,7 +13,7 @@ ALL=(personal-board pilot-safety accessibility admin-console alert-preferences a
   people-authority people-changes people-import people-import-excel people-scheduled preview-observations
   preview-reconciliation-view profile research-day setup-checklist storage-inventory task-assignment
   task-board-reference task-comments task-conversion task-updates todos ui-kit unit-admin
-  upload-receipts upload-recovery-ui welcome workspace-usage)
+  upload-receipts upload-recovery-ui welcome workspace-usage join-requests alert-popups)
 SUITES=("${@:-${ALL[@]}}")
 ORIGIN=http://127.0.0.1:8080
 PG="${LABADDA_PG:-postgresql+psycopg://labadda:labadda-dev@localhost:5432}"
@@ -56,6 +56,7 @@ invoke() { # origin and synthetic flags differ between suites; everything else t
   case $s in
     personal-board|pilot-safety) LABADDA_E2E_SHOTS="$shots" node_suite "$s" ;;
     flows) node_suite flows ;;
+    alert-popups) LABADDA_E2E_ORIGIN="$ORIGIN" LABADDA_E2E_SHOTS="$shots" node_suite "$s" "" /labadda-staging ;;
     accessibility|content-charges|governance|upload-receipts|upload-recovery-ui)
       node_suite "$s" "$ORIGIN" "$shots" ;;
     research-day|collaboration-review) node_suite "$s" "$ORIGIN" "$shots" --synthetic-instance ;;

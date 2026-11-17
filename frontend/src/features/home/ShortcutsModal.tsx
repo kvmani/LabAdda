@@ -23,6 +23,8 @@ export function ShortcutsModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
   return (
+    // Pointer users close by clicking the backdrop; keyboard users have Escape (window listener above).
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop mirrors Escape
     <div
       className="shortcuts-overlay"
       role="dialog"
@@ -30,15 +32,13 @@ export function ShortcutsModal({ isOpen, onClose }: Props) {
       aria-label="Keyboard Shortcuts"
       onClick={onClose}
     >
-      <div
-        className="shortcuts-card"
-        ref={dialogRef}
-        onClick={(e) => e.stopPropagation()}
-        tabIndex={-1}
-      >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stops backdrop close only */}
+      <div className="shortcuts-card" ref={dialogRef} onClick={(e) => e.stopPropagation()} tabIndex={-1}>
         <div className="shortcuts-card__header">
           <div className="shortcuts-card__title-box">
-            <span className="shortcuts-card__icon" aria-hidden="true">⌨️</span>
+            <span className="shortcuts-card__icon" aria-hidden="true">
+              ⌨️
+            </span>
             <div>
               <h2 className="shortcuts-card__title">Keyboard Shortcuts</h2>
               <p className="shortcuts-card__subtitle">Fast navigation across your research workspace</p>
@@ -102,7 +102,8 @@ export function ShortcutsModal({ isOpen, onClose }: Props) {
 
         <div className="shortcuts-card__footer">
           <p>
-            💡 <strong>Pro-tip:</strong> Double-click anywhere on a whiteboard canvas to immediately place a sticky note!
+            💡 <strong>Pro-tip:</strong> Double-click anywhere on a whiteboard canvas to immediately place a
+            sticky note!
           </p>
         </div>
       </div>
