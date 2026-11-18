@@ -125,3 +125,13 @@ exit 1
     assert "SERVICE_USER=labadda-mainrestore" in result.stdout
     assert "operators@domain.xx.in" not in result.stdout
     assert "relay.domain.xx.in" not in result.stdout
+    # A user-scope site's copy runs under the same account, still without mail or background jobs.
+    answers.write_text(answers.read_text() + "SERVICE_SCOPE=user\n")
+    result = shell(
+        tmp_path, f'bash "{kit}/restore.sh" --dry-run --bundle "{bundle}" --manifest-sha256 {"a" * 64}'
+    )
+    assert result.returncode == 0, result.stderr
+    assert "SERVICE_USER=labadda\n" in result.stdout
+    assert "labadda-mainrestore" not in result.stdout
+    assert "RUN_SCHEDULER=false" in result.stdout
+    assert "relay.domain.xx.in" not in result.stdout

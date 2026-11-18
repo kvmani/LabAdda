@@ -128,3 +128,31 @@ def test_shared_http_renders_locations_only_and_probes_over_http(tmp_path):
 def test_shared_http_needs_a_prefix_and_a_known_mode(tmp_path, change):
     with pytest.raises(ops.OperationsError):
         ops.load_site(site(tmp_path, **change))
+
+
+def test_dedicated_http_serves_its_own_address_without_tls(tmp_path):
+    config = ops.load_site(
+        site(tmp_path, web_access="dedicated-http", base_path="", server_name="10.20.30.41")
+    )
+    nginx = ops.render(config)["nginx.conf"]
+    assert "listen 80;\n    server_name 10.20.30.41;" in nginx
+    assert "default_server" not in nginx
+    assert "ssl" not in nginx
+    assert "location / {" in nginx
+
+
+def test_user_scope_unit_has_no_account_lines_and_runs_from_the_user_manager(tmp_path):
+    config = ops.load_site(site(tmp_path, service_scope="user"))
+    unit = ops.render(config)["service.conf"]
+    assert "User=" not in unit
+    assert "WantedBy=default.target" in unit
+    assert "ProtectSystem" not in unit
+    argv, env = ops.service_command(config, "start", "labadda-staging.service")
+    assert argv == ["systemctl", "--user", "start", "labadda-staging.service"]
+    assert env["XDG_RUNTIME_DIR"].startswith("/run/user/")
+    assert ops.service_command(ops.load_site(site(tmp_path)), "stop", "x")[0] == ["systemctl", "stop", "x"]
+
+
+def test_unknown_service_scope_is_refused(tmp_path):
+    with pytest.raises(ops.OperationsError, match="service_scope"):
+        ops.load_site(site(tmp_path, service_scope="root"))

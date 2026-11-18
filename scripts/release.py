@@ -145,15 +145,7 @@ def age_check(root: Path) -> None:
         )
 
 
-def build(
-    root: Path, output: Path, release_id: str, *, wheelhouse: bool = True, skip_age_check: bool = False
-) -> Path:
-    if not RELEASE_ID.fullmatch(release_id):
-        raise ReleaseError("Invalid release ID")
-    if sys.version_info[:2] != (3, 12):
-        raise ReleaseError("Build with Python 3.12")
-    if not skip_age_check:
-        age_check(root)
+def _git_identity(root: Path) -> tuple[str, str, list[str]]:
     status = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root)
     if status:
         raise ReleaseError("Build from a clean committed checkout")
@@ -161,6 +153,31 @@ def build(
     commit_date = subprocess.check_output(
         ["git", "log", "-1", "--format=%cs", commit], cwd=root, text=True
     ).strip()
+    paths = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0")
+    return commit, commit_date, paths
+
+
+def build(
+    root: Path,
+    output: Path,
+    release_id: str,
+    *,
+    wheelhouse: bool = True,
+    skip_age_check: bool = False,
+    source: tuple[str, str, list[str]] | None = None,
+) -> Path:
+    """Build from a clean git checkout, or from an extracted source zip: `source` is then the
+    (commit, commit date, file list) that source_zip.py read from the zip itself."""
+    if not RELEASE_ID.fullmatch(release_id):
+        raise ReleaseError("Invalid release ID")
+    if sys.version_info[:2] != (3, 12):
+        raise ReleaseError("Build with Python 3.12")
+    if not skip_age_check:
+        age_check(root)
+    if source is None:
+        commit, commit_date, paths = _git_identity(root)
+    else:
+        commit, commit_date, paths = source
     version = source_version(root)
     output.mkdir(parents=True, exist_ok=True)
     archive_path = output / f"labadda-{release_id}.tar.gz"
@@ -172,7 +189,6 @@ def build(
         for name in ("backend", "frontend", "deploy", "docs", "scripts"):
             (stage / name).mkdir()
         # Copy only committed runtime source/config, never local state or credentials.
-        paths = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0")
         for name in filter(None, paths):
             include = name.startswith(("backend/labadda/", "backend/migrations/", "deploy/")) or name in (
                 "backend/alembic.ini",
@@ -180,6 +196,8 @@ def build(
                 "backend/pyproject.toml",
                 "scripts/release.py",
                 "scripts/operations.py",
+                "scripts/source_zip.py",
+                "scripts/service_files.py",
                 "scripts/lifecycle.py",
                 "scripts/commission.py",
                 "scripts/backup_tools.py",
@@ -195,6 +213,9 @@ def build(
                 "docs/PILOT-RUNBOOK.md",
                 "docs/development/operations.md",
                 "docs/DEPLOYMENT.md",
+                "docs/deployment/README.md",
+                "docs/deployment/pm-coexistence.md",
+                "docs/deployment/pm-reference/apex_pm.active.conf",
                 "docs/RELEASES.md",
                 "docs/RECOVERY.md",
             )
@@ -464,12 +485,11 @@ require(s.environment in ('staging', 'pilot'), 'Set LABADDA_ENV to staging or pi
 require(s.instance and s.instance != 'dev', 'Set a distinct instance name')
 require(s.cookie_name != 'labadda_session', 'Set a distinct instance cookie')
 require(bool(s.trusted_origins), 'Configure trusted origins')
-# Either HTTPS with Secure cookies, or (shared plain-HTTP site) a URL prefix, no Secure flag and only
-# http:// origins. A mixture would drop the session cookie or trust the wrong scheme.
+# Either HTTPS with Secure cookies, or plain HTTP (an IP address without a certificate) with no
+# Secure flag and only http:// origins. A mixture would drop the session cookie or trust the wrong scheme.
 secure = s.cookie_secure and all(o.startswith('https://') for o in s.trusted_origins)
-shared = (not s.cookie_secure and bool(s.base_path)
-          and all(o.startswith('http://') for o in s.trusted_origins))
-require(secure or shared, 'Use HTTPS with Secure cookies, or plain HTTP only under a URL prefix')
+plain = not s.cookie_secure and all(o.startswith('http://') for o in s.trusted_origins)
+require(secure or plain, 'Use HTTPS with Secure cookies, or plain HTTP with http:// origins only')
 assets = s.asset_dir.resolve()
 writable = s.asset_dir.is_absolute() and assets.is_dir() and os.access(assets, os.W_OK)
 require(writable, 'Configure writable absolute asset directory')

@@ -31,7 +31,8 @@ EMAIL = re.compile(r"[^@\s]+@[a-z0-9]+(?:[.-][a-z0-9]+)*\Z")
 
 
 URL_PATH = re.compile(r"(?:/[a-z0-9][a-z0-9_-]*)+\Z")
-WEB_ACCESS = ("https", "shared-http")
+WEB_ACCESS = ("https", "dedicated-http", "shared-http")
+SERVICE_SCOPES = ("user", "system")
 SERVER_BLOCK = re.compile(r"^\s*server\s*\{", re.MULTILINE)
 SMTP_HOST = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*\Z")
 
@@ -42,7 +43,10 @@ class InputError(ValueError):
 
 def check_web(web_access: str, base_path: str) -> None:
     if web_access not in WEB_ACCESS:
-        raise InputError("Web access: https (own hostname) or shared-http (another application's address).")
+        raise InputError(
+            "Web access: https (own hostname), dedicated-http (own IP address) or shared-http "
+            "(another application's address)."
+        )
     if base_path and not URL_PATH.fullmatch(base_path):
         raise InputError("Address path: a path such as /labadda (lowercase, starting with /).")
     if web_access == "shared-http" and not base_path:
@@ -97,10 +101,14 @@ def site_json(  # noqa: PLR0917 — one value per installer answer
     user: str,
     base_path: str = "",
     web_access: str = "https",
+    service_scope: str = "system",
 ) -> dict:
     """The reviewed site description; every path sits under `prefix` (empty on a real server)."""
-    shared = {"web_access": web_access} if web_access == "shared-http" else {}
-    return shared | {
+    # Defaults are left out, so a description reads the same as one written before the option existed.
+    options = {"web_access": web_access} if web_access != "https" else {}
+    if service_scope != "system":
+        options["service_scope"] = service_scope
+    return options | {
         "instance": site,
         "root": f"{prefix}/srv/labadda/{site}",
         "user": user,
@@ -144,8 +152,8 @@ def env_values(
     base_path: str = "",
     web_access: str = "https",
 ) -> dict:
-    # A shared plain-HTTP site cannot carry Secure cookies; the cookie path is still the prefix.
-    shared = web_access == "shared-http"
+    # A plain-HTTP site cannot carry Secure cookies; the cookie path is still the prefix.
+    shared = web_access != "https"
     return {
         "LABADDA_ENV": "pilot",
         "LABADDA_INSTANCE": site,
@@ -232,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     for p in (one, env):
         p.add_argument("--base-path", default="")
         p.add_argument("--web-access", choices=WEB_ACCESS, default="https")
+    one.add_argument("--service-scope", choices=SERVICE_SCOPES, default="system")
     env.add_argument("--example", type=Path, required=True)
     env.add_argument("--zone", required=True)
     env.add_argument("--domain", default="")
@@ -252,7 +261,14 @@ def main(argv: list[str] | None = None) -> int:
             check_answers(args.site, args.hostname, "UTC", "")
             check_web(args.web_access, args.base_path)
             description = site_json(
-                args.site, args.prefix, args.hostname, args.port, args.user, args.base_path, args.web_access
+                args.site,
+                args.prefix,
+                args.hostname,
+                args.port,
+                args.user,
+                args.base_path,
+                args.web_access,
+                args.service_scope,
             )
             print(json.dumps(description, indent=2))
         elif args.command == "env-file":

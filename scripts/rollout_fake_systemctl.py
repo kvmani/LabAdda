@@ -34,6 +34,11 @@ def parse_unit(path: Path) -> dict:
     return values
 
 
+def unit_dir(cfg: dict) -> Path:
+    """`--user` calls address the service account's own unit folder, as a real user manager does."""
+    return Path(cfg["user_unit_dir"] if cfg.get("user_scope") else cfg["unit_dir"])
+
+
 def pid_file(cfg: dict, unit: str) -> Path:
     return Path(cfg["state"]) / f"{unit}.pid"
 
@@ -58,7 +63,7 @@ def start(cfg: dict, unit: str) -> None:
             start_nginx(cfg, "start")
             pid_file(cfg, "nginx").write_text(Path(cfg["nginx_pid"]).read_text().strip())
         return
-    path = Path(cfg["unit_dir"]) / unit
+    path = unit_dir(cfg) / unit
     if not path.is_file() or not unit.endswith(".service") or main_pid(cfg, unit):
         return
     spec = parse_unit(path)
@@ -67,7 +72,9 @@ def start(cfg: dict, unit: str) -> None:
         if line and not line.startswith("#"):
             key, _, value = line.partition("=")
             env[key] = value
-    command = ["/usr/sbin/runuser", "-u", spec["User"], "--", *shlex.split(spec["ExecStart"])]
+    # A user unit has no User=: it already runs as the account that called `systemctl --user`.
+    runner = ["/usr/sbin/runuser", "-u", spec["User"], "--"] if "User" in spec else []
+    command = [*runner, *shlex.split(spec["ExecStart"])]
     log = Path(cfg["state"]) / f"{unit}.log"
     with log.open("ab") as sink:
         process = subprocess.Popen(
@@ -94,7 +101,7 @@ def stop(cfg: dict, unit: str) -> None:
 
 
 def main(argv: list[str]) -> int:
-    cfg = settings()
+    cfg = settings() | {"user_scope": "--user" in argv}
     words = [a for a in argv if not a.startswith("--")]
     command = words[0]
     units = ["nginx" if u.startswith("nginx") else u for u in words[1:]]
@@ -107,7 +114,7 @@ def main(argv: list[str]) -> int:
         return 0 if up else 3
     if command == "show":
         unit = units[0]
-        loaded = (Path(cfg["unit_dir"]) / unit).is_file()
+        loaded = (unit_dir(cfg) / unit).is_file()
         pid = main_pid(cfg, unit)
         print(f"LoadState={'loaded' if loaded else 'not-found'}")
         print(f"ActiveState={'active' if pid else 'inactive'}")

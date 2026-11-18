@@ -16,6 +16,7 @@ while (($#)); do
 done
 set_paths; need_root
 [[ -f $SITE_JSON ]] || die "Site '$SITE' is not installed here."
+load_site_identity
 if ((DRY_RUN)); then
   step "Plan (nothing is changed)"; lifecycle backup --unattended --resume-after-backup; exit 0
 fi
@@ -29,6 +30,7 @@ say "    $(sha256sum "$BACKUP_ROOT/$newest/manifest.json" | cut -d' ' -f1)"
 if [[ -n $COPY_TO ]]; then
   step "Copying off the server"
   mkdir -p "$COPY_TO"; cp -a "$BACKUP_ROOT/$newest" "$COPY_TO/"
+  is_user_scope && chown -R "$SERVICE_USER:$SERVICE_USER" "$COPY_TO/$newest"
   digest=$(sha256sum "$BACKUP_ROOT/$newest/manifest.json" | cut -d' ' -f1)
   with_env "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli verify-backup "$COPY_TO/$newest" \
     --manifest-sha256 "$digest" >/dev/null || die "Copied backup failed full verification. Keep the original and recopy."

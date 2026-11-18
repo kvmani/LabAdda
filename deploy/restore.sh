@@ -29,8 +29,9 @@ if ((REMOVE)); then
   [[ -f $marker && ! -L $marker && $(<"$marker") == "$MAIN_SITE:$TEST_SITE:$INSTANCE_ROOT" ]] \
     || die "Refusing removal: this site has no matching disposable restore-test provenance."
   [[ $(site_field root) == "$INSTANCE_ROOT" ]] || die "Restore-test instance path does not match."
-  run "$SYSTEMCTL" disable --now "$UNIT"
-  run rm -f "$SYSTEMD_DIR/$UNIT"; run "$SYSTEMCTL" daemon-reload
+  load_site_identity
+  run svc disable --now "$UNIT"
+  run rm -f "$SYSTEMD_DIR/$UNIT"; run svc daemon-reload
   run runuser -u postgres -- dropdb --if-exists "labadda_$SITE"
   run runuser -u postgres -- psql -qc "drop role if exists labadda_$SITE"
   run rm -rf "$INSTANCE_ROOT" "$BACKUP_ROOT" "$ETC_DIR/$SITE".* "$SECRETS_DIR/$SITE.db-password"
@@ -43,9 +44,17 @@ SITE=$MAIN_SITE; set_paths
 # A disposable copy must not process copied mail, reminders or scheduled personnel changes.
 isolated_answers=$(mktemp)
 trap 'rm -f "$isolated_answers"' EXIT
+# A system-scope copy gets its own account. A user-scope copy runs under the live site's account (like
+# a second PM instance), isolated by its own instance folder, database, port, cookie and settings.
+# Scope from the live site's description, else from its answers (a rebuilt server), else system.
+if [[ -f $SITE_JSON ]]; then load_site_identity
+else SERVICE_SCOPE=$(sed -n 's/^SERVICE_SCOPE=//p' "$ANSWERS_FILE"); SERVICE_SCOPE=${SERVICE_SCOPE:-system}; fi
+account_override=(-e '/^SERVICE_USER=/d')
+is_user_scope && account_override=()
 sed -e '/^FEEDBACK_EMAIL=/d' -e '/^SMTP_RELAY=/d' -e '/^SMTP_USER=/d' \
-  -e '/^RUN_SCHEDULER=/d' -e '/^SERVICE_USER=/d' "$ANSWERS_FILE" >"$isolated_answers"
-printf 'FEEDBACK_EMAIL=none\nSMTP_RELAY=none\nSMTP_USER=none\nRUN_SCHEDULER=false\nSERVICE_USER=labadda-%s\n' "$TEST_SITE" >>"$isolated_answers"
+  -e '/^RUN_SCHEDULER=/d' "${account_override[@]}" "$ANSWERS_FILE" >"$isolated_answers"
+printf 'FEEDBACK_EMAIL=none\nSMTP_RELAY=none\nSMTP_USER=none\nRUN_SCHEDULER=false\n' >>"$isolated_answers"
+is_user_scope || printf 'SERVICE_USER=labadda-%s\n' "$TEST_SITE" >>"$isolated_answers"
 extra=(); ((DRY_RUN)) && extra=(--dry-run)
 bash "$KIT/install.sh" --site "$TEST_SITE" --answers "$isolated_answers" --port "$PORT_TEST" --yes --skip-os-packages \
   --no-nginx --no-timer --restore-bundle "$BUNDLE" --manifest-sha256 "$DIGEST" "${MODE_ARGS[@]}" "${extra[@]}"

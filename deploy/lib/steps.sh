@@ -31,19 +31,37 @@ step_os_packages() {
 }
 
 step_service_user() {
-  step "Service account and folders"
+  step "Service account and folders ($SERVICE_SCOPE scope)"
   if id "$SERVICE_USER" >/dev/null 2>&1; then ok "account $SERVICE_USER exists"
+  elif is_user_scope; then
+    run useradd --create-home --home-dir "$PREFIX/home/$SERVICE_USER" --shell /usr/sbin/nologin "$SERVICE_USER"
   else run useradd --system --home-dir "$INSTANCE_ROOT" --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER"; fi
-  local d
-  for d in "$INSTANCE_ROOT" "$INSTANCE_ROOT/releases" "$INSTANCE_ROOT/traffic" "$INSTANCE_ROOT/status" "$PREFIX/opt/labadda"; do
-    run install -d -m 0755 -o root -g root "$d"
+  ((DRY_RUN)) || apply_scope
+  # The account that runs the service owns the instance in user scope; root owns it in system scope.
+  local d owner=root
+  is_user_scope && owner=$SERVICE_USER
+  for d in "$INSTANCE_ROOT" "$INSTANCE_ROOT/releases" "$INSTANCE_ROOT/traffic" "$INSTANCE_ROOT/status"; do
+    run install -d -m 0755 -o "$owner" -g "$owner" "$d"
   done
+  run install -d -m 0755 -o root -g root "$PREFIX/opt/labadda"
   run install -d -m 0700 -o "$SERVICE_USER" -g "$SERVICE_USER" "$INSTANCE_ROOT/assets"
   run install -d -m 0700 -o "$SERVICE_USER" -g "$SERVICE_USER" "$INSTANCE_ROOT/secrets"
-  for d in "$INSTANCE_ROOT/operations" "$BACKUP_ROOT" "$ETC_DIR" "$SECRETS_DIR"; do
-    run install -d -m 0700 -o root -g root "$d"
-  done
-  ok "folders ready under $INSTANCE_ROOT"
+  for d in "$INSTANCE_ROOT/operations" "$BACKUP_ROOT"; do run install -d -m 0700 -o "$owner" -g "$owner" "$d"; done
+  # User scope: the account reads its own site description and settings; database secrets stay root's.
+  if is_user_scope; then run install -d -m 0755 -o root -g root "$ETC_DIR"; else run install -d -m 0700 -o root -g root "$ETC_DIR"; fi
+  run install -d -m 0700 -o root -g root "$SECRETS_DIR"
+  if is_user_scope; then enable_linger; fi
+  ok "folders ready under $INSTANCE_ROOT (owned by $owner)"
+}
+
+# Lingering keeps the account's user manager, and so LabAdda, running after logout and from boot,
+# as for project_management_software's services.
+enable_linger() {
+  ((DRY_RUN)) && { say "    [dry-run] would enable lingering for $SERVICE_USER"; return 0; }
+  "$LOGINCTL" enable-linger "$SERVICE_USER" || die "Could not enable lingering for $SERVICE_USER (loginctl enable-linger)."
+  local uid i; uid=$(id -u "$SERVICE_USER")
+  for ((i = 0; i < 30; i++)); do [[ -d /run/user/$uid ]] && break; sleep 0.5; done
+  ok "lingering on: $SERVICE_USER's services run from boot without a login"
 }
 
 step_tools() {
@@ -100,14 +118,14 @@ step_config() {
     $helper env-file "${smtp[@]}" --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" --run-scheduler "${RUN_SCHEDULER:-true}" \
       --base-path "${URL_PATH:-}" --web-access "${WEB_ACCESS:-https}" \
       --domain "$EMAIL_DOMAIN" --database-url "$url" --example "$TOOLS_DIR/deploy/labadda.env.example" \
-      | write_file 0600 root:root "$ENV_FILE"
+      | write_file 0600 "$(env_owner)" "$ENV_FILE"
   fi
   if [[ -f $SITE_JSON ]]; then ok "$SITE_JSON exists and is kept"
   else $helper site-json --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --user "$SERVICE_USER" \
-    --base-path "${URL_PATH:-}" --web-access "${WEB_ACCESS:-https}" \
+    --base-path "${URL_PATH:-}" --web-access "${WEB_ACCESS:-https}" --service-scope "$SERVICE_SCOPE" \
     | write_file 0644 root:root "$SITE_JSON"; fi
-  printf 'SITE_TITLE=%s\nHOSTNAME_=%s\nWEB_ACCESS=%s\nURL_PATH=%s\nSHARED_SITE=%s\nTIMEZONE_=%s\nEMAIL_DOMAIN=%s\nFEEDBACK_EMAIL=%s\nSMTP_RELAY=%s\nSMTP_FROM=%s\nSMTP_STARTTLS=%s\nSMTP_USER=%s\nPIP_INDEX_URL=%s\nPIP_TRUSTED_HOST=%s\nPORT=%s\nSERVICE_USER=%s\n' \
-    "$SITE_TITLE" "$HOSTNAME_" "${WEB_ACCESS:-https}" "${URL_PATH:-}" "${SHARED_SITE:-}" "$TIMEZONE_" "$EMAIL_DOMAIN" "$FEEDBACK_EMAIL" "$SMTP_RELAY" "$smtp_from" "${SMTP_STARTTLS:-false}" \
+  printf 'SERVICE_SCOPE=%s\nNPM_REGISTRY=%s\nSITE_TITLE=%s\nHOSTNAME_=%s\nWEB_ACCESS=%s\nURL_PATH=%s\nSHARED_SITE=%s\nTIMEZONE_=%s\nEMAIL_DOMAIN=%s\nFEEDBACK_EMAIL=%s\nSMTP_RELAY=%s\nSMTP_FROM=%s\nSMTP_STARTTLS=%s\nSMTP_USER=%s\nPIP_INDEX_URL=%s\nPIP_TRUSTED_HOST=%s\nPORT=%s\nSERVICE_USER=%s\n' \
+    "$SERVICE_SCOPE" "${NPM_REGISTRY:-}" "$SITE_TITLE" "$HOSTNAME_" "${WEB_ACCESS:-https}" "${URL_PATH:-}" "${SHARED_SITE:-}" "$TIMEZONE_" "$EMAIL_DOMAIN" "$FEEDBACK_EMAIL" "$SMTP_RELAY" "$smtp_from" "${SMTP_STARTTLS:-false}" \
     "${SMTP_USER:-none}" "$PIP_INDEX_URL" "$PIP_TRUSTED_HOST" "$PORT" "$SERVICE_USER" \
     | write_file 0600 root:root "$ANSWERS_FILE"
   ok "answers recorded in $ANSWERS_FILE (feedback e-mail settings are also in the env file)"
@@ -123,13 +141,22 @@ step_release() {
   fi
   local mirror=()
   if [[ $MODE == mirror ]]; then mirror=(--index-url "$PIP_INDEX_URL"); [[ -z $PIP_TRUSTED_HOST ]] || mirror+=(--trusted-host "$PIP_TRUSTED_HOST"); fi
-  run "$PYTHON" "$TOOLS_DIR/scripts/release.py" install "$archive" --sha256 "$digest" --instance "$INSTANCE_ROOT" "${mirror[@]}" >/dev/null
+  local source=$archive incoming=""
+  if is_user_scope && ! ((DRY_RUN)); then
+    # The kit may sit where the account cannot read (a root-only folder or drive); give it its own copy.
+    incoming=$(as_service mktemp -d)
+    install -m 0600 -o "$SERVICE_USER" -g "$SERVICE_USER" "$archive" "$incoming/"
+    source="$incoming/$(basename "$archive")"
+  fi
+  run as_service "$PYTHON" "$TOOLS_DIR/scripts/release.py" install "$source" --sha256 "$digest" --instance "$INSTANCE_ROOT" "${mirror[@]}" >/dev/null
+  [[ -z $incoming ]] || rm -rf "$incoming"
   ok "release $VERSION installed ($MODE mode: exact pinned packages only)"
 }
 
 step_tls() {
   step "Certificate"
   if is_shared_http; then ok "not used: LabAdda is served over plain HTTP inside $SHARED_SITE"; return 0; fi
+  if is_plain_http; then ok "not used: LabAdda is served over plain HTTP at $(site_url)"; return 0; fi
   local crt="$CERT_DIR/server.crt" key="$CERT_DIR/server.key"
   run install -d -m 0755 "$CERT_DIR"
   if [[ -n ${CERT_FILE:-} ]]; then
@@ -161,10 +188,15 @@ step_render_units() {
   out=$(mktemp -d)/review
   if ((DRY_RUN)); then say "    [dry-run] would render and install the labadda-$SITE service and nginx site"; return 0; fi
   operations render --out "$out" >/dev/null
-  install -d "$SYSTEMD_DIR"
-  install -m 0644 "$out/service.conf" "$SYSTEMD_DIR/$UNIT"
-  install -m 0644 "$TOOLS_DIR/deploy/systemd/labadda-backup@.service" "$SYSTEMD_DIR/"
-  install -m 0644 "$TOOLS_DIR/deploy/systemd/labadda-backup@.timer" "$SYSTEMD_DIR/"
+  local templates="$TOOLS_DIR/deploy/systemd"
+  if is_user_scope; then
+    templates="$TOOLS_DIR/deploy/systemd-user"
+    as_service mkdir -p "$SYSTEMD_DIR"
+  else install -d "$SYSTEMD_DIR"; fi
+  local unit_owner=root
+  is_user_scope && unit_owner=$SERVICE_USER
+  install -m 0644 -o "$unit_owner" -g "$unit_owner" "$out/service.conf" "$SYSTEMD_DIR/$UNIT"
+  install -m 0644 -o "$unit_owner" -g "$unit_owner" "$templates/labadda-backup@.service" "$templates/labadda-backup@.timer" "$SYSTEMD_DIR/"
   if ((NO_NGINX)); then ok "web server site skipped on request"
   elif is_shared_http; then attach_shared_site "$out"
   else
@@ -175,12 +207,12 @@ step_render_units() {
     ok "nginx accepts the site file"
   fi
   if [[ -f $ETC_DIR/$SITE.probe-ca ]]; then
-    install -d "$SYSTEMD_DIR/labadda-backup@$SITE.service.d"
+    as_service mkdir -p "$SYSTEMD_DIR/labadda-backup@$SITE.service.d"
     printf '[Service]\nEnvironment=LABADDA_PROBE_CA_FILE=%s\n' "$(<"$ETC_DIR/$SITE.probe-ca")" \
-      >"$SYSTEMD_DIR/labadda-backup@$SITE.service.d/probe-ca.conf"
+      | write_file 0644 "$unit_owner:$unit_owner" "$SYSTEMD_DIR/labadda-backup@$SITE.service.d/probe-ca.conf"
   fi
-  "$SYSTEMCTL" daemon-reload
-  ok "installed $UNIT and the nightly backup timer files"
+  svc daemon-reload
+  ok "installed $UNIT and the nightly backup timer files in $SYSTEMD_DIR"
 }
 
 step_initialize() {
@@ -220,8 +252,8 @@ step_admin() {
 step_start() {
   step "Start and health checks"
   if ((DRY_RUN)); then say "    [dry-run] would enable and start $UNIT, the backup timer and nginx"; return 0; fi
-  "$SYSTEMCTL" enable --now "$UNIT" >/dev/null
-  wait_for_health 90 || die "The service did not answer on its loopback port. See: journalctl -u $UNIT -n 50"
+  svc enable --now "$UNIT" >/dev/null
+  wait_for_health 90 || die "The service did not answer on its loopback port. See: $(journal_hint)"
   ok "service answers (liveness and readiness)"
   rm -f "$INSTANCE_ROOT/traffic/maintenance"
   if ((NO_NGINX)); then return 0; fi
@@ -235,8 +267,8 @@ step_backup_and_doctor() {
   if ((DRY_RUN)); then say "    [dry-run] would take the first backup, enable the nightly timer and run the doctor"; return 0; fi
   lifecycle backup --unattended --apply --external-writers-stopped --resume-after-backup >/dev/null \
     && ok "first backup taken and verified" || die "First backup failed. Do not admit users; run labadda-backup-now and read its message."
-  if ((NO_TIMER)); then ok "nightly timer skipped on request"; else "$SYSTEMCTL" enable --now "labadda-backup@$SITE.timer" >/dev/null; fi
-  ( cd "$INSTANCE_ROOT/current/backend" && "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) \
+  if ((NO_TIMER)); then ok "nightly timer skipped on request"; else svc enable --now "labadda-backup@$SITE.timer" >/dev/null; fi
+  ( cd "$INSTANCE_ROOT/current/backend" && as_service "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) \
     || die "Doctor failed. Do not admit users; fix the reported problems and run labadda-status."
 }
 
@@ -261,4 +293,29 @@ attach_shared_site() {
   fi
   rm -f "$before"
   ok "nginx accepts LabAdda at $(site_url) inside $SHARED_SITE (include line $result)"
+}
+
+# Read-only checks before an upgrade closes the site: everything a careful operator would look at.
+preflight_upgrade() {
+  step "Checking the running site before the upgrade (nothing is changed)"
+  local db_bytes asset_bytes need_gb free_gb
+  [[ -f $SITE_JSON ]] || die "Site '$SITE' is not installed here. Use install.sh for a first install."
+  [[ $(current_version) != none ]] || die "No active release found; run install.sh."
+  [[ ! -e $INSTANCE_ROOT/traffic/maintenance ]] \
+    || die "The site is in maintenance (an earlier upgrade or backup did not finish). Run labadda-status first."
+  [[ $(svc is-active "$UNIT" 2>/dev/null) == active ]] || die "$UNIT is not running; start it and check labadda-status first."
+  operations probe --direct >/dev/null 2>&1 || die "LabAdda does not answer on its port $(site_field port); run labadda-status."
+  operations probe >/dev/null 2>&1 || die "$(site_url) does not answer through nginx; run labadda-status."
+  runuser -u postgres -- pg_isready -q || die "PostgreSQL does not answer."
+  nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}" >/dev/null 2>&1 || die "nginx -t reports a problem; fix it before upgrading."
+  ok "$(current_version) running and healthy on port $(site_field port) and at $(site_url); PostgreSQL and nginx fine"
+  db_bytes=$(runuser -u postgres -- psql -qtAX -c "select pg_database_size('labadda_$SITE')" 2>/dev/null || echo 0)
+  asset_bytes=$(du -sb "$INSTANCE_ROOT/assets" 2>/dev/null | cut -f1 || echo 0)
+  # The backup holds a database dump and a copy of every upload; keep 1 GB more as a margin.
+  need_gb=$(((db_bytes + asset_bytes) / 1073741824 + 1))
+  free_gb=$(df -Pk "$BACKUP_ROOT" | awk 'NR==2{print int($4/1048576)}')
+  ((free_gb >= need_gb)) || die "Only ${free_gb} GB free for backups ($BACKUP_ROOT); the pre-upgrade backup needs about ${need_gb} GB."
+  free_gb=$(df -Pk "$INSTANCE_ROOT" | awk 'NR==2{print int($4/1048576)}')
+  ((free_gb >= 2)) || die "Only ${free_gb} GB free under $INSTANCE_ROOT; the new release needs 2 GB."
+  ok "disk: room for the pre-upgrade backup (about ${need_gb} GB) and the new release"
 }

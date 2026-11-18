@@ -9,10 +9,12 @@ source "$SELF/lib/common.sh"
 while (($#)); do case $1 in --site) SITE=$2; shift ;; *) die "Unknown option $1" ;; esac; shift; done
 set_paths
 [[ -f $SITE_JSON ]] || die "Site '$SITE' is not installed here (no $SITE_JSON)."
+load_site_identity
 set +e
 
 line() { printf '  %-18s %s\n' "$1" "$2"; }
 active() { "$SYSTEMCTL" is-active "$1" 2>/dev/null || true; }
+own_active() { svc is-active "$1" 2>/dev/null || true; }
 VERSION_NOW=$(current_version)
 say "LabAdda status for site '$SITE' on $(hostname) at $(date '+%Y-%m-%d %H:%M %Z')"
 say ""; say "Version"
@@ -22,8 +24,8 @@ if [[ $VERSION_NOW != none ]]; then
   line "build commit" "$("$PYTHON" -c 'import json,sys;print(json.load(open(sys.argv[1]))["commit"][:12])' "$INSTANCE_ROOT/current/manifest.json")"
 fi
 say ""; say "Services"
-line "labadda" "$(active "$UNIT")"; line "nginx" "$(active nginx)"; line "postgresql" "$(active postgresql)"
-line "nightly backup" "$(active "labadda-backup@$SITE.timer")"
+line "labadda" "$(own_active "$UNIT") ($SERVICE_SCOPE scope, account $SERVICE_USER)"; line "nginx" "$(active nginx)"; line "postgresql" "$(active postgresql)"
+line "nightly backup" "$(own_active "labadda-backup@$SITE.timer")"
 say ""; say "Health"
 if operations probe --direct >/dev/null 2>&1; then line "app (private)" "ready"; else line "app (private)" "NOT ANSWERING"; fi
 [[ ! -f $ANSWERS_FILE ]] || load_answers "$ANSWERS_FILE"

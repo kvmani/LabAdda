@@ -1,5 +1,8 @@
 # Intranet rollout checklist (pilot)
 
+> **From 0.1.0-beta:** install and upgrade straight from GitHub's release zip with the office
+> mirrors — see [deployment setups](deployment/README.md). The bundle steps below remain valid.
+
 For the person who puts LabAdda on the office server and looks after it. Plain steps, in order.
 Every command is typed on the server unless a step says "build machine". Names such as
 `labadda.lab.example.in` and `Asia/Kolkata` are examples: use your own. Never paste real

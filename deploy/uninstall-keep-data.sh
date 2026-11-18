@@ -10,11 +10,13 @@ while (($#)); do
   case $1 in --dry-run) DRY_RUN=1 ;; --yes) ASSUME_YES=1 ;; --site) SITE=$2; shift ;; *) die "Unknown option $1" ;; esac; shift
 done
 set_paths; need_root
+[[ -f $SITE_JSON ]] || die "Site '$SITE' is not installed here (no $SITE_JSON)."
+load_site_identity
 step "Taking site '$SITE' out of service (data is kept)"
 if ! ((ASSUME_YES || DRY_RUN)); then
   read -r -p "Type the site name ($SITE) to confirm: " reply; [[ $reply == "$SITE" ]] || die "Cancelled."; fi
-run "$SYSTEMCTL" disable --now "labadda-backup@$SITE.timer" || true
-run "$SYSTEMCTL" disable --now "$UNIT" || true
+run svc disable --now "labadda-backup@$SITE.timer" || true
+run svc disable --now "$UNIT" || true
 # A shared site must lose its include line before the file it names, or nginx (and the application
 # that owns the site) could no longer reload.
 snippet="$NGINX_DIR/snippets/labadda-$SITE.conf"
@@ -24,7 +26,7 @@ if [[ -f $snippet && -n $shared ]] && ! ((DRY_RUN)); then
     --include "$snippet" >/dev/null || die "Could not remove LabAdda's include line from $shared; nothing else was changed."
 fi
 run rm -f "$SYSTEMD_DIR/$UNIT" "$NGINX_DIR/conf.d/labadda-$SITE.conf" "$snippet"
-run "$SYSTEMCTL" daemon-reload
+run svc daemon-reload || true
 [[ ! -x $(command -v nginx || echo /nonexistent) ]] || run "$SYSTEMCTL" reload nginx || true
 run rm -f "$SBIN_DIR"/labadda-status "$SBIN_DIR"/labadda-backup-now "$SBIN_DIR"/labadda-restore "$SBIN_DIR"/labadda-upgrade "$SBIN_DIR"/labadda-reattach-nginx
 ok "stopped and removed the service, timer and web site"

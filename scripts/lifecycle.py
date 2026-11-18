@@ -53,6 +53,11 @@ def command(argv, *, env=None, cwd=None, timeout=120) -> str:
     return stdout.strip()
 
 
+def systemctl(site: dict, *args: str) -> str:
+    argv, env = operations.service_command(site, *args)
+    return command(argv, env=env)
+
+
 class VerificationFailed(operations.OperationsError):
     """The finished backup bundle did not match its manifest."""
 
@@ -112,7 +117,7 @@ def wait_ready(site: dict, *, seconds=60, interval=1) -> bool:
 
 def resume_traffic(site: dict, unit: str, marker: Path, log: Path):
     """Start the service, confirm direct readiness, lift maintenance, then confirm the TLS route."""
-    command(["systemctl", "start", unit])
+    systemctl(site, "start", unit)
     if not wait_ready(site):
         raise operations.OperationsError("Direct readiness failed")
     journal(log, "direct_ready")
@@ -200,8 +205,8 @@ def maintenance(  # noqa: PLR0912, PLR0915 — linear operator script; steps run
         sync_directory(marker.parent)
         try:
             journal(log, "maintenance_enabled")
-            command(["systemctl", "stop", unit])
-            stopped = command(["systemctl", "show", unit, "--property=ActiveState,MainPID"])
+            systemctl(site, "stop", unit)
+            stopped = systemctl(site, "show", unit, "--property=ActiveState,MainPID")
             properties = dict(line.split("=", 1) for line in stopped.splitlines() if "=" in line)
             if properties.get("MainPID") != "0" or properties.get("ActiveState") not in (
                 "inactive",

@@ -1,0 +1,18 @@
+# User service template for one scheduled backup, run by the LabAdda account's own user manager:
+#   systemctl --user start labadda-backup@<instance>   (normally started by the timer below)
+# Installed by install.sh into ~/.config/systemd/user/ when SERVICE_SCOPE=user.
+#
+# It stops the site, takes a verified backup, restarts the site, writes backup-status.json into
+# LABADDA_STATUS_DIR and then trims old local backups. --external-writers-stopped is YOUR
+# attestation that no other LabAdda command runs at the scheduled time.
+# Python runs with -E -s, not -I: -I drops the script folder from the import path.
+[Unit]
+Description=LabAdda scheduled backup (%i)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -E -s /opt/labadda/tools/scripts/lifecycle.py --site /etc/labadda/%i.site.json backup --unattended --apply --external-writers-stopped --resume-after-backup --destination-alias local
+# Runs only when the backup above succeeded, so a failing backup never costs an older good one.
+ExecStartPost=/usr/bin/python3 -E -s /opt/labadda/tools/scripts/lifecycle.py --site /etc/labadda/%i.site.json prune-backups --keep 7 --apply
+TimeoutStartSec=2h
+NoNewPrivileges=true

@@ -5,6 +5,11 @@ already serving project_management_software (PM). The owner confirmed the OS on 
 The office hostname, IP, SMTP relay and available resources remain operator inputs.
 Do not install over an existing LabAdda instance: use the verified upgrade procedure instead.
 
+**From 0.1.0-beta (18 November):** install and upgrade start from GitHub's release zip with
+`deploy/install.sh --zip` / `deploy/upgrade.sh --zip`, and LabAdda runs as systemd user services like
+PM. The [deployment setups page](deployment/README.md) is the current procedure; this guide's
+shared-address, nginx and acceptance sections still apply.
+
 **17 November decision (owner): no LabAdda hostname or certificate.** LabAdda is served at
 `http://<server-IP>/labadda/` — the same address and plain-HTTP nginx site PM already uses — with
 installer answer `WEB_ACCESS=shared-http`. Follow [the shared-address layout](#shared-address-layout)

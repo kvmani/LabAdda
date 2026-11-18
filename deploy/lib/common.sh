@@ -10,6 +10,11 @@ DRY_RUN=0
 ASSUME_YES=0
 SITE="${LABADDA_SITE:-main}"
 SYSTEMCTL="${LABADDA_SYSTEMCTL:-systemctl}"
+LOGINCTL="${LABADDA_LOGINCTL:-loginctl}"
+# "user": LabAdda runs as systemd USER services of its account, like project_management_software's
+# ipms-* units, and that account owns the instance. "system": the original system unit with a
+# dedicated nologin account. Sites installed before this choice existed are system scope.
+SERVICE_SCOPE="${SERVICE_SCOPE:-}"
 MODE=mirror  # mirror: OS and Python packages come from the office mirrors; offline: from the kit
 PIP_INDEX_URL="${PIP_INDEX_URL:-}"
 PIP_TRUSTED_HOST="${PIP_TRUSTED_HOST:-}"
@@ -68,10 +73,48 @@ set_paths() {
 
 # Read one field from the site description written by the installer.
 site_field() { "$PYTHON" -c 'import json,sys;print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$SITE_JSON" "$1"; }
+site_field_or() { "$PYTHON" -c 'import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2],sys.argv[3]))' "$SITE_JSON" "$1" "$2"; }
 
-lifecycle() { "$PYTHON" "$TOOLS_DIR/scripts/lifecycle.py" --site "$SITE_JSON" "$@"; }
+is_user_scope() { [[ ${SERVICE_SCOPE:-system} == user ]]; }
+# Unit files live with the service manager that runs them; call again once the account exists.
+apply_scope() {
+  if is_user_scope; then
+    SERVICE_HOME=$(getent passwd "$SERVICE_USER" | cut -d: -f6 || true)
+    SYSTEMD_DIR="$SERVICE_HOME/.config/systemd/user"
+  else
+    SYSTEMD_DIR="$PREFIX/etc/systemd/system"
+  fi
+}
+env_owner() { if is_user_scope; then echo "$SERVICE_USER:$SERVICE_USER"; else echo root:root; fi; }
+journal_hint() {
+  if is_user_scope; then echo "sudo -u $SERVICE_USER XDG_RUNTIME_DIR=/run/user/\$(id -u $SERVICE_USER) journalctl --user -u $UNIT -n 50"
+  else echo "journalctl -u $UNIT -n 50"; fi
+}
+# An installed site's account and scope, read from its site description.
+load_site_identity() {
+  SERVICE_USER=$(site_field user)
+  SERVICE_SCOPE=$(site_field_or service_scope system)
+  apply_scope
+}
+# In user scope everything that writes into the instance runs as its account, so files keep one owner.
+# The operator may run the scripts from a folder the account cannot enter (such as /root).
+as_service() {
+  if ! is_user_scope || (($(id -u) != 0)); then "$@"; return; fi
+  if runuser -u "$SERVICE_USER" -- test -x "$PWD"; then runuser -u "$SERVICE_USER" -- "$@"
+  else (cd /tmp && runuser -u "$SERVICE_USER" -- "$@"); fi
+}
+# systemctl for LabAdda's own units; nginx and PostgreSQL always use "$SYSTEMCTL" directly.
+svc() {
+  if is_user_scope; then
+    as_service env XDG_RUNTIME_DIR="/run/user/$(id -u "$SERVICE_USER")" "$SYSTEMCTL" --user "$@"
+  else
+    "$SYSTEMCTL" "$@"
+  fi
+}
+
+lifecycle() { as_service "$PYTHON" "$TOOLS_DIR/scripts/lifecycle.py" --site "$SITE_JSON" "$@"; }
 operations() { "$PYTHON" "$TOOLS_DIR/scripts/operations.py" --site "$SITE_JSON" "$@"; }
-release_tool() { "$PYTHON" "$TOOLS_DIR/scripts/release.py" "$@"; }
+release_tool() { as_service "$PYTHON" "$TOOLS_DIR/scripts/release.py" "$@"; }
 
 # Run a command with the site settings loaded; values are plain KEY=value lines, so sourcing is safe.
 with_env() { (
@@ -79,7 +122,8 @@ with_env() { (
   # shellcheck disable=SC1090
   . "$ENV_FILE"
   set +a
-  "$@"
+  # Tool wrappers (functions) switch account themselves; runuser can only start programs.
+  if declare -F "$1" >/dev/null; then "$@"; else as_service "$@"; fi
 ); }
 
 current_version() {
@@ -120,7 +164,7 @@ load_answers() {
   while IFS='=' read -r key value; do
     [[ -z $key || $key == \#* ]] && continue
     case $key in
-      RUN_SCHEDULER | SITE_TITLE | HOSTNAME_ | WEB_ACCESS | URL_PATH | SHARED_SITE | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | SMTP_FROM | SMTP_STARTTLS | SMTP_USER | PIP_INDEX_URL | PIP_TRUSTED_HOST | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
+      RUN_SCHEDULER | SITE_TITLE | HOSTNAME_ | WEB_ACCESS | URL_PATH | SHARED_SITE | SERVICE_SCOPE | NPM_REGISTRY | TIMEZONE_ | EMAIL_DOMAIN | FEEDBACK_EMAIL | SMTP_RELAY | SMTP_FROM | SMTP_STARTTLS | SMTP_USER | PIP_INDEX_URL | PIP_TRUSTED_HOST | PORT | SERVICE_USER | ADMIN_USER | ADMIN_NAME)
         [[ $value =~ ^[A-Za-z0-9@._:/\ -]*$ ]] || die "Answers file: odd characters in $key"
         [[ -n ${!key:-} ]] || printf -v "$key" '%s' "$value" ;;
       *) die "Answers file: unknown setting $key" ;;
@@ -139,7 +183,8 @@ verify_kit() {
 kit_field() { "$PYTHON" -c 'import json,sys;print(json.load(open(sys.argv[1]+"/MANIFEST.json"))[sys.argv[2]])' "$1" "$2"; }
 
 is_shared_http() { [[ ${WEB_ACCESS:-https} == shared-http ]]; }
-site_url() { if is_shared_http; then echo "http://$HOSTNAME_${URL_PATH:-}/"; else echo "https://$HOSTNAME_/"; fi; }
+is_plain_http() { [[ ${WEB_ACCESS:-https} != https ]]; }
+site_url() { if is_plain_http; then echo "http://$HOSTNAME_${URL_PATH:-}/"; else echo "https://$HOSTNAME_${URL_PATH:-}/"; fi; }
 
 blank_if_none() { if [[ $1 == none ]]; then echo ""; else echo "$1"; fi; }
 

@@ -62,9 +62,9 @@ of finished work, not instructions.
 - No runtime request leaves the server: no CDN, web font, telemetry, external image or API.
   Every asset is bundled. Sole exception (owner-approved): feedback e-mail to the operator-named intranet relay.
   New dependencies: locked, free licence, card allows it, every pinned version >= 30 days old (`check_dependency_age.py`).
-- Only fictional fixture data (source, tests, logs, screenshots, documents): Indian personal names
-  and national-research-laboratory units, groups and projects, e.g. "Surface Engineering Division",
-  "Project Tejas" (docs/development/fixture-names.md). Never commit real names, hosts or secrets.
+- Deploy code runs unchanged in every [setup](docs/deployment/README.md); beside PM obey [pm-coexistence.md](docs/deployment/pm-coexistence.md).
+- Only fictional fixture data (source, tests, logs, screenshots, docs): Indian names, national-lab units/groups/projects
+  such as "Surface Engineering Division" (docs/development/fixture-names.md). Never commit real names, hosts or secrets.
 
 **Honesty**
 
@@ -157,4 +157,4 @@ Otherwise make the safest reasonable assumption, record it in the handoff, and c
 | Where the code for a feature lives | [docs/development/README.md](docs/development/README.md) |
 | Acceptance tests | [TESTING.md](TESTING.md) |
 | Independent review procedure | [REVIEW.md](REVIEW.md) |
-| Deployment, recovery, commissioning | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Deployment setups, zip install/upgrade, PM facts, recovery | [docs/deployment/README.md](docs/deployment/README.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |

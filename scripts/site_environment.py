@@ -6,6 +6,7 @@ reviewed site configuration. Standard library only.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import stat
@@ -84,11 +85,22 @@ ALLOWED_ENV = {
 }
 
 
+def _owners(site: dict) -> set[int]:
+    """Root, the caller, and for a user-scope site the service account that owns its settings."""
+    owners = {0, os.geteuid()}
+    if site.get("service_scope") == "user":
+        import pwd  # noqa: PLC0415 — POSIX only; these operator tools run on the Ubuntu server
+
+        with contextlib.suppress(KeyError):
+            owners.add(pwd.getpwnam(site["user"]).pw_uid)
+    return owners
+
+
 def runtime_environment(site: dict) -> dict:
     path = Path(site["env_file"])
     info = path.lstat()
     if hasattr(os, "geteuid") and (
-        not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_uid not in (0, os.geteuid())
+        not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_uid not in _owners(site)
     ):
         raise operations.OperationsError(
             "Environment file must be operator-owned regular mode0600 or stricter"
@@ -108,14 +120,14 @@ def runtime_environment(site: dict) -> dict:
                 "Environment requires unique allowlisted unquoted KEY=value lines"
             )
         values[key] = value
-    shared = site.get("web_access") == "shared-http"
+    shared = site.get("web_access", "https") != "https"
     required = {
         "LABADDA_INSTANCE": site["instance"],
         "LABADDA_PORT": str(site["port"]),
         "LABADDA_BASE_PATH": site["base_path"],
         "LABADDA_ASSET_DIR": site["root"] + "/assets",
         "LABADDA_FRONTEND_DIST": site["root"] + "/current/frontend/dist",
-        # A shared plain-HTTP site cannot carry Secure cookies; the cookie path is still the prefix.
+        # A plain-HTTP site cannot carry Secure cookies; the cookie path is still the prefix.
         "LABADDA_COOKIE_SECURE": "false" if shared else "true",
         "LABADDA_TRUSTED_ORIGINS": ("http://" if shared else "https://") + site["server_name"],
     }

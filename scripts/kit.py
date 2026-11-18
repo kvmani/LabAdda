@@ -25,6 +25,7 @@ import tarfile
 from pathlib import Path
 
 import release
+import source_zip
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMAT = 1
@@ -47,6 +48,8 @@ TOOL_SCRIPTS = (
     "lifecycle.py",
     "commission.py",
     "operations.py",
+    "service_files.py",
+    "source_zip.py",
     "backup_tools.py",
     "site_environment.py",
     "site_state.py",
@@ -163,6 +166,7 @@ def build(
     skip_debs: bool = False,
     offline: bool = False,
     skip_age_check: bool = False,
+    source: tuple[str, str, list[str]] | None = None,
 ) -> Path:
     mode = "offline" if offline else "bundle"
     version = code_version(root)
@@ -176,21 +180,30 @@ def build(
     try:
         if archive is None:
             archive = release.build(
-                root, work / "build", version, wheelhouse=offline, skip_age_check=skip_age_check
+                root,
+                work / "build",
+                version,
+                wheelhouse=offline,
+                skip_age_check=skip_age_check,
+                source=source,
             )
         digest_file = archive.with_suffix(".gz.sha256")
         (work / "release").mkdir()
-        for source in (archive, digest_file):
-            shutil.copyfile(source, work / "release" / source.name)
+        for produced in (archive, digest_file):
+            shutil.copyfile(produced, work / "release" / produced.name)
         extract_tools(archive, work / "tools")
         for name in LAUNCHERS:
             shutil.copyfile(root / "deploy" / name, work / name)
             (work / name).chmod(0o755)
         shutil.copytree(root / "deploy/lib", work / "lib")
-        shutil.copyfile(root / "docs/ROLLOUT-INTRANET.md", work / "READ-ME-FIRST.md")
+        readme = (
+            (root / "docs/ROLLOUT-INTRANET.md").read_text().replace("(deployment/", "(tools/docs/deployment/")
+        )
+        (work / "READ-ME-FIRST.md").write_text(readme)
         office_guide = root / "docs/OFFICE-PILOT-2026-11-16.md"
         if office_guide.is_file():
             office_text = office_guide.read_text().replace("(../deploy/office-pilot/", "(office-pilot/")
+            office_text = office_text.replace("(deployment/", "(tools/docs/deployment/")
             for name in ("RECOVERY.md", "RELEASES.md"):
                 office_text = office_text.replace(f"({name})", f"(tools/docs/{name})")
             (work / "OFFICE-PILOT-2026-11-16.md").write_text(office_text)
@@ -245,6 +258,31 @@ def check(kit: Path, *, deep: bool = True, allow_no_debs: bool = False) -> list[
     return problems
 
 
+def _build_command(args) -> Path:
+    archive = args.release_archive.resolve() if args.release_archive else None
+    root, source, skip_age_check = args.root.resolve(), None, args.skip_age_check
+    if args.source_zip:
+        output = args.output.resolve()
+        commit, date = source_zip.identity(args.source_zip)
+        root = source_zip.extract(args.source_zip, output / f".source-{commit[:12]}")
+        # Pins were held to the 30-day minimum when the release was cut and tested; the office
+        # mirror cannot answer the age question, so it is not asked again here.
+        source, skip_age_check = (commit, date, source_zip.tree_files(root)), True
+    try:
+        return build(
+            args.output.resolve(),
+            root=root,
+            archive=archive,
+            skip_debs=args.skip_os_packages,
+            offline=args.offline_kit,
+            skip_age_check=skip_age_check,
+            source=source,
+        )
+    finally:
+        if source is not None:
+            shutil.rmtree(root.parent, ignore_errors=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -256,6 +294,11 @@ def main(argv: list[str] | None = None) -> int:
     built.add_argument("--offline-kit", action="store_true", help="also carry OS packages and wheelhouse")
     built.add_argument("--skip-os-packages", action="store_true", help="rehearsal only: no .deb files")
     built.add_argument("--skip-age-check", action="store_true", help="rehearsal only: skip the 30-day check")
+    built.add_argument(
+        "--source-zip",
+        type=Path,
+        help="build on the server from GitHub's release zip (no git); the 30-day check was done at release",
+    )
     check_cmd = sub.add_parser("verify")
     check_cmd.add_argument("kit", type=Path)
     check_cmd.add_argument("--no-deep", action="store_true", help="skip re-reading the archive contents")
@@ -264,16 +307,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "version":
             print(code_version())
         elif args.command == "build":
-            archive = args.release_archive.resolve() if args.release_archive else None
-            kit = build(
-                args.output.resolve(),
-                root=args.root.resolve(),
-                archive=archive,
-                skip_debs=args.skip_os_packages,
-                offline=args.offline_kit,
-                skip_age_check=args.skip_age_check,
-            )
-            print(kit)
+            print(_build_command(args))
         else:
             problems = check(args.kit.resolve(), deep=not args.no_deep)
             for problem in problems:
@@ -281,7 +315,13 @@ def main(argv: list[str] | None = None) -> int:
             print("kit verify: OK" if not problems else "kit verify: FAILED")
             return 1 if problems else 0
         return 0
-    except (KitError, release.ReleaseError, OSError, subprocess.CalledProcessError) as error:
+    except (
+        KitError,
+        release.ReleaseError,
+        source_zip.SourceZipError,
+        OSError,
+        subprocess.CalledProcessError,
+    ) as error:
         print(f"kit: {error}", file=sys.stderr)
         return 1
 

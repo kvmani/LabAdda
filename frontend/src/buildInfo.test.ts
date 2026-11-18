@@ -20,7 +20,7 @@ describe("build identity", () => {
   });
 
   it("is stamped by the build and carries the credit", () => {
-    expect(BUILD_LINE.startsWith("Version 0.0.2 beta · commit ")).toBe(true);
+    expect(BUILD_LINE.startsWith("Version 0.1.0 beta · commit ")).toBe(true);
     expect(CREDIT).toBe("Software conceived and developed by Dr. K. V. Mani Krishna, Materials Group.");
   });
 });

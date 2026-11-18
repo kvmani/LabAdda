@@ -1,11 +1,15 @@
 // Browser flows through the real proxy for a root and a prefixed instance.
 // Usage: node e2e/flows.mjs [origin] [base...]   e.g. node e2e/flows.mjs http://127.0.0.1:8080 "" /labadda-staging
 import { createRequire } from "node:module";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const require = createRequire(import.meta.url);
+// The footer must show the code's own version (backend/labadda/__init__.py), whatever the release.
+const versionLabel = readFileSync(new URL("../backend/labadda/__init__.py", import.meta.url), "utf8")
+  .match(/^__version__ = "([^"]+)"$/m)[1]
+  .replace("-", " ");
 const { chromium } = require("playwright");
 const origin = process.argv[2] ?? "http://127.0.0.1:8080";
 const bases = process.argv.length > 3 ? process.argv.slice(3) : ["", "/labadda-staging"];
@@ -72,7 +76,9 @@ async function run(base) {
     );
     const buildLine = await bharat.page.getByTestId("build-line").textContent();
     check(
-      /^Version 0\.0\.2 beta · commit ([0-9a-f]{7}|unknown)( · \d{4}-\d{2}-\d{2})?$/.test(buildLine ?? ""),
+      new RegExp(
+        `^Version ${versionLabel.replaceAll(".", "\\.")} · commit ([0-9a-f]{7}|unknown)( · \\d{4}-\\d{2}-\\d{2})?$`,
+      ).test(buildLine ?? ""),
       `${tag}: shell footer names version, commit and date`,
     );
     check(

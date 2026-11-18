@@ -277,22 +277,20 @@ def check_proxy(host: Host, settings: Settings) -> CheckResult:
     )
 
 
-def _shared_plain_http(settings: Settings) -> bool:
-    """The deliberate shared-site layout: a URL prefix, no Secure cookie and only http:// origins."""
-    return (
-        bool(settings.base_path)
-        and not settings.cookie_secure
-        and all(origin.startswith("http://") for origin in settings.trusted_origins)
+def _plain_http(settings: Settings) -> bool:
+    """The deliberate plain-HTTP layout (an IP address, no certificate): no Secure cookie, only http://."""
+    return not settings.cookie_secure and all(
+        origin.startswith("http://") for origin in settings.trusted_origins
     )
 
 
 def _tls_not_in_use(settings: Settings, title: str) -> CheckResult:
-    if settings.environment in SITE_ENVIRONMENTS and _shared_plain_http(settings):
+    if settings.environment in SITE_ENVIRONMENTS and _plain_http(settings):
         return _skipped(
             "tls",
             title,
-            f"Not in use: the site is plain HTTP under {settings.base_path}, sharing another "
-            "application's address. Sign-in and content cross the office network unencrypted.",
+            f"Not in use: the site is plain HTTP at {settings.trusted_origins[0]}{settings.base_path}/. "
+            "Sign-in and content cross the office network unencrypted.",
         )
     if settings.environment in SITE_ENVIRONMENTS:
         return CheckResult(

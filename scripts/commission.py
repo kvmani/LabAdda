@@ -114,13 +114,11 @@ def prepare(  # noqa: PLR0912, PLR0915 — linear operator script; steps run in 
         lifecycle.sync_directory(marker.parent)
         try:
             # The installed managed service must be stopped; external/unmanaged writers are an attestation.
-            status = lifecycle.command(
-                [
-                    "systemctl",
-                    "show",
-                    f"labadda-{site['instance']}.service",
-                    "--property=LoadState,ActiveState,MainPID",
-                ]
+            status = lifecycle.systemctl(
+                site,
+                "show",
+                f"labadda-{site['instance']}.service",
+                "--property=LoadState,ActiveState,MainPID",
             )
             properties = dict(line.split("=", 1) for line in status.splitlines() if "=" in line)
             if (

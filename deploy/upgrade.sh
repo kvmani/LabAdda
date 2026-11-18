@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Upgrade to the release in a NEW offline kit: backup first, verify, migrate, restart, check health.
+# Upgrade to a new release: sanity checks, backup first, verify, migrate, restart, check health.
+# From GitHub's release zip (no git, packages from the office mirrors), as for project_management_software:
+#   unzip LabAdda-X.Y.Z.zip && sudo bash LabAdda-X.Y.Z/deploy/upgrade.sh --zip LabAdda-X.Y.Z.zip --sha256 HEX [--dry-run]
+# From an already built bundle:
 #   cd /media/usb/labadda-<new-version>-bundle && sudo bash upgrade.sh [--dry-run] [--yes] [--offline-kit]
 # The site is closed to users while this runs. If something fails the script puts the old version
 # back automatically when the database allows it; otherwise it leaves the site closed and says
@@ -10,18 +13,24 @@ KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$KIT/lib/common.sh"
 # shellcheck source=lib/steps.sh
 source "$KIT/lib/steps.sh"
+# shellcheck source=lib/source.sh
+source "$KIT/lib/source.sh"
+ORIGINAL=("$@") ZIP="" ZIP_SHA=""
 while (($#)); do
   case $1 in
     --dry-run) DRY_RUN=1 ;; --yes) ASSUME_YES=1 ;; --site) SITE=$2; shift ;;
+    --zip) ZIP=$(readlink -f "$2"); shift ;; --sha256) ZIP_SHA=$2; shift ;;
     --offline-kit) MODE=offline ;; --pip-index-url) PIP_INDEX_URL=$2; shift ;; --pip-trusted-host) PIP_TRUSTED_HOST=$2; shift ;;
-    -h | --help) sed -n '2,6p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "Unknown option $1" ;;
   esac; shift
 done
 set_paths; need_root
 [[ -f $SITE_JSON ]] || die "Site '$SITE' is not installed here. Use install.sh for a first install."
-SERVICE_USER=$(site_field user)
+load_site_identity
 [[ ! -f $ANSWERS_FILE ]] || load_answers "$ANSWERS_FILE"  # keeps the mirror address chosen at install
+if [[ -n $ZIP ]]; then SELF_ROOT="$KIT/.."; from_source_zip upgrade "${ORIGINAL[@]}"; fi
+preflight_upgrade
 step "Checking the new kit"
 verify_kit "$KIT"
 check_mode "$KIT"
@@ -50,19 +59,19 @@ if ! ((ASSUME_YES)); then
   read -r -p "Close the site and upgrade now? Type UPGRADE to continue: " reply
   [[ $reply == UPGRADE ]] || die "Cancelled. Nothing was changed except installing the new files beside the old."
 fi
-"$SYSTEMCTL" stop "labadda-backup@$SITE.timer" 2>/dev/null || true
+svc stop "labadda-backup@$SITE.timer" 2>/dev/null || true
 step "Upgrading (site closed)"
 if lifecycle upgrade --apply --external-writers-stopped --expected-current "$CURRENT" --expected-schema "$OLD_SCHEMA" \
   --candidate "$VERSION" >/dev/null; then
-  "$SYSTEMCTL" start "labadda-backup@$SITE.timer" 2>/dev/null || true
+  svc start "labadda-backup@$SITE.timer" 2>/dev/null || true
   ok "now running $VERSION; the site is open again"
-  ( cd "$INSTANCE_ROOT/current/backend" && "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) || warn "the doctor reported problems above"
+  ( cd "$INSTANCE_ROOT/current/backend" && as_service "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) || warn "the doctor reported problems above"
   exit 0
 fi
 
 step "The upgrade did not finish - checking whether the old version can be put back"
 NOW=$(current_version); OBSERVED=$(schema_of "$NOW" || true)
-reopen() { "$SYSTEMCTL" start "$UNIT"; wait_for_health 90 && rm -f "$INSTANCE_ROOT/traffic/maintenance"; }
+reopen() { svc start "$UNIT"; wait_for_health 90 && rm -f "$INSTANCE_ROOT/traffic/maintenance"; }
 if [[ $NOW == "$CURRENT" && $OBSERVED == "$OLD_SCHEMA" ]]; then
   reopen && { ok "ROLLED BACK AUTOMATICALLY: nothing had changed; $CURRENT is running and the site is open."; exit 1; }
 elif [[ $NOW == "$VERSION" && $OLD_SCHEMA == "$NEW_SCHEMA" && $OBSERVED == "$OLD_SCHEMA" ]]; then

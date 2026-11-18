@@ -23,9 +23,14 @@ SMTP_USER=none
 # REPLACE with the actual internal Python index. Keep certificate verification enabled.
 PIP_INDEX_URL=https://pypi.domain.xx.in/simple
 PIP_TRUSTED_HOST=
+# Optional: the internal npm registry used to build the screens on this server. Leave empty to use
+# the npm settings (~/.npmrc) of the account that runs sudo, as PM's builds do.
+NPM_REGISTRY=
 # Candidate port: PM uses 8000/8001/8002 and 4173/4174/4175. Verify 8100 is free.
 PORT=8100
-SERVICE_USER=labadda
+# user: LabAdda runs as systemd USER services, like PM's ipms-* units. The account defaults to the
+# one that runs sudo; put PM's operator account here to keep both applications under one account.
+SERVICE_SCOPE=user
 RUN_SCHEDULER=true
 # New LabAdda account, not the PM login. Activation code prints once; transfer privately.
 ADMIN_USER=labaddaadmin

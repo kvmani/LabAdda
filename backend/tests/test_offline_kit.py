@@ -346,3 +346,19 @@ def test_attach_site_refuses_a_file_with_several_server_blocks(tmp_path):
     with pytest.raises(install_helpers.InputError, match="2 server blocks"):
         install_helpers.attach_site(site_file, "/etc/nginx/snippets/labadda-main.conf")
     assert site_file.read_text() == PM_SITE + PM_SITE
+
+
+def test_attach_site_on_pm_real_nginx_file_changes_one_line_and_keeps_every_pm_route(tmp_path):
+    original = (DEPLOY.parent / "docs/deployment/pm-reference/apex_pm.active.conf").read_text()
+    site_file = tmp_path / "apex_pm"
+    site_file.write_text(original)
+    include = "/etc/nginx/snippets/labadda-main.conf"
+    assert install_helpers.attach_site(site_file, include) == "added"
+    changed = site_file.read_text().splitlines()
+    added = [line for line in changed if line not in original.splitlines()]
+    assert added == [f"    include {include};  # LabAdda under its own path; added by the LabAdda installer"]
+    for route in ("/production/", "/staging/", "/chemistry/", "/production/api/", "/chemistry/health/"):
+        assert f"location ^~ {route} {{" in "\n".join(changed)
+    assert changed[-1] == "}"
+    assert install_helpers.attach_site(site_file, include, remove=True) == "removed"
+    assert site_file.read_text() == original

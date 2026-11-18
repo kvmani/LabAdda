@@ -302,7 +302,7 @@ def test_tls_is_required_on_a_pilot_site_but_optional_in_development(assets, sta
     assert doctor.check_tls(development, doctor.load_settings(development.environ)).status == "skip"
 
 
-def test_shared_plain_http_under_a_prefix_is_reported_not_passed(assets, status_dir):
+def test_plain_http_is_reported_not_passed_and_a_mixture_fails(assets, status_dir):
     shared = site_environ(
         assets, status_dir, LABADDA_TRUSTED_ORIGINS="http://10.20.30.40", LABADDA_COOKIE_SECURE="false"
     )
@@ -311,7 +311,9 @@ def test_shared_plain_http_under_a_prefix_is_reported_not_passed(assets, status_
     assert result.status == "skip"
     assert "unencrypted" in result.summary
     root = healthy_host(assets, status_dir, environ={**shared, "LABADDA_BASE_PATH": ""})
-    assert doctor.check_tls(root, doctor.load_settings(root.environ)).status == "fail"
+    assert doctor.check_tls(root, doctor.load_settings(root.environ)).status == "skip"
+    mixed = healthy_host(assets, status_dir, environ={**shared, "LABADDA_COOKIE_SECURE": "true"})
+    assert doctor.check_tls(mixed, doctor.load_settings(mixed.environ)).status == "fail"
 
 
 # --- backups -------------------------------------------------------------------------------

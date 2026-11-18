@@ -8,9 +8,9 @@ Ubuntu-only and are not run on Windows.
 ## Install once
 
 1. Python 3.12 (python.org installer, tick **py launcher**), Node 22 LTS, PostgreSQL 16 for
-   Windows (EDB installer; remember the `postgres` password), and Git for Windows.
-2. Clone the repository. The repository's `.gitattributes` keeps every file with Unix line
-   endings, which the Ubuntu scripts and the format checks need; do not override it.
+   Windows (EDB installer; remember the `postgres` password), and Git for Windows only if you clone.
+2. Unzip the release's **Source code (zip)** (or clone the repository; its `.gitattributes`
+   keeps Unix line endings, which the Ubuntu scripts and the format checks need).
 3. In **SQL Shell (psql)** signed in as `postgres`, create the disposable databases:
 
 ```sql
@@ -28,6 +28,21 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\setup-dev.ps1
 The script creates `.venv`, installs the locked packages (on Windows the lock swaps `uvloop`,
 which has no Windows build, for the standard event loop, and adds `tzdata`, because Windows has no
 built-in time-zone database), builds the frontend, migrates and loads the fixture.
+
+Packages come from your internal mirrors through your own settings, as for any other project on
+that PC: `%APPDATA%\pip\pip.ini` (`[global]` `index-url = …`) and `%USERPROFILE%\.npmrc`
+(`registry=…`). The locked versions are all at least 30 days old, so a mirror a few days behind
+still has them.
+
+## Update to a new release (zip only, no git)
+
+1. Stop the server (Ctrl+C) and delete the old folder; then unzip the release's **Source code
+   (zip)**. Do **not** unzip on top of the old folder: files removed in the new release (for
+   example a replaced database migration) would stay behind and can stop the server starting.
+   Keeping `.venv` or `frontend\node_modules` gains nothing: a moved `.venv` still points at the
+   old folder, and `npm ci` replaces `node_modules` anyway.
+2. Run `scripts\windows\setup-dev.ps1` (it recreates `.venv` and `node_modules` from your mirrors,
+   builds the screens, migrates and reloads the fictional data), then `scripts\windows\serve-dev.ps1`.
 
 ## Run and sign in
 

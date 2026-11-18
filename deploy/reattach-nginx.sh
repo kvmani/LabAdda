@@ -12,7 +12,7 @@ while (($#)); do case $1 in --site) SITE=$2; shift ;; --dry-run) DRY_RUN=1 ;; *)
 set_paths; need_root
 [[ -f $ANSWERS_FILE ]] || die "Site '$SITE' is not installed here (no $ANSWERS_FILE)."
 load_answers "$ANSWERS_FILE"
-is_shared_http || die "Site '$SITE' has its own HTTPS server block; there is nothing to reattach."
+is_shared_http || die "Site '$SITE' has its own nginx server block; there is nothing to reattach."
 step "Adding LabAdda back to $SHARED_SITE"
 if ((DRY_RUN)); then say "    [dry-run] would add one include line to $SHARED_SITE and reload nginx"; exit 0; fi
 out=$(mktemp -d)/review
