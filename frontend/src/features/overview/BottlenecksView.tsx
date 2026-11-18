@@ -44,15 +44,12 @@ export function BottlenecksView({ bottlenecks }: Props) {
                       </span>
                       <span className="storage-bottleneck-item__size">{ws.formatted}</span>
                     </div>
-                    <div
+                    <progress
                       className="storage-bar"
-                      role="progressbar"
-                      aria-valuenow={percent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    >
-                      <div className="storage-bar__fill" style={{ width: `${percent}%` }} />
-                    </div>
+                      value={percent}
+                      max={100}
+                      aria-label={`${ws.name}: share of displayed storage`}
+                    />
                   </div>
                 );
               })}

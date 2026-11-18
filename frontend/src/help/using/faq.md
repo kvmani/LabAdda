@@ -3,7 +3,7 @@ title: Frequently Asked Questions
 summary: Questions about LabAdda's purpose, experimental status, privacy and daily use.
 audience: everyone
 screen: /
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 ## What this is for
@@ -24,9 +24,9 @@ LabAdda is open to all researchers, technical officers, and team members across 
 **LabAdda is no place for any sensitive or official data.** It is simply a digital form of your lab's whiteboard. Put only those things here which you would normally write or sketch on a physical whiteboard in your lab or office—such as brainstorming hypotheses, sketching discussion diagrams, coordinating equipment availability, and planning day-to-day next steps. All sensitive, confidential, and official records belong on designated official institutional channels.
 
 ### Can administrators read my private notes, chats, or whiteboards?
-**No.** LabAdda is built with strict **administrator content blindness**. Site and unit administrators have access only to operational metadata (such as account lists, storage quotas, and server health status). An administrator role alone cannot open workspace content or your personal tools in the app. Administrators who are also workspace members can read that workspace like other members. Host operators with database or backup access are trusted custodians.
+**No.** LabAdda is built with strict **administrator content blindness**. Site and unit administrators have access only to operational metadata (such as account lists, recorded storage usage, and server health status). An administrator role alone cannot open workspace content or your personal tools in the app. Administrators who are also workspace members can read that workspace like other members. Host operators with database or backup access are trusted custodians.
 
-Furthermore, personal tools (**My Whiteboard**, **My Notes**, **My Day**, and **My Calendar**) are completely isolated and private to your account.
+**My Whiteboard** and **My Notes** are owner-only. **My day** and the calendar combine your personal entries with shared work that your current memberships allow. Your personal calendar entries remain private.
 
 ### How does unit access work across the organisation?
 Access follows our natural laboratory structure:

@@ -31,6 +31,9 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
   const dismissed = useRef(new Set<string>());
   const seen = useRef(new Set<string>());
   const ids = workspaces.map((w) => w.id).join(",");
+  const visibleAlerts = alerts.filter(
+    (alert) => !alert.workspace || workspaces.some((space) => space.id === alert.workspace?.id),
+  );
   const workspaceRef = useRef(workspaces);
   workspaceRef.current = workspaces;
   const soundRef = useRef(sound);
@@ -179,7 +182,9 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
     <aside className="alert-popups" aria-label="Live alerts">
       <div className="alert-popups__head">
         <span>
-          {alerts.length ? `${alerts.length} unread alert${alerts.length === 1 ? "" : "s"}` : "Live alerts"}
+          {visibleAlerts.length
+            ? `${visibleAlerts.length} unread alert${visibleAlerts.length === 1 ? "" : "s"}`
+            : "Live alerts"}
         </span>
         <Button size="sm" variant="quiet" onClick={() => void toggleSound()} aria-pressed={sound}>
           {sound ? "Mute chime" : "Enable chime"}
@@ -187,7 +192,7 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
       </div>
       {error && <p role="alert">{error}</p>}
       <div aria-live="polite" aria-relevant="additions">
-        {alerts.slice(0, 3).map((item) => (
+        {visibleAlerts.slice(0, 3).map((item) => (
           <section
             className="alert-popup"
             key={item.id}

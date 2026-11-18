@@ -3,7 +3,7 @@ title: Reading the Overview
 summary: See at a glance whether everything is all right, what needs you, and where to go to fix it.
 audience: administrator
 screen: none
-updated: 2026-11-12
+updated: 2026-11-17
 ---
 
 ## What this is for
@@ -16,15 +16,20 @@ Administrators can open it, and so can people who have been given read-only oper
 
 ## Steps
 
-1. Open **Administration**. The top row presents key performance indicators: staff adoption, collaboration items, content storage, and open system events.
+1. Open **Administration**. The top row presents key performance indicators: enabled account percentage, protected seven-day collaboration items, recorded shared storage, and open system events.
 2. Switch between views using the navigation tabs:
-   - **360° Overview**: View overall system health, items needing attention, most active research collaboration hubs, operational tiles, and 7-day activity charts.
-   - **Usage Trends & Popularity**: Review collaboration tool distribution (notices, chat, and tasks) and peak laboratory hours.
-   - **Bottlenecks & SLA**: Identify top disk storage consuming workspaces, research units or projects needing steward leadership, and intranet response time percentiles.
+   - **360° Overview**: View overall system health, items needing attention, most active organisation units with publishable figures, operational tiles, and 7-day activity charts.
+   - **Usage Trends & Popularity**: Review collaboration tool distribution (notices, chat, and tasks) collected in the last seven days.
+   - **Bottlenecks & SLA**: Identify top disk storage consuming workspaces, research units or projects needing steward leadership, and fresh intranet response time readings.
    - **Action & Diagnostics**: Get proactive, plain-English guidance and step-by-step remediation advice for open system events.
 3. Choose **Check now** at any time to refresh all metrics immediately.
 
 ## What happens next
+
+Account percentages mean accounts enabled to sign in; they do not measure adoption. Personal notes,
+personal tasks and panel sessions never contribute to collaboration figures. Small groups and
+complementary rows are protected as on Activity; unknown figures are not zero. Peak hours and
+filesystem headroom are not measured here. Logical storage is observation-only, not quota enforcement.
 
 Nothing changes when you read the Overview. Acknowledge or resolve events on the **Events** page, and appoint a steward or Head for a unit on the **Organisation** page. The entry leaves the list once the cause has been fixed.
 

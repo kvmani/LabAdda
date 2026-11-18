@@ -31,7 +31,8 @@ if [[ -z ${REHEARSAL_INNER:-} ]]; then
   printf '#!/bin/sh\nFAKE_SYSTEMCTL_CONFIG=%s exec python3.12 %s "$@"\n' "$REHEARSAL_PREFIX/fake.json" \
     "$HERE/rollout_fake_systemctl.py" >"$REHEARSAL_PREFIX/systemctl"
   chmod +x "$REHEARSAL_PREFIX/systemctl"
-  exec unshare -m bash -c "mount --bind '$REHEARSAL_PREFIX/systemctl' /usr/bin/systemctl && exec bash '$0' ${ORIGINAL[*]}"
+  exec unshare -m bash -c 'mount --bind "$REHEARSAL_PREFIX/systemctl" /usr/bin/systemctl && exec bash "$@"' \
+    labadda-rehearsal "$0" "${ORIGINAL[@]}"
 fi
 
 P="$REHEARSAL_PREFIX"; export LABADDA_ROOT_PREFIX="$P" LABADDA_SITE=rollout FAKE_SYSTEMCTL_CONFIG="$P/fake.json"

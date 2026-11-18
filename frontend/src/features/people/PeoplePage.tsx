@@ -155,7 +155,7 @@ function PeopleDirectory({ onDenied }: { onDenied: () => void }) {
         )}
       </div>
 
-      {activeTab === "join-requests" ? (
+      {!unitAdmin && activeTab === "join-requests" ? (
         <JoinRequestsView onCountChange={setPendingJoinCount} />
       ) : (
         <>

@@ -31,7 +31,7 @@ Fetch = Callable[[str, str], dict | None]
 def python_pins(lock_text: str) -> list[tuple[str, str]]:
     pins = []
     for line in lock_text.splitlines():
-        match = PIN.match(line.strip())
+        match = PIN.match(line.split(";", 1)[0].strip())
         if match:
             pins.append((match[1], match[2]))
     return sorted(set(pins))

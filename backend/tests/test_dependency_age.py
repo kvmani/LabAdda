@@ -154,3 +154,7 @@ def test_age_approvals_are_exact_and_expire_without_exempting_unknown_metadata(t
     assert age.approved_exceptions(tmp_path, current + timedelta(days=10)) == set()
     # Approval lookup does not alter the checker: unavailable metadata is still unknown.
     assert age.check({"pypi": [("fixture", "1.0")]}, fake_index({}), now=current, min_days=30)[1]
+
+
+def test_platform_marked_dependency_is_still_age_checked():
+    assert age.python_pins('uvloop==0.23.0; sys_platform != "win32"\n') == [("uvloop", "0.23.0")]

@@ -1,44 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { JoinApprovalDialog } from "./JoinApprovalDialog";
+import { BASE } from "../../config";
 import { api, errorMessage } from "../../api";
+import { invalidate } from "../../generation";
+import type { ApprovedSlip, FilterStatus, JoinRequestItem, JoinRequestsResponse } from "./joinRequestTypes";
 import { Button, Card, Dialog } from "../../ui";
-
-type JoinRequestItem = {
-  id: string;
-  created_at: string;
-  full_name: string;
-  username: string;
-  employee_no: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  designation: string | null;
-  unit_id: string | null;
-  unit_name: string | null;
-  statement_of_interest: string | null;
-  status: "pending" | "approved" | "rejected";
-  reviewed_at: string | null;
-  reviewed_by: string | null;
-  review_note: string | null;
-  created_user_id: string | null;
-};
-
-type JoinRequestsResponse = {
-  requests: JoinRequestItem[];
-  counts: {
-    pending: number;
-    approved: number;
-    rejected: number;
-    total: number;
-  };
-};
-
-type ApprovedSlip = {
-  code: string;
-  expires_at: string;
-  fullName: string;
-  username: string;
-};
-
-type FilterStatus = "all" | "pending" | "approved" | "rejected";
 
 export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: number) => void }) {
   const [filter, setFilter] = useState<FilterStatus>("pending");
@@ -47,15 +13,14 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const generation = useRef(0);
+  const countChanged = useRef(onCountChange);
+  countChanged.current = onCountChange;
+  const [reviewError, setReviewError] = useState("");
+  const [copyError, setCopyError] = useState("");
+
   // Review & Verify state
   const [reviewingItem, setReviewingItem] = useState<JoinRequestItem | null>(null);
-  const [verifiedName, setVerifiedName] = useState("");
-  const [verifiedEmp, setVerifiedEmp] = useState("");
-  const [verifiedDesig, setVerifiedDesig] = useState("");
-  const [verifiedUnitId, setVerifiedUnitId] = useState("");
-  const [verifiedCustomUnit, setVerifiedCustomUnit] = useState("");
-  const [approveBusy, setApproveBusy] = useState(false);
-
   // Activation slip modal state
   const [activeSlip, setActiveSlip] = useState<ApprovedSlip | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,95 +30,55 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
   const [rejectReason, setRejectReason] = useState("");
   const [rejectBusy, setRejectBusy] = useState(false);
 
-  function loadRequests() {
-    setLoading(true);
-    setError(null);
-    api<JoinRequestsResponse>(`/admin/join-requests?status=${filter}`)
-      .then((res) => {
-        setData(res);
-        setLoading(false);
-        if (onCountChange) {
-          onCountChange(res.counts.pending);
+  const loadRequests = useCallback(
+    async (offset = 0) => {
+      const token = ++generation.current;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await api<JoinRequestsResponse>("/admin/join-requests", {
+          params: { status: filter, offset },
+        });
+        if (token !== generation.current) return;
+        setData((previous) => ({
+          ...res,
+          requests: offset && previous ? [...previous.requests, ...res.requests] : res.requests,
+        }));
+        countChanged.current?.(res.counts.pending);
+      } catch (failure: unknown) {
+        if (token === generation.current) {
+          setData(null);
+          setError(errorMessage(failure));
         }
-      })
-      .catch((err) => {
-        setError(errorMessage(err));
-        setLoading(false);
-      });
-  }
-
-  useEffect(() => {
-    loadRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reloads when the status filter changes
-  }, [filter]);
-
-  useEffect(() => {
-    api<{ units: { id: string; name: string; kind: string }[] }>("/join-requests/units")
-      .then((res) => setAvailableUnits(res.units))
-      .catch(() => {});
-  }, []);
-
-  function startReview(item: JoinRequestItem) {
-    setReviewingItem(item);
-    setVerifiedName(item.full_name);
-    setVerifiedEmp(item.employee_no || "");
-    setVerifiedDesig(item.designation || "");
-    if (item.unit_id) {
-      setVerifiedUnitId(item.unit_id);
-      setVerifiedCustomUnit("");
-    } else if (item.unit_name) {
-      const match = availableUnits.find((u) => u.name.toLowerCase() === item.unit_name?.toLowerCase());
-      if (match) {
-        setVerifiedUnitId(match.id);
-        setVerifiedCustomUnit("");
-      } else {
-        setVerifiedUnitId("NEW");
-        setVerifiedCustomUnit(item.unit_name);
+      } finally {
+        if (token === generation.current) setLoading(false);
       }
-    } else {
-      setVerifiedUnitId(availableUnits[0]?.id || "NEW");
-      setVerifiedCustomUnit("");
-    }
-  }
-
-  async function handleConfirmApprove() {
-    if (!reviewingItem) return;
-    setApproveBusy(true);
-    try {
-      const res = await api<{
-        status: string;
-        activation: { code: string; expires_at: string };
-        user: { id: string; username: string; display_name: string };
-      }>(`/admin/join-requests/${reviewingItem.id}/approve`, {
-        method: "POST",
-        body: {
-          full_name: verifiedName.trim() || reviewingItem.full_name,
-          employee_no: verifiedEmp.trim() || null,
-          designation: verifiedDesig.trim() || null,
-          unit_id: verifiedUnitId === "NEW" ? null : verifiedUnitId,
-          custom_unit_name: verifiedUnitId === "NEW" ? verifiedCustomUnit.trim() : null,
-        },
+    },
+    [filter],
+  );
+  useEffect(() => {
+    setData(null);
+    void loadRequests();
+    return () => invalidate(generation);
+  }, [loadRequests]);
+  useEffect(() => {
+    let active = true;
+    api<{ units: { id: string; name: string; kind: string }[] }>("/join-requests/units")
+      .then((res) => {
+        if (active) setAvailableUnits(res.units);
+      })
+      .catch((failure) => {
+        if (active) setError(errorMessage(failure));
       });
-
-      const currentItem = reviewingItem;
-      setReviewingItem(null);
-      setActiveSlip({
-        code: res.activation.code,
-        expires_at: res.activation.expires_at,
-        fullName: currentItem.full_name,
-        username: currentItem.username,
-      });
-      loadRequests();
-    } catch (err: unknown) {
-      alert(errorMessage(err));
-    } finally {
-      setApproveBusy(false);
-    }
-  }
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleConfirmReject() {
     if (!rejectingItem) return;
     setRejectBusy(true);
+    setReviewError("");
     try {
       await api(`/admin/join-requests/${rejectingItem.id}/reject`, {
         method: "POST",
@@ -161,23 +86,24 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
       });
       setRejectingItem(null);
       setRejectReason("");
-      loadRequests();
+      void loadRequests();
     } catch (err: unknown) {
-      alert(errorMessage(err));
+      setReviewError(errorMessage(err));
     } finally {
       setRejectBusy(false);
     }
   }
 
-  function copyCode() {
+  async function copyCode() {
     if (!activeSlip) return;
-    navigator.clipboard.writeText(activeSlip.code).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-      () => setCopied(false),
-    );
+    setCopied(false);
+    setCopyError("");
+    try {
+      await navigator.clipboard.writeText(activeSlip.code);
+      setCopied(true);
+    } catch {
+      setCopyError("Copy was unavailable. Select the visible code and copy it manually.");
+    }
   }
 
   return (
@@ -310,12 +236,13 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
             {/* Action Buttons for Pending Applications */}
             {item.status === "pending" && (
               <div className="join-request-card__actions">
-                <Button variant="primary" onClick={() => startReview(item)}>
+                <Button variant="primary" onClick={() => setReviewingItem(item)}>
                   ✓ Review, Verify & Approve
                 </Button>
                 <Button
                   variant="quiet"
                   onClick={() => {
+                    setReviewError("");
                     setRejectingItem(item);
                     setRejectReason("");
                   }}
@@ -328,136 +255,27 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
         ))}
       </div>
 
+      {data?.next_offset !== null && data?.next_offset !== undefined && (
+        <Button disabled={loading} onClick={() => void loadRequests(data.next_offset ?? 0)}>
+          Load more applications
+        </Button>
+      )}
+      {error && <Button onClick={() => void loadRequests()}>Retry applications</Button>}
       {/* Review & Verify Approval Modal */}
       {reviewingItem && (
-        <Dialog
-          open={Boolean(reviewingItem)}
-          title="Verify & Approve Membership Application"
+        <JoinApprovalDialog
+          key={reviewingItem.id}
+          reviewingItem={reviewingItem}
+          availableUnits={availableUnits}
           onClose={() => setReviewingItem(null)}
-        >
-          <div className="review-modal-body">
-            <p className="review-modal-intro">
-              Verify the applicant's official records before creating their account. You may adjust their
-              personnel details or assigned division/group below.
-            </p>
-
-            <div className="review-modal-grid">
-              <div className="join-form__field">
-                <label htmlFor="rev-name" className="join-form__label">
-                  Full Name (Official):
-                </label>
-                <input
-                  id="rev-name"
-                  type="text"
-                  className="join-form__input"
-                  value={verifiedName}
-                  onChange={(e) => setVerifiedName(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="join-form__field">
-                <label htmlFor="rev-emp" className="join-form__label">
-                  Staff / Employee ID:
-                </label>
-                <input
-                  id="rev-emp"
-                  type="text"
-                  className="join-form__input"
-                  value={verifiedEmp}
-                  onChange={(e) => setVerifiedEmp(e.target.value)}
-                  placeholder="e.g. EMP-4102"
-                />
-              </div>
-
-              <div className="join-form__field">
-                <label htmlFor="rev-desig" className="join-form__label">
-                  Designation / Role:
-                </label>
-                <input
-                  id="rev-desig"
-                  type="text"
-                  className="join-form__input"
-                  value={verifiedDesig}
-                  onChange={(e) => setVerifiedDesig(e.target.value)}
-                  placeholder="e.g. Senior Scientist"
-                />
-              </div>
-
-              <div className="join-form__field">
-                <label htmlFor="rev-email" className="join-form__label">
-                  Intranet Email (Read-only):
-                </label>
-                <input
-                  id="rev-email"
-                  type="text"
-                  className="join-form__input"
-                  value={reviewingItem.contact_email || "Not specified"}
-                  disabled
-                />
-              </div>
-
-              <div className="join-form__field join-form__field--full">
-                <label htmlFor="rev-unit" className="join-form__label">
-                  Assigned Division or Section:
-                </label>
-                <select
-                  id="rev-unit"
-                  className="join-form__select"
-                  value={verifiedUnitId}
-                  onChange={(e) => setVerifiedUnitId(e.target.value)}
-                >
-                  {availableUnits.length > 0 && (
-                    <optgroup label="Available Units">
-                      {availableUnits.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  <option value="NEW">➕ Register as New Lab Unit in Database</option>
-                </select>
-                <p className="join-form__hint">Selecting an existing unit prevents duplicates and typos.</p>
-              </div>
-
-              {verifiedUnitId === "NEW" && (
-                <div className="join-form__field join-form__field--full join-form__field--highlight">
-                  <label htmlFor="rev-custom-unit" className="join-form__label">
-                    New Unit Name to Register:
-                  </label>
-                  <input
-                    id="rev-custom-unit"
-                    type="text"
-                    className="join-form__input"
-                    value={verifiedCustomUnit}
-                    onChange={(e) => setVerifiedCustomUnit(e.target.value)}
-                    placeholder="e.g. Surface Engineering Division"
-                    required
-                  />
-                  <p className="join-form__hint">
-                    This unit will be created under the organization root and will be available in future
-                    dropdowns.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="join-form__actions">
-              <Button variant="quiet" onClick={() => setReviewingItem(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                busy={approveBusy}
-                busyLabel="Creating Account…"
-                onClick={handleConfirmApprove}
-              >
-                ✓ Confirm & Issue Activation Code
-              </Button>
-            </div>
-          </div>
-        </Dialog>
+          onApproved={(slip) => {
+            setReviewingItem(null);
+            setCopied(false);
+            setCopyError("");
+            setActiveSlip(slip);
+            void loadRequests();
+          }}
+        />
       )}
 
       {/* Activation Slip Modal */}
@@ -479,9 +297,12 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
                 <Button onClick={copyCode}>{copied ? "Copied!" : "Copy code"}</Button>
               </div>
             </div>
+            {copyError && <p role="alert">{copyError}</p>}
+            <p>Expires: {new Date(activeSlip.expires_at).toLocaleString()}</p>
             <p className="activation-modal-slip__note">
-              Provide this code to the user. They can open <code>/activate</code> on the intranet to set their
-              password and begin collaborating.
+              Provide this code to the user. They can open{" "}
+              <code>{`${window.location.origin}${BASE}/activate`}</code> on the intranet to set their password
+              and begin collaborating.
             </p>
             <div className="activation-modal-slip__actions">
               <Button variant="primary" onClick={() => setActiveSlip(null)}>
@@ -497,7 +318,9 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
         <Dialog
           open={Boolean(rejectingItem)}
           title="Decline Membership Application"
-          onClose={() => setRejectingItem(null)}
+          onClose={() => {
+            if (!rejectBusy) setRejectingItem(null);
+          }}
         >
           <div className="reject-modal-body">
             <p>
@@ -517,8 +340,13 @@ export function JoinRequestsView({ onCountChange }: { onCountChange?: (count: nu
                 onChange={(e) => setRejectReason(e.target.value)}
               />
             </div>
+            {reviewError && (
+              <p role="alert" className="join-requests-error">
+                {reviewError}
+              </p>
+            )}
             <div className="join-form__actions">
-              <Button variant="quiet" onClick={() => setRejectingItem(null)}>
+              <Button variant="quiet" disabled={rejectBusy} onClick={() => setRejectingItem(null)}>
                 Cancel
               </Button>
               <Button variant="danger" busy={rejectBusy} busyLabel="Declining…" onClick={handleConfirmReject}>

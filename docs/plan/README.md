@@ -25,6 +25,9 @@ outside groups, e-mail delivery, multi-site federation (P6).
 Owner-requested live alert pop-ups and calendar reminder delivery are implemented;
 validation and independent delivery review are recorded in the handoff ledger.
 
+The [18 November review](../development/review-2026-11-18.md) tracks release fixes, local
+verification and the Windows and Ubuntu site checks.
+
 ## Status at a glance
 
 Last updated: 2026-11-18 (0.1.0-beta: zip-based install and upgrade in three setups; rollout preparation review; all of tracks A, H and U done; P1–P6 done, P7 awaiting owner decisions; Q3 partial; pilot rehearsal passed locally). Percentages are judged against the v1.0 definition above, weighted by

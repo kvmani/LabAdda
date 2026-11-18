@@ -37,7 +37,8 @@ export type CockpitKPIs = {
   adoption_rate: number;
   total_workspaces: number;
   workspaces_by_kind: Record<string, number>;
-  total_collaboration_items: number;
+  total_collaboration_items: number | null;
+  collaboration_state?: string;
   total_storage_bytes: number;
   total_storage_formatted: string;
   open_events_count: number;
@@ -48,13 +49,9 @@ export type PopularWorkspace = {
   id: string;
   name: string;
   kind: string;
-  description: string;
-  members_count: number;
+  active_people: number;
   has_steward: boolean;
   total_items: number;
-  posts_count: number;
-  chats_count: number;
-  tasks_count: number;
 };
 
 export type StorageConsumer = {

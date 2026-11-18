@@ -93,6 +93,7 @@ def test_workspace_reminder_respects_current_grants(as_user, ids, db_factory):
         assert process_due_reminders(db, now=now) == 2
     bharat = as_user("bharat")
     item = next(n for n in bharat.get("/notifications").json()["items"] if n["link"]["view"] == "calendar")
+    assert item["workspace"]["id"] == str(workspace)
     for name in ("chitra", "deepa", "admin", "esha"):
         assert "Thin Films meeting" not in as_user(name).get("/notifications").text
     assert (

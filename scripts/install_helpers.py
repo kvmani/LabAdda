@@ -244,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
     env.add_argument("--example", type=Path, required=True)
     env.add_argument("--zone", required=True)
     env.add_argument("--domain", default="")
-    env.add_argument("--database-url", required=True)
+    env.add_argument("--database-url", default=os.environ.get("LABADDA_INSTALL_DATABASE_URL"))
     for name in ("--feedback", "--smtp-relay", "--smtp-from", "--smtp-user", "--smtp-password-file"):
         env.add_argument(name, default="")
     env.add_argument("--smtp-starttls", action="store_true")
@@ -272,6 +272,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps(description, indent=2))
         elif args.command == "env-file":
+            if not args.database_url:
+                parser.error("Set LABADDA_INSTALL_DATABASE_URL for env-file")
             check_answers(args.site, args.hostname, args.zone, args.domain)
             check_web(args.web_access, args.base_path)
             root = f"{args.prefix}/srv/labadda/{args.site}"

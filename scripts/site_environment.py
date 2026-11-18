@@ -99,8 +99,8 @@ def _owners(site: dict) -> set[int]:
 def runtime_environment(site: dict) -> dict:
     path = Path(site["env_file"])
     info = path.lstat()
-    if hasattr(os, "geteuid") and (
-        not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_uid not in _owners(site)
+    if not stat.S_ISREG(info.st_mode) or (
+        hasattr(os, "geteuid") and (info.st_mode & 0o077 or info.st_uid not in _owners(site))
     ):
         raise operations.OperationsError(
             "Environment file must be operator-owned regular mode0600 or stricter"

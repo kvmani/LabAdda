@@ -41,3 +41,8 @@ All source/test paths above are relative to the repository root (backend test fi
 live in backend/tests). Do not run parallel pytest sessions against the same test
 database: its fixtures recreate the schema. Browser proxy startup resets only its
 disposable databases. Preserve development and research-demo data.
+
+Fresh review: [17 November pilot fixes and validation](review-2026-11-17.md);
+[native offline Windows pilot guide](../WINDOWS-PILOT.md).
+
+Latest integration review: [18 November rollout review](review-2026-11-18.md).

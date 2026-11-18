@@ -4,7 +4,7 @@ import { canvasFont, loadBoardFonts, type TextStyle } from "../whiteboard/textSt
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "../../session";
 import { boardDraft, clearSavedBoard, rememberBoard } from "./draft";
-import { api, errorMessage } from "../../api";
+import { newUuid, api, errorMessage } from "../../api";
 import { API } from "../../config";
 import { Button, ErrorState, PageHeader, Skeleton } from "../../ui";
 import {
@@ -466,7 +466,7 @@ export function PersonalBoard() {
       (e.target as Element).setPointerCapture(e.pointerId);
       if (["line", "arrow", "rect", "circle"].includes(drawMode)) {
         shapeDrawing.current = {
-          id: crypto.randomUUID(),
+          id: newUuid(),
           start: [x, y],
           points: [
             [x, y],
@@ -475,7 +475,7 @@ export function PersonalBoard() {
         };
       } else {
         drawing.current = {
-          id: crypto.randomUUID(),
+          id: newUuid(),
           points: [[x, y]],
           last: 0,
         };
@@ -619,7 +619,7 @@ export function PersonalBoard() {
       changeObjects([
         ...objects,
         {
-          id: crypto.randomUUID(),
+          id: newUuid(),
           kind: "sticky",
           x: Math.min(820, Math.max(0, x)),
           y: Math.min(480, Math.max(0, y)),
@@ -648,7 +648,7 @@ export function PersonalBoard() {
       changeObjects([
         ...objects,
         {
-          id: crypto.randomUUID(),
+          id: newUuid(),
           kind: "text",
           x: Math.min(900, Math.max(0, x)),
           y: Math.min(560, Math.max(0, y)),

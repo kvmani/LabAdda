@@ -67,13 +67,14 @@ export const FAQ_ITEMS: FaqItem[] = [
       <>
         <p>
           <strong>No.</strong> LabAdda enforces <strong>strict administrator content blindness</strong>. Site
-          administrators and unit administrators manage user accounts, storage quotas, and system health—they
-          can <strong>never</strong> see your message text, personal note contents, private task descriptions,
-          or whiteboard drawings.
+          administrators and unit administrators manage user accounts, recorded storage usage, and system
+          health;administrative access does not let them read your messages or drawings. They can read shared
+          workspace content only when their own membership permits it. Personal notes, private tasks and
+          personal whiteboards remain owner-only.
         </p>
         <p>
-          Your personal tools (<em>My Whiteboard</em>, <em>My Notes</em>, <em>My Day</em>, and{" "}
-          <em>My Calendar</em>) are completely isolated and visible only to you.
+          <em>My Whiteboard</em> and <em>My Notes</em> are visible only to you. Your home, My day and calendar
+          combine your personal entries with shared entries that your current grants allow.
         </p>
       </>
     ),

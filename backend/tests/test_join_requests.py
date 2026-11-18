@@ -119,7 +119,8 @@ def test_approval_never_joins_a_private_group_named_by_the_applicant(as_user, db
 
 def test_approval_refuses_a_username_already_in_use(as_user, db_factory):
     with db_factory() as db:
-        req = JoinRequest(full_name="Second Asha", username="asha", status="pending")
+        home = db.query(User).filter_by(username="asha").one().home_workspace_id
+        req = JoinRequest(full_name="Second Asha", username="asha", status="pending", unit_id=home)
         db.add(req)
         db.commit()
         req_id = str(req.id)

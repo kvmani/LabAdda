@@ -88,9 +88,12 @@ step_database() {
       die "A database role named $db already exists but $pw_file does not. Remove the role or restore the file."; fi
     (umask 077; openssl rand -hex 24 >"$pw_file")
   fi
-  DB_PASSWORD=$(<"$pw_file")
-  $pg -c "select 1 from pg_roles where rolname='$db'" | grep -q 1 \
-    || $pg -c "create role $db login password '$DB_PASSWORD'" >/dev/null
+  if ! $pg -c "select 1 from pg_roles where rolname='$db'" | grep -q 1; then
+    local db_password
+    db_password=$(<"$pw_file")
+    [[ $db_password =~ ^[0-9a-f]{48}$ ]] || die "The generated database password file has an unexpected format."
+    printf "create role %s login password '%s';\n" "$db" "$db_password" | $pg >/dev/null
+  fi
   $pg -c "select 1 from pg_database where datname='$db'" | grep -q 1 \
     || runuser -u postgres -- createdb -O "$db" "$db"
   ok "database $db ready; password kept in $pw_file (root only)"
@@ -115,9 +118,9 @@ step_config() {
   [[ ${SMTP_STARTTLS:-false} != true ]] || smtp+=(--smtp-starttls)
   if [[ -f $ENV_FILE ]]; then ok "$ENV_FILE exists and is kept (edit it by hand to change settings)"
   else
-    $helper env-file "${smtp[@]}" --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" --run-scheduler "${RUN_SCHEDULER:-true}" \
+    LABADDA_INSTALL_DATABASE_URL="$url" $helper env-file "${smtp[@]}" --site "$SITE" --prefix "$PREFIX" --hostname "$HOSTNAME_" --port "$PORT" --zone "$TIMEZONE_" --run-scheduler "${RUN_SCHEDULER:-true}" \
       --base-path "${URL_PATH:-}" --web-access "${WEB_ACCESS:-https}" \
-      --domain "$EMAIL_DOMAIN" --database-url "$url" --example "$TOOLS_DIR/deploy/labadda.env.example" \
+      --domain "$EMAIL_DOMAIN" --example "$TOOLS_DIR/deploy/labadda.env.example" \
       | write_file 0600 "$(env_owner)" "$ENV_FILE"
   fi
   if [[ -f $SITE_JSON ]]; then ok "$SITE_JSON exists and is kept"
@@ -200,10 +203,14 @@ step_render_units() {
   if ((NO_NGINX)); then ok "web server site skipped on request"
   elif is_shared_http; then attach_shared_site "$out"
   else
-    install -d "$NGINX_DIR/conf.d"; install -m 0644 "$out/nginx.conf" "$NGINX_DIR/conf.d/labadda-$SITE.conf"
-    # Other applications may own the default site on this shared server.
-    nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}" >/dev/null 2>&1 \
-      || { nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}"; die "nginx rejected the generated site file."; }
+    local site_conf="$NGINX_DIR/conf.d/labadda-$SITE.conf"
+    install -d "$NGINX_DIR/conf.d"
+    [[ ! -e $site_conf ]] || cp -p "$site_conf" "$out/prior-nginx.conf"
+    if ! (install -m 0644 "$out/nginx.conf" "$site_conf" &&
+      nginx -t -c "${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}"); then
+      restore_nginx_file "$out/prior-nginx.conf" "$site_conf"
+      die "nginx rejected the generated site file. The prior configuration was restored."
+    fi
     ok "nginx accepts the site file"
   fi
   if [[ -f $ETC_DIR/$SITE.probe-ca ]]; then
@@ -265,6 +272,10 @@ step_start() {
 step_backup_and_doctor() {
   step "First backup and doctor"
   if ((DRY_RUN)); then say "    [dry-run] would take the first backup, enable the nightly timer and run the doctor"; return 0; fi
+  if ((NO_NGINX)) && [[ -n ${RESTORE_BUNDLE:-} ]]; then
+    ok "isolated backup restored and direct readiness confirmed"
+    return 0
+  fi
   lifecycle backup --unattended --apply --external-writers-stopped --resume-after-backup >/dev/null \
     && ok "first backup taken and verified" || die "First backup failed. Do not admit users; run labadda-backup-now and read its message."
   if ((NO_TIMER)); then ok "nightly timer skipped on request"; else svc enable --now "labadda-backup@$SITE.timer" >/dev/null; fi
@@ -274,24 +285,34 @@ step_backup_and_doctor() {
 
 # Plain HTTP under a path inside another application's nginx site (for example the IP address that
 # project_management_software already serves). Only LabAdda's own files and one include line change.
+restore_nginx_file() {
+  if [[ -f $1 ]]; then cp -p "$1" "$2"; else rm -f "$2"; fi
+}
+
 attach_shared_site() {
   local out=$1 snippet="$NGINX_DIR/snippets/labadda-$SITE.conf" map="$NGINX_DIR/conf.d/labadda-$SITE.conf"
   local target before result main_conf="${LABADDA_NGINX_MAIN_CONF:-$NGINX_DIR/nginx.conf}"
   target=$(readlink -f "$PREFIX$SHARED_SITE") && [[ -f $target ]] \
     || die "The shared web site file $SHARED_SITE was not found. Give the nginx site file of the application that owns this address."
   install -d "$NGINX_DIR/snippets" "$NGINX_DIR/conf.d"
-  install -m 0644 "$out/locations.conf" "$snippet"; install -m 0644 "$out/nginx.conf" "$map"
-  # The very first original is kept for the operator; each run can also undo just its own change.
+  # Preserve existing files because the shared site may already include them.
+  before=$(mktemp -d)
+  cp -p "$target" "$before/site"
+  [[ ! -e $snippet ]] || cp -p "$snippet" "$before/snippet"
+  [[ ! -e $map ]] || cp -p "$map" "$before/map"
   [[ -f $ETC_DIR/$SITE.shared-site.original ]] || cp -p "$target" "$ETC_DIR/$SITE.shared-site.original"
-  before=$(mktemp); cp -p "$target" "$before"
-  result=$("$PYTHON" "$TOOLS_DIR/scripts/install_helpers.py" attach-site --site-file "$target" --include "$snippet") \
-    || { rm -f "$snippet" "$map" "$before"; die "Could not add LabAdda to $SHARED_SITE (see above). Nothing in it was changed."; }
-  if ! nginx -t -c "$main_conf" >/dev/null 2>&1; then
-    cp -p "$before" "$target"; rm -f "$snippet" "$map" "$before"
-    nginx -t -c "$main_conf" || true
-    die "nginx rejected the change; $SHARED_SITE was put back exactly as it was and LabAdda's nginx files were removed."
+  if ! (install -m 0644 "$out/locations.conf" "$snippet" &&
+    install -m 0644 "$out/nginx.conf" "$map" &&
+    "$PYTHON" "$TOOLS_DIR/scripts/install_helpers.py" attach-site --site-file "$target" --include "$snippet" >"$before/result" &&
+    nginx -t -c "$main_conf"); then
+    cp -p "$before/site" "$target"
+    restore_nginx_file "$before/snippet" "$snippet"
+    restore_nginx_file "$before/map" "$map"
+    rm -rf "$before"
+    die "nginx attachment failed. The prior files were restored."
   fi
-  rm -f "$before"
+  result=$(<"$before/result")
+  rm -rf "$before"
   ok "nginx accepts LabAdda at $(site_url) inside $SHARED_SITE (include line $result)"
 }
 

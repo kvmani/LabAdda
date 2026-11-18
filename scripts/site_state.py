@@ -32,8 +32,8 @@ def sync_directory(path: Path):
 def private_directory(path: Path):
     path.mkdir(mode=0o700, exist_ok=True)
     info = path.lstat()
-    if hasattr(os, "geteuid") and (
-        not stat.S_ISDIR(info.st_mode) or info.st_mode & 0o077 or info.st_uid != os.geteuid()
+    if not stat.S_ISDIR(info.st_mode) or (
+        hasattr(os, "geteuid") and (info.st_mode & 0o077 or info.st_uid != os.geteuid())
     ):
         raise operations.OperationsError(
             "Operator state/backup directory must be private and owned by this operator"
@@ -42,11 +42,10 @@ def private_directory(path: Path):
 
 @contextmanager
 def locked(root: Path):
+    if fcntl is None:
+        raise operations.OperationsError("Managed site operations require Linux file locking")
     state = root / "operations"
     private_directory(state)
-    if fcntl is None:
-        yield state
-        return
     fd = os.open(state / "lock", os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
     try:
         try:

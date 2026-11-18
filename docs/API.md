@@ -896,10 +896,11 @@ this period, previous period`; UTF-8 with BOM, formula-escaped; suppressed figur
 than 5", missing ones "not measured"). Audited as `analytics.export` (period words and row
 count) before delivery.
 
-`GET /admin/analytics/cockpit` — 200 360-degree telemetry and bottleneck discovery payload
-`{generated_at, timezone, kpis, popular_workspaces, bottlenecks, usage_patterns}`. Metadata-only,
-runs within statement bound, provides high-level KPIs, popular collaboration hubs, storage and
-governance bottlenecks, and plain-English remedial guidance for administrators.
+`GET /admin/analytics/cockpit` returns protected seven-day collaboration metrics and operational
+metadata. It excludes personal notes, personal tasks and panel work. Organisational rankings
+apply the same rounding and suppression as Activity. Missing or stale latency is null.
+The open-event total covers the entire queue and the ten details are ordered by severity.
+Storage refers to recorded logical shared-workspace charges. The Overview embeds the same payload.
 
 ## A7 · Backups page, settings and broadcasts (AD-10, AD-11)
 
@@ -1318,8 +1319,8 @@ administration endpoints allow staff verification against official laboratory re
 
 ### Public endpoints
 
-- `GET /api/v1/join-requests/units` — List active organisation units for dropdown selection. Private
-  groups and projects are never listed. Returns `{"units": [{"id", "name", "kind": "org", "level"}]}`.
+- `GET /api/v1/join-requests/units?search=&offset=0` — List active organisation units for dropdown selection. Private
+  groups and projects are never listed. Returns `{units: [{id, name, kind: "org", level}], has_more}` with up to 500 units.
 - `POST /api/v1/join-requests` — Submit a voluntary membership application.
   Body: `{ full_name, username, employee_no?, contact_email?, contact_phone?, designation?, unit_id?, custom_unit_name?, statement_of_interest? }`.
   Returns 200 with receipt `{ id, status: "pending", message: "..." }`. The answer is the same when
@@ -1330,7 +1331,7 @@ administration endpoints allow staff verification against official laboratory re
 
 ### Administration endpoints (require people console authority)
 
-- `GET /api/v1/admin/join-requests?status=pending|approved|rejected|all&limit=50` — List applications
+- `GET /api/v1/admin/join-requests?status=pending|approved|rejected|all&limit=50&offset=0` — List applications
   with aggregate counts.
 - `POST /api/v1/admin/join-requests/{id}/approve` — Verify records, create invited user account, assign
   unit (registering unlisted units dynamically under org root if needed), issue one-time activation
@@ -1339,12 +1340,20 @@ administration endpoints allow staff verification against official laboratory re
   group. 409 `username_taken` or `employee_no_taken` when another account already uses them.
 - `POST /api/v1/admin/join-requests/{id}/reject` — Decline application with review note (`{ reason? }`).
 
+Application listing returns `next_offset` (null at the end). Review decisions serialize. A repeated
+decision returns 409 `already_processed`. An unavailable, archived or private destination returns
+422 `invalid_unit`. If no verified destination is selected, approval returns 422
+`affiliation_required` or `ambiguous_unit`. A competing identity write returns 409
+`identity_conflict`. Database and lock failures return 503 `applications_unavailable`.
+
+
 ### In-app reminder pop-ups
 
 Calendar reminders use the existing notification list and `POST /notifications/{id}/open`
 (read acknowledgement without requiring navigation). Timed calendar entries queue once per
 start time within 15 minutes of starting; all-day and cancelled events do not queue.
 `link: {view: "calendar"}` opens the calendar. Current owner/workspace access is checked
-when listing and acknowledging; cancellation hides an existing alert. Reminder preferences apply.
+when listing and acknowledging. Workspace reminders carry the current workspace ID and name.
+Cancellation hides an existing alert. Reminder preferences apply.
 Live chat pop-ups acknowledge through the existing chat read cursor (through that message).
 Dismissal is local to the tab and leaves server unread state unchanged.

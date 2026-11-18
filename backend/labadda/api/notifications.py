@@ -72,9 +72,15 @@ def _resolve_calendar(db: Session, actor: Actor, n: Notification, readable: dict
         return None
     if event.scope_kind == "personal" and event.owner_id != actor.id:
         return None
-    if event.scope_kind == "workspace" and event.workspace_id not in readable:
-        return None
-    return {"title": event.title, "workspace": None, "link": {"view": "calendar"}}
+    workspace = None
+    if event.scope_kind == "workspace":
+        if event.workspace_id not in readable:
+            return None
+        source = db.get(Workspace, event.workspace_id)
+        if source is None:
+            return None
+        workspace = {"id": str(source.id), "name": source.name}
+    return {"title": event.title, "workspace": workspace, "link": {"view": "calendar"}}
 
 
 def _resolve(db: Session, actor: Actor, n: Notification, readable: dict) -> dict | None:

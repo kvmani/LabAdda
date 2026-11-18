@@ -38,6 +38,15 @@ TOOLS_DIR="{ROOT}"
 SYSTEMCTL=true
 NO_NGINX=0
 nginx() {{ return 0; }}
+# Exercise the installer as an unprivileged pytest process. The owner itself is
+# checked in the host rehearsal. Here keep the file operations and nginx assertions real.
+install() {{
+  local args=()
+  while (($#)); do
+    case $1 in -o|-g) shift 2 ;; *) args+=("$1"); shift ;; esac
+  done
+  command install "${{args[@]}}"
+}}
 operations() {{ mkdir -p "$3"; touch "$3/service.conf" "$3/nginx.conf"; }}
 step_render_units
 ''',
@@ -135,3 +144,80 @@ exit 1
     assert "labadda-mainrestore" not in result.stdout
     assert "RUN_SCHEDULER=false" in result.stdout
     assert "relay.domain.xx.in" not in result.stdout
+
+
+def test_failed_shared_attachment_restores_existing_nginx_files(tmp_path):
+    base = tmp_path / "etc/nginx"
+    target = base / "sites-enabled/pm"
+    snippet = base / "snippets/labadda-main.conf"
+    mapping = base / "conf.d/labadda-main.conf"
+    original = f"server {{\n    include {snippet};\n}}\n"
+    for path, content in ((target, original), (snippet, "old route\n"), (mapping, "old map\n")):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    result = shell(
+        tmp_path,
+        helpers()
+        + f'''
+TOOLS_DIR="{ROOT}"
+SHARED_SITE=/etc/nginx/sites-enabled/pm
+mkdir -p "$ETC_DIR" "$PREFIX/rendered"
+echo new-route >"$PREFIX/rendered/locations.conf"
+echo new-map >"$PREFIX/rendered/nginx.conf"
+nginx() {{ return 1; }}
+attach_shared_site "$PREFIX/rendered"
+''',
+    )
+    assert result.returncode != 0
+    assert "prior files were restored" in result.stderr
+    assert target.read_text() == original
+    assert snippet.read_text() == "old route\n"
+    assert mapping.read_text() == "old map\n"
+
+
+def test_isolated_restore_only_requires_direct_readiness(tmp_path):
+    result = shell(
+        tmp_path,
+        helpers()
+        + """
+NO_NGINX=1
+RESTORE_BUNDLE=/synthetic-backup
+lifecycle() { return 1; }
+step_backup_and_doctor
+""",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "direct readiness confirmed" in result.stdout
+
+
+def test_site_environment_is_validated_and_never_sourced(tmp_path):
+    etc = tmp_path / "etc/labadda"
+    etc.mkdir(parents=True)
+    site = json.loads((ROOT / "deploy/site.example.json").read_text())
+    env_file = etc / "main.env"
+    site["env_file"] = str(env_file)
+    (etc / "main.site.json").write_text(json.dumps(site))
+    values = {
+        "INSTANCE": site["instance"],
+        "PORT": site["port"],
+        "ENV": "pilot",
+        "BASE_PATH": site["base_path"],
+        "ASSET_DIR": site["root"] + "/assets",
+        "FRONTEND_DIST": site["root"] + "/current/frontend/dist",
+        "COOKIE_NAME": "labadda_example",
+        "COOKIE_SECURE": "true",
+        "TRUSTED_ORIGINS": "https://" + site["server_name"],
+        "DATABASE_URL": "postgresql+psycopg://labadda:example@127.0.0.1/labadda",
+    }
+    payload = "".join(f"LABADDA_{key}={value}\n" for key, value in values.items())
+    env_file.write_text(payload)
+    env_file.chmod(0o600)
+    command = helpers() + f'TOOLS_DIR="{ROOT}"\nwith_env printenv LABADDA_BASE_PATH'
+    result = shell(tmp_path, command)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == site["base_path"]
+    marker = tmp_path / "unexpected"
+    env_file.write_text(payload + f"touch {marker}\n")
+    result = shell(tmp_path, command)
+    assert result.returncode != 0
+    assert not marker.exists()

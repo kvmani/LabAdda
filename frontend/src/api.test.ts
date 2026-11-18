@@ -6,6 +6,7 @@ import {
   errorCode,
   errorMessage,
   errorStatus,
+  newUuid,
   outcomeUnknown,
   setCsrf,
 } from "./api";
@@ -126,4 +127,11 @@ describe("metadata report transport", () => {
       message: "Administrator access required.",
     });
   });
+});
+
+it("creates UUIDs without the secure-context randomUUID API", () => {
+  vi.stubGlobal("crypto", {
+    getRandomValues: (bytes: Uint8Array) => bytes.fill(255),
+  });
+  expect(newUuid()).toBe("ffffffff-ffff-4fff-bfff-ffffffffffff");
 });

@@ -211,6 +211,16 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
         },
     ).json()
     assert bharat.delete(f"/calendar/events/{calendar['id']}?revision=1").status_code == 200
+    application = bharat.post(
+        "/join-requests",
+        json={
+            "full_name": "Anita Rao",
+            "username": "anita.recovery",
+            "unit_id": workspace,
+            "statement_of_interest": "Synthetic microscopy collaboration",
+        },
+    )
+    assert application.status_code == 200
     bundle = tmp_path / "backup"
     from datetime import date
 
@@ -356,6 +366,11 @@ def test_full_recovery_preserves_content_and_revokes_credentials(  # noqa: PLR09
             assert api.get(f"/workspaces/{workspace}/board").status_code == 404
             assert api.login("admin").status_code == 200
             assert api.get(f"/notes/{note.json()['id']}").status_code == 404
+            applications = api.get("/admin/join-requests").json()["requests"]
+            recovered_application = next(row for row in applications if row["id"] == application.json()["id"])
+            assert recovered_application["status"] == "pending"
+            assert recovered_application["username"] == "anita.recovery"
+            assert recovered_application["unit_id"] == workspace
         with pytest.raises(RecoveryError, match="must be empty"):
             restore(bundle, sha, target_url, tmp_path / "second-assets", isolated_target=True)
         assert not (tmp_path / "second-assets").exists()

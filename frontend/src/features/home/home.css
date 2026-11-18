@@ -1223,3 +1223,9 @@
   font-weight: 600;
   text-decoration: underline;
 }
+
+.landing__faq {
+  max-width: var(--landing-width);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}

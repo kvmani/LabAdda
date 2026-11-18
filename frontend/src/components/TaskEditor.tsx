@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import { api, errorMessage, errorStatus, outcomeUnknown } from "../api";
+import { newUuid, api, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import type { Assignee } from "./TaskAssignment";
 import { Button, Card, Checkbox, DateInput, Select, TextArea, TextInput } from "../ui";
 import "./task-editor.css";
@@ -154,7 +154,7 @@ function useTaskSave(listId: string, initial: Task | null, saved: () => void) {
         body: { title, description, due_date, priority, checklist, done, status, revision },
       });
     } else {
-      attempt.current ??= { ...fields, client_id: crypto.randomUUID() };
+      attempt.current ??= { ...fields, client_id: newUuid() };
       await api(path, { body: attempt.current });
     }
   }

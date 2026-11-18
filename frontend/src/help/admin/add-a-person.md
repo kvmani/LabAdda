@@ -3,7 +3,7 @@ title: Adding a person
 summary: Create an account for a new member of staff, place them in their home unit and give them a one-time activation code.
 audience: administrator
 screen: none
-updated: 2026-11-13
+updated: 2026-11-17
 ---
 
 ## What this is for
@@ -22,6 +22,17 @@ You need to be a site administrator. Have the person's full name, a username for
 4. Read **What will happen**. If **Problems to fix first** appears, choose **Back** and correct the details. Read **Things to check**: a very similar name may mean the person already has an account.
 5. Type the **Reason for this change**, for example "New joiner in Corrosion", then choose **Add person**.
 6. The **LabAdda activation slip** appears. Choose **Print activation slip**, or copy the code by hand, then choose **Done**.
+
+### Applications from colleagues
+
+Colleagues can apply from the sign-in page. In **People**, open **Join Applications**.
+Choose **Review, Verify & Approve**, verify their identity against official records, and select
+an active organisation unit. Groups and projects cannot be home units. An unlisted unit may
+be registered under the organisation root only after you verify its name. Approval creates an
+Invited member, never an administrator. Copy the displayed activation code before closing
+it and deliver it individually; no automatic email is sent. If copying fails, select the visible
+code and copy manually. If another administrator already decided, refresh the applications.
+Use **Load more applications** for additional pages. Only site administrators review applications.
 
 ## What happens next
 

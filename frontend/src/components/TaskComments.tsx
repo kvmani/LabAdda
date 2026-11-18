@@ -3,7 +3,7 @@ import { fmtTime } from "../format";
 import { invalidate } from "../generation";
 import { Button, TextArea } from "../ui";
 import "./task.css";
-import { api, errorMessage, outcomeUnknown } from "../api";
+import { newUuid, api, errorMessage, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 
 type Comment = {
@@ -76,7 +76,7 @@ function useTaskComments({ listId, taskId, workspaceId }: CommentsProps) {
     setError("");
     setLoading(false);
     try {
-      attempt.current ??= { client_id: crypto.randomUUID(), body: text };
+      attempt.current ??= { client_id: newUuid(), body: text };
       await api(path, { body: attempt.current });
       if (token !== generation.current) return;
       setText("");

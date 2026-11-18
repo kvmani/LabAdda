@@ -41,5 +41,5 @@ def build_overview(db: Session, settings: Settings, health_items: list[dict], *,
         "attention": entries,
         "tiles": tiles.build_tiles(db, settings, window, summary, health=health, now=now),
         "charts": tiles.build_charts(db, window, summary),
-        "cockpit": build_cockpit_analytics(db, settings, now=now),
+        "cockpit": build_cockpit_analytics(db, settings, now=now, summary=summary),
     }

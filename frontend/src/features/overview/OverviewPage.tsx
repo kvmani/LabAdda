@@ -27,8 +27,8 @@ export function OverviewPage() {
 
   const header = (
     <PageHeader
-      title="360° System Cockpit"
-      scope="Real-time telemetry, bottleneck detection, usage trends and operational guidance for administrators."
+      title="Overview"
+      scope="Accounts, team activity, storage observations and items needing attention."
       helpHref={`${BASE}/help/admin/overview-page`}
       action={
         <Button icon="refresh" onClick={reload}>
@@ -156,7 +156,7 @@ export function OverviewPage() {
           </Card>
 
           {data.cockpit && data.cockpit.popular_workspaces.length > 0 && (
-            <Card title="Most Active Collaboration Workspaces">
+            <Card title="Most Active Organisation Units">
               <PopularWorkspaces workspaces={data.cockpit.popular_workspaces.slice(0, 5)} />
             </Card>
           )}

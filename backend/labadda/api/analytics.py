@@ -81,6 +81,7 @@ def cockpit(
     settings: Settings = Depends(get_settings),
 ) -> dict:
     try:
+        db.execute(text("SET LOCAL statement_timeout = '2s'"))
         payload = build_cockpit_analytics(db, settings, now=utcnow())
         refresh_authority(request, db)
         return payload

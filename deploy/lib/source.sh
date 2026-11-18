@@ -4,9 +4,8 @@
 #
 #   sudo bash LabAdda-X.Y.Z/deploy/upgrade.sh --zip ~/LabAdda-X.Y.Z.zip --sha256 <published hash> [--dry-run]
 #
-# The build runs as the operator who typed sudo, so it uses that person's pip and npm mirror settings
-# (~/.config/pip/pip.conf, ~/.npmrc), the same ones project_management_software's builds use.
-# PIP_INDEX_URL / NPM_REGISTRY from the answers file override them when given.
+# Use the configured Python mirror for both the build and installation. npm uses the
+# operator’s internal registry unless NPM_REGISTRY is provided.
 
 MIN_NODE_MAJOR=18
 BUILD_ROOT="${LABADDA_BUILD_ROOT:-$PREFIX/var/tmp/labadda-builds}"
@@ -49,14 +48,25 @@ preflight_build() {
   free_gb=$(df -Pk "$BUILD_ROOT" | awk 'NR==2{print int($4/1048576)}')
   ((free_gb >= 3)) || die "Only ${free_gb} GB free under $BUILD_ROOT; the build needs 3 GB (set LABADDA_BUILD_ROOT elsewhere)."
   ok "python3.12 with venv, Node.js $(node -v), npm $(npm -v), ${free_gb} GB free for the build"
-  if [[ -n ${PIP_INDEX_URL:-} ]]; then
-    mirror_answers "$PIP_INDEX_URL" || die "The Python package mirror $PIP_INDEX_URL does not answer."
-    ok "Python mirror answers: $PIP_INDEX_URL"
-  else ok "Python packages: $(build_user)'s own pip settings"; fi
-  if [[ -n ${NPM_REGISTRY:-} ]]; then
-    mirror_answers "$NPM_REGISTRY" || die "The npm mirror $NPM_REGISTRY does not answer."
-    ok "npm mirror answers: $NPM_REGISTRY"
-  else ok "npm packages: $(build_user)'s own npm settings"; fi
+  [[ $MODE == mirror ]] || die "A source ZIP needs the internal mirrors. Use a prepared kit for --offline-kit."
+  ask PIP_INDEX_URL "Internal Python package mirror address" ""
+  NPM_REGISTRY=${NPM_REGISTRY:-$(as_builder npm config get registry)}
+  "$PYTHON" -I - "$PIP_INDEX_URL" "$NPM_REGISTRY" <<'PYTHON' || die "Configure internal Python and npm mirrors before building."
+import os
+import sys
+from urllib.parse import urlsplit
+
+for address in sys.argv[1:]:
+    url = urlsplit(address)
+    host = url.hostname or ""
+    if (url.scheme not in {"http", "https"} or not host
+        or (os.environ.get("LABADDA_ALLOW_PUBLIC_INDEX") != "1"
+            and any(host == public or host.endswith("." + public)
+                    for public in ("pypi.org", "pythonhosted.org", "npmjs.org", "npmjs.com")))):
+        sys.exit(1)
+PYTHON
+  mirror_answers "$PIP_INDEX_URL" || die "The internal Python package mirror does not answer."
+  ok "Internal Python and npm mirrors configured"
 }
 
 verify_zip() {
@@ -71,9 +81,13 @@ verify_zip() {
 
 # Build the bundle from the zip as the operator, from the mirrors, and print its folder.
 build_kit_from_zip() {
-  local work="$BUILD_ROOT/${ZIP_COMMIT:0:12}" tree venv env=()
-  rm -rf "$work"; install -d -m 0755 -o "$(build_user)" -g "$(build_user)" "$work"
-  install -m 0644 -o "$(build_user)" -g "$(build_user)" "$ZIP" "$work/source.zip"
+  local work tree venv env=(PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_EXTRA_INDEX_URL= PIP_FIND_LINKS= NPM_CONFIG_AUDIT=false NPM_CONFIG_FUND=false)
+  work=$(mktemp -d "$BUILD_ROOT/${ZIP_COMMIT:0:12}.XXXXXX")
+  install -m 0644 "$ZIP" "$work/source.zip"
+  [[ $(sha256sum "$work/source.zip" | cut -d' ' -f1) == "$ZIP_SHA" ]] \
+    || die "The source archive changed during transfer into the build directory."
+  chown "$(build_user):$(build_user)" "$work"
+  chmod 0755 "$work"
   tree=$(as_builder "$PYTHON" -I "$SELF_ROOT/scripts/source_zip.py" extract "$work/source.zip" "$work/lock") \
     || die "Could not unpack the zip."
   [[ -z ${PIP_INDEX_URL:-} ]] || env+=(PIP_INDEX_URL="$PIP_INDEX_URL")
@@ -109,5 +123,5 @@ from_source_zip() {
   ok "bundle ready: $kit"
   local rest=()
   mapfile -d '' rest < <(without_zip_options "$@")
-  exec bash "$kit/$action.sh" "${rest[@]}"
+  exec bash "$kit/$action.sh" "${rest[@]}" --pip-index-url "$PIP_INDEX_URL" --pip-trusted-host "$PIP_TRUSTED_HOST"
 }

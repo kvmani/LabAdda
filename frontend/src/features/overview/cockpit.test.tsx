@@ -56,34 +56,32 @@ function mockOverview(): Overview {
       },
       popular_workspaces: [
         {
-          id: "ws-tejas",
-          name: "Project Tejas",
-          kind: "project",
-          description: "Aeronautics trial",
-          members_count: 8,
+          id: "ws-surface",
+          name: "Surface Engineering Division",
+          kind: "org",
+          active_people: 10,
           has_steward: true,
           total_items: 34,
-          posts_count: 12,
-          chats_count: 18,
-          tasks_count: 4,
         },
         {
           id: "ws-corrosion",
           name: "Corrosion Section",
           kind: "org",
-          description: "Surface testing",
-          members_count: 6,
+          active_people: 10,
           has_steward: false,
           total_items: 21,
-          posts_count: 5,
-          chats_count: 10,
-          tasks_count: 6,
         },
       ],
       bottlenecks: {
         storage: {
           top_workspaces: [
-            { id: "ws-tejas", name: "Project Tejas", kind: "project", bytes: 31457280, formatted: "30.0 MB" },
+            {
+              id: "ws-surface",
+              name: "Project Tejas",
+              kind: "project",
+              bytes: 31457280,
+              formatted: "30.0 MB",
+            },
             {
               id: "ws-corrosion",
               name: "Corrosion Section",
@@ -172,8 +170,8 @@ it("renders 360-degree cockpit KPIs on load", async () => {
   await mount();
 
   // Adoption KPI
-  expect(screen.getByText("Staff Adoption")).toBeTruthy();
-  expect(screen.getByText("96% Active")).toBeTruthy();
+  expect(screen.getByText("Enabled Accounts")).toBeTruthy();
+  expect(screen.getByText("96% Enabled")).toBeTruthy();
   expect(screen.getByText("/ 50")).toBeTruthy();
 
   // Collaboration Velocity KPI
@@ -181,7 +179,7 @@ it("renders 360-degree cockpit KPIs on load", async () => {
   expect(screen.getByText("85")).toBeTruthy();
 
   // Storage Footprint KPI
-  expect(screen.getByText("Content Storage")).toBeTruthy();
+  expect(screen.getByText("Recorded Shared Storage")).toBeTruthy();
   expect(screen.getByText("50.0 MB")).toBeTruthy();
 
   // System Events KPI
@@ -194,8 +192,8 @@ it("switches tabs between Overview, Trends, Bottlenecks, and Diagnostics", async
 
   // Default tab is 360 Overview
   expect(screen.getByRole("tab", { name: /360° Overview/i }).getAttribute("aria-selected")).toBe("true");
-  expect(screen.getByText("Most Active Collaboration Workspaces")).toBeTruthy();
-  expect(screen.getByText("Project Tejas")).toBeTruthy();
+  expect(screen.getByText("Most Active Organisation Units")).toBeTruthy();
+  expect(screen.getByText("Surface Engineering Division")).toBeTruthy();
 
   // Switch to Usage Trends & Popularity tab
   const trendsTab = screen.getByRole("tab", { name: /Usage Trends/i });

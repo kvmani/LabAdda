@@ -62,6 +62,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0911, PLR0912, PLR09
     serve = sub.add_parser("serve", help="run the ASGI server on loopback")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--ssl-certfile", type=Path, help="local-pilot HTTPS certificate")
+    serve.add_argument("--ssl-keyfile", type=Path, help="local-pilot HTTPS private key")
     admin = sub.add_parser(
         "create-admin", help="create an administrator and print a one-time activation token"
     )
@@ -348,18 +350,14 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0911, PLR0912, PLR09
             print(json.dumps(run_seed(db), indent=2))
         return 0
     if args.cmd == "serve":
-        import uvicorn
+        from .server import serve as run_server
 
+        if bool(args.ssl_certfile) != bool(args.ssl_keyfile):
+            parser.error("Use --ssl-certfile and --ssl-keyfile together")
+        if any(path and not path.is_file() for path in (args.ssl_certfile, args.ssl_keyfile)):
+            parser.error("The HTTPS certificate or private key file does not exist")
         logging.basicConfig(level=logging.INFO, format="%(message)s")
-        uvicorn.run(
-            "labadda.app:create_app",
-            factory=True,
-            host=args.host,
-            port=args.port,
-            proxy_headers=True,
-            forwarded_allow_ips="127.0.0.1",
-            ws_max_size=64 * 1024,
-        )
+        run_server(args.host, args.port, args.ssl_certfile, args.ssl_keyfile)
         return 0
     if args.cmd == "create-admin":
         from sqlalchemy import func, select

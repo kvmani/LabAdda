@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { invalidate } from "../generation";
 import { Link } from "react-router-dom";
-import { accessDenied, api, errorCode, errorMessage, outcomeUnknown } from "../api";
+import { newUuid, accessDenied, api, errorCode, errorMessage, outcomeUnknown } from "../api";
 import { realtime } from "../realtime";
 import { useWorkspaces } from "../workspaces";
 import type { Workspace } from "../types";
@@ -164,7 +164,7 @@ function useConversationTask(props: Props) {
         listId,
         endpoint: kind === "board" ? "from-board" : "from-conversation",
         body: {
-          client_id: crypto.randomUUID(),
+          client_id: newUuid(),
           title,
           description,
           confirm_audience: confirmed,

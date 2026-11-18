@@ -23,7 +23,7 @@ to run if one is missing when given `--skip-os-packages`.
 Mirrors: `PIP_INDEX_URL` in the answers file (required) is the internal Python mirror for both the
 build and the installed release. The screens are built with `npm ci` as the operator who typed
 `sudo`, so npm uses that person's `~/.npmrc` — the same setting PM's builds use — unless
-`NPM_REGISTRY` is given. Verified: the build works with Ubuntu 24.04's own Node.js 18.19 and npm 9.2
+`NPM_REGISTRY` is given. The ZIP installer requires an internal registry for both package managers. Verified: the build works with Ubuntu 24.04's own Node.js 18.19 and npm 9.2
 (npm prints engine warnings for test-only packages; they are not used on a server). Every pinned package is at least **30 days old**
 when a release is cut (`scripts/check_dependency_age.py`, no exceptions), so a mirror that missed
 a few nightly syncs still has everything.

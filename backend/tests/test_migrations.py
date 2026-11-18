@@ -89,3 +89,15 @@ def test_calendar_safety_downgrade_refuses_retained_events(as_user, migrated):
         command.downgrade(alembic_config(migrated), "0042")
     command.upgrade(alembic_config(migrated), "head")
     assert client.get(f"/calendar/events/{created.json()['id']}").json()["revision"] == 1
+
+
+def test_join_application_downgrade_refuses_retained_requests(as_user, migrated):
+    application = as_user("bharat").post(
+        "/join-requests", json={"full_name": "Anita Rao", "username": "anita.migration"}
+    )
+    assert application.status_code == 200
+    with pytest.raises(RuntimeError, match="Join requests exist"):
+        command.downgrade(alembic_config(migrated), "0047")
+    command.upgrade(alembic_config(migrated), "head")
+    requests = as_user("admin").get("/admin/join-requests").json()["requests"]
+    assert any(row["id"] == application.json()["id"] and row["status"] == "pending" for row in requests)

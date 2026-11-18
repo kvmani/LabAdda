@@ -142,6 +142,8 @@ async function checkDelayedResponseAfterRevocation(bharat, admin, base, workspac
     undefined,
     "DELETE",
   );
+  // Wait for grant-loss delivery before releasing the older response; the private row may already exist.
+  await linkNamed(page, "Shared daily action").waitFor({ state: "hidden" });
   await linkNamed(page, "Private daily action").waitFor();
   await page.evaluate(() => {
     window.__dailyLeaked = false;

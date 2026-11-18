@@ -116,13 +116,29 @@ lifecycle() { as_service "$PYTHON" "$TOOLS_DIR/scripts/lifecycle.py" --site "$SI
 operations() { "$PYTHON" "$TOOLS_DIR/scripts/operations.py" --site "$SITE_JSON" "$@"; }
 release_tool() { as_service "$PYTHON" "$TOOLS_DIR/scripts/release.py" "$@"; }
 
-# Run a command with the site settings loaded; values are plain KEY=value lines, so sourcing is safe.
+# Validate the installation settings as data before passing them to commands.
 with_env() { (
-  set -a
-  # shellcheck disable=SC1090
-  . "$ENV_FILE"
-  set +a
-  # Tool wrappers (functions) switch account themselves; runuser can only start programs.
+  local values=() entry
+  mapfile -d '' values < <("$PYTHON" -I - "$TOOLS_DIR/scripts" "$SITE_JSON" <<'PYTHON'
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from operations import OperationsError, load_site
+from site_environment import runtime_environment
+
+try:
+    values = runtime_environment(load_site(Path(sys.argv[2])))
+except (OSError, ValueError, OperationsError) as error:
+    sys.exit(str(error))
+for key, value in values.items():
+    if key not in {"PATH", "LANG"}:
+        sys.stdout.write(f"{key}={value}\0")
+sys.stdout.write("validated\0")
+PYTHON
+  )
+  ((${#values[@]})) && [[ ${values[-1]} == validated ]] || die "Could not validate the site environment."
+  unset 'values[-1]'
+  for entry in "${values[@]}"; do export "$entry"; done
   if declare -F "$1" >/dev/null; then "$@"; else as_service "$@"; fi
 ); }
 

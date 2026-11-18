@@ -48,27 +48,23 @@ class Result:
 class DiskReading:
     free_bytes: int
     total_bytes: int
-    free_inodes: int
-    total_inodes: int
+    free_inodes: int | None
+    total_inodes: int | None
 
 
 def read_disk(path: Path) -> DiskReading:
     """Free space and inodes of the volume that holds ``path``; raises OSError when unreadable."""
     usage = shutil.disk_usage(path)
-    favail = 1_000_000
-    ffiles = 1_000_000
-    if hasattr(os, "statvfs"):
-        try:
-            stats = os.statvfs(path)
-            raw_favail = getattr(stats, "f_favail", None)
-            raw_ffiles = getattr(stats, "f_files", None)
-            if raw_favail is not None:
-                favail = raw_favail
-            if raw_ffiles is not None:
-                ffiles = raw_ffiles
-        except (AttributeError, OSError):
-            pass
-    return DiskReading(usage.free, usage.total, favail, ffiles)
+    statvfs = getattr(os, "statvfs", None)
+    if statvfs is None:
+        return DiskReading(usage.free, usage.total, None, None)
+    try:
+        stats = statvfs(path)
+    except (AttributeError, OSError):
+        return DiskReading(usage.free, usage.total, None, None)
+    return DiskReading(
+        usage.free, usage.total, getattr(stats, "f_favail", None), getattr(stats, "f_files", None)
+    )
 
 
 @dataclass

@@ -3,21 +3,6 @@
 import os
 import shutil
 import uuid
-from types import SimpleNamespace
-
-if not hasattr(os, "statvfs"):
-
-    def _statvfs(path):
-        usage = shutil.disk_usage(path)
-        return SimpleNamespace(
-            f_bavail=usage.free,
-            f_frsize=1,
-            f_blocks=usage.total,
-            f_favail=1_000_000,
-            f_files=1_000_000,
-        )
-
-    os.statvfs = _statvfs
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import case, func, select, text
@@ -214,7 +199,7 @@ def database_physical(db) -> dict:
     }
 
 
-def filesystem_capacity(settings):
+def filesystem_capacity(settings: Settings) -> dict:
     filesystem = {
         "state": "unknown",
         "free_bytes": None,
@@ -224,14 +209,20 @@ def filesystem_capacity(settings):
         "site_budget": None,
     }
     try:
-        info = os.statvfs(settings.asset_dir)
+        statvfs = getattr(os, "statvfs", None)
+        if statvfs is None:
+            usage = shutil.disk_usage(settings.asset_dir)
+            filesystem.update(state="ready", free_bytes=usage.free, total_bytes=usage.total)
+            filesystem["observed_at"] = iso(utcnow())
+            return filesystem
+        info = statvfs(settings.asset_dir)
         filesystem.update(
             state="ready",
             free_bytes=info.f_bavail * info.f_frsize,
             total_bytes=info.f_blocks * info.f_frsize,
             free_inodes=info.f_favail,
         )
-    except OSError:
+    except (OSError, AttributeError):
         pass
     filesystem["observed_at"] = iso(utcnow())
     return filesystem

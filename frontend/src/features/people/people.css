@@ -190,16 +190,16 @@
 }
 
 .people-nav-tab--active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .join-nav-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary);
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--text-on-accent);
   font-size: 0.7rem;
   font-weight: 700;
   border-radius: 9999px;
@@ -224,7 +224,7 @@
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--surface-card);
   color: var(--text-muted);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -232,9 +232,9 @@
 }
 
 .join-requests-tab--active {
-  background: var(--primary);
-  color: #ffffff;
-  border-color: var(--primary);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-color: var(--accent);
 }
 
 .join-requests-empty {
@@ -272,7 +272,7 @@
 }
 
 .join-request-card {
-  background: var(--surface);
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: var(--space-4);
@@ -320,18 +320,18 @@
 }
 
 .join-status-pill--pending {
-  background: var(--amber-soft, #fef3c7);
-  color: var(--amber-strong, #b45309);
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .join-status-pill--approved {
-  background: var(--ok-soft, #d1fae5);
-  color: var(--ok, #047857);
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .join-status-pill--rejected {
-  background: var(--danger-soft, #fee2e2);
-  color: var(--danger, #b91c1c);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .join-request-card__date {
@@ -387,8 +387,8 @@
 }
 
 .join-request-card__interest {
-  background: var(--surface);
-  border-left: 3px solid var(--primary);
+  background: var(--surface-card);
+  border-left: 3px solid var(--accent);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
 }
@@ -402,7 +402,7 @@
 .join-request-card__rejection {
   font-size: var(--text-sm);
   color: var(--danger);
-  background: var(--danger-soft, #fee2e2);
+  background: var(--danger-soft);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
 }
@@ -454,7 +454,8 @@
   font-size: var(--text-2xl);
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: var(--primary);
+  overflow-wrap: anywhere;
+  color: var(--accent);
 }
 
 .activation-modal-slip__note {

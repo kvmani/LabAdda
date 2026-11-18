@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { invalidate } from "../generation";
-import { accessDenied, api, ApiError, errorMessage, errorStatus, outcomeUnknown } from "../api";
+import { newUuid, accessDenied, api, ApiError, errorMessage, errorStatus, outcomeUnknown } from "../api";
 import { useTaskUpdates } from "../taskUpdates";
 import type { Page, Task } from "../components/TaskEditor";
 import type { Workspace } from "../types";
@@ -167,7 +167,7 @@ export function useTodos(ws: Workspace | undefined) {
     setError("");
     const creationGeneration = generation.current;
     try {
-      listAttempt.current ??= { client_id: crypto.randomUUID(), title, workspace_id: ws?.id ?? null };
+      listAttempt.current ??= { client_id: newUuid(), title, workspace_id: ws?.id ?? null };
       const result = await api<List>("/todos/lists", { body: listAttempt.current });
       listAttempt.current = null;
       setUnconfirmed(false);

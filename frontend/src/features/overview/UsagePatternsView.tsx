@@ -25,6 +25,9 @@ export function UsagePatternsView({ patterns, peakSummary }: Props) {
         </div>
 
         <div className="cockpit-panel__body">
+          {!patterns.length && (
+            <p className="cockpit-muted">Activity is not measured or is protected for small groups.</p>
+          )}
           <div className="feature-patterns-grid">
             {patterns.map((item) => (
               <div key={item.feature} className="feature-pattern-card">
@@ -43,15 +46,12 @@ export function UsagePatternsView({ patterns, peakSummary }: Props) {
                   <div className="feature-pattern-card__pct">{item.percentage}% of activity</div>
                 </div>
 
-                <div
+                <progress
                   className="pattern-bar"
-                  role="progressbar"
-                  aria-valuenow={item.percentage}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                >
-                  <div className="pattern-bar__fill" style={{ width: `${item.percentage}%` }} />
-                </div>
+                  value={item.percentage}
+                  max={100}
+                  aria-label={`${item.feature}: share of published activity`}
+                />
               </div>
             ))}
           </div>
@@ -67,8 +67,8 @@ export function UsagePatternsView({ patterns, peakSummary }: Props) {
               </div>
             </div>
             <p className="cockpit-note">
-              Research staff activity naturally concentrates around morning planning sessions and afternoon
-              experiment trials.
+              Patterns describe published request observations; they are not a measure of individual work or
+              productivity.
             </p>
           </div>
         </div>

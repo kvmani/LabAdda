@@ -158,8 +158,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def deadline(seconds: int):
     """Linux operator CLI wall-clock deadline, including trickled response bodies."""
     if not hasattr(signal, "SIGALRM"):
-        yield
-        return
+        raise OperationsError("Managed site probes require Linux wall-clock deadlines")
 
     def expired(signum, frame):
         raise TimeoutError("Operational probe deadline exceeded")
