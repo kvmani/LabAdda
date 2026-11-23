@@ -25,6 +25,9 @@ outside groups, e-mail delivery, multi-site federation (P6).
 Owner-requested live alert pop-ups and calendar reminder delivery are implemented;
 validation and independent delivery review are recorded in the handoff ledger.
 
+The [23 November pilot review](../development/pilot-review-2026-11-23.md) approves a synthetic
+technical rehearsal and records the browser and office-host checks required before staff onboarding.
+
 The [18 November review](../development/review-2026-11-18.md) tracks release fixes, local
 verification and the Windows and Ubuntu site checks.
 

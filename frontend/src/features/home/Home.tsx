@@ -115,7 +115,7 @@ export function Home() {
   );
 
   return (
-    <main className="wb-home" tabIndex={-1}>
+    <div className="wb-home" tabIndex={-1}>
       {/* 1. Collegiate Hero Greeting & Personal Status Bar */}
       <section className="wb-hero" aria-label="Welcome and today's summary">
         <div className="wb-hero__main">
@@ -350,6 +350,6 @@ export function Home() {
 
       {/* 7. Keyboard Shortcuts Modal */}
       <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
-    </main>
+    </div>
   );
 }

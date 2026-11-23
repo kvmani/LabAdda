@@ -164,7 +164,7 @@
 
 [data-theme="dark"] .chat__date-pill {
   background: #182229;
-  color: #8696a0;
+  color: #adbbc3;
   box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.3);
 }
 
@@ -224,7 +224,8 @@
 .chat-bubble__author {
   font-size: 12.5px;
   font-weight: 600;
-  color: #1f7a8c;
+  color: #125363;
+  background: transparent;
   margin-bottom: 2px;
   cursor: pointer;
 }
@@ -252,7 +253,7 @@
 
 .chat-bubble__quote-author {
   font-weight: 600;
-  color: #00a884;
+  color: #075e4a;
 }
 
 [data-theme="dark"] .chat-bubble__quote-author {
@@ -268,7 +269,7 @@
 }
 
 [data-theme="dark"] .chat-bubble__quote-text {
-  color: #8696a0;
+  color: #adbbc3;
 }
 
 /* Message content */
@@ -277,7 +278,7 @@
   margin: 0;
 }
 
-/* Footer: timestamp & blue double ticks */
+/* Message timestamp */
 .chat-bubble__meta {
   display: inline-flex;
   align-items: center;
@@ -291,18 +292,11 @@
 
 .chat-bubble__time {
   font-size: 11px;
-  color: #667781;
+  color: #4b606c;
 }
 
 [data-theme="dark"] .chat-bubble__time {
-  color: #8696a0;
-}
-
-.chat-bubble__ticks {
-  color: #53bdeb;
-  font-size: 13px;
-  line-height: 1;
-  font-weight: 700;
+  color: #adbbc3;
 }
 
 /* Reactions pill */
@@ -425,7 +419,7 @@
 .chat-composer__quote-preview-author {
   font-size: 12.5px;
   font-weight: 600;
-  color: #00a884;
+  color: #075e4a;
 }
 
 .chat-composer__quote-preview-text {
@@ -437,7 +431,7 @@
 }
 
 [data-theme="dark"] .chat-composer__quote-preview-text {
-  color: #8696a0;
+  color: #adbbc3;
 }
 
 .chat-composer__quote-dismiss {
@@ -474,7 +468,7 @@
 }
 
 [data-theme="dark"] .chat-composer__btn {
-  color: #8696a0;
+  color: #adbbc3;
 }
 
 .chat-composer__btn:hover {

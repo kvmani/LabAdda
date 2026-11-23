@@ -326,109 +326,102 @@ export function Chat({ ws }: { ws: Workspace }) {
                 const messageReactions = reactions[message.id] ?? [];
 
                 return (
-                  <div key={message.id} className="chat-bubble-row-wrapper" style={{ display: "contents" }}>
-                    {showDateBadge && (
-                      <div className="chat__date-pill" role="separator">
-                        {currentDateBadge}
-                      </div>
-                    )}
-                    <li
-                      className={`chat-bubble-row ${isMe ? "chat-bubble-row--outgoing" : "chat-bubble-row--incoming"}`}
+                  <li
+                    key={message.id}
+                    className={`chat-bubble-row ${isMe ? "chat-bubble-row--outgoing" : "chat-bubble-row--incoming"}`}
+                  >
+                    {showDateBadge && <div className="chat__date-pill">{currentDateBadge}</div>}
+                    <div
+                      className={`chat-bubble ${isMe ? "chat-bubble--outgoing" : "chat-bubble--incoming"}`}
+                      onMouseLeave={() => activeMenuId === message.id && setActiveMenuId(null)}
                     >
-                      <div
-                        className={`chat-bubble ${isMe ? "chat-bubble--outgoing" : "chat-bubble--incoming"}`}
-                        onMouseLeave={() => activeMenuId === message.id && setActiveMenuId(null)}
-                      >
-                        {/* Author name for incoming messages */}
-                        {!isMe &&
-                          message.author &&
-                          (ws.can_contribute ? (
-                            <button
-                              type="button"
-                              className="chat-bubble__author"
-                              onClick={() => ws.can_contribute && setReplyingTo(message)}
-                              title="Click to reply"
-                            >
-                              {message.author.display_name}
-                            </button>
-                          ) : (
-                            <span className="chat-bubble__author">{message.author.display_name}</span>
-                          ))}
-
-                        {message.parent_id && <span className="chat__meta">Thread reply</span>}
-
-                        {/* Quoted reply box inside message */}
-                        {quote && (
-                          <div className="chat-bubble__quote">
-                            <span className="chat-bubble__quote-author">{quote.author}</span>
-                            <span className="chat-bubble__quote-text">{quote.text}</span>
-                          </div>
-                        )}
-
-                        {/* Message body text */}
-                        <p className="chat-bubble__text">{displayBody}</p>
-
-                        {/* Attachments */}
-                        {message.attachments && message.attachments.length > 0 && (
-                          <ChatFiles files={message.attachments} />
-                        )}
-
-                        {/* Footer with IST Clock Time & WhatsApp Blue Checkmarks */}
-                        <div className="chat-bubble__meta">
-                          <span className="chat-bubble__time">{fmtClockTimeIST(message.created_at)}</span>
-                          {isMe && <span className="chat-bubble__ticks">✓✓</span>}
-                        </div>
-
-                        {/* Reactions badge */}
-                        {ws.can_contribute && messageReactions.length > 0 && (
+                      {/* Author name for incoming messages */}
+                      {!isMe &&
+                        message.author &&
+                        (ws.can_contribute ? (
                           <button
                             type="button"
-                            className="chat-bubble__reactions"
-                            onClick={() => addReaction(message.id, "👍")}
-                            title="Reactions"
+                            className="chat-bubble__author"
+                            onClick={() => ws.can_contribute && setReplyingTo(message)}
+                            title="Click to reply"
                           >
-                            {messageReactions.join(" ")}
+                            {message.author.display_name}
                           </button>
-                        )}
+                        ) : (
+                          <span className="chat-bubble__author">{message.author.display_name}</span>
+                        ))}
 
-                        {/* Hover dropdown button */}
+                      {message.parent_id && <span className="chat__meta">Thread reply</span>}
+
+                      {/* Quoted reply box inside message */}
+                      {quote && (
+                        <div className="chat-bubble__quote">
+                          <span className="chat-bubble__quote-author">{quote.author}</span>
+                          <span className="chat-bubble__quote-text">{quote.text}</span>
+                        </div>
+                      )}
+
+                      {/* Message body text */}
+                      <p className="chat-bubble__text">{displayBody}</p>
+
+                      {/* Attachments */}
+                      {message.attachments && message.attachments.length > 0 && (
+                        <ChatFiles files={message.attachments} />
+                      )}
+
+                      <div className="chat-bubble__meta">
+                        <span className="chat-bubble__time">{fmtClockTimeIST(message.created_at)}</span>
+                      </div>
+
+                      {/* Reactions badge */}
+                      {ws.can_contribute && messageReactions.length > 0 && (
                         <button
                           type="button"
-                          className="chat-bubble__actions-btn"
-                          aria-label="Message options"
-                          onClick={() => setActiveMenuId((curr) => (curr === message.id ? null : message.id))}
+                          className="chat-bubble__reactions"
+                          onClick={() => addReaction(message.id, "👍")}
+                          title="Reactions"
                         >
-                          ⌄
+                          {messageReactions.join(" ")}
                         </button>
+                      )}
 
-                        {/* Hover dropdown menu */}
-                        {activeMenuId === message.id && (
-                          <MessageOptions
-                            canContribute={ws.can_contribute}
-                            onReply={() => {
-                              setReplyingTo(message);
-                              setActiveMenuId(null);
-                            }}
-                            onReact={(reaction) => addReaction(message.id, reaction)}
-                            onThread={() => {
-                              setThread(message.parent_id ?? message.id);
-                              setActiveMenuId(null);
-                            }}
-                            onShare={() => {
-                              setSummary(
-                                `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
-                              );
-                              setActiveMenuId(null);
-                            }}
-                            onTask={() => {
-                              setTaskSource(message);
-                              setActiveMenuId(null);
-                            }}
-                          />
-                        )}
-                      </div>
-                    </li>
-                  </div>
+                      {/* Hover dropdown button */}
+                      <button
+                        type="button"
+                        className="chat-bubble__actions-btn"
+                        aria-label="Message options"
+                        onClick={() => setActiveMenuId((curr) => (curr === message.id ? null : message.id))}
+                      >
+                        ⌄
+                      </button>
+
+                      {/* Hover dropdown menu */}
+                      {activeMenuId === message.id && (
+                        <MessageOptions
+                          canContribute={ws.can_contribute}
+                          onReply={() => {
+                            setReplyingTo(message);
+                            setActiveMenuId(null);
+                          }}
+                          onReact={(reaction) => addReaction(message.id, reaction)}
+                          onThread={() => {
+                            setThread(message.parent_id ?? message.id);
+                            setActiveMenuId(null);
+                          }}
+                          onShare={() => {
+                            setSummary(
+                              `Chat summary from ${ws.name}:\n> ${message.author?.display_name}: ${message.body}`,
+                            );
+                            setActiveMenuId(null);
+                          }}
+                          onTask={() => {
+                            setTaskSource(message);
+                            setActiveMenuId(null);
+                          }}
+                        />
+                      )}
+                    </div>
+                  </li>
                 );
               })}
             </ol>

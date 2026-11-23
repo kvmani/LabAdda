@@ -292,7 +292,7 @@ export const CalendarPage: React.FC = () => {
           onCreateEvent={() => handleOpenCreate()}
         />
 
-        <main className="cal-main">
+        <div className="cal-main">
           {viewMode === "month" && (
             <MonthView
               activeDate={activeDate}
@@ -317,7 +317,7 @@ export const CalendarPage: React.FC = () => {
           )}
 
           {viewMode === "agenda" && <AgendaView events={events} onSelectEvent={handleOpenEdit} />}
-        </main>
+        </div>
       </div>
 
       {/* Create / Edit Dialog */}

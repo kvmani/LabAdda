@@ -92,7 +92,9 @@ export async function axeViolations(page) {
   await page.addScriptTag({ path: axeSource });
   return page.evaluate(async (tags) => {
     const result = await window.axe.run(document, { runOnly: { type: "tag", values: tags } });
-    return result.violations.map((violation) => violation.id);
+    return result.violations.map(
+      (violation) => violation.id + "@" + violation.nodes.map((node) => node.target.join(" ")).join(", "),
+    );
   }, wcagTags);
 }
 

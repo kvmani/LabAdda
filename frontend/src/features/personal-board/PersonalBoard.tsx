@@ -668,7 +668,7 @@ export function PersonalBoard() {
   if (error && !document) return <ErrorState title="Failed to load your whiteboard" message={error} />;
 
   return (
-    <main className="personal-board" aria-label="Personal whiteboard">
+    <section className="personal-board" aria-label="Personal whiteboard">
       <PageHeader
         title="My Whiteboard"
         scope="Only you · Unified private whiteboard with rich drawing shapes, sticky notes, and text."
@@ -885,6 +885,6 @@ export function PersonalBoard() {
             : undefined
         }
       />
-    </main>
+    </section>
   );
 }

@@ -22,11 +22,9 @@ const textNamed = (scope, text) => scope.getByText(text, { exact: true });
 
 async function openThread(user, base, workspaceId, rootBody) {
   await user.page.goto(origin + base + `/w/${workspaceId}/chat`);
-  await user.page
-    .getByRole("listitem")
-    .filter({ has: textNamed(user.page, rootBody) })
-    .getByRole("button", { name: "Open thread", exact: true })
-    .click();
+  const messageRow = user.page.getByRole("listitem").filter({ has: textNamed(user.page, rootBody) });
+  await buttonNamed(messageRow, "Message options").click();
+  await messageRow.getByRole("button", { name: /Open thread$/ }).click();
   return user.page.getByRole("region", { name: "Chat thread", exact: true });
 }
 
@@ -100,7 +98,7 @@ async function checkLiveUpdateKeepsEarlierView(bharat, asha, base, workspaceId) 
   await postChat(asha, workspaceId, "Newest history decision");
   await (await background).finished();
   const stillEarlier = await buttonNamed(page, "Return to latest messages").isVisible();
-  const noticeShown = await buttonNamed(page, "Load more new messages").isVisible();
+  const noticeShown = await buttonNamed(page, "Load new messages").isVisible();
   check(stillEarlier && noticeShown, base + " live updates retain earlier view and new-message notice");
   await buttonNamed(page, "Return to latest messages").click();
   await textNamed(page, "Newest history decision").waitFor();

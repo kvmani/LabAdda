@@ -21,7 +21,7 @@ LabAdda tells you when a colleague mentions you, when an official notice is post
 
 Live pop-ups and sound
 
-While LabAdda is open, new chat messages and unread alerts appear at the bottom right.
+While LabAdda is open, new chat messages and unread alerts appear at the bottom right. In chat they appear at the upper left, leaving the reply controls clear.
 Choose **Enable chime** once in each tab to allow a gentle two-note sound; **Mute chime**
 turns it off. A burst of alerts sounds at most once every eight seconds.
 

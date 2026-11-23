@@ -98,11 +98,11 @@ async function checkDivisionConversion(bharat, chitra, base, ctx) {
   const { section, division, lists, chatText } = ctx;
   await call(bharat, `/workspaces/${section.id}/chat`, { body: chatText, client_id: crypto.randomUUID() });
   await bharat.page.goto(origin + base + `/w/${section.id}/chat`);
-  await bharat.page
+  const messageRow = bharat.page
     .getByRole("listitem")
-    .filter({ has: bharat.page.getByText(chatText, { exact: true }) })
-    .getByRole("button", { name: "Create task", exact: true })
-    .click();
+    .filter({ has: bharat.page.getByText(chatText, { exact: true }) });
+  await buttonNamed(messageRow, "Message options").click();
+  await messageRow.getByRole("button", { name: /Create task$/ }).click();
   const form = bharat.page.getByRole("form", { name: "Create task from conversation", exact: true });
   await labelled(form, "Task destination").selectOption(division.id);
   await labelled(form, "Destination list").selectOption(lists.division.id);

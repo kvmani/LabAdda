@@ -65,16 +65,22 @@ async function startPrivateConversation(bharat, base) {
   return page.url().match(/\/w\/([^/]+)/)[1];
 }
 
+async function chooseAttachment(page, scope, file) {
+  const chooser = page.waitForEvent("filechooser");
+  await buttonNamed(scope, "Attach files").click();
+  await (await chooser).setFiles(file);
+}
+
 async function checkLostUploadRecovery(bharat, base, form) {
   await loseNextResponse(bharat.page, "**/api/v1/uploads");
-  await labelled(form, "Attach files").setInputFiles({
+  await chooseAttachment(bharat.page, form, {
     name: "instrument-handoff.pdf",
     mimeType: "application/pdf",
     buffer: pdf,
   });
   await buttonNamed(form, "Check upload result").waitFor();
   await buttonNamed(form, "Check upload result").click();
-  await buttonNamed(form, "Remove file: instrument-handoff.pdf").waitFor();
+  await buttonNamed(form, "Remove file instrument-handoff.pdf").waitFor();
   check(true, base + " lost upload reply recovers original file through receipt");
 }
 
@@ -85,7 +91,8 @@ async function checkLostSendRecovery(bharat, base, form, privateId) {
   await buttonNamed(form, "Send").click();
   await buttonNamed(form, "Retry same message").waitFor();
   check(
-    await labelled(form, "Attach files").isDisabled(),
+    (await labelled(form, "Attach files").isDisabled()) &&
+      (await buttonNamed(form, "Remove file instrument-handoff.pdf").isDisabled()),
     base + " unknown message freezes file selection and destination",
   );
   await buttonNamed(form, "Retry same message").click();
@@ -119,18 +126,18 @@ async function checkFileAccess(chitra, others, base, privateId, file) {
 }
 
 async function checkThreadAttachment(bharat, base, message) {
-  await bharat.page
+  const messageRow = bharat.page
     .getByRole("listitem")
-    .filter({ has: bharat.page.getByText(message.body, { exact: true }) })
-    .getByRole("button", { name: "Open thread", exact: true })
-    .click();
+    .filter({ has: bharat.page.getByText(message.body, { exact: true }) });
+  await buttonNamed(messageRow, "Message options").click();
+  await messageRow.getByRole("button", { name: /Open thread$/ }).click();
   const thread = bharat.page.getByRole("region", { name: "Chat thread", exact: true });
-  await labelled(thread, "Attach files").setInputFiles({
+  await chooseAttachment(bharat.page, thread, {
     name: "replicate-plan.pdf",
     mimeType: "application/pdf",
     buffer: pdf,
   });
-  await buttonNamed(thread, "Remove file: replicate-plan.pdf").waitFor();
+  await buttonNamed(thread, "Remove file replicate-plan.pdf").waitFor();
   await labelled(thread, "Thread reply").fill("Three replicates and a blank.");
   await buttonNamed(thread, "Send reply").click();
   await thread.getByRole("link", { name: "replicate-plan.pdf", exact: true }).waitFor();

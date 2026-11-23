@@ -135,6 +135,7 @@ export function ChatComposer(props: ComposerProps) {
             className="chat-composer__quote-dismiss"
             onClick={onClearReply}
             aria-label="Cancel reply"
+            disabled={busy || unknown}
           >
             ✕
           </button>
@@ -151,6 +152,7 @@ export function ChatComposer(props: ComposerProps) {
                 variant="quiet"
                 size="sm"
                 aria-label={`Remove file ${file.display_name}`}
+                disabled={busy || unknown}
                 onClick={() => removeFile(file)}
               >
                 ✕
@@ -168,6 +170,7 @@ export function ChatComposer(props: ComposerProps) {
               key={emoji}
               type="button"
               className="chat-composer__emoji-item"
+              disabled={busy || unknown}
               onClick={() => insertEmoji(emoji)}
             >
               {emoji}
@@ -192,6 +195,7 @@ export function ChatComposer(props: ComposerProps) {
         <input
           ref={fileInputRef}
           type="file"
+          disabled={busy || unknown}
           multiple
           hidden
           accept="application/pdf,image/png,image/jpeg"
@@ -211,6 +215,7 @@ export function ChatComposer(props: ComposerProps) {
           className="chat-composer__btn"
           title="Insert emoji"
           aria-label="Insert emoji"
+          disabled={busy || unknown}
           onClick={() => setShowEmoji((v) => !v)}
         >
           😊

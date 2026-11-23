@@ -8,6 +8,14 @@
   z-index: 35;
   font-size: var(--text-md);
 }
+/* Keep incoming alerts clear of the chat and thread reply controls. */
+body:has(.chat__panel) .alert-popups {
+  bottom: auto;
+  top: calc(3.5rem + var(--space-4));
+  right: auto;
+  left: var(--space-4);
+  max-height: 45vh;
+}
 .alert-popups--idle {
   width: max-content;
   max-width: calc(100vw - var(--space-6));
