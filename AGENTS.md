@@ -6,15 +6,43 @@ PostgreSQL database, a FastAPI backend and a React frontend. The people who run 
 are ordinary staff, not system administrators: every routine management job must be possible,
 explained and safe **inside the web app**.
 
-This file is the operating manual for every coding agent and human contributor. Follow it
-exactly. When a rule here and your own preference disagree, the rule wins. When two documents
+This file is the operating manual for every coding agent (Codex, Claude, Gemini, …) and human
+contributor, and the only root agent-instruction file. Follow it exactly. When a rule here and your own preference disagree, the rule wins. When two documents
 disagree, the order of authority is: this file → `SPECIFICATIONS.md` and the contract documents
 it links → the work-package card → feature guides. Code that disagrees with a contract is a bug;
 report it in your handoff instead of quietly changing the contract.
 
+## Cardinal rules (owner-mandated, every repository)
+
+1. **Fetch before you change anything.** Start every task with
+   `git fetch origin && git pull --rebase --autostash origin main`. Several people and agents push
+   to this repository; never build on a stale checkout.
+2. **Work on `main` only.** Commit and push directly to `main` unless the owner names another
+   branch for the task. No feature branches or pull requests by default. Fetch again before
+   pushing; if the push is rejected, `git pull --rebase origin main`, rerun the affected tests,
+   then push. Never force-push or rewrite published history.
+3. **Keep the progress ledger current:** [`ROADMAP.md`](ROADMAP.md). Before coding, add (or claim)
+   the task entry: goal, plan, who is working on it, date. After each meaningful step record what
+   was done, the commit, test evidence, decisions, blockers and the next step. Commit the ledger
+   with the work it describes. A new session must be able to resume from the ledger and git
+   history alone, without the chat that started the work.
+4. **Targeted tests for ordinary changes.** Run only the tests that cover what you touched (see
+   [Tests](#5-commands)). Run the full suite only when preparing a release or when the owner asks.
+5. **CI runs only on request.** GitHub Actions workflows start by `workflow_dispatch` only;
+   tag-triggered release workflows are the single exception. Never add push, pull-request or
+   schedule triggers, and never start a workflow unless the owner asks.
+6. **Be honest.** Never report a check as passed unless you ran it and saw it pass; record skipped
+   checks and the reason. Never weaken, skip or delete a test to make it pass.
+7. **Keep git clean.** Commit sources and canonical assets only: no secrets, real personal data,
+   virtual environments, caches, logs or build output.
+
+The cardinal rules decide *how work is done* (sync, branch, ledger, test scope, CI). The project
+rules in this file decide *what this repository must achieve and protect*; nothing generic here
+relaxes them. If a project rule and a cardinal rule genuinely conflict, stop and ask the owner.
+
 ## 1. How to start any session
 
-1. Sync: `git pull --ff-only origin main`.
+1. Sync (cardinal rule 1).
 2. If the owner gave you a specific task, do that task. Otherwise open
    [docs/plan/README.md](docs/plan/README.md), take the **first work package whose status is
    `next` or `in progress`**, and do only that package.
@@ -101,7 +129,8 @@ A work package (or any change) is done only when every line below is true:
 - [ ] New behaviour has backend tests including the denied cases (sibling member, parent-only
       member, administrator without a grant, deactivated user, board-only session) that apply.
 - [ ] Changed screens have a browser check in `e2e/` at both the root and the prefixed instance.
-- [ ] `scripts/verify.sh` passes (run `scripts/verify.sh --e2e` when a screen changed).
+- [ ] The targeted checks in §5 pass for what you touched (the screen's `e2e/` flow when a screen
+      changed); `scripts/verify.sh` (`--e2e`) passes before a release or when the owner asks.
 - [ ] `docs/API.md` lists every new or changed endpoint, error code and socket message.
 - [ ] The in-app help page for the feature is added or updated in the same commit (once the
       help centre exists — see [docs/HELP-CENTER.md](docs/HELP-CENTER.md)).
@@ -115,7 +144,8 @@ A work package (or any change) is done only when every line below is true:
 scripts/verify.sh                 # docs, Ruff, backend tests, drift, ESLint/Prettier, types, unit tests, build
 scripts/verify.sh --e2e           # the above plus browser flows through nginx at / and /labadda-staging
 python3 scripts/check_docs.py     # links, size limits and plan consistency only (seconds)
-cd backend && ../.venv/bin/python -m pytest tests/test_<area>.py -q   # one area while iterating
+cd backend && ../.venv/bin/python -m pytest tests/test_<area>.py -q   # targeted backend tests
+cd frontend && npm run lint && npm run typecheck && npx vitest run <files>   # targeted frontend
 ```
 
 Setup, fixture accounts and the local stack are in [README.md](README.md). Never run two pytest
@@ -123,14 +153,11 @@ sessions against the same test database: the fixtures recreate the schema.
 
 ## 6. Git
 
-- Commit and push every change directly to `main`. Do not create feature, topic or agent
-  branches and do not open pull requests unless the owner asks for one in that session.
-- Push with `git push origin main`. If rejected, `git pull --rebase origin main`, rerun the
-  affected checks, push again. Never force-push `main`.
-- One work package may be several commits. Each commit must leave `scripts/verify.sh` green.
-- Commit subject: imperative, under 72 characters, starts with the work-package ID when there is
-  one, for example `P2: preview and apply staff transfers`. The body says what changed and
-  which checks were run.
+Cardinal rule 2 applies: commit and push directly to `main`, no branches or pull requests unless
+the owner asks in that session, never force-push. One work package may be several commits; each
+leaves the targeted checks green. Commit subject: imperative, under 72 characters, starts with the
+work-package ID when there is one, for example `P2: preview and apply staff transfers`. The body
+says what changed and which checks were run.
 
 ## 7. When to stop and ask the owner
 

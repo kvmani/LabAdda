@@ -11,10 +11,10 @@ prompt such as "do the next work package" produces a complete, reviewable result
 | 1. Select | Open [the plan](../plan/README.md). Take the first package marked `in progress`, else the first marked `next`. Do not skip ahead; packages depend on earlier ones. | Package ID |
 | 2. Claim | Set its status to `in progress` in the plan table and commit that one-line change. | Commit |
 | 3. Read | The card, the contract IDs it lists, [standards.md](standards.md), the nearest `AGENTS.md`, the code and tests you will touch. | Notes |
-| 4. Plan | Write the list of files to add or change, the tests to add, and the order of commits. Split into slices that each leave `verify.sh` green. | Short plan |
+| 4. Plan | Write the list of files to add or change, the tests to add, and the order of commits. Split into slices that each leave the targeted checks green. | Short plan |
 | 5. Contract | Update `docs/API.md` (and the spec, only if the card says so) before the code. | Doc diff |
 | 6. Build | Backend with tests first, then frontend, then the browser check, then help and guides. | Code |
-| 7. Verify | Run the card's acceptance checks and `scripts/verify.sh` (`--e2e` if a screen changed). Use the feature in a real browser against the fixture. | Results |
+| 7. Verify | Run the card's acceptance checks and the targeted checks of [AGENTS.md §5](../../AGENTS.md#5-commands) (the screen's `e2e/` flow if a screen changed); `scripts/verify.sh` (`--e2e`) before a release or when the owner asks. Use the feature in a real browser against the fixture. | Results |
 | 8. Self-review | Answer the seven questions in [standards.md §6](standards.md#6-self-review-before-you-commit). | Fixes |
 | 9. Record | Set the package status and percentage in the plan; add a handoff entry to `ROADMAP.md`. | Doc diff |
 | 10. Push | Commit and push to `main` as [AGENTS.md §6](../../AGENTS.md#6-git) describes. | Pushed SHA |

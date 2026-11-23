@@ -17,7 +17,9 @@ import sys
 from pathlib import Path
 
 SKIPPED_DIRECTORIES = {".git", "node_modules", ".venv", "var", "dist", "build"}
-SIZE_LIMITS = {"AGENTS.md": 160, "backend/AGENTS.md": 80, "frontend/AGENTS.md": 80}
+# AGENTS.md: 160 lines of project rules plus the owner's 27-line cardinal block shared by all
+# repositories (added 2026-11-23); keep any further detail in docs/.
+SIZE_LIMITS = {"AGENTS.md": 190, "backend/AGENTS.md": 80, "frontend/AGENTS.md": 80}
 # Fixture names retired by the Indian-names rule (docs/development/fixture-names.md). Records of
 # finished work and the mapping itself may still show them.
 RETIRED_NAMES = re.compile(
