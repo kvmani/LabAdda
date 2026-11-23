@@ -7,13 +7,12 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-ALL=(personal-board pilot-safety accessibility admin-console alert-preferences audit capabilities capacity-proposals chat-attachments
-  chat-threads collaboration-review console-activity console-backups console-broadcast console-health console-overview
-  content-charges dashboard feedback flows governance help inspection-view inventory-jobs org-chart people
-  people-authority people-changes people-import people-import-excel people-scheduled preview-observations
-  preview-reconciliation-view profile research-day setup-checklist storage-inventory task-assignment
-  task-board-reference task-comments task-conversion task-updates todos ui-kit unit-admin
-  upload-receipts upload-recovery-ui welcome workspace-usage join-requests alert-popups)
+# Each top-level browser module is an executable suite. Discover newly added modules too.
+ALL=()
+for file in e2e/*.mjs; do
+  suite=${file##*/}
+  ALL+=("${suite%.mjs}")
+done
 SUITES=("${@:-${ALL[@]}}")
 ORIGIN=http://127.0.0.1:8080
 PG="${LABADDA_PG:-postgresql+psycopg://labadda:labadda-dev@localhost:5432}"
@@ -28,7 +27,7 @@ cli() {
       LABADDA_DATABASE_URL="$PG/$db" LABADDA_ASSET_DIR="$RUN/$name/assets" \
       LABADDA_STATUS_DIR="$RUN/$name/status" "${LABADDA_PYTHON:-$ROOT/.venv/bin}/labadda" "$@" )
 }
-both() { for n in root staging; do "$@" "$n"; done; }
+both() { for n in root staging; do "$@" "$n" || return; done; }
 node_suite() { node "e2e/$1.mjs" "${@:2}"; }
 
 # Suites that read what an earlier operator step left behind get that step here.

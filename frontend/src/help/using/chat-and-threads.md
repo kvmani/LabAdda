@@ -3,7 +3,7 @@ title: Chat and threads
 summary: Send quick messages to a workspace, reply in a thread and share a chat message on the noticeboard.
 audience: everyone
 screen: none
-updated: 2026-11-11
+updated: 2026-11-23
 ---
 
 ## What this is for
@@ -18,6 +18,8 @@ Each workspace has its own chat for quick questions and day-to-day talk. Only pe
 4. To close the thread panel, choose **Close thread**.
 5. To tell the whole workspace about a message, choose **Share to noticeboard**, check the text and the destination, and choose the button that starts with **Post to**.
 6. To follow up on a message with a task, choose **Create task**. See [turning a message into a task](task-from-a-message.md).
+
+Choose **Search messages** to filter messages currently loaded in the conversation. Choose **Close search** to see them all again, or **Refresh chat** to load the latest messages.
 
 ## What happens next
 

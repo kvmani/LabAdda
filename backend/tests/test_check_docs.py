@@ -74,7 +74,7 @@ def test_oversized_agent_instructions_are_reported(tmp_path):
     write(tmp_path, "AGENTS.md", "# Rules\n" + "line\n" * 200)
     problems = check_docs.run(tmp_path)
     assert len(problems) == 1
-    assert problems[0].startswith("AGENTS.md: 201 lines exceeds the limit of 160")
+    assert problems[0].startswith("AGENTS.md: 201 lines exceeds the limit of 190")
 
 
 def test_unknown_plan_status_is_reported(tmp_path):

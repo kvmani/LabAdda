@@ -44,6 +44,8 @@ def context(settings, db_factory, **overrides) -> Context:
     values = {
         "settings": settings,
         "factory": db_factory,
+        # Event assertions need a stable host baseline even when other suites load the runner.
+        "proc": FakeProc(),
         "started": NOW.replace(hour=0),
         "expected_schema": lambda: "0029",
         "now": lambda: NOW,

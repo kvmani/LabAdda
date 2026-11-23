@@ -70,7 +70,6 @@ export function Chat({ ws }: { ws: Workspace }) {
   const [reactions, setReactions] = useState<Record<string, string[]>>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [infoNotice, setInfoNotice] = useState<string | null>(null);
 
   const safeCursor = useRef(0);
   const generation = useRef(0);
@@ -229,39 +228,20 @@ export function Chat({ ws }: { ws: Workspace }) {
           <p role="alert">This chat is no longer available.</p>
         ) : (
           <div className="chat__panel">
-            {/* WhatsApp Header */}
             <div className="chat__header">
               <div className="chat__header-info">
-                <div className="chat__header-avatar">{ws.name.slice(0, 2).toUpperCase()}</div>
-                <div className="chat__header-details">
-                  <span className="chat__header-title">{ws.name}</span>
-                  <span className="chat__header-status">online</span>
+                <div className="chat__header-avatar" aria-hidden="true">
+                  {ws.name.slice(0, 2).toUpperCase()}
                 </div>
+                <span className="chat__header-title">{ws.name}</span>
               </div>
               <div className="chat__header-actions">
                 <button
                   type="button"
                   className="chat__header-btn"
-                  title="Video call"
-                  aria-label="Video call"
-                  onClick={() => setInfoNotice("Intranet video conferencing is active for research staff.")}
-                >
-                  📹
-                </button>
-                <button
-                  type="button"
-                  className="chat__header-btn"
-                  title="Voice call"
-                  aria-label="Voice call"
-                  onClick={() => setInfoNotice("Intranet voice call relay is available.")}
-                >
-                  📞
-                </button>
-                <button
-                  type="button"
-                  className="chat__header-btn"
                   title="Search messages"
                   aria-label="Search messages"
+                  aria-expanded={searchOpen}
                   onClick={() => setSearchOpen((v) => !v)}
                 >
                   🔍
@@ -273,7 +253,7 @@ export function Chat({ ws }: { ws: Workspace }) {
                   aria-label="Refresh chat"
                   onClick={latest}
                 >
-                  ⋮
+                  ↻
                 </button>
               </div>
             </div>
@@ -283,6 +263,7 @@ export function Chat({ ws }: { ws: Workspace }) {
               <div className="chat__search-bar">
                 <input
                   className="chat__search-input"
+                  aria-label="Search loaded chat messages"
                   placeholder="Search in chat…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -298,15 +279,6 @@ export function Chat({ ws }: { ws: Workspace }) {
                 >
                   ✕
                 </button>
-              </div>
-            )}
-
-            {infoNotice && (
-              <div className="chat__notice">
-                {infoNotice}{" "}
-                <Button variant="quiet" size="sm" onClick={() => setInfoNotice(null)}>
-                  Dismiss
-                </Button>
               </div>
             )}
 

@@ -218,7 +218,7 @@ OPERATOR_FRONT = FRONT.replace("everyone", "operator").replace("/today", "none")
 
 def operator_problems(tmp_path: Path, commands: str) -> list[str]:
     make_repository(tmp_path)
-    for name in ("lifecycle.py", "operations.py", "release.py", "commission.py"):
+    for name in ("lifecycle.py", "lifecycle_args.py", "operations.py", "release.py", "commission.py"):
         write(tmp_path, f"scripts/{name}", (ROOT / "scripts" / name).read_text(encoding="utf-8"))
     write(tmp_path, "backend/labadda/cli.py", (ROOT / "backend/labadda/cli.py").read_text(encoding="utf-8"))
     page = OPERATOR_FRONT + BODY.replace("1. Choose **Save changes**.", commands).replace(

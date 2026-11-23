@@ -142,6 +142,12 @@ try {
     ]) {
       await page.goto(origin + base + path);
       await page.locator(ready).first().waitFor();
+      if (label === "chat") {
+        await page.getByRole("button", { name: "Search messages" }).click();
+        await page.getByRole("textbox", { name: "Search loaded chat messages" }).fill("Microscopy");
+        await page.getByRole("button", { name: "Close search" }).click();
+        check(await page.getByRole("button", { name: "Refresh chat" }).isVisible(), `${tag} chat actions`);
+      }
       await audit(page, `${tag} ${label}`);
     }
     await page.screenshot({ path: `${out}/${tag.replace("/", "")}-desktop-usage.png`, fullPage: true });

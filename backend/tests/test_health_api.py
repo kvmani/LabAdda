@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from labadda.models import AuditEvent, OpsEvent
 from labadda.security import utcnow
+from tests.health_support import FakeProc
 from tests.test_capabilities import grant
 from tests.test_panel import pair
 
@@ -22,6 +23,8 @@ def settings(settings):
 
 
 def sample(app):
+    # Keep the deliberately forced database incident independent of host load.
+    app.state.health.context.proc = FakeProc()
     assert app.state.health.run_once()
 
 
