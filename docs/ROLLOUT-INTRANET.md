@@ -151,13 +151,19 @@ Practise the test restore once before the pilot starts and record the time it to
 
 ## 11. If an upgrade fails, and rollback
 
-The script decides for you. If nothing had changed, or the database layout is the same in both versions, it puts
-the old version back by itself and says `ROLLED BACK AUTOMATICALLY`. Otherwise it leaves the site **closed** (so
-nothing is lost), names the backup it took just before, and stops. Then:
+If the old code still matches the database, the upgrade stops writers, restores that code
+and checks both private and public readiness under the same operation lock. It reports
+`Previous release and web route are ready` only after both checks pass. The nightly timer
+keeps its previous configuration throughout. A concurrent maintenance operation retains
+control of the site if the upgrade could not obtain the lock.
 
-1. Run `sudo labadda-status` and the doctor; send both (section 12).
-2. Do not retry the upgrade. To go back to the old version, restore that backup on a new test copy (section 9),
-   check it, and plan the switch with the developer.
+1. Run `sudo labadda-status` and the doctor (section 12).
+2. If the upgrade started but could not recover, keep the site closed. In its journal under
+   `/srv/labadda/main/operations`, find the `started` record for this upgrade and its
+   `backup_verified` record with the bundle name and manifest digest. If that record is
+   missing, the operation has no confirmed backup.
+3. Restore the confirmed backup to an isolated test copy (section 9), check it, and plan the
+   switch with the developer.
 
 ## 12. What to send back if something breaks
 

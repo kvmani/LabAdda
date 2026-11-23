@@ -1,12 +1,24 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, cleanup, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
+import type { RealtimeEvent } from "../../realtime";
 import { AlertPopups } from "./AlertPopups";
 const mocks = vi.hoisted(() => ({ api: vi.fn(), play: vi.fn(), enable: vi.fn(), close: vi.fn() }));
 vi.mock("../../api", () => ({ api: mocks.api, errorMessage: () => "Could not save. Try again." }));
 vi.mock("../../session", () => ({ useSession: () => ({ session: { user: { id: "asha" } } }) }));
-vi.mock("../../workspaces", () => ({ useWorkspaces: () => ({ workspaces: [], reload: vi.fn() }) }));
+const listeners = vi.hoisted(() => new Map<string, (event: RealtimeEvent) => void>());
+vi.mock("../../realtime", () => ({
+  realtime: {
+    subscribe(id: string, listener: (event: RealtimeEvent) => void) {
+      listeners.set(id, listener);
+      return () => listeners.delete(id);
+    },
+  },
+}));
+vi.mock("../../workspaces", () => ({
+  useWorkspaces: () => ({ workspaces: [{ id: "section", name: "Thin Films" }], reload: vi.fn() }),
+}));
 vi.mock("./chime", () => ({
   AlertChime: class {
     play = mocks.play;
@@ -36,14 +48,14 @@ function show() {
 }
 it("dismisses without acknowledging and does not replay at the next poll", async () => {
   mocks.api.mockResolvedValue({ items: [item] });
-  show();
-  await screen.findByText(item.title);
   vi.useFakeTimers();
-  fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
   await act(async () => {
-    vi.advanceTimersByTime(10000);
+    show();
     await Promise.resolve();
   });
+  fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+  await act(() => vi.advanceTimersByTimeAsync(10000));
+  expect(mocks.api).toHaveBeenCalledTimes(2);
   expect(screen.queryByText(item.title)).toBeNull();
   expect(mocks.api.mock.calls.every((call) => call[0] === "/notifications")).toBe(true);
 });
@@ -71,4 +83,76 @@ it("requires a gesture to enable sound and allows muting", async () => {
   expect(mocks.play).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("button", { name: "Mute chime" }));
   expect(screen.getByRole("button", { name: "Enable chime" })).toBeTruthy();
+});
+
+it("restores an unread reminder with its current title when the connection recovers", async () => {
+  mocks.api
+    .mockResolvedValueOnce({ items: [item] })
+    .mockRejectedValueOnce(new Error("Network unavailable"))
+    .mockResolvedValueOnce({ items: [{ ...item, title: "Project Tejas design review" }] });
+  vi.useFakeTimers();
+  await act(async () => {
+    show();
+    await Promise.resolve();
+  });
+  expect(screen.getByText(item.title)).toBeTruthy();
+  await act(() => vi.advanceTimersByTimeAsync(10000));
+  expect(screen.queryByText(item.title)).toBeNull();
+  await act(() => vi.advanceTimersByTimeAsync(10000));
+  expect(screen.getByText("Project Tejas design review")).toBeTruthy();
+});
+
+const chat = (seq: number): RealtimeEvent => ({
+  type: "chat.message",
+  message: {
+    workspace_id: "section",
+    id: String(seq),
+    seq,
+    body: `Thin Films update ${seq}`,
+    author: { id: "bharat", username: "bharat", display_name: "Bharat", is_active: true },
+    attachments: [],
+    parent_id: null,
+    client_id: String(seq),
+    created_at: "2026-11-23T09:00:00Z",
+  },
+});
+
+it("continues receiving chat after access is rechecked and suppresses a revoked workspace", async () => {
+  mocks.api.mockResolvedValue({ items: [] });
+  await act(async () => {
+    show();
+    await Promise.resolve();
+  });
+  const send = listeners.get("section")!;
+  act(() => {
+    send({ type: "access_changed" });
+    send(chat(1));
+  });
+  expect(screen.getByText("Thin Films update 1")).toBeTruthy();
+  act(() => {
+    send({ type: "revoked", workspace_id: "section" });
+    send(chat(2));
+  });
+  expect(screen.queryByText("Thin Films update 1")).toBeNull();
+  expect(screen.queryByText("Thin Films update 2")).toBeNull();
+});
+
+it("keeps an unread mention visible after acknowledging a later chat message", async () => {
+  const mention = {
+    ...item,
+    kind: "mention",
+    title: "@asha please check",
+    link: { view: "chat", workspace_id: "section", seq: 1 },
+  };
+  mocks.api.mockResolvedValue({ items: [mention] });
+  show();
+  await screen.findByText(mention.title);
+  act(() => listeners.get("section")!(chat(2)));
+  fireEvent.click(
+    within(screen.getByRole("region", { name: "New chat message" })).getByRole("button", {
+      name: "Mark as read",
+    }),
+  );
+  await waitFor(() => expect(screen.queryByText("Thin Films update 2")).toBeNull());
+  expect(screen.getByText(mention.title)).toBeTruthy();
 });

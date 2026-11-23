@@ -199,6 +199,7 @@ def build(
                 "scripts/source_zip.py",
                 "scripts/service_files.py",
                 "scripts/lifecycle.py",
+                "scripts/lifecycle_args.py",
                 "scripts/commission.py",
                 "scripts/backup_tools.py",
                 "scripts/site_environment.py",

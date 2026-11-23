@@ -3,7 +3,7 @@ title: Notifications and alert preferences
 summary: Read your notifications and choose which kinds of alert you receive.
 audience: everyone
 screen: /preferences
-updated: 2026-11-17
+updated: 2026-11-23
 ---
 
 ## What this is for
@@ -30,7 +30,8 @@ turns it off. A burst of alerts sounds at most once every eight seconds.
   For chat, it marks the conversation read through that message.
 - **Open** acknowledges and opens the related tool.
 
-Up to three pop-ups appear at once, with more waiting behind them. Calendar reminders
+Up to three pop-ups appear at once, with more waiting behind them. If the connection drops,
+unread reminders return after LabAdda reconnects. Dismissed reminders stay hidden in that tab. Calendar reminders
 arrive within fifteen minutes of timed events starting; all-day events do not chime.
 Cancelled events and items you can no longer access are hidden. Reminders follow your
 reminder category choice. The tab must remain open; these are not desktop notifications.

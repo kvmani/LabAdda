@@ -21,17 +21,22 @@ if ((DRY_RUN)); then
   step "Plan (nothing is changed)"; lifecycle backup --unattended --resume-after-backup; exit 0
 fi
 step "Backing up (site closed for a few minutes)"
-lifecycle backup --unattended --apply --external-writers-stopped --resume-after-backup >/dev/null \
+receipt=$(lifecycle backup --unattended --apply --external-writers-stopped --resume-after-backup) \
   || die "The backup did not finish. The site may be in maintenance: run labadda-status and read docs/RECOVERY.md."
-newest=$(find "$BACKUP_ROOT" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort | tail -1)
-ok "backup $newest ($(du -sh "$BACKUP_ROOT/$newest" | cut -f1)) taken and verified; the site is open again"
+bundle=$("$PYTHON" -c 'import json,sys;print(json.load(sys.stdin)["backup"])' <<<"$receipt")
+digest=$("$PYTHON" -c 'import json,sys;print(json.load(sys.stdin)["manifest_sha256"])' <<<"$receipt")
+[[ ${bundle%/*} == "$BACKUP_ROOT" && -d $bundle && $digest =~ ^[0-9a-f]{64}$ ]] \
+  || die "Unconfirmed backup receipt; inspect the local operation journal."
+newest=${bundle##*/}
+ok "backup $newest ($(du -sh "$bundle" | cut -f1)) taken and verified; the site is open again"
 say "    Manifest digest (note it somewhere safe, it is needed for a restore):"
-say "    $(sha256sum "$BACKUP_ROOT/$newest/manifest.json" | cut -d' ' -f1)"
+say "    $digest"
 if [[ -n $COPY_TO ]]; then
   step "Copying off the server"
-  mkdir -p "$COPY_TO"; cp -a "$BACKUP_ROOT/$newest" "$COPY_TO/"
+  mkdir -p "$COPY_TO"
+  [[ ! -e $COPY_TO/$newest && ! -L $COPY_TO/$newest ]] || die "Destination backup name already exists."
+  cp -a "$bundle" "$COPY_TO/"
   is_user_scope && chown -R "$SERVICE_USER:$SERVICE_USER" "$COPY_TO/$newest"
-  digest=$(sha256sum "$BACKUP_ROOT/$newest/manifest.json" | cut -d' ' -f1)
   with_env "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli verify-backup "$COPY_TO/$newest" \
     --manifest-sha256 "$digest" >/dev/null || die "Copied backup failed full verification. Keep the original and recopy."
   ok "copied to $COPY_TO/$newest (backups contain all content: keep the drive locked away)"

@@ -59,30 +59,16 @@ if ! ((ASSUME_YES)); then
   read -r -p "Close the site and upgrade now? Type UPGRADE to continue: " reply
   [[ $reply == UPGRADE ]] || die "Cancelled. Nothing was changed except installing the new files beside the old."
 fi
-svc stop "labadda-backup@$SITE.timer" 2>/dev/null || true
+# The backend operation lock serializes upgrades with scheduled backups. Keeping the timer
+# configured as-is also preserves an intentionally timer-free installation or restore target.
 step "Upgrading (site closed)"
-if lifecycle upgrade --apply --external-writers-stopped --expected-current "$CURRENT" --expected-schema "$OLD_SCHEMA" \
+if lifecycle upgrade --apply --recover-compatible --external-writers-stopped --expected-current "$CURRENT" --expected-schema "$OLD_SCHEMA" \
   --candidate "$VERSION" >/dev/null; then
-  svc start "labadda-backup@$SITE.timer" 2>/dev/null || true
   ok "now running $VERSION; the site is open again"
   ( cd "$INSTANCE_ROOT/current/backend" && as_service "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) || warn "the doctor reported problems above"
   exit 0
 fi
-
-step "The upgrade did not finish - checking whether the old version can be put back"
-NOW=$(current_version); OBSERVED=$(schema_of "$NOW" || true)
-reopen() { svc start "$UNIT"; wait_for_health 90 && rm -f "$INSTANCE_ROOT/traffic/maintenance"; }
-if [[ $NOW == "$CURRENT" && $OBSERVED == "$OLD_SCHEMA" ]]; then
-  reopen && { ok "ROLLED BACK AUTOMATICALLY: nothing had changed; $CURRENT is running and the site is open."; exit 1; }
-elif [[ $NOW == "$VERSION" && $OLD_SCHEMA == "$NEW_SCHEMA" && $OBSERVED == "$OLD_SCHEMA" ]]; then
-  with_env release_tool rollback --instance "$INSTANCE_ROOT" --release "$CURRENT" --database-schema "$OBSERVED" \
-    --writers-quiesced --backup-verified >/dev/null && reopen \
-    && { ok "ROLLED BACK AUTOMATICALLY to $CURRENT (same database layout); the site is open."; exit 1; }
-fi
-newest=$(find "$BACKUP_ROOT" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort | tail -1)
-warn "NOT rolled back automatically. The SITE IS LEFT CLOSED so no data is lost."
-say "    The backup taken just before the upgrade is: $BACKUP_ROOT/$newest"
-say "    1. Run: sudo labadda-status   and keep the output."
-say "    2. Run: labadda doctor (see ROLLOUT-INTRANET.md, 'If an upgrade fails') and send both outputs."
-say "    3. To go back to $CURRENT, restore that backup: sudo bash restore.sh --help (ROLLOUT-INTRANET.md, 'Rollback')."
+warn "Upgrade did not complete. Run labadda-status and inspect its operation journal in $INSTANCE_ROOT/operations."
+say "    Use only the bundle and manifest digest in this upgrade's backup_verified record."
+say "    If that record is absent, a backup for this upgrade was not confirmed."
 exit 1

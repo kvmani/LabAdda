@@ -8,6 +8,10 @@
   z-index: 35;
   font-size: var(--text-md);
 }
+.alert-popups--idle {
+  width: max-content;
+  max-width: calc(100vw - var(--space-6));
+}
 .alert-popups__head {
   display: flex;
   justify-content: space-between;

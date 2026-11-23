@@ -70,6 +70,10 @@ try {
       notifications.items.some((n) => n.title === title && n.read),
       "Read acknowledgement persisted",
     );
+    await page.setViewportSize({ width: 390, height: 844 });
+    const idleWidth = await alerts.evaluate((node) => node.getBoundingClientRect().width);
+    check(idleWidth < 300, "Idle alert control leaves room for other actions on a phone");
+    await page.setViewportSize({ width: 1440, height: 1000 });
     const sender = await browser.newContext();
     const login = await sender.request.post(`${origin}${base}/api/v1/auth/login`, {
       data: { username: "bharat", password: "fixture-pass-123" },

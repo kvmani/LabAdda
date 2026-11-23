@@ -93,6 +93,9 @@ def operator_tools(root: Path) -> dict[str, Tool]:
     tools = {}
     for path in sorted((root / SCRIPTS_DIRECTORY).glob("*.py")):
         tools[path.name] = parse_tool(path.read_text(encoding="utf-8"))
+    # The lifecycle entry point delegates its argparse definitions to a sibling module.
+    if "lifecycle.py" in tools and "lifecycle_args.py" in tools:
+        tools["lifecycle.py"] = tools["lifecycle_args.py"]
     cli = root / CLI_FILE
     if cli.is_file():
         tools["labadda"] = parse_tool(cli.read_text(encoding="utf-8"))

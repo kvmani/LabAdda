@@ -8,7 +8,6 @@ operation. Backups are deleted only by the explicit, plan-first `prune-backups` 
 
 from __future__ import annotations
 
-import argparse
 import contextlib
 import json
 import os
@@ -23,6 +22,7 @@ from pathlib import Path
 import backup_tools
 import operations
 import release
+from lifecycle_args import parse_args
 from site_environment import runtime_environment
 from site_state import journal, locked, private_directory, sync_directory
 
@@ -128,6 +128,44 @@ def resume_traffic(site: dict, unit: str, marker: Path, log: Path):
     journal(log, "traffic_ready")
 
 
+def stop_writers(site, unit):
+    systemctl(site, "stop", unit)
+    stopped = systemctl(site, "show", unit, "--property=ActiveState,MainPID")
+    properties = dict(line.split("=", 1) for line in stopped.splitlines() if "=" in line)
+    if properties.get("MainPID") != "0" or properties.get("ActiveState") not in (
+        "inactive",
+        "failed",
+    ):
+        raise operations.OperationsError("Service still active; no backup or migration attempted")
+
+
+class UpgradeRolledBack(operations.OperationsError):
+    """The locked rollback restored the previous release and confirmed both readiness probes."""
+
+
+def recover_compatible(site, plan, env, marker, log):
+    """Caller holds the operation lock and owns this maintenance marker."""
+    root = Path(site["root"])
+    current, target = current_release(root)
+    active, expected_schema = plan["current"], plan["expected_schema"]
+    unit = f"labadda-{site['instance']}.service"
+    if current not in (active, plan["candidate"]):
+        return False
+    stop_writers(site, unit)
+    if schema(target, site, env) != expected_schema:
+        return False
+    if current != active:
+        release.switch(root, active, expected_schema, rollback=True)
+    try:
+        resume_traffic(site, unit, marker, log)
+    except BaseException:
+        marker.touch(exist_ok=True)
+        sync_directory(marker.parent)
+        raise
+    journal(log, "rollback_ready", release=active)
+    return True
+
+
 def maintenance(  # noqa: PLR0912, PLR0915 — linear operator script; steps run in a fixed order
     site: dict,
     action: str,
@@ -138,6 +176,7 @@ def maintenance(  # noqa: PLR0912, PLR0915 — linear operator script; steps run
     apply=False,
     external_writers_stopped=False,
     resume=False,
+    recover=False,
 ) -> dict:
     root = Path(site["root"])
     env = runtime_environment(site)
@@ -205,14 +244,7 @@ def maintenance(  # noqa: PLR0912, PLR0915 — linear operator script; steps run
         sync_directory(marker.parent)
         try:
             journal(log, "maintenance_enabled")
-            systemctl(site, "stop", unit)
-            stopped = systemctl(site, "show", unit, "--property=ActiveState,MainPID")
-            properties = dict(line.split("=", 1) for line in stopped.splitlines() if "=" in line)
-            if properties.get("MainPID") != "0" or properties.get("ActiveState") not in (
-                "inactive",
-                "failed",
-            ):
-                raise operations.OperationsError("Service still active; no backup or migration attempted")
+            stop_writers(site, unit)
             journal(log, "writers_stopped")
             cli(target, env, "backup", backup, "--release", active, "--writers-quiesced")
             manifest_hash = release.digest(backup / "manifest.json")
@@ -237,7 +269,7 @@ def maintenance(  # noqa: PLR0912, PLR0915 — linear operator script; steps run
                 "manifest_sha256": manifest_hash,
                 "maintenance": action == "backup" and not resume,
             }
-        except BaseException:
+        except BaseException as error:
             # Never rewind the database or reopen traffic after an unconfirmed operation.
             marker.touch(exist_ok=True)
             sync_directory(marker.parent)
@@ -246,6 +278,13 @@ def maintenance(  # noqa: PLR0912, PLR0915 — linear operator script; steps run
                 "failed",
                 next_action="Keep maintenance; inspect last completed event and recovery runbook",
             )
+            if (
+                recover
+                and action == "upgrade"
+                and isinstance(error, Exception)
+                and recover_compatible(site, plan, env, marker, log)
+            ):
+                raise UpgradeRolledBack from error
             raise
 
 
@@ -325,42 +364,8 @@ def prune_backups(site: dict, keep: int, *, apply=False) -> dict:
     return result
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--site", type=Path, required=True)
-    parser.add_argument("action", choices=("backup", "upgrade", "prune-backups"))
-    parser.add_argument("--expected-current")
-    parser.add_argument("--expected-schema")
-    parser.add_argument("--candidate")
-    parser.add_argument("--apply", action="store_true")
-    parser.add_argument("--external-writers-stopped", action="store_true")
-    parser.add_argument(
-        "--unattended",
-        action="store_true",
-        help="backup only: take the expected release and schema from the installed site (timer use)",
-    )
-    parser.add_argument(
-        "--resume-after-backup",
-        action="store_true",
-        help="backup only: after a verified backup restart the service and lift maintenance",
-    )
-    parser.add_argument(
-        "--destination-alias", default="local", help="short name shown for the backup location"
-    )
-    parser.add_argument("--keep", type=int, help="prune-backups only: how many finished backups to keep")
-    return parser
-
-
 def main(argv=None):
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    if args.action == "prune-backups":
-        if args.keep is None:
-            parser.error("prune-backups requires --keep")
-    elif args.action == "upgrade" and (args.unattended or args.resume_after_backup):
-        parser.error("--unattended and --resume-after-backup apply to backup only")
-    elif not args.unattended and not (args.expected_current and args.expected_schema):
-        parser.error("--expected-current and --expected-schema are required unless --unattended")
+    args = parse_args(argv)
     try:
         site = operations.load_site(args.site)
         if args.action == "prune-backups":
@@ -373,14 +378,17 @@ def main(argv=None):
                 "upgrade",
                 args.expected_current,
                 candidate=args.candidate,
+                recover=args.recover_compatible,
                 expected_schema=args.expected_schema,
                 apply=args.apply,
                 external_writers_stopped=args.external_writers_stopped,
             )
         print(json.dumps(result, indent=2))
         return 1 if result.get("status_file") == "write failed" else 0
+    except UpgradeRolledBack:
+        print("Upgrade failed. Previous release and web route are ready.", file=sys.stderr)
+        return 1
     except (operations.OperationsError, release.ReleaseError, OSError, ValueError):
-        # Never relay a runtime exception that could carry a credential-bearing URL.
         print(
             "Operation unconfirmed. Keep maintenance enabled; inspect the local journal and runbook.",
             file=sys.stderr,

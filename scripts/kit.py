@@ -46,6 +46,7 @@ LAUNCHERS = (
 TOOL_SCRIPTS = (
     "release.py",
     "lifecycle.py",
+    "lifecycle_args.py",
     "commission.py",
     "operations.py",
     "service_files.py",

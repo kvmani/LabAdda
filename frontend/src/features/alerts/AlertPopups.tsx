@@ -47,14 +47,15 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
     setAlerts((current) =>
       current.filter((item) => !item.workspace || ids.split(",").includes(item.workspace.id)),
     );
-    function add(items: Alert[]) {
-      if (!live) return;
-      const fresh = items.filter((item) => !seen.current.has(item.id) && !item.read);
+    function announce(items: Alert[]) {
+      const fresh = items.filter((item) => !seen.current.has(item.id));
       fresh.forEach((item) => seen.current.add(item.id));
       if (fresh.length && soundRef.current) chime.current.play();
-      setAlerts((current) =>
-        [...current, ...fresh].filter((item) => !dismissed.current.has(item.id)).slice(-100),
-      );
+    }
+    function addChat(item: Alert) {
+      if (!live || seen.current.has(item.id)) return;
+      announce([item]);
+      setAlerts((current) => [...current, item].slice(-100));
     }
     async function load() {
       if (loading) return;
@@ -63,9 +64,19 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
       try {
         const result = await api<{ items: Alert[] }>("/notifications", { params: { limit: 100 } });
         if (!live || token !== generation) return;
-        const unread = new Set(result.items.filter((item) => !item.read).map((item) => item.id));
-        setAlerts((current) => current.filter((item) => item.kind === "chat" || unread.has(item.id)));
-        add(result.items);
+        const unread = result.items.filter((item) => !item.read && !dismissed.current.has(item.id));
+        announce(unread);
+        setAlerts((current) => {
+          const pending = new Map(unread.map((item) => [item.id, item]));
+          const next: Alert[] = [];
+          for (const item of current) {
+            const updated = pending.get(item.id);
+            if (item.kind === "chat") next.push(item);
+            else if (updated) next.push(updated);
+            pending.delete(item.id);
+          }
+          return [...next, ...pending.values()].slice(-100);
+        });
       } catch {
         // Never retain protected snippets after an unconfirmed refresh.
         if (live) setAlerts([]);
@@ -80,25 +91,24 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
         realtime.subscribe(id, (event) => {
           if (event.type === "revoked" || event.type === "access_changed" || event.type === "session_ended") {
             generation += 1;
-            revoked.add(id);
+            if (event.type !== "access_changed") revoked.add(id);
             setAlerts([]);
           }
+          if (event.type === "subscribed") revoked.delete(id);
           if (
             event.type === "chat.message" &&
             event.message.author?.id !== session?.user.id &&
             !revoked.has(id)
           ) {
             const message = event.message;
-            add([
-              {
-                id: `chat:${message.id}`,
-                kind: "chat",
-                title: message.body || "Shared an attachment",
-                read: false,
-                workspace: workspaceRef.current.find((w) => w.id === id) ?? null,
-                link: { view: "chat", workspace_id: id, seq: message.seq },
-              },
-            ]);
+            addChat({
+              id: `chat:${message.id}`,
+              kind: "chat",
+              title: message.body || "Shared an attachment",
+              read: false,
+              workspace: workspaceRef.current.find((w) => w.id === id) ?? null,
+              link: { view: "chat", workspace_id: id, seq: message.seq },
+            });
           }
           if (event.type === "noticeboard.changed") void load();
         }),
@@ -134,6 +144,7 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
         setAlerts((current) =>
           current.filter(
             (alert) =>
+              alert.kind !== "chat" ||
               alert.link.view !== "chat" ||
               alert.link.workspace_id !== readLink.workspace_id ||
               alert.link.seq > readLink.seq,
@@ -179,7 +190,10 @@ export function AlertPopups({ onRead }: { onRead?: () => void }) {
   }
 
   return (
-    <aside className="alert-popups" aria-label="Live alerts">
+    <aside
+      className={visibleAlerts.length || error ? "alert-popups" : "alert-popups alert-popups--idle"}
+      aria-label="Live alerts"
+    >
       <div className="alert-popups__head">
         <span>
           {visibleAlerts.length
