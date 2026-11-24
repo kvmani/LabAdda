@@ -1,24 +1,36 @@
 import { SelectedObjectControls } from "../features/whiteboard/SelectedObjectControls";
-import { canvasFont, loadBoardFonts } from "../features/whiteboard/textStyle";
+import { drawBoard } from "../features/whiteboard/drawBoard";
+import { BoardToolbar } from "../features/whiteboard/BoardToolbar";
+import {
+  bounds,
+  fold,
+  hit,
+  type BoardState,
+  type Obj,
+  type PendingOp,
+  type Region,
+  type SaveState,
+  type Tool,
+} from "../features/whiteboard/boardModel";
+import { loadBoardFonts } from "../features/whiteboard/textStyle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorCode, errorMessage, newId, outcomeUnknown } from "../api";
 import { API, BASE } from "../config";
 import { realtime, type StrokePreview } from "../realtime";
-import type { BoardObjectContent, BoardOp, BoardOpPayload, NoteData, Point, Workspace } from "../types";
+import type { BoardOp, NoteData, Point, Workspace } from "../types";
 import { PublishSnapshot } from "../components/PublishSnapshot";
 import { ConversationTask } from "../components/ConversationTask";
 import { Button, Card, Dialog } from "../ui";
 import {
   BoardTabs,
   STICKY_SHAPES,
-  STICKY_SIZES,
   STICKY_COLORS,
   PEN_COLORS,
-  getStickyDimensions,
-  drawStickyCanvas,
   generateShapePoints,
   StickyEditDialog,
   TextEditDialog,
+  WhiteboardHoverTooltip,
+  type HoverTooltipData,
   type StickyShape,
   type StickySize,
   type DrawMode,
@@ -28,118 +40,8 @@ import "./board-chrome.css";
 import { UploadRecovery, useUploadQueue } from "../components/UploadRecovery";
 import type { UploadedAsset } from "../uploads";
 
-type Obj = BoardObjectContent & {
-  author: string;
-  created_at?: string;
-  alive: boolean;
-  rev: number;
-  dx: number;
-  dy: number;
-};
-/** GET /workspaces/{id}/board: replay after a revision, or a reset from the compacted snapshot. */
-type BoardState = {
-  epoch: number;
-  revision: number;
-  base_revision: number;
-  reset: boolean;
-  snapshot: { revision: number; objects: Record<string, Obj> } | null;
-  ops: BoardOp[];
-  can_write: boolean;
-  can_moderate: boolean;
-};
-type Tool = "select" | "pen" | "eraser" | "text" | "sticky" | "image" | "snapshot" | "pan";
-export type Region = { x: number; y: number; w: number; h: number };
-type SaveState = "Saved" | "Saving…" | "Reconnecting…" | "Conflict — reloaded" | "Read-only";
-type PendingOp = {
-  op_id: string;
-  epoch: number;
-  type: string;
-  object_id?: string;
-  payload?: BoardOpPayload;
-  base_revision?: number;
-};
-
 export { STICKY_SHAPES };
-
-export function stickyDimensions(shape?: string, size?: string): [number, number] {
-  return getStickyDimensions(shape as StickyShape, size as StickySize);
-}
-
-export function fold(ops: BoardOp[], base?: Record<string, Obj> | null): Map<string, Obj> {
-  const objects = new Map<string, Obj>(Object.entries(base ?? {}).map(([k, v]) => [k, { ...v }]));
-  const byRev = new Map<number, BoardOp>();
-  for (const op of ops) {
-    byRev.set(op.revision, op);
-    const obj = objects.get(op.object_id);
-    if (op.type === "add") {
-      const { kind, data } = op.payload;
-      if (!kind || !data) continue; // the server never commits an add without both
-      // The server validated `data` against `kind` before committing the operation.
-      const content = { kind, data } as BoardObjectContent;
-      objects.set(op.object_id, {
-        ...content,
-        author: op.payload.author ?? op.actor_id,
-        created_at: op.created_at,
-        alive: true,
-        rev: op.revision,
-        dx: 0,
-        dy: 0,
-      });
-    } else if (!obj) continue;
-    else if (op.type === "update") Object.assign(obj, { data: op.payload.data, rev: op.revision });
-    else if (op.type === "erase") Object.assign(obj, { alive: false, rev: op.revision });
-    else if (op.type === "move")
-      Object.assign(obj, {
-        dx: obj.dx + (op.payload.dx ?? 0),
-        dy: obj.dy + (op.payload.dy ?? 0),
-        rev: op.revision,
-      });
-    else if (op.type === "undo") {
-      // Undo payloads carry their effect, so they still apply after the target was compacted.
-      const target = op.payload.target_revision;
-      const t = target === undefined ? undefined : byRev.get(target);
-      const type = op.payload.target_type ?? t?.type;
-      const dx = op.payload.dx ?? t?.payload.dx ?? 0;
-      const dy = op.payload.dy ?? t?.payload.dy ?? 0;
-      if (!type) continue;
-      if (type === "update") obj.data = op.payload.previous_data ?? obj.data;
-      if (type === "add") obj.alive = false;
-      if (type === "erase") obj.alive = true;
-      if (type === "move") Object.assign(obj, { dx: obj.dx - dx, dy: obj.dy - dy });
-      obj.rev = op.revision;
-    }
-  }
-  return objects;
-}
-
-function bounds(o: Obj): [number, number, number, number] {
-  if (o.kind === "stroke") {
-    const xs = o.data.points.map((p) => p[0] + o.dx);
-    const ys = o.data.points.map((p) => p[1] + o.dy);
-    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-  }
-  if (o.kind === "image")
-    return [o.data.x + o.dx, o.data.y + o.dy, o.data.x + o.dx + o.data.w, o.data.y + o.dy + o.data.h];
-  let w = 180;
-  let h = 120;
-  if (o.kind === "sticky") {
-    [w, h] = getStickyDimensions(o.data.shape, o.data.size);
-  } else {
-    const fontSize = o.data.font_size ?? 16;
-    const lines = o.data.text.split("\n");
-    w = Math.max(40, ...lines.map((line) => line.length * fontSize * 0.65));
-    h = Math.max(24, lines.length * fontSize * 1.3);
-  }
-  return [o.data.x + o.dx, o.data.y + o.dy, o.data.x + o.dx + w, o.data.y + o.dy + h];
-}
-
-function hit(o: Obj, x: number, y: number, tol: number): boolean {
-  if (o.kind !== "stroke") {
-    const [a, b, c, d] = bounds(o);
-    return x >= a - tol && x <= c + tol && y >= b - tol && y <= d + tol;
-  }
-  return o.data.points.some((p) => Math.hypot(p[0] + o.dx - x, p[1] + o.dy - y) < tol + o.data.width);
-}
+export { fold, stickyDimensions, type Region } from "../features/whiteboard/boardModel";
 
 /** Whiteboard. With ``panel`` set it runs as a board-only touch panel: no images, publishing or restore. */
 export function Board({
@@ -211,13 +113,7 @@ export function Board({
     color: string;
   } | null>(null);
   const [creatingTextAt, setCreatingTextAt] = useState<Point | null>(null);
-  const [hoverTooltip, setHoverTooltip] = useState<{
-    x: number;
-    y: number;
-    author: string;
-    time: string;
-    kind: string;
-  } | null>(null);
+  const [hoverTooltip, setHoverTooltip] = useState<HoverTooltipData | null>(null);
   const [members, setMembers] = useState<Map<string, string>>(new Map());
   const shapeDrawing = useRef<{
     id: string;
@@ -481,93 +377,21 @@ export function Board({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ratio = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * ratio;
-    canvas.height = rect.height * ratio;
-    const ctx = canvas.getContext("2d")!;
-    ctx.setTransform(ratio * view.scale, 0, 0, ratio * view.scale, ratio * view.x, ratio * view.y);
-    ctx.clearRect(
-      -view.x / view.scale,
-      -view.y / view.scale,
-      rect.width / view.scale,
-      rect.height / view.scale,
-    );
-    const line = (pts: Point[], c: string, w: number, dx = 0, dy = 0) => {
-      ctx.strokeStyle = c;
-      ctx.lineWidth = w;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      pts.forEach((p, i) => (i ? ctx.lineTo(p[0] + dx, p[1] + dy) : ctx.moveTo(p[0] + dx, p[1] + dy)));
-      const [only] = pts;
-      if (pts.length === 1 && only) ctx.lineTo(only[0] + dx + 0.1, only[1] + dy);
-      ctx.stroke();
-    };
-    for (const original of [...objects.values()].sort((a, b) => a.rev - b.rev)) {
-      const drag = dragging.current;
-      const o =
-        drag && original === selected
-          ? {
-              ...original,
-              dx: original.dx + drag.dx,
-              dy: original.dy + drag.dy,
-            }
-          : original;
-      if (!o.alive) continue;
-      if (o.kind === "image") {
-        const id = o.data.asset_id;
-        let img = images.current.get(id);
-        if (!img) {
-          img = new Image();
-          img.onload = () => force((n) => n + 1);
-          img.src = `${API}/files/${id}/preview${panel ? "?panel=1" : ""}`;
-          images.current.set(id, img);
-        }
-        if (img.complete && img.naturalWidth)
-          ctx.drawImage(img, o.data.x + o.dx, o.data.y + o.dy, o.data.w, o.data.h);
-        else {
-          ctx.strokeStyle = "#9aa5b1";
-          ctx.strokeRect(o.data.x + o.dx, o.data.y + o.dy, o.data.w, o.data.h);
-        }
-      } else if (o.kind === "stroke") line(o.data.points, o.data.color, o.data.width, o.dx, o.dy);
-      else {
-        const x = o.data.x + o.dx,
-          y = o.data.y + o.dy;
-        if (o.kind === "sticky") {
-          const shape = o.data.shape ?? "rectangle";
-          const [w, h] = getStickyDimensions(shape, o.data.size);
-          drawStickyCanvas(ctx, x, y, w, h, shape, o.data.color, o.data.text, o.data);
-        } else {
-          ctx.fillStyle = o.data.color;
-          ctx.font = canvasFont(o.data);
-          ctx.textAlign = "left";
-          const lines = o.data.text.split("\n");
-          lines.forEach((t: string, i: number) =>
-            ctx.fillText(t, x, y + (o.data.font_size ?? 16) * 1.25 + i * (o.data.font_size ?? 16) * 1.3),
-          );
-        }
-      }
-    }
-    if (shapeDrawing.current) {
-      line(shapeDrawing.current.points, color, 3);
-    }
-    for (const p of previews.current.values()) line(p.points, p.color ?? "#999", 3);
-    if (drawing.current) line(drawing.current.points, color, 3);
-    if (selected?.alive) {
-      const [x0, y0, x1, y1] = bounds(selected);
-      const drag = dragging.current;
-      ctx.strokeStyle = PEN_COLORS[2];
-      ctx.lineWidth = 2 / view.scale;
-      ctx.strokeRect(x0 + (drag?.dx ?? 0), y0 + (drag?.dy ?? 0), x1 - x0, y1 - y0);
-    }
-    if (selection) {
-      ctx.setLineDash([8 / view.scale, 6 / view.scale]);
-      ctx.strokeStyle = "#1d4ed8";
-      ctx.lineWidth = 2 / view.scale;
-      ctx.strokeRect(selection.x, selection.y, selection.w, selection.h);
-      ctx.setLineDash([]);
-    }
+    drawBoard(canvas, {
+      objects,
+      selected,
+      drag: dragging.current,
+      view,
+      images: images.current,
+      onImageLoad: () => force((n) => n + 1),
+      imageBase: API,
+      panel: Boolean(panel),
+      shapeDrawing: shapeDrawing.current,
+      previews: previews.current.values(),
+      drawing: drawing.current,
+      color,
+      selection,
+    });
   });
 
   const toWorld = (e: React.PointerEvent): Point => {
@@ -960,212 +784,42 @@ export function Board({
             onAdd={() => void addBoard()}
           />
         )}
-        <div className="toolbar" role="toolbar" aria-label="Drawing tools">
-          {(["select", "pen", "eraser", "text", "sticky", "pan"] as Tool[])
-            .filter((t) => ws.can_contribute || t === "pan")
-            .map((t) => (
-              <button
-                key={t}
-                className={"tool" + (tool === t ? " active" : "")}
-                aria-pressed={tool === t}
-                onClick={() => setTool(t)}
-                disabled={!ws.can_contribute && t !== "pan"}
-              >
-                {t === "select"
-                  ? "↖ Select"
-                  : t === "pen"
-                    ? "✏️ Draw"
-                    : t === "eraser"
-                      ? "🧽 Eraser"
-                      : t === "text"
-                        ? "🔤 Text"
-                        : t === "sticky"
-                          ? "🗒 Sticky"
-                          : "✋ Pan"}
-              </button>
-            ))}
-          {ws.can_contribute && tool === "pen" && (
-            <span className="tool-group" role="radiogroup" aria-label="Drawing tools">
-              {(
-                [
-                  { id: "pen", label: "Pen", icon: "✏️" },
-                  { id: "pencil", label: "Pencil", icon: "✎" },
-                  { id: "brush", label: "Marker", icon: "🖌️" },
-                  { id: "line", label: "Line", icon: "╱" },
-                  { id: "arrow", label: "Arrow", icon: "→" },
-                  { id: "rect", label: "Box", icon: "▭" },
-                  { id: "circle", label: "Circle", icon: "◯" },
-                ] as { id: DrawMode; label: string; icon: string }[]
-              ).map((m) => (
-                <button
-                  key={m.id}
-                  role="radio"
-                  aria-checked={drawMode === m.id}
-                  className={"tool tool--sub" + (drawMode === m.id ? " active" : "")}
-                  onClick={() => setDrawMode(m.id)}
-                  title={m.label}
-                >
-                  {m.icon} {m.label}
-                </button>
-              ))}
-            </span>
-          )}
-          {!panel && ws.can_contribute && (
-            <>
-              <button
-                className="tool"
-                onClick={() => fileRef.current?.click()}
-                disabled={!ws.can_contribute || uploads.attempts.length > 0}
-              >
-                🖼 Image
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg"
-                hidden
-                aria-label="Image to place on the board"
-                onChange={(e) => {
-                  try {
-                    uploads.queue.add(Array.from(e.target.files ?? []), 1);
-                  } catch (error: unknown) {
-                    setMessage(errorMessage(error));
-                  }
-                  e.target.value = "";
-                }}
-              />
-              <button
-                className={"tool" + (tool === "snapshot" ? " active" : "")}
-                aria-pressed={tool === "snapshot"}
-                onClick={() => {
-                  setTool("snapshot");
-                  setSelection(null);
-                }}
-              >
-                📷 Publish snapshot
-              </button>
-            </>
-          )}
-          {ws.can_contribute && tool === "sticky" && (
-            <>
-              <span className="tool-group" role="radiogroup" aria-label="Sticky note shape">
-                {STICKY_SHAPES.map((s) => (
-                  <button
-                    key={s.id}
-                    role="radio"
-                    aria-checked={stickyShape === s.id}
-                    aria-label={`${s.label} shape`}
-                    className={"tool tool--sub tool--shape" + (stickyShape === s.id ? " active" : "")}
-                    onClick={() => setStickyShape(s.id)}
-                    title={`${s.label} sticky note`}
-                  >
-                    {s.icon} {s.label}
-                  </button>
-                ))}
-              </span>
-              <span className="tool-group" role="radiogroup" aria-label="Sticky note size">
-                {STICKY_SIZES.map((sz) => (
-                  <button
-                    key={sz.id}
-                    role="radio"
-                    aria-checked={stickySize === sz.id}
-                    aria-label={`${sz.label} size`}
-                    className={"tool tool--sub" + (stickySize === sz.id ? " active" : "")}
-                    onClick={() => setStickySize(sz.id)}
-                    title={`${sz.label} size`}
-                  >
-                    {sz.label[0]}
-                  </button>
-                ))}
-              </span>
-            </>
-          )}
-          {ws.can_contribute && (
-            <span className="swatches" role="radiogroup" aria-label="Colour">
-              {(tool === "sticky" ? STICKY_COLORS : PEN_COLORS).map((c) => (
-                <button
-                  key={c}
-                  role="radio"
-                  aria-checked={(tool === "sticky" ? stickyColor : color) === c}
-                  aria-label={`Colour ${c}`}
-                  className={"swatch" + ((tool === "sticky" ? stickyColor : color) === c ? " active" : "")}
-                  style={{ background: c }}
-                  onClick={() => (tool === "sticky" ? setStickyColor(c) : setColor(c))}
-                />
-              ))}
-            </span>
-          )}
-          {ws.can_contribute && (
-            <button
-              className="tool"
-              onClick={() => submit({ type: "undo" })}
-              disabled={!ws.can_contribute || !mine}
-            >
-              ↶ Undo mine
-            </button>
-          )}
-          <button
-            className="tool"
-            onClick={() => setView((v) => ({ ...v, scale: Math.min(4, v.scale * 1.25) }))}
-            aria-label="Zoom in"
-          >
-            ＋
-          </button>
-          <button
-            className="tool"
-            onClick={() => setView((v) => ({ ...v, scale: Math.max(0.1, v.scale / 1.25) }))}
-            aria-label="Zoom out"
-          >
-            －
-          </button>
-          <button className="tool" onClick={fit}>
-            Fit
-          </button>
-          <button className="tool" onClick={() => setShowList((v) => !v)} aria-expanded={showList}>
-            List view
-          </button>
-          {!panel && ws.can_moderate && ws.can_contribute && (
-            <button className="tool" onClick={restore}>
-              Restore…
-            </button>
-          )}
-          {!panel && (
-            <button
-              className="tool"
-              disabled={
-                boardIndex !== 0 ||
-                state.current.revision === 0 ||
-                save === "Saving…" ||
-                save === "Reconnecting…"
-              }
-              title={
-                boardIndex === 0
-                  ? "Create a task reference from this board"
-                  : "Task references are available on the first board"
-              }
-              onClick={() => setTaskContext({ ...state.current })}
-            >
-              Create task from board
-            </button>
-          )}
-          {!panel && (
-            <button
-              className="tool"
-              onClick={openOnPanel}
-              disabled={boardIndex !== 0}
-              title="Touch panels open the first board"
-            >
-              📺 Open on touch panel
-            </button>
-          )}
-          <span className={"save-state" + (save === "Saved" ? " ok" : "")} role="status">
-            {save}
-          </span>
-          <span className="board-meta">
-            Epoch {epoch} · rev {state.current.revision} · {presence.length} here:{" "}
-            {presence.map((p) => p.display_name).join(", ")}
-          </span>
-        </div>
+        <BoardToolbar
+          {...{
+            boardIndex,
+            color,
+            drawMode,
+            epoch,
+            fileRef,
+            fit,
+            mine,
+            openOnPanel,
+            panel,
+            presence,
+            restore,
+            save,
+            setColor,
+            setDrawMode,
+            setMessage,
+            setSelection,
+            setShowList,
+            setStickyColor,
+            setStickyShape,
+            setStickySize,
+            setTaskContext,
+            setTool,
+            setView,
+            showList,
+            state,
+            stickyColor,
+            stickyShape,
+            stickySize,
+            submit,
+            tool,
+            uploads,
+            ws,
+          }}
+        />
         {tool === "snapshot" && !selection && (
           <p className="board-notice">Drag on the board to select the region to publish.</p>
         )}
@@ -1259,14 +913,7 @@ export function Board({
             </Card>
           </div>
         )}
-        {hoverTooltip && (
-          <div className="board-tooltip" style={{ left: hoverTooltip.x, top: hoverTooltip.y }}>
-            <span className="board-tooltip__author">{hoverTooltip.author}</span>
-            <span className="board-tooltip__meta">
-              {hoverTooltip.time} · {hoverTooltip.kind}
-            </span>
-          </div>
-        )}
+        <WhiteboardHoverTooltip data={hoverTooltip} />
         {editingSticky && (
           <StickyEditDialog
             canEdit={ws.can_contribute}
