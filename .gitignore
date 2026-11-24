@@ -16,3 +16,6 @@ frontend/src/features/help/generated/
 docs/presentation_assets/
 docs/whiteboard_assets/
 
+.venv
+frontend/node_modules
+e2e/node_modules
