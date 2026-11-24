@@ -4,6 +4,7 @@ export const SECTIONS = [
   { key: "people", label: "People", path: "/admin/people" },
   { key: "org", label: "Organisation", path: "/admin/org" },
   { key: "activity", label: "Activity", path: "/admin/activity" },
+  { key: "insights", label: "Insights", path: "/admin/insights" },
   { key: "health", label: "System health", path: "/admin/health" },
   { key: "storage", label: "Storage", path: "/admin/storage" },
   { key: "backups", label: "Backups", path: "/admin/backups" },

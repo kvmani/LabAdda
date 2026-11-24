@@ -64,6 +64,7 @@ const ADMIN_SECTIONS = [
   "People",
   "Organisation",
   "Activity",
+  "Insights",
   "System health",
   "Storage",
   "Backups",
@@ -223,7 +224,7 @@ async function checkReader(admin, member, base) {
   await member.page.getByRole("heading", { name: "Partial site measurement", exact: true }).waitFor();
   check(member.page.url().endsWith(base + "/admin/storage"), base + " legacy operations link redirects");
   const navigation = member.page.getByRole("navigation", { name: "Administration", exact: true });
-  check((await navigation.getByRole("link").count()) === 6, base + " six read-only sections");
+  check((await navigation.getByRole("link").count()) === 7, base + " seven read-only sections");
   check(
     (await navigation.getByRole("link", { name: "People", exact: true }).count()) === 0,
     base + " identity management hidden from reader",

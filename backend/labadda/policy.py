@@ -166,6 +166,7 @@ CONSOLE_SECTIONS = (
     "people",
     "org",
     "activity",
+    "insights",
     "health",
     "storage",
     "backups",
@@ -176,7 +177,7 @@ CONSOLE_SECTIONS = (
     "settings",
     "help",
 )
-READER_SECTIONS = ("overview", "activity", "health", "storage", "backups", "events")
+READER_SECTIONS = ("overview", "activity", "insights", "health", "storage", "backups", "events")
 
 
 def can_read_usage(db: Session, user: User) -> bool:

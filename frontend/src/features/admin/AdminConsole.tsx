@@ -10,6 +10,7 @@ import { AuditPage } from "../audit/AuditPage";
 import { EventsPage } from "../events/EventsPage";
 import { FeedbackPage } from "../feedback/FeedbackPage";
 import { HealthPage } from "../health/HealthPage";
+import { InsightsPage } from "../insights/InsightsPage";
 import { OrgPage } from "../org/OrgPage";
 import { OverviewPage } from "../overview/OverviewPage";
 import { PeoplePage } from "../people/PeoplePage";
@@ -64,6 +65,8 @@ export function AdminConsole() {
                 <AuditPage />
               ) : section.key === "activity" ? (
                 <ActivityPage />
+              ) : section.key === "insights" ? (
+                <InsightsPage />
               ) : section.key === "health" ? (
                 <HealthPage />
               ) : section.key === "events" ? (

@@ -70,6 +70,9 @@ from .api import (
     health as health_api,
 )
 from .api import (
+    insights as insights_api,
+)
+from .api import (
     metrics as metrics_api,
 )
 from .changes import scheduled
@@ -263,6 +266,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 â€
         inventory_jobs,
         metrics_api,
         analytics_api,
+        insights_api,
         health_api,
         overview,
         setup_checklist,
