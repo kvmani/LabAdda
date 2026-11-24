@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from xml.etree import ElementTree
 
-from labadda.api.board import _validate_add
+from labadda.board_validation import validate_add as _validate_add
 
 ROOT = Path(__file__).resolve().parents[2]
 ART = ROOT / "fixtures/research-day"

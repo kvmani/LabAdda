@@ -15,58 +15,26 @@ import hashlib
 import json
 import re
 import uuid
-from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import Response
-from PIL import Image
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from .. import audit, metrics, policy
-from ..board_fonts import validate_style
-from ..boardstate import epoch_ops, latest_snapshot, render_png, state_at, state_cache, undo_target, with_op
+from ..board_validation import _num
+from ..board_validation import validate_add as _validate_add
+from ..boardstate import epoch_ops, latest_snapshot, state_at, state_cache, undo_target, with_op
 from ..charges import charge_board_object, recharge_board
 from ..config import Settings
 from ..deps import Actor, board_actor, current_actor, get_db, get_settings
-from ..errors import ApiError, Conflict, Forbidden, Invalid, NotFound
-from ..identity_locks import lock_identity
-from ..models import Asset, Board, BoardOp, Post, Workspace, WorkspaceBoard
-from ..reservations import check_original_capacity
+from ..errors import Conflict, Forbidden, Invalid
+from ..models import Board, BoardOp, WorkspaceBoard
 from ..serialize import iso
-from ..storage import AssetStore
 from ..system_settings import get_max_whiteboards
 
 router = APIRouter(tags=["board"])
-MAX_POINTS = 4000
-MAX_TEXT = 1000
-MAX_IMAGE_SIDE = 4000
-COLORS = {
-    "#1f2933",
-    "#c62828",
-    "#1565c0",
-    "#2e7d32",
-    "#ef6c00",
-    "#6a1b9a",
-    "#fff59d",
-    "#b3e5fc",
-    "#c8e6c9",
-    "#ffccbc",
-    "#e1bee7",
-    "#ffe082",
-    "#00838f",
-    "#d81b60",
-    "#757575",
-}
-STICKY_SHAPES = {"rectangle", "circle", "hexagon", "diamond", "cloud", "star"}
-STICKY_SIZES = {"small", "medium", "large"}
-PNG_HEADERS = {
-    "Cache-Control": "private, no-store",
-    "X-Content-Type-Options": "nosniff",
-    "Content-Security-Policy": "default-src 'none'; sandbox",
-}
 
 
 class BoardTitlePatch(BaseModel):
@@ -96,24 +64,6 @@ class OpBody(BaseModel):
 class RestoreBody(BaseModel):
     revision: int = Field(ge=0)
     reason: str | None = Field(default=None, max_length=500)
-    board_index: int = Field(default=0, ge=0, le=50)
-
-
-class Region(BaseModel):
-    x: float
-    y: float
-    w: float = Field(gt=0)
-    h: float = Field(gt=0)
-
-
-class SnapshotBody(BaseModel):
-    revision: int = Field(ge=0)
-    region: Region
-    destination_id: uuid.UUID
-    summary: str = Field(min_length=1, max_length=2000)
-    client_id: str = Field(min_length=8, max_length=64)
-    # Required when the destination differs from the source: the destination ID the user confirmed.
-    confirm_audience: uuid.UUID | None = None
     board_index: int = Field(default=0, ge=0, le=50)
 
 
@@ -184,74 +134,6 @@ def _get_board(db: Session, workspace_id: uuid.UUID, board_index: int = 0) -> Bo
             WorkspaceBoard.workspace_id == workspace_id, WorkspaceBoard.board_index == board_index
         )
     )
-
-
-def _num(v, lo=-1e6, hi=1e6) -> float:
-    if not isinstance(v, (int, float)) or isinstance(v, bool) or not lo <= v <= hi:
-        raise Invalid("invalid_board_op", "Board coordinates are out of range.")
-    return float(v)
-
-
-def _validate_sticky_or_text(kind: str, data: dict, color: str) -> dict:
-    text = data.get("text")
-    if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
-        raise Invalid("invalid_board_op", "Text must be 1-1000 characters.")
-    item_data = {"x": _num(data.get("x")), "y": _num(data.get("y")), "text": text, "color": color}
-    if "font_family" in data or "font_size" in data:
-        item_data.update(validate_style(data))
-    if kind == "sticky":
-        if "shape" in data:
-            shape = data["shape"]
-            if shape not in STICKY_SHAPES:
-                raise Invalid("invalid_board_op", "Unsupported sticky shape.")
-            item_data["shape"] = shape
-        if "size" in data:
-            size = data["size"]
-            if size not in STICKY_SIZES:
-                raise Invalid("invalid_board_op", "Unsupported sticky size.")
-            item_data["size"] = size
-    return {"kind": kind, "data": item_data}
-
-
-def _validate_add(db: Session, actor: Actor, workspace_id: uuid.UUID, payload: dict) -> dict:
-    kind = payload.get("kind")
-    data = payload.get("data") or {}
-    if kind == "image":
-        try:
-            asset_id = uuid.UUID(str(data.get("asset_id")))
-        except ValueError:
-            raise Invalid("invalid_board_op", "Unknown image.") from None
-        asset = db.get(Asset, asset_id, with_for_update=True)
-        reusable = asset is not None and asset.board_workspace_id == workspace_id
-        fresh = asset is not None and asset.status == "provisional" and asset.owner_id == actor.id
-        if not (reusable or fresh) or not asset.media_type.startswith("image/"):
-            raise Invalid("invalid_board_op", "Upload a PNG or JPEG image before placing it on the board.")
-        if fresh:
-            asset.status, asset.board_workspace_id = "committed", workspace_id
-            metrics.count_attachments_on_commit(db, db.get(Workspace, workspace_id), [asset])
-        return {
-            "kind": kind,
-            "data": {
-                "x": _num(data.get("x")),
-                "y": _num(data.get("y")),
-                "w": _num(data.get("w"), 1, MAX_IMAGE_SIDE),
-                "h": _num(data.get("h"), 1, MAX_IMAGE_SIDE),
-                "asset_id": str(asset_id),
-            },
-        }
-    color = data.get("color", "#1f2933")
-    if color not in COLORS:
-        raise Invalid("invalid_board_op", "Unsupported colour.")
-    if kind == "stroke":
-        pts = data.get("points")
-        if not isinstance(pts, list) or not 1 <= len(pts) <= MAX_POINTS:
-            raise Invalid("invalid_board_op", "A stroke needs between 1 and 4000 points.")
-        points = [[round(_num(p[0]), 1), round(_num(p[1]), 1)] for p in pts]
-        width = _num(data.get("width", 3), 1, 64)
-        return {"kind": kind, "data": {"points": points, "color": color, "width": width}}
-    if kind in ("text", "sticky"):
-        return _validate_sticky_or_text(kind, data, color)
-    raise Invalid("invalid_board_op", "Unknown board object kind.")
 
 
 @router.get("/workspaces/{workspace_id}/board")
@@ -562,215 +444,3 @@ def restore(
 
 
 # ---- rendering and snapshot publishing -------------------------------------
-
-
-def _image_loader(db: Session, store: AssetStore, workspace_id: uuid.UUID):
-    def load(asset_id: uuid.UUID):
-        asset = db.get(Asset, asset_id)
-        # Only images owned by this board are rendered; anything else is skipped.
-        if asset is None or asset.board_workspace_id != workspace_id or not asset.has_preview:
-            return None
-        try:
-            return Image.open(store.path(asset.storage_key, preview=True))
-        except (FileNotFoundError, OSError):
-            return None
-
-    return load
-
-
-def _render(
-    db: Session,
-    request: Request,
-    workspace_id: uuid.UUID,
-    revision: int,
-    region: Region,
-    *,
-    board_index: int = 0,
-) -> bytes:
-    board = _get_board(db, workspace_id, board_index)
-    if board is None or not 0 <= revision <= board.revision:
-        raise Invalid("invalid_revision", "That revision does not exist.")
-    objects = state_at(db, board, revision)
-    return render_png(
-        objects,
-        (region.x, region.y, region.w, region.h),
-        _image_loader(db, request.app.state.assets, workspace_id),
-    )
-
-
-@router.get("/workspaces/{workspace_id}/board/render")
-def render_preview(
-    workspace_id: uuid.UUID,
-    request: Request,
-    revision: int,
-    x: float,
-    y: float,
-    *,
-    w: float = Query(gt=0),
-    h: float = Query(gt=0),
-    board_index: int = Query(default=0, ge=0, le=50),
-    actor: Actor = Depends(current_actor),
-    db: Session = Depends(get_db),
-):
-    """PNG of a region at a committed revision, for the publish preview."""
-    policy.require_read(db, actor.user, workspace_id)
-    png = _render(db, request, workspace_id, revision, Region(x=x, y=y, w=w, h=h), board_index=board_index)
-    return Response(png, media_type="image/png", headers=PNG_HEADERS)
-
-
-def snapshot_destinations(db: Session, actor: Actor, source: Workspace) -> list[Workspace]:
-    """The source itself plus readable, writable ancestors in the organization tree."""
-    out = [source]
-    if source.kind == "org":
-        parents = dict(
-            db.execute(select(Workspace.id, Workspace.parent_id).where(Workspace.kind == "org")).all()
-        )
-        for anc in policy.ancestors(parents, source.id):
-            access = policy.resolve(db, actor.user, anc)
-            if access is not None and access.can_contribute:
-                out.append(access.workspace)
-    return out
-
-
-@router.get("/workspaces/{workspace_id}/board/snapshot-destinations")
-def list_destinations(
-    workspace_id: uuid.UUID, actor: Actor = Depends(current_actor), db: Session = Depends(get_db)
-):
-    access = policy.require_read(db, actor.user, workspace_id)
-    dests = snapshot_destinations(db, actor, access.workspace)
-    return {
-        "destinations": [
-            {
-                "id": str(w.id),
-                "name": w.name,
-                "same_workspace": w.id == workspace_id,
-                "can_write": policy.resolve(db, actor.user, w.id).can_contribute,
-            }
-            for w in dests
-        ]
-    }
-
-
-@router.post("/workspaces/{workspace_id}/board/snapshots", status_code=201)
-def publish_snapshot(  # noqa: PLR0915 — ordered authorization and revision checks before the commit
-    workspace_id: uuid.UUID,
-    body: SnapshotBody,
-    request: Request,
-    *,
-    actor: Actor = Depends(current_actor),
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-):
-    identity = SimpleNamespace(id=actor.id, session=SimpleNamespace(id=actor.session.id))
-    # Generated originals share the same user serialization as upload admission.
-    # This synchronous endpoint already runs in a worker thread.
-    lock_identity(db, identity, settings)
-    # Fresh authorization on both ends at publish time.
-    source = policy.require_read(db, actor.user, workspace_id).workspace
-    intent_digest = _hash({"source": str(workspace_id), **body.model_dump(mode="json")})
-    existing = db.scalar(select(Post).where(Post.author_id == actor.id, Post.client_id == body.client_id))
-    if existing is not None:
-        if (
-            existing.source_request_digest != intent_digest
-            or existing.source_workspace_id != workspace_id
-            or existing.workspace_id != body.destination_id
-            or existing.source_revision != body.revision
-            or existing.body != body.summary
-        ):
-            raise Conflict("client_id_reused", "This request ID was already used for different content.")
-        policy.require_read(db, actor.user, existing.workspace_id)
-        return {"post_id": str(existing.id), "workspace_id": str(existing.workspace_id), "duplicate": True}
-    allowed = {w.id for w in snapshot_destinations(db, actor, source)}
-    if body.destination_id not in allowed:
-        raise NotFound()
-    dest = policy.require_contribute(db, actor.user, body.destination_id).workspace
-    if dest.id not in (source.id, body.confirm_audience):
-        raise Invalid(
-            "confirmation_required", f"Confirm that everyone who can read {dest.name} will see this snapshot."
-        )
-    board_idx = getattr(body, "board_index", 0)
-    png = _render(db, request, workspace_id, body.revision, body.region, board_index=board_idx)
-    check_original_capacity(db, identity, settings, len(png))
-    store: AssetStore = request.app.state.assets
-    stored = store.save(png, "image/png")
-    candidate_id = uuid.uuid4()
-    commit_started = False
-    try:
-        # Time-based session expiry can pass while render/storage runs even
-        # though revocation updates are serialized by the held row locks.
-        lock_identity(db, identity, settings)
-        post = Post(
-            id=candidate_id,
-            workspace_id=dest.id,
-            author_id=actor.id,
-            kind="discussion",
-            body=body.summary,
-            client_id=body.client_id,
-            source_workspace_id=source.id,
-            source_revision=body.revision,
-            source_request_digest=intent_digest,
-        )
-        db.add(post)
-        db.flush()
-        db.add(
-            Asset(
-                owner_id=actor.id,
-                storage_key=stored.storage_key,
-                media_type="image/png",
-                display_name=f"board-snapshot-r{body.revision}.png",
-                size=stored.size,
-                sha256=stored.sha256,
-                has_preview=stored.has_preview,
-                preview_size=stored.preview_size,
-                preview_sha256=stored.preview_sha256,
-                status="committed",
-                post_id=post.id,
-            )
-        )
-        audit.record(
-            db,
-            actor=actor.user,
-            action="board.snapshot_publish",
-            scope_type="workspace",
-            scope_id=dest.id,
-            target_id=post.id,
-            source=source.id,
-            revision=body.revision,
-            broader=dest.id != source.id,
-        )
-        db.flush()
-        # Counted by the commit itself: the outcome-unknown path below may never confirm it.
-        metrics.count_workspace_on_commit(db, "posts.created", dest)
-        lock_identity(db, identity, settings)
-        commit_started = True
-        db.commit()
-    except Exception:
-        db.rollback()
-        if not commit_started:
-            store.delete(stored.storage_key)
-            raise
-        confirmed = False
-        try:
-            with request.app.state.session_factory() as fresh:
-                durable = fresh.get(Post, candidate_id)
-                if durable is not None:
-                    user = lock_identity(fresh, identity, settings)
-                    policy.require_read(fresh, user, workspace_id)
-                    policy.require_read(fresh, user, body.destination_id)
-                    confirmed = True
-        except ApiError:
-            raise
-        except Exception:  # noqa: BLE001, S110 — any failure while confirming leaves the outcome unknown
-            pass
-        if not confirmed:
-            raise ApiError(
-                "snapshot_commit_unknown",
-                "Snapshot outcome is uncertain. Storage was retained for inspection; check the noticeboard "
-                "before retrying.",
-                status=503,
-            ) from None
-    destination_id = body.destination_id
-    request.app.state.hub.publish(
-        destination_id, {"type": "noticeboard.changed", "workspace_id": str(destination_id)}
-    )
-    return {"post_id": str(candidate_id), "workspace_id": str(destination_id), "duplicate": False}
