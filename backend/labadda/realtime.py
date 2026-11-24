@@ -356,6 +356,8 @@ class Hub:
                     continue
                 try:
                     msg = json.loads(raw)
+                    if not isinstance(msg, dict):
+                        raise TypeError("a message is a JSON object")
                     await self._handle(conn, msg)
                 except (ValueError, KeyError, TypeError):
                     await self._send(conn, {"type": "error", "code": "bad_message"})

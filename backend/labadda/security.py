@@ -118,16 +118,25 @@ def revoke_user_sessions(db: Session, user_id, *, keep: str | None = None) -> in
 
 
 class RateLimiter:
-    """Sliding-window limiter for a single-process deployment."""
+    """Sliding-window limiter for a single-process deployment.
 
-    def __init__(self) -> None:
+    Keys come from request data (usernames, addresses), so idle keys are swept once the table
+    grows past ``sweep_at``; otherwise a stream of made-up usernames would grow memory forever.
+    """
+
+    def __init__(self, sweep_at: int = 10_000) -> None:
         self._events: dict[str, deque[float]] = defaultdict(deque)
+        self._windows: dict[str, int] = {}
         self._lock = threading.Lock()
+        self._sweep_at = sweep_at
 
     def hit(self, key: str, limit: int, window: int) -> bool:
         now = time.monotonic()
         with self._lock:
+            if len(self._events) >= self._sweep_at:
+                self._sweep(now)
             q = self._events[key]
+            self._windows[key] = window
             while q and now - q[0] > window:
                 q.popleft()
             if len(q) >= limit:
@@ -135,9 +144,19 @@ class RateLimiter:
             q.append(now)
             return True
 
+    def _sweep(self, now: float) -> None:
+        idle = [key for key, q in self._events.items() if not q or now - q[-1] > self._windows.get(key, 0)]
+        for key in idle:
+            del self._events[key]
+            self._windows.pop(key, None)
+
+    def __len__(self) -> int:
+        return len(self._events)
+
     def reset(self) -> None:
         with self._lock:
             self._events.clear()
+            self._windows.clear()
 
 
 login_limiter = RateLimiter()

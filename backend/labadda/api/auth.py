@@ -233,8 +233,22 @@ def change_password(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
+    # Same limit and key as /me/password: a stolen session must not guess the password freely.
+    if not login_limiter.hit(
+        f"password:{actor.user.id}", settings.login_attempts_per_window, settings.login_window_seconds
+    ):
+        raise TooMany()
     user = db.get(User, actor.user.id)
     if not verify_password(user.password_hash, body.current_password):
+        audit.record(
+            db,
+            actor=user,
+            action="auth.password_changed",
+            scope_type="identity",
+            target_id=user.id,
+            outcome="denied",
+        )
+        db.commit()
         raise Invalid("invalid_credentials", "Current password is incorrect.")
     _validate_password(body.new_password)
     user.password_hash = hash_password(body.new_password)

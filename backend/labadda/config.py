@@ -155,18 +155,32 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         status_dir=Path(status_dir) if status_dir else None,
         timezone=_timezone(env("LABADDA_TIMEZONE", "Asia/Kolkata")),
         timezone_configured=bool(env("LABADDA_TIMEZONE")),
-        max_whiteboards_per_scope=int(env("LABADDA_MAX_WHITEBOARDS_PER_SCOPE", "5")),
-        session_idle_minutes=int(env("LABADDA_SESSION_IDLE_MINUTES", "120")),
-        session_absolute_hours=int(env("LABADDA_SESSION_ABSOLUTE_HOURS", "12")),
-        max_attachments=int(env("LABADDA_MAX_ATTACHMENTS", "5")),
-        max_attachment_bytes=int(env("LABADDA_MAX_ATTACHMENT_BYTES", str(20 * 1024 * 1024))),
-        user_quota_bytes=int(env("LABADDA_USER_QUOTA_BYTES", str(500 * 1024 * 1024))),
+        max_whiteboards_per_scope=_positive(
+            env("LABADDA_MAX_WHITEBOARDS_PER_SCOPE", "5"), "LABADDA_MAX_WHITEBOARDS_PER_SCOPE"
+        ),
+        session_idle_minutes=_positive(
+            env("LABADDA_SESSION_IDLE_MINUTES", "120"), "LABADDA_SESSION_IDLE_MINUTES"
+        ),
+        session_absolute_hours=_positive(
+            env("LABADDA_SESSION_ABSOLUTE_HOURS", "12"), "LABADDA_SESSION_ABSOLUTE_HOURS"
+        ),
+        max_attachments=_positive(env("LABADDA_MAX_ATTACHMENTS", "5"), "LABADDA_MAX_ATTACHMENTS"),
+        max_attachment_bytes=_positive(
+            env("LABADDA_MAX_ATTACHMENT_BYTES", str(20 * 1024 * 1024)), "LABADDA_MAX_ATTACHMENT_BYTES"
+        ),
+        user_quota_bytes=_positive(
+            env("LABADDA_USER_QUOTA_BYTES", str(500 * 1024 * 1024)), "LABADDA_USER_QUOTA_BYTES"
+        ),
         run_scheduler=_bool(env("LABADDA_RUN_SCHEDULER"), True),
         email_domain=env("LABADDA_EMAIL_DOMAIN", "").strip().lower().lstrip("@"),
         bulk_change_seconds=float(env("LABADDA_BULK_CHANGE_SECONDS", "60")),
-        reminder_interval_seconds=int(env("LABADDA_REMINDER_INTERVAL_SECONDS", "30")),
-        max_groups_per_user=int(env("LABADDA_MAX_GROUPS_PER_USER", "20")),
-        max_group_members=int(env("LABADDA_MAX_GROUP_MEMBERS", "200")),
+        reminder_interval_seconds=_positive(
+            env("LABADDA_REMINDER_INTERVAL_SECONDS", "30"), "LABADDA_REMINDER_INTERVAL_SECONDS"
+        ),
+        max_groups_per_user=_positive(
+            env("LABADDA_MAX_GROUPS_PER_USER", "20"), "LABADDA_MAX_GROUPS_PER_USER"
+        ),
+        max_group_members=_positive(env("LABADDA_MAX_GROUP_MEMBERS", "200"), "LABADDA_MAX_GROUP_MEMBERS"),
         # Sign-in/activation/pairing attempts per client and window. Operators may raise this
         # temporarily for a supervised load rehearsal; it is never relaxed by web policy.
         login_attempts_per_window=_positive(
@@ -175,11 +189,19 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         login_window_seconds=_positive(
             env("LABADDA_LOGIN_WINDOW_SECONDS", "300"), "LABADDA_LOGIN_WINDOW_SECONDS"
         ),
-        board_compact_threshold=int(env("LABADDA_BOARD_COMPACT_THRESHOLD", "2000")),
-        panel_idle_seconds=int(env("LABADDA_PANEL_IDLE_SECONDS", "300")),
-        panel_absolute_minutes=int(env("LABADDA_PANEL_ABSOLUTE_MINUTES", "60")),
-        panel_pairing_seconds=int(env("LABADDA_PANEL_PAIRING_SECONDS", "120")),
-        board_keep_revisions=int(env("LABADDA_BOARD_KEEP_REVISIONS", "500")),
+        board_compact_threshold=_positive(
+            env("LABADDA_BOARD_COMPACT_THRESHOLD", "2000"), "LABADDA_BOARD_COMPACT_THRESHOLD"
+        ),
+        panel_idle_seconds=_positive(env("LABADDA_PANEL_IDLE_SECONDS", "300"), "LABADDA_PANEL_IDLE_SECONDS"),
+        panel_absolute_minutes=_positive(
+            env("LABADDA_PANEL_ABSOLUTE_MINUTES", "60"), "LABADDA_PANEL_ABSOLUTE_MINUTES"
+        ),
+        panel_pairing_seconds=_positive(
+            env("LABADDA_PANEL_PAIRING_SECONDS", "120"), "LABADDA_PANEL_PAIRING_SECONDS"
+        ),
+        board_keep_revisions=_positive(
+            env("LABADDA_BOARD_KEEP_REVISIONS", "500"), "LABADDA_BOARD_KEEP_REVISIONS"
+        ),
         metrics_flush_seconds=_positive(
             env("LABADDA_METRICS_FLUSH_SECONDS", "60"), "LABADDA_METRICS_FLUSH_SECONDS"
         ),
