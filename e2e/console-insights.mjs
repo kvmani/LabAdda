@@ -57,6 +57,15 @@ async function fits(page, width, label) {
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     `${label} fits ${width}`,
   );
+  await page.addScriptTag({ path: require.resolve("../frontend/node_modules/axe-core/axe.min.js") });
+  const violations = await page.evaluate(async () =>
+    (
+      await window.axe.run(document, {
+        runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
+      })
+    ).violations.map((item) => item.id),
+  );
+  check(violations.length === 0, `${label} accessibility ${width}: ${violations}`);
   await page.setViewportSize({ width: 1400, height: 1100 });
 }
 

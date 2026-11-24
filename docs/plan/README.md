@@ -63,6 +63,10 @@ Approved branding, a public/signed-in home and an owner-private drawing/sticky-n
 implemented and verified as an explicit owner request. See the [feature guide](../development/personal-whiteboard.md).
 Existing package order and site acceptance gates are unchanged.
 
+A console **Insights** section (A8, owner request of 24 November) adds feature momentum and
+performance trends, and `labadda-admin` gathers the routine server jobs under one command; see
+[the admin console guide](../development/admin-console.md#insights-a8) and [API](../API.md).
+
 ## Order of work
 
 Do packages in this order. A package may start only when everything it depends on is `done`.
