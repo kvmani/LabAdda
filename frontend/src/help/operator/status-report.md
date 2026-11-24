@@ -3,7 +3,7 @@ title: Getting a status report
 summary: Collect a short, safe summary of how the site is doing to read yourself or send to the supplier.
 audience: operator
 screen: none
-updated: 2026-11-12
+updated: 2026-11-24
 ---
 
 ## What this is for
@@ -17,6 +17,14 @@ Replace `<site-name>` and `<tools>` with your own values.
 You need to be signed in to the server as the operator account. Running a report changes nothing and does not interrupt anyone.
 
 ## Steps
+
+On a server installed from a release zip, one command does most of this. It saves the status, health checks, doctor report and versions to one file, with no passwords or content:
+
+```bash
+sudo labadda-admin support-report ~
+```
+
+Run `sudo labadda-admin` on its own to see every routine command, and `sudo labadda-admin check` for a one-line answer to "is the site healthy?". The steps below do the same by hand.
 
 1. Run the doctor for a report you can read. Each line says what was checked, whether it is fine, and how to fix a problem:
 

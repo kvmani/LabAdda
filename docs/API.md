@@ -902,6 +902,40 @@ apply the same rounding and suppression as Activity. Missing or stale latency is
 The open-event total covers the entire queue and the ten details are ordered by severity.
 Storage refers to recorded logical shared-workspace charges. The Overview embeds the same payload.
 
+## A8 · Insights: feature momentum and performance
+
+Console section `insights`: administrators and current usage readers, read-only, with the same
+refusals as Activity (403 `usage_read_required`; 401 signed out, deactivated, panel). Built from
+`metric_samples` and `activity_days` only; cached 60 s; 3 s statement bound (503
+`insights_unavailable`); authorization rechecked after reading. No content, names of people,
+projects or groups.
+
+`GET /admin/insights/trends?weeks=8|12|26|52` (default 12; other values 422 `invalid_weeks`) —
+200 `{weeks, timezone, generated_at, first_day, last_day, compare_weeks: 4, state, series[{key,
+label}], points[], features[], people}`. Weeks are site-local ISO weeks ending with the running
+week. `points[]` `{start, partial, state, active_people, values}`: a week with fewer than 5
+active people is `suppressed` and one with no samples `unknown`; both carry nulls. `features[]`
+`{key, label, trend, advice, weekly_recent, weekly_prior, change, share, per_person,
+sparkline[]}` compares the weekly mean of the last 4 complete weeks with the 4 before (each side
+needs 2 measured weeks, else `trend: unknown` and nulls). `trend` is `growing` (≥ +20 %), `new`,
+`core` (steady with ≥ 25 % share), `steady`, `declining` (≤ −20 %), `dormant` (now 0) or `unused`.
+`people` `{accounts, weekly_recent, weekly_prior, change, reach (≤ 1), stickiness, trend}`.
+`state` is `unknown` (no data at all) or `suppressed` (no week reached 5 people; `features: []`,
+`people: null`).
+
+`GET /admin/insights/performance?span=24h|7d|30d|90d` (default `7d`; 422 otherwise) — 200
+`{span, bucket: hour|day, timezone, generated_at, from, to, limits{p95_ms, error_rate}, state,
+current, previous, points[], groups[]}`. Hour spans end with the running site-local hour; day
+spans are whole site days. Day rows are read where rolled up, then hour rows, then minute rows,
+so no minute counts twice; merged percentiles are request-weighted means. `current`/`previous`
+`{requests, errors, error_rate, p50_ms, p95_ms, status, signin_ok, signin_failed,
+signin_failure_rate, peak_connections}` (rates null below 20 requests or attempts; `previous`
+null when that period has no rows). `points[]` per bucket `{start, requests, errors, error_rate,
+p50_ms, p95_ms, signin_failed, peak_connections}`. `groups[]` per route group with requests
+`{key, label, requests, errors, error_rate, p50_ms, p95_ms, previous_p95_ms, previous_requests,
+status}`, slowest p95 first; `status` compares with the health thresholds. `state: unknown`
+(with nulls and empty lists) when nothing was stored in the span.
+
 ## A7 · Backups page, settings and broadcasts (AD-10, AD-11)
 
 All errors use the common envelope. Board-only sessions get 401 on every route here.

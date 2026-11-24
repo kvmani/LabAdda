@@ -168,11 +168,12 @@ control of the site if the upgrade could not obtain the lock.
 ## 12. What to send back if something breaks
 
 ```bash
-sudo labadda-status > status.txt
-cd /srv/labadda/main/current/backend && sudo ../venv/bin/python -m labadda.cli doctor --env-file /etc/labadda/main.env > doctor.txt
+sudo labadda-admin support-report ~
 ```
 
-Neither file contains passwords or content. Add the exact message that began with `STOPPED:` and what you were doing.
+It saves status, health checks, the doctor's report and versions to one file in your home folder
+(on sites installed before `labadda-admin` existed, run `sudo labadda-status > status.txt` and
+the doctor from `/srv/labadda/main/current/backend` instead). It contains no passwords or content. Add the exact message that began with `STOPPED:` and what you were doing.
 
 ## 13. Taking it out of service
 

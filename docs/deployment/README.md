@@ -81,6 +81,11 @@ which backup to restore. Data is never rewound silently.
 
 Daily commands: `sudo labadda-status`, `sudo labadda-backup-now --copy-to <drive>`,
 `sudo labadda-reattach-nginx` (setup B, after PM rewrote its nginx file).
+`sudo labadda-admin` lists every routine job under one command: `status [--json]`, `check`
+(exit 0 when running, answering, open and backed up in the last 36 hours, for cron or
+monitoring), `doctor`, `logs [LINES]`, `restart`, `backup`, `backups`, `upgrade`, `restore`,
+`reattach-nginx` and `support-report [DIR]` (status, checks and versions in one file, no
+secrets or content, to send when asking for help).
 
 ## C. Windows 11 (testing only)
 

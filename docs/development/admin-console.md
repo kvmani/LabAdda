@@ -24,7 +24,7 @@ cases. The console never authorizes access to posts, notes, chat, files or board
 `pages/Admin.tsx` is the lazy console entry; `features/admin/AdminConsole.tsx`
 registers nested routes inside `AdminLayout`. Navigation is derived from
 `GET /admin/console`; ordinary members redirect home, delegates see only their
-six sections and cannot mount People/Organisation/Audit/Settings/Help. A frame
+seven read-only sections and cannot mount People/Organisation/Audit/Settings/Help. A frame
 remount per history entry plus generation invalidation prevents delayed access
 responses from rendering a prior route. Failed lookups have a retry state. `AdminBoundary` contains failed console code
 downloads/rendering so workspace navigation survives; explicit reload retries the
@@ -195,3 +195,15 @@ than 5" and missing ones "Not measured", never 0. Help: `help/admin/overview-pag
 `e2e/console-overview.mjs` (with `e2e/overview-fixture.py`) at `/` and `/labadda-staging`: nothing-needs-attention, three
 entries in severity order with working links, polling picks up and clears a problem, usage reader, member refusal, axe
 at 1400/390 px. `e2e/admin-console.mjs` now expects the Overview page at the index.
+
+## Insights (A8)
+
+`backend/labadda/insights/` builds two read-only views for the `insights` section
+(`api/insights.py`): `trends.py` turns the stored feature counters and activity days into
+weekly momentum (last four complete weeks against the four before, classified and given
+plain-English advice) with the same five-person floor as Activity; `performance.py` merges
+day, hour and minute rows of the request, error, latency, sign-in and connection series into
+a period summary, a time series and a per-route-group table judged against the health
+thresholds. Both reuse the analytics cache. The page is `frontend/src/features/insights/`
+(tabs *Feature trends* and *Performance*, choices kept in the address). Checks:
+`tests/test_insights.py`, `features/insights/insights.test.tsx`, `e2e/console-insights.mjs`.

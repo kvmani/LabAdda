@@ -64,8 +64,9 @@ check() {
   local facts age
   facts=$("$PYTHON" "$TOOLS_DIR/scripts/install_helpers.py" status --status-dir "$INSTANCE_ROOT/status" 2>/dev/null || true)
   age=$("$PYTHON" -c 'import json,sys
-try: print(json.loads(sys.argv[1]).get("age_hours") or "")
-except ValueError: print("")' "$facts")
+try: age = json.loads(sys.argv[1]).get("age_hours")
+except ValueError: age = None
+print("" if age is None else age)' "$facts")
   if [[ -z $age ]]; then problems+=("no backup is recorded")
   elif (($(printf '%.0f' "$age") > 36)); then problems+=("the last backup is $age hours old"); fi
   if ((${#problems[@]})); then printf 'NOT HEALTHY: %s\n' "${problems[@]}"; return 1; fi
