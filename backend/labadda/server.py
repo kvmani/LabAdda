@@ -25,4 +25,7 @@ def serve(host: str, port: int, certfile: Path | None, keyfile: Path | None) -> 
         proxy_headers=True,
         forwarded_allow_ips="127.0.0.1",
         ws_max_size=64 * 1024,
+        # One process by design: sign-in limits, live sockets, metrics and the scheduler are held
+        # in memory. Pinned so a stray WEB_CONCURRENCY in the environment cannot split them.
+        workers=1,
     )

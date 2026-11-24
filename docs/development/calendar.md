@@ -21,7 +21,7 @@ maintaining strict administrator content blindness.
 ## 2. Minimal Source Path
 
 - **Backend API**: `backend/labadda/api/calendar.py`
-- **Database Schema**: `backend/labadda/models.py` (`CalendarEvent`), migration `0042_calendar_events.py`
+- **Database Schema**: `backend/labadda/models/content.py` (`CalendarEvent`), migration `0042_calendar_events.py`
 - **Frontend Views & Components**: `frontend/src/features/calendar/`
   - `MonthView.tsx`, `WeekDayView.tsx`, `AgendaView.tsx`, `EventDialog.tsx`, `CalendarSidebar.tsx`
 - **Frontend Page & Route**: `frontend/src/pages/CalendarPage.tsx` (`/calendar`)

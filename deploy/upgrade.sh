@@ -65,6 +65,7 @@ step "Upgrading (site closed)"
 if lifecycle upgrade --apply --recover-compatible --external-writers-stopped --expected-current "$CURRENT" --expected-schema "$OLD_SCHEMA" \
   --candidate "$VERSION" >/dev/null; then
   ok "now running $VERSION; the site is open again"
+  install_check_timer
   ( cd "$INSTANCE_ROOT/current/backend" && as_service "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) || warn "the doctor reported problems above"
   exit 0
 fi

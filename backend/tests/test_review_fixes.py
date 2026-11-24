@@ -65,3 +65,14 @@ def test_counts_and_durations_must_be_positive(name, value):
     # Zero would sign everyone out at once, or spin the reminder loop against the database.
     with pytest.raises(ValueError, match=name):
         load_settings({name: value})
+
+
+def test_server_always_runs_one_process(monkeypatch):
+    # Limits, sockets, metrics and the scheduler live in memory; more workers would split them.
+    from labadda import server
+
+    seen = {}
+    monkeypatch.setenv("WEB_CONCURRENCY", "4")
+    monkeypatch.setattr(server.uvicorn, "run", lambda *args, **kwargs: seen.update(kwargs))
+    server.serve("127.0.0.1", 8000, None, None)
+    assert seen["workers"] == 1

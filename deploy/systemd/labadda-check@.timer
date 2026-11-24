@@ -1,0 +1,11 @@
+# Runs the LabAdda health check every 15 minutes: systemctl enable --now labadda-check@<instance>.timer
+[Unit]
+Description=LabAdda health check every 15 minutes (%i)
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=15min
+Unit=labadda-check@%i.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,14 @@
+# Health check of one LabAdda site, started by labadda-check@<instance>.timer every 15 minutes.
+# It runs labadda-admin check: service running, answering directly and through nginx, not in
+# maintenance, and a backup in the last 36 hours. When any of these fails the unit fails, so the
+# problem shows in "systemctl --failed" and in the journal at error priority:
+#   journalctl -u labadda-check@<instance> -p err      (add --user for a user-scope site)
+[Unit]
+Description=LabAdda health check (%i)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/labadda-admin check --site %i
+SyslogIdentifier=labadda-check
+TimeoutStartSec=2min
+NoNewPrivileges=true

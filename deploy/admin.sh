@@ -45,7 +45,8 @@ done
 set_paths
 [[ -f $SITE_JSON ]] || die "Site '$SITE' is not installed here (no $SITE_JSON)."
 load_site_identity
-[[ ! -f $ANSWERS_FILE ]] || load_answers "$ANSWERS_FILE"
+# The answers file is root-only; the 15-minute check runs as the service account without it.
+[[ ! -r $ANSWERS_FILE ]] || load_answers "$ANSWERS_FILE"
 
 doctor() {
   [[ $(current_version) != none ]] || die "No release is installed."

@@ -54,7 +54,7 @@ and most files in `e2e/`. This is debt, scheduled for removal in work packages Q
 | `backend/labadda/memberships.py`, `identity_locks.py` | Membership writes and their locks |
 | `backend/labadda/audit.py` | `audit.record(...)` for identity, membership, hierarchy, authority |
 | `backend/labadda/errors.py` | `NotFound`, `Forbidden`, `Conflict`, `Invalid`, `TooMany` |
-| `backend/labadda/models.py` | SQLAlchemy models (split into a `models/` package in Q4) |
+| `backend/labadda/models/` | SQLAlchemy models, one module per area (identity, organisation, content, boards, tasks, operations) |
 | `backend/migrations/versions/NNNN_<name>.py` | One migration per schema change, numbered |
 | `backend/tests/test_<feature>.py` | Tests against a real disposable PostgreSQL |
 

@@ -85,7 +85,9 @@ Daily commands: `sudo labadda-status`, `sudo labadda-backup-now --copy-to <drive
 (exit 0 when running, answering, open and backed up in the last 36 hours, for cron or
 monitoring), `doctor`, `logs [LINES]`, `restart`, `backup`, `backups`, `upgrade`, `restore`,
 `reattach-nginx` and `support-report [DIR]` (status, checks and versions in one file, no
-secrets or content, to send when asking for help).
+secrets or content, to send when asking for help). A `labadda-check@<site>.timer` runs `check` every 15 minutes; a failure
+fails the unit, so it shows in `systemctl --failed` (add `--user` for a user-scope site) and in
+`journalctl -u labadda-check@<site> -p err`. Upgrades install it on older sites too.
 
 ## C. Windows 11 (testing only)
 

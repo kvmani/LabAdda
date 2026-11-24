@@ -16,6 +16,7 @@ step "Taking site '$SITE' out of service (data is kept)"
 if ! ((ASSUME_YES || DRY_RUN)); then
   read -r -p "Type the site name ($SITE) to confirm: " reply; [[ $reply == "$SITE" ]] || die "Cancelled."; fi
 run svc disable --now "labadda-backup@$SITE.timer" || true
+run svc disable --now "labadda-check@$SITE.timer" || true
 run svc disable --now "$UNIT" || true
 # A shared site must lose its include line before the file it names, or nginx (and the application
 # that owns the site) could no longer reload.

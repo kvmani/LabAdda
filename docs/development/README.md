@@ -28,7 +28,7 @@ area lands: `people.md`, `admin-console.md`, `metrics.md`.
 | Shared UI components, tokens, theme | [UI kit guide](ui-kit.md) → frontend/src/ui/ | UX-01–UX-14, T69, src/ui/*.test.tsx, e2e/ui-kit.mjs |
 | Workspace/browser navigation, shell | frontend/src/App.tsx, features/shell/ (Shell, TopBar, RailNav, WorkspaceSwitcher), pages/WorkspaceView.tsx | e2e/flows.mjs; root and configured-prefix checks |
 | Test copy on a Windows PC | [Windows testing guide](windows-testing.md) → scripts/windows/ | backend/requirements.lock markers |
-| Schema and recovery | backend/labadda/models.py, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |
+| Schema and recovery | backend/labadda/models/, migrations/versions, recovery.py | tests/test_migrations.py and test_recovery_integration.py |
 | Shared task update signals | [Update guide](task-updates.md) → task_events.py and task routers | CT-09, T46, test_task_events.py |
 | Central calendar / hierarchical scheduling | [Calendar guide](calendar.md) → api/calendar.py, features/calendar/ | test_calendar.py, e2e; CALENDAR_SPECIFICATION_AND_LEDGER.md |
 | Personal board and home | [Private board guide](personal-whiteboard.md) → api/personal_board.py, features/personal-board/, features/home/ | test_personal_board.py; e2e/personal-board.mjs |

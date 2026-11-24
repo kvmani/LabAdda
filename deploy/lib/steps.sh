@@ -222,6 +222,22 @@ step_render_units() {
   ok "installed $UNIT and the nightly backup timer files in $SYSTEMD_DIR"
 }
 
+# The 15-minute health check. Installed on install and again on every upgrade, so sites
+# installed before it existed get it too; a failing check fails its unit (systemctl --failed).
+install_check_timer() {
+  if ((DRY_RUN)); then say "    [dry-run] would install and start the 15-minute health check timer"; return 0; fi
+  local templates="$TOOLS_DIR/deploy/systemd" owner=root
+  if is_user_scope; then templates="$TOOLS_DIR/deploy/systemd-user"; owner=$SERVICE_USER; fi
+  [[ -f $templates/labadda-check@.timer ]] || { warn "this release has no health check timer"; return 0; }
+  install -m 0644 -o "$owner" -g "$owner" "$templates/labadda-check@.service" "$templates/labadda-check@.timer" "$SYSTEMD_DIR/"
+  svc daemon-reload
+  if svc enable --now "labadda-check@$SITE.timer" >/dev/null; then
+    ok "health check runs every 15 minutes; a problem shows in systemctl --failed and the journal"
+  else
+    warn "the health check timer could not be started; run labadda-admin check by hand"
+  fi
+}
+
 step_initialize() {
   step "Database content and activation"
   if [[ -L $INSTANCE_ROOT/current ]]; then ok "already activated ($(current_version))"; return 0; fi
@@ -279,6 +295,7 @@ step_backup_and_doctor() {
   lifecycle backup --unattended --apply --external-writers-stopped --resume-after-backup >/dev/null \
     && ok "first backup taken and verified" || die "First backup failed. Do not admit users; run labadda-backup-now and read its message."
   if ((NO_TIMER)); then ok "nightly timer skipped on request"; else svc enable --now "labadda-backup@$SITE.timer" >/dev/null; fi
+  install_check_timer
   ( cd "$INSTANCE_ROOT/current/backend" && as_service "$INSTANCE_ROOT/current/venv/bin/python" -m labadda.cli doctor --env-file "$ENV_FILE" ) \
     || die "Doctor failed. Do not admit users; fix the reported problems and run labadda-status."
 }
