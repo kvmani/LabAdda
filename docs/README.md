@@ -2,6 +2,13 @@
 
 Read this map first; follow the relevant path rather than loading every document.
 
+**New here? A fifteen-minute path.** (1) The [repository README](../README.md) to run a checkout
+with fictional data. (2) The [rules in AGENTS.md](../AGENTS.md), sections 2 and 4: what is never
+broken and what "done" means. (3) The [delivery plan](plan/README.md) status table: what exists
+and what is next. (4) The [developer task map](development/README.md) for where a feature's code
+and tests live. (5) The latest [review](development/review-2026-11-24.md) for known gaps. Skip
+`history/` and `evidence/` unless a card sends you there.
+
 | Need | Start here | Follow only as needed |
 | --- | --- | --- |
 | **What to build next; how complete the project is** | [v1.0 delivery plan](plan/README.md) | Track cards: [quality](plan/quality.md), [interface](plan/ui.md), [admin console](plan/admin.md), [people and organisation](plan/people.md), [help](plan/help.md), [deployment](plan/deployment.md) |
@@ -20,16 +27,16 @@ Read this map first; follow the relevant path rather than loading every document
 | Start and verify a checkout | [Repository README](../README.md) | [Testing](../TESTING.md), scripts/verify.sh |
 | Multi-user regression system | [Simulation guide](development/simulation.md) | Dedicated disposable runner, CI, root/prefix screenshots and TLS workloads |
 | **Which setup: dedicated VM, beside project_management_software, Windows; install/upgrade from the release zip** | [Deployment setups](deployment/README.md) | [PM facts and limits](deployment/pm-coexistence.md), [PM's nginx file](deployment/pm-reference/apex_pm.active.conf) |
-| Run a site: install, check, back up, upgrade | [Operator quickstart](OPERATOR-QUICKSTART.md) | [Deployment](DEPLOYMENT.md) |
+| Run a site: install, check, back up, upgrade | [Operator quickstart](OPERATOR-QUICKSTART.md) | [Deployment](DEPLOYMENT.md); `sudo labadda-admin` lists every routine command ([setups guide](deployment/README.md)) |
+| Feature trends and response times | [Insights help page](../frontend/src/help/admin/insights-page.md) | [Admin console guide](development/admin-console.md#insights-a8), A8 in [API](API.md) |
 | Deployment and recovery | [Deployment](DEPLOYMENT.md) | [Recovery](RECOVERY.md), [commissioning](COMMISSIONING.md), [release evidence](RELEASE-EVIDENCE.md) |
 | Authorization/security review | [Repository rules](../AGENTS.md), [review plan](../REVIEW.md) | Relevant feature contracts and negative tests |
 | Existing usage/accounting/jobs | [P5 implementation status](P5-PROGRESS.md) | [Inventory jobs](INVENTORY-JOBS.md), API and focused tests |
 | Future archives/policies | S5–S7 in [specifications](../SPECIFICATIONS.md) | DATA-LIFECYCLE.md, ARCHIVE-FORMAT.md, ADMIN-CONSOLE.md |
 
-Current priority: the v1.0 tracks in the [delivery plan](plan/README.md), with A1 console navigation delivered and P1 staff records next. The collaboration product (P1–P3, C1–C5) and
-the operations tooling are delivered and locally tested; representative-site, physical-device
-and manual acceptance gates remain open (track D). Archive, quota and retention work (P5.2+)
-is deferred beyond v1.0.
+Current priority: the [delivery plan](plan/README.md) — the remaining module splits (Q4) and the
+owner's site gates (track D: a real Ubuntu host, office devices and acceptance). Archive, quota
+and retention work (P5.2+) is deferred beyond v1.0.
 
 Specifications describe required behaviour; plan cards say what to build next; feature guides
 describe implementation; the roadmap ledger records delivered evidence. Files under `history/`
