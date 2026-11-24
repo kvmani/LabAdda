@@ -162,3 +162,11 @@ call it from `verify.sh`.
 checks green with unchanged counts. `scripts/check_sizes.py` passes.
 
 **Not in this package.** Behaviour changes.
+
+**Progress (2026-11-24).** Done: `models/` package (identity, organisation, content, boards,
+tasks, operations; no drift); `api/board.py` split into operations, `board_snapshots.py` and
+`board_validation.py`; `Board.tsx` 1,423 → 1,070 lines (`boardModel.ts`, `drawBoard.ts`,
+`BoardToolbar.tsx`); `PersonalBoard.tsx` 890 → 820 (`draw.ts`); `JoinPage.tsx` 537 → 377;
+`scripts/check_sizes.py` in `verify.sh`, with a ratchet list of the sixteen files still over
+400 lines that may only shrink. Next: the board connection hook, `Chat.tsx`, `api/posts.py`,
+`api/todos.py`, `boardstate.py` and `doctor.py` (whose tests patch its module internals).

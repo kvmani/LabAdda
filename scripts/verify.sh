@@ -10,6 +10,9 @@ PY="${LABADDA_PYTHON:-$ROOT/.venv/bin}"
 echo "== documentation: links, size limits, plan consistency =="
 "$PY/python" "$ROOT/scripts/check_docs.py"
 
+echo "== source file sizes (Q4) =="
+"$PY/python" "$ROOT/scripts/check_sizes.py"
+
 echo "== help centre: front matter, sections, routes, on-screen labels, links =="
 "$PY/python" "$ROOT/scripts/check_help.py"
 
