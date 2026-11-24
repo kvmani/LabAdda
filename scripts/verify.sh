@@ -25,6 +25,7 @@ echo "== backend: model/migration drift =="
 
 echo "== frontend: lint and format, typecheck, unit tests, production build =="
 ( cd "$ROOT/frontend" && npm run --silent lint && npm run --silent typecheck && npx vitest run && npm run --silent build )
+"$PY/python" "$ROOT/scripts/check_bundle.py"
 
 if [[ "${1:-}" == "--e2e" ]]; then
   echo "== browser flows through nginx (T03 + P1/P2/P3 flows) =="
