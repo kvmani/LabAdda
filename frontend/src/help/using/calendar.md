@@ -9,6 +9,7 @@ updated: 2026-11-15
 ## What this is for
 
 The central **Calendar** displays schedules and activities across the organisation. Events follow LabAdda's access rules:
+
 - Institute events: Site-wide seminars and holidays visible to all staff.
 - Unit events: Scheduled at Division, Group or Section level. A Section member sees events from their Section and parent Division. Division-only staff do not see Section events.
 - Private groups and projects: Flat, private calendars visible only to members.

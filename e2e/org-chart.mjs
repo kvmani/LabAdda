@@ -59,7 +59,7 @@ async function keyboardPath(page, base) {
   await audit(page, 1400, base + " chart");
   await audit(page, 390, base + " chart");
   await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-chart.png` });
-  await unit(page, "National Materials Research Laboratory").focus();
+  await unit(page, "National Fundamental and Advanced Science Centre, Mumbai").focus();
   for (const key of ["ArrowDown", "ArrowDown", "ArrowDown", "ArrowRight"]) await page.keyboard.press(key);
   const focused = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
   check(

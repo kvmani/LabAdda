@@ -12,7 +12,7 @@ codes (other than unit codes derived from names) are unchanged.
 | `dana`, Dana Iyer (UI gallery) | Deepa Iyer |
 | `eli`, Eli Novak | `esha`, Esha Menon |
 | `fay`, Fay Moreau | `farhan`, Farhan Qureshi |
-| Northwind Research (`NR`) | National Materials Research Laboratory (`NMRL`) |
+| Northwind Research (`NR`) | National Fundamental and Advanced Science Centre, Mumbai (`NFASC`) |
 | Surface Science Division (`SSD`) | Surface Engineering Division (`SED`) |
 | Catalysis Section / Team / Lab | Corrosion Section / Team / Lab (`CS`) |
 | Project Aurora, Aurora (`AUR-`) | Project Tejas, Tejas (`TEJ-`) |

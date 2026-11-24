@@ -45,6 +45,7 @@ Replace `<site-name>` and `<tools>` with your own values.
    ```
 
    Read the list. If it is right, run it again with `--apply`. Use a smaller number only when a recent copy is safe elsewhere.
+
 5. If old installed releases take the space, keep the release the site is running and the one before it. Ask the supplier of the release before removing any others.
 6. If uploaded files are the cause, tell the site owner. Administrators can see how much space each workspace uses; the people who own the workspaces decide what to remove.
 7. Run `df -h` again to confirm the space is back.

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useFilterParams } from "../../useFilterParams";
 import { BASE } from "../../config";
 import { fmtTime } from "../../format";
 import { useSession } from "../../session";
@@ -55,19 +55,10 @@ function columns(
 /** Everything people sent with the Feedback button. Administrators may read it: the sender chose that. */
 export function FeedbackPage() {
   const { session } = useSession();
-  const [params, setParams] = useSearchParams();
+  const { params, change, reset } = useFilterParams(FILTERS, ["cursor", "item"]);
   const [denied, setDenied] = useState(false);
   const onDenied = useCallback(() => setDenied(true), []);
   const { data, error, loading, reload } = usePolledData<FeedbackPageData>(url(params), POLL_MS, onDenied);
-  const change = (key: string, value: string) =>
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      if (key !== "cursor") next.delete("cursor");
-      if (key !== "item") next.delete("item");
-      return next;
-    });
   const pick = (key: string) => ({
     value: params.get(key) ?? "",
     onChange: (event: { target: { value: string } }) => change(key, event.target.value),
@@ -128,19 +119,7 @@ export function FeedbackPage() {
           empty={{
             title: "No feedback here",
             body: "Nothing matches these filters. Clear them to see everything people have sent.",
-            action: (
-              <Button
-                onClick={() =>
-                  setParams((previous) => {
-                    const next = new URLSearchParams(previous);
-                    for (const key of [...FILTERS, "cursor", "item"]) next.delete(key);
-                    return next;
-                  })
-                }
-              >
-                Clear feedback filters
-              </Button>
-            ),
+            action: <Button onClick={reset}>Clear feedback filters</Button>,
           }}
           footer={
             <div className="feedback-actions">

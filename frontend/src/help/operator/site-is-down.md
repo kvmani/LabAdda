@@ -41,6 +41,7 @@ Replace `<site-name>` and `<tools>` with your own values.
    ```
 
    If the first passes and the second fails, the problem is the web server or the certificate.
+
 4. Check whether the maintenance gate is closed. A file named `maintenance` in the `traffic` folder of the site's root folder closes the site. Look, but do not remove it yet:
 
    ```bash

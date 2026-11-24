@@ -149,7 +149,9 @@ async function work(base) {
     await page.goto(origin + base + "/admin/org");
     await page.getByRole("treeitem", { name: /Surface Engineering Division/ }).waitFor();
     check(
-      (await page.getByRole("treeitem", { name: /National Materials Research Laboratory/ }).count()) === 0,
+      (await page
+        .getByRole("treeitem", { name: /National Fundamental and Advanced Science Centre/ })
+        .count()) === 0,
       base + " the chart starts at the administered unit",
     );
     await page.screenshot({ path: `${output}/${base ? "prefix" : "root"}-org.png` });

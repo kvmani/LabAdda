@@ -35,11 +35,23 @@ function useMyTasks(workspaceIds: string[]) {
   const generation = useRef(0);
   const visibility = [...workspaceIds].sort().join("|");
 
-  const updates = useTaskUpdates(workspaceIds, () => {
-    generation.current += 1;
-    setPage(null);
-    setLoading(false);
-  });
+  // My Tasks holds no drafts, so a change made before its subscriptions were confirmed is
+  // fetched quietly; one reload covers the confirmations of every workspace.
+  const reload = useRef<() => void>(() => undefined);
+  const quietTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(quietTimer.current), []);
+  const updates = useTaskUpdates(
+    workspaceIds,
+    () => {
+      generation.current += 1;
+      setPage(null);
+      setLoading(false);
+    },
+    () => {
+      window.clearTimeout(quietTimer.current);
+      quietTimer.current = window.setTimeout(() => reload.current(), 300);
+    },
+  );
 
   async function load(after?: string) {
     const seenVersion = updates.snapshot();
@@ -61,6 +73,8 @@ function useMyTasks(workspaceIds: string[]) {
       if (isCurrent()) setLoading(false);
     }
   }
+
+  reload.current = () => void load();
 
   useEffect(() => {
     void load();

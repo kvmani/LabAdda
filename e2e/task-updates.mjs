@@ -181,10 +181,17 @@ function checkHintScope(bharat, chitra, section, base) {
   check(chitraHints.length === 0, base + " sibling subscriber receives no section hints");
 }
 
-async function checkMyTasksCatchesAssignment(bharat, asha, detail, task, base) {
+async function checkMyTasksCatchesAssignment(bharat, asha, detail, task, base, section) {
   // Assignment changes notify My Tasks without exposing assignment metadata in events.
+  // A hint can only arrive once the page has subscribed; changes before that are fetched quietly.
   const page = bharat.page;
+  const beforeLoad = frameMark(bharat);
   await page.goto(origin + base + "/my-tasks");
+  await waitForFrame(
+    bharat,
+    (frame) => frame.type === "subscribed" && frame.workspace_id === section.id,
+    beforeLoad,
+  );
   await buttonNamed(page, "Refresh My Tasks").click();
   await call(asha, detail + "/assignee", { revision: task.revision, user_id: bharat.session.user.id }, "PUT");
   await page
@@ -274,7 +281,7 @@ try {
     await checkFailedCatchUp(bharat, asha, shared, panels.discussion, detail, base);
     task = await checkReconnectCatchUp(bharat, asha, shared, panels.discussion, detail, task, base);
     checkHintScope(bharat, chitra, section, base);
-    await checkMyTasksCatchesAssignment(bharat, asha, detail, task, base);
+    await checkMyTasksCatchesAssignment(bharat, asha, detail, task, base, section);
     await checkSecondPageCatchUp(bharat, asha, shared, section, list, detail, base);
     await checkRevocation(bharat, admin, section, base);
     check(

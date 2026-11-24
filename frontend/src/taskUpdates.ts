@@ -9,12 +9,18 @@ const DENIAL_EVENTS = ["revoked", "subscribe_failed", "session_ended"];
  * Tells a task screen that shared tasks may have changed, using content-free socket hints.
  * Hints never replace drafts. Only acknowledge the version that was fetched: a signal that
  * arrives during a request must stay pending after that request's response.
+ *
+ * A screen loads before its subscription is confirmed, so a change committed in between sends
+ * no hint. `confirmed` runs on each first confirmation; a screen without drafts can reload
+ * quietly there instead of showing a notice the reader did not cause.
  */
-export function useTaskUpdates(workspaceIds: string[], denied?: () => void) {
+export function useTaskUpdates(workspaceIds: string[], denied?: () => void, confirmed?: () => void) {
   const [pending, setPending] = useState(false);
   const version = useRef(0);
   const deniedRef = useRef(denied);
   deniedRef.current = denied;
+  const confirmedRef = useRef(confirmed);
+  confirmedRef.current = confirmed;
   const scope = [...workspaceIds].sort().join("|");
 
   useEffect(() => {
@@ -31,7 +37,9 @@ export function useTaskUpdates(workspaceIds: string[], denied?: () => void) {
 
     function handleEvent(event: RealtimeEvent) {
       if (!active) return;
-      if (CHANGE_EVENTS.includes(event.type) || reconnected(event)) markChanged();
+      const missed = reconnected(event);
+      if (CHANGE_EVENTS.includes(event.type) || missed) markChanged();
+      else if (event.type === "subscribed") confirmedRef.current?.();
       if (DENIAL_EVENTS.includes(event.type)) {
         markChanged();
         deniedRef.current?.();

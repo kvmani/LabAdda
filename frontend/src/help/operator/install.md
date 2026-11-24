@@ -65,6 +65,7 @@ Every tool below shows a plan first and changes nothing until you add `--apply`.
    ```
 
    The person opens the site address followed by `/activate`, enters the code and chooses a password.
+
 8. Run the doctor and fix anything it reports, from the top, until it is clean:
 
    ```bash

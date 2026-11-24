@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useFilterParams } from "../../useFilterParams";
 import { BASE } from "../../config";
 import { ErrorState, PageHeader, Select, Skeleton, Tabs } from "../../ui";
 import { formatAge } from "../health/model";
@@ -18,7 +18,7 @@ const TABS = [
 
 /** Insights: how use of each feature is changing, and how fast and reliable the site is. */
 export function InsightsPage() {
-  const [params, setParams] = useSearchParams();
+  const { params, apply } = useFilterParams([], []);
   const view = params.get("view") === "performance" ? "performance" : "trends";
   const weeks = parseWeeks(params.get("weeks"));
   const span = parseSpan(params.get("span"));
@@ -35,12 +35,7 @@ export function InsightsPage() {
     onDenied,
   );
   const now = useNow(10_000);
-  const set = (key: string, value: string) =>
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      next.set(key, value);
-      return next;
-    });
+  const set = (key: string, value: string) => apply((next) => next.set(key, value));
 
   const header = (
     <PageHeader

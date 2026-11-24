@@ -26,3 +26,9 @@ it("drops paging when a filter changes, but not when paging itself changes", () 
   expect(result.current.params.get("cursor")).toBeNull();
   expect(result.current.params.get("group")).toBe("access");
 });
+
+it("shows a new value at once, before the address catches up", () => {
+  const { result } = renderHook(() => useFilterParams(["descending"], []), { wrapper });
+  act(() => result.current.change("descending", "true"));
+  expect(result.current.params.get("descending")).toBe("true");
+});

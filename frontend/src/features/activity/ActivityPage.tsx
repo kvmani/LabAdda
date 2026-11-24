@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useFilterParams } from "../../useFilterParams";
 import { BASE } from "../../config";
 import { EmptyState, ErrorState, PageHeader, Select, Skeleton } from "../../ui";
 import { formatAge } from "../health/model";
@@ -16,20 +16,14 @@ const REFRESH_MS = 60_000;
 
 /** Usage analytics (AD-08): site totals, and per-unit figures protected on the server. */
 export function ActivityPage() {
-  const [params, setParams] = useSearchParams();
+  const { params, apply } = useFilterParams([], []);
   const period = parsePeriod(params.get("period"));
   const [denied, setDenied] = useState(false);
   const onDenied = useCallback(() => setDenied(true), []);
   const summary = usePolledData<Summary>(`/admin/analytics/summary?period=${period}`, REFRESH_MS, onDenied);
   const units = usePolledData<Units>(`/admin/analytics/units?period=${period}`, REFRESH_MS, onDenied);
   const now = useNow(10_000);
-  const choose = (value: string) => {
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      next.set("period", parsePeriod(value));
-      return next;
-    });
-  };
+  const choose = (value: string) => apply((next) => next.set("period", parsePeriod(value)));
   const header = (
     <PageHeader
       title="Activity"
