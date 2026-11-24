@@ -163,7 +163,14 @@ async function hold(page, pattern) {
   // A request that never arrives must fail the suite, not stall the whole browser run.
   const waiting = new Promise((resolve, reject) => {
     entered = resolve;
-    setTimeout(() => reject(new Error("held request never arrived: " + pattern)), 30_000);
+    // Say where the page was, so an intermittent miss can be diagnosed from the log alone.
+    setTimeout(async () => {
+      const box = await page
+        .getByRole("searchbox")
+        .inputValue()
+        .catch(() => "unreadable");
+      reject(new Error(`held request never arrived: ${pattern} (page ${page.url()}, search "${box}")`));
+    }, 30_000);
   });
   const gate = new Promise((resolve) => {
     release = resolve;
