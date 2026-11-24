@@ -1,6 +1,7 @@
 import { moveObject } from "./move";
+import { drawPersonalBoard } from "./draw";
 import { SelectedObjectControls } from "../whiteboard/SelectedObjectControls";
-import { canvasFont, loadBoardFonts, type TextStyle } from "../whiteboard/textStyle";
+import { loadBoardFonts, type TextStyle } from "../whiteboard/textStyle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "../../session";
 import { boardDraft, clearSavedBoard, rememberBoard } from "./draft";
@@ -11,8 +12,6 @@ import {
   BoardTabs,
   STICKY_COLORS,
   PEN_COLORS,
-  getStickyDimensions,
-  drawStickyCanvas,
   generateShapePoints,
   bounds,
   hit,
@@ -292,87 +291,18 @@ export function PersonalBoard() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, rect.width, rect.height);
-    ctx.save();
-    ctx.translate(view.x, view.y);
-    ctx.scale(view.scale, view.scale);
-
-    const line = (pts: [number, number][], strokeCol: string, strokeW = 3) => {
-      if (pts.length < 2) return;
-      const first = pts[0];
-      if (!first) return;
-      ctx.strokeStyle = strokeCol;
-      ctx.lineWidth = strokeW;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(first[0], first[1]);
-      for (let i = 1; i < pts.length; i++) {
-        const p = pts[i];
-        if (p) ctx.lineTo(p[0], p[1]);
-      }
-      ctx.stroke();
-    };
-
-    for (const o of objects) {
-      if (o.kind === "image") {
-        const id = o.asset_id;
-        if (id) {
-          let img = images.current.get(id);
-          if (!img) {
-            img = new Image();
-            img.onload = () => force((n) => n + 1);
-            img.src = o.preview_url ?? `${API}/files/${id}/preview`;
-            images.current.set(id, img);
-          }
-          if (img.complete && img.naturalWidth) {
-            ctx.drawImage(img, o.x ?? 0, o.y ?? 0, o.w ?? 160, o.h ?? 120);
-          } else {
-            ctx.strokeStyle = "#9aa5b1";
-            ctx.strokeRect(o.x ?? 0, o.y ?? 0, o.w ?? 160, o.h ?? 120);
-          }
-        }
-      } else if (o.kind === "stroke") {
-        if (o.points) line(o.points, o.color, o.width ?? 3);
-      } else if (o.kind === "sticky") {
-        const shape = o.shape ?? "rectangle";
-        const [w, h] = getStickyDimensions(shape, o.size ?? "medium");
-        drawStickyCanvas(ctx, o.x ?? 0, o.y ?? 0, w, h, shape, o.color, o.text ?? "", o);
-      } else if (o.kind === "text") {
-        ctx.fillStyle = o.color;
-        ctx.font = canvasFont(o);
-        ctx.textAlign = "left";
-        const lines = (o.text ?? "").split("\n");
-        lines.forEach((t: string, i: number) =>
-          ctx.fillText(t, o.x ?? 0, (o.y ?? 0) + (o.font_size ?? 16) * 1.25 + i * (o.font_size ?? 16) * 1.3),
-        );
-      }
-    }
-
-    if (selected) {
-      const [x0, y0, x1, y1] = bounds(selected);
-      ctx.strokeStyle = PEN_COLORS[2];
-      ctx.lineWidth = 2 / view.scale;
-      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-    }
-    if (shapeDrawing.current) {
-      line(shapeDrawing.current.points, color, 3);
-    }
-    if (drawing.current) {
-      const strokeW = drawMode === "pencil" ? 1.5 : drawMode === "brush" ? 8 : 3;
-      line(drawing.current.points, color, strokeW);
-    }
-
-    ctx.restore();
+    drawPersonalBoard(canvas, {
+      objects,
+      selected,
+      view,
+      images: images.current,
+      onImageLoad: () => force((n) => n + 1),
+      imageBase: API,
+      shapeDrawing: shapeDrawing.current,
+      drawing: drawing.current,
+      drawMode,
+      color,
+    });
   });
 
   const toWorld = useCallback(
