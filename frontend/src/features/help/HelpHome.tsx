@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "../../session";
 import { useWorkspaces } from "../../workspaces";
-import { Card, EmptyState, PageHeader, SearchInput } from "../../ui";
+import { Card, EmptyState, PageHeader, SearchInput, Skeleton } from "../../ui";
 import { REFERENCE_SHELF, orderShelves, shelfFor, type Shelf } from "./shelves";
 import { searchHelp } from "./search";
 import type { HelpEntry, ShelfId } from "./types";
@@ -32,10 +32,13 @@ function ShelfCard({ shelf, entries }: { shelf: Shelf; entries: HelpEntry[] }) {
   );
 }
 
-function useOwnShelf(): ShelfId {
+/** The reader's own shelf, or null while their workspaces (and so their role) are loading. */
+function useOwnShelf(): ShelfId | null {
   const { session } = useSession();
-  const { workspaces } = useWorkspaces();
+  const { workspaces, loading } = useWorkspaces();
   if (session?.user.is_admin) return "admin";
+  // Choosing before the list arrives would show the member order and then reorder under the reader.
+  if (loading) return null;
   return workspaces.some((workspace) => workspace.role === "steward") ? "stewards" : "using";
 }
 
@@ -75,9 +78,13 @@ export function HelpHome({ entries }: { entries: HelpEntry[] }) {
               <Link to="/help/whats-new">What is new in this release</Link>
             </p>
           )}
-          {orderShelves(own).map((shelf) => (
-            <ShelfCard key={shelf.id} shelf={shelf} entries={onShelf(shelf)} />
-          ))}
+          {own === null ? (
+            <Skeleton lines={6} label="Loading help shelves" />
+          ) : (
+            orderShelves(own).map((shelf) => (
+              <ShelfCard key={shelf.id} shelf={shelf} entries={onShelf(shelf)} />
+            ))
+          )}
           <ShelfCard shelf={REFERENCE_SHELF} entries={onShelf(REFERENCE_SHELF)} />
         </div>
       )}

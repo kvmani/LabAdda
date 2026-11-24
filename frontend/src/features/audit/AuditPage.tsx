@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useFilterParams } from "../../useFilterParams";
 import { BASE } from "../../config";
 import { useSession } from "../../session";
 import { ErrorState, PageHeader, type SelectOption } from "../../ui";
@@ -31,25 +31,7 @@ export function AuditPage() {
 }
 
 function useAuditParams() {
-  const [params, setParams] = useSearchParams();
-  const change = (key: string, value: string) => {
-    if ((params.get(key) ?? "") === value) return;
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      if (key !== "cursor") next.delete("cursor");
-      if (key !== "entry") next.delete("entry");
-      return next;
-    });
-  };
-  const reset = () =>
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      for (const key of [...FILTER_KEYS, "cursor", "entry"]) next.delete(key);
-      return next;
-    });
-  return { params, change, reset };
+  return useFilterParams(FILTER_KEYS, ["cursor", "entry"]);
 }
 
 function AuditExplorer({ onDenied }: { onDenied: () => void }) {

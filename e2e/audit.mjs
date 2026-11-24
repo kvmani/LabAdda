@@ -85,7 +85,7 @@ async function filters(page, base) {
   await page.getByRole("button", { name: "Clear audit filters" }).first().click();
   await page.getByLabel("Outcome", { exact: true }).selectOption("denied");
   await page
-    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .getByRole("button", { name: /^Open details: A sign-in attempt for .* was refused\.$/ })
     .first()
     .waitFor();
   await page.getByLabel("From date", { exact: true }).fill("2030-01-01");
@@ -93,12 +93,12 @@ async function filters(page, base) {
   await page.getByLabel("From date", { exact: true }).fill("2026-01-06");
   await page.getByLabel("To date", { exact: true }).fill("2026-01-06");
   await page
-    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .getByRole("button", { name: /^Open details: A sign-in attempt for .* was refused\.$/ })
     .first()
     .waitFor();
   await page.reload();
   await page
-    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .getByRole("button", { name: /^Open details: A sign-in attempt for .* was refused\.$/ })
     .first()
     .waitFor();
   check(
@@ -109,7 +109,7 @@ async function filters(page, base) {
   await page.getByRole("button", { name: "Clear audit filters" }).first().click();
   await page.getByLabel("Done by", { exact: true }).selectOption({ label: "Bharat Kulkarni (bharat)" });
   await page
-    .getByRole("button", { name: /^Open details: .* signed in\.$/ })
+    .getByRole("button", { name: /^Open details: A sign-in attempt for .* was refused\.$/ })
     .first()
     .waitFor();
   check(true, base + " person filter applies");

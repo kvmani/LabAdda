@@ -214,3 +214,31 @@ def test_export_file_is_named_by_the_site_day_not_the_host_clock(as_user, ids, s
         response = as_user("admin").get("/admin/audit/export.csv")
     assert response.status_code == 200
     assert 'filename="audit-20261112.csv"' in response.headers["content-disposition"]
+
+
+def test_refused_attempts_never_read_as_if_they_succeeded(as_user, ids, db_factory):
+    bharat = ids["users"]["bharat"]
+    seed(
+        db_factory,
+        [
+            # An unknown username has no actor and no target.
+            {"actor_id": None, "action": "auth.login", "scope_type": "identity", "outcome": "denied"},
+            {
+                "actor_id": bharat,
+                "action": "auth.login",
+                "scope_type": "identity",
+                "target_id": str(bharat),
+                "outcome": "denied",
+            },
+            {"actor_id": bharat, "action": "auth.login", "scope_type": "identity", "target_id": str(bharat)},
+            {"actor_id": bharat, "action": "identity.update", "scope_type": "identity", "outcome": "denied"},
+        ],
+    )
+    sentences = [event["sentence"] for event in events(as_user("admin"), "outcome=denied")["events"]]
+    assert "A sign-in attempt for an unknown person was refused." in sentences
+    assert any(s.startswith("A sign-in attempt for Bharat") and s.endswith("was refused.") for s in sentences)
+    assert any(s.startswith("Refused: ") for s in sentences)
+    assert not any(s.endswith("signed in.") for s in sentences)
+    assert all("Operator tooling" not in s for s in sentences)
+    success = events(as_user("admin"), "outcome=success&group=sign_in")["events"]
+    assert any(event["sentence"].endswith("signed in.") for event in success)

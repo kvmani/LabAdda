@@ -1,6 +1,8 @@
 // Real-server pop-up checks and screenshots; supports root and prefixed instances.
-import { chromium } from "playwright";
+import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
+// Resolved like the other suites, so the shared Playwright install is found from any checkout.
+const { chromium } = createRequire(import.meta.url)("playwright");
 const origin = process.env.LABADDA_E2E_ORIGIN ?? "http://127.0.0.1:8010";
 const bases = process.argv.slice(2);
 const shots = process.env.LABADDA_E2E_SHOTS ?? "/tmp/labadda-screenshots";

@@ -19,6 +19,14 @@ GROUPS: dict[str, str] = {
 class Entry:
     group: str
     sentence: str
+    # Said instead of ``sentence`` when the attempt was refused (outcome "denied"); without it,
+    # "Refused: " leads the sentence, so a failed attempt never reads as if it succeeded.
+    refused: str | None = None
+
+    def describe(self, outcome: str | None) -> str:
+        if outcome != "denied":
+            return self.sentence
+        return self.refused or "Refused: " + self.sentence
 
 
 # Placeholders: {actor}, {target} and {unit} are filled with names the console may show;
@@ -59,15 +67,21 @@ CATALOG: dict[str, Entry] = {
     "usage.reader.grant": Entry("authority", "{actor} gave {target} read-only operational access."),
     "usage.reader.revoke": Entry("authority", "{actor} withdrew the operational access of {target}."),
     "usage.reader.reauthenticate": Entry(
-        "authority", "{actor} was asked to confirm their password to manage operational access."
+        "authority",
+        "{actor} was asked to confirm their password to manage operational access.",
+        "{actor} gave a wrong password while confirming access to manage operational readers.",
     ),
     "post.moderate_remove": Entry("authority", "{actor} removed a notice-board post in {unit}."),
     "post.pin": Entry("authority", "{actor} pinned a notice-board post in {unit}."),
     "post.unpin": Entry("authority", "{actor} unpinned a notice-board post in {unit}."),
     "board.restore": Entry("authority", "{actor} restored an earlier version of the whiteboard in {unit}."),
     "board.snapshot_publish": Entry("authority", "{actor} published a whiteboard snapshot to {unit}."),
-    "auth.login": Entry("sign_in", "{actor} signed in."),
-    "auth.password_changed": Entry("sign_in", "{actor} changed their own password."),
+    "auth.login": Entry("sign_in", "{actor} signed in.", "A sign-in attempt for {target} was refused."),
+    "auth.password_changed": Entry(
+        "sign_in",
+        "{actor} changed their own password.",
+        "{actor} tried to change their password with a wrong current password.",
+    ),
     "auth.session_ended": Entry("sign_in", "{actor} signed out one of their other sessions."),
     "auth.activation_redeemed": Entry("sign_in", "{actor} activated their account."),
     "auth.reset_redeemed": Entry("sign_in", "{actor} finished a password reset."),

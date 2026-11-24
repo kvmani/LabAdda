@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { useOutletContext, useSearchParams } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
+import { useFilterParams } from "../../useFilterParams";
 import { BASE } from "../../config";
 import { fmtTime } from "../../format";
 import { useSession } from "../../session";
@@ -53,7 +54,7 @@ function columns(timezone: string, onOpen: (id: number) => void): Column<OpsEven
 export function EventsPage() {
   const { session } = useSession();
   const { read_only } = useOutletContext<ConsoleAccess>();
-  const [params, setParams] = useSearchParams();
+  const { params, change, reset } = useFilterParams(FILTER_KEYS, ["cursor", "event"]);
   const [denied, setDenied] = useState(false);
   const [changed, setChanged] = useState<Record<number, OpsEvent>>({});
   const onDenied = useCallback(() => setDenied(true), []);
@@ -61,21 +62,6 @@ export function EventsPage() {
   // A just-saved event stays correct in the drawer until the next list answer replaces it.
   useEffect(() => setChanged({}), [data]);
 
-  const change = (key: string, value: string) =>
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      if (key !== "cursor") next.delete("cursor");
-      if (key !== "event") next.delete("event");
-      return next;
-    });
-  const reset = () =>
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      for (const key of [...FILTER_KEYS, "cursor", "event"]) next.delete(key);
-      return next;
-    });
   const pick = (key: string) => ({
     value: params.get(key) ?? "",
     onChange: (event: { target: { value: string } }) => change(key, event.target.value),

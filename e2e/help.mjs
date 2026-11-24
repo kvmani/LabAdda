@@ -58,6 +58,8 @@ async function checkHome(member, admin, base) {
   const page = member.page;
   await page.goto(origin + base + "/help");
   await page.getByRole("heading", { level: 1, name: "Help", exact: true }).waitFor();
+  // Shelves appear once the reader's workspaces (and so their own shelf) are known.
+  await page.getByRole("heading", { level: 2, name: "Using LabAdda", exact: true }).waitFor();
   const shelves = await page.locator("#main").getByRole("heading", { level: 2 }).allTextContents();
   check(
     [...shelves.slice(0, 4)].sort().join("|") ===

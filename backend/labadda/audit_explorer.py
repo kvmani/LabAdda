@@ -192,7 +192,7 @@ def shape_events(db: Session, rows: list[AuditEvent]) -> list[dict]:
                 "action": e.action,
                 "group": entry.group,
                 "group_label": audit_catalog.GROUPS[entry.group],
-                "sentence": entry.sentence.format_map(words),
+                "sentence": entry.describe(e.outcome).format_map(words),
                 "scope_type": e.scope_type,
                 "scope_id": e.scope_id,
                 "target_id": e.target_id,
