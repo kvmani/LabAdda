@@ -63,6 +63,9 @@ try {
       state.ops.some((op) => op.payload?.data?.font_family === "serif" && op.payload?.data?.font_size === 32),
       "shared font and size survive reload",
     );
+    // After the reload the board's contents must have loaded before a drag can hit the note.
+    await page.getByText("Live", { exact: true }).waitFor();
+    await page.getByText(/Epoch \d+ · rev [1-9]/).waitFor();
     await page.getByRole("button", { name: "↖ Select", exact: true }).click();
     const box = await canvas.boundingBox();
     const dragResponse = page.waitForResponse(

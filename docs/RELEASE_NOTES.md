@@ -131,4 +131,4 @@ Follow this procedure when executing the rollout on the office server:
    - Test WhatsApp-style chat bubble and timestamp display (confirm IST time).
    - Navigate to `/directory` and perform a search.
    - Visit `/profile`, upload an avatar, and update specialization keywords.
-   - Check Staff Import dialog and confirm "Download Model CSV Template" generates valid CSV.
+   - Check Staff Import dialog and confirm "Download CSV template" generates valid CSV.

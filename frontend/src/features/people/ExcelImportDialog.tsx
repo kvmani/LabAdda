@@ -237,7 +237,7 @@ export function ExcelImportDialog({ onClose, onDenied, onDone }: Props) {
               Download Excel template
             </Button>
             <Button icon="download" onClick={() => void csvTemplate()}>
-              Download Model CSV Template
+              Download CSV template
             </Button>
             <Button
               variant={report ? "secondary" : "primary"}

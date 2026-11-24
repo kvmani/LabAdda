@@ -32,3 +32,12 @@ it("shows a new value at once, before the address catches up", () => {
   act(() => result.current.change("descending", "true"));
   expect(result.current.params.get("descending")).toBe("true");
 });
+
+it("keeps the newest of two quick edits on screen", () => {
+  const { result } = renderHook(() => useFilterParams(["q"], []), { wrapper });
+  act(() => {
+    result.current.change("q", "Bharat");
+    result.current.change("q", "Chitra");
+  });
+  expect(result.current.params.get("q")).toBe("Chitra");
+});

@@ -17,8 +17,19 @@ import { useSearchParams } from "react-router-dom";
 export function useFilterParams(filterKeys: readonly string[], dropOnChange: readonly string[]) {
   const [routed, setParams] = useSearchParams();
   const [pending, setPending] = useState<URLSearchParams | null>(null);
+  // Addresses this hook asked for; any other address change (Back, a link) wins at once.
+  const issued = useRef(new Set<string>());
   const routedKey = routed.toString();
-  useEffect(() => setPending(null), [routedKey]);
+  useEffect(() => {
+    setPending((current) => {
+      if (current === null) return null;
+      const arrived = routedKey === current.toString();
+      // An earlier edit landing while a newer one is on its way keeps the newer value on screen.
+      if (!arrived && issued.current.has(routedKey)) return current;
+      issued.current.clear();
+      return null;
+    });
+  }, [routedKey]);
   const params = pending ?? routed;
   const latest = useRef(params);
   latest.current = params;
@@ -26,6 +37,7 @@ export function useFilterParams(filterKeys: readonly string[], dropOnChange: rea
     const next = new URLSearchParams(latest.current);
     edit(next);
     latest.current = next;
+    issued.current.add(next.toString());
     setPending(next);
     setParams(next);
   };

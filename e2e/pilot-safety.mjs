@@ -162,6 +162,8 @@ try {
     const canvas = page.getByRole("img", { name: /Drawing canvas/ });
     const box = await canvas.boundingBox();
     await page.mouse.click(box.x + 135, box.y + 135);
+    // Selecting only selects (so a note can be dragged); editing is its own explicit step.
+    await page.getByRole("button", { name: "Edit selected item", exact: true }).click();
     await page.getByLabel("Note text", { exact: true }).fill("Revised board 1 tensile review");
     const editResponse = page.waitForResponse(
       (r) => r.url().endsWith("/board/ops") && r.request().method() === "POST",

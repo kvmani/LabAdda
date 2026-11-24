@@ -117,7 +117,7 @@ async function importWorkbook(page, base) {
   const dialog = await openDialog(page, base);
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    dialog.getByRole("button", { name: "Download the Excel template", exact: true }).click(),
+    dialog.getByRole("button", { name: "Download Excel template", exact: true }).click(),
   ]);
   check(download.suggestedFilename() === "staff-import-template.xlsx", base + " template downloads as .xlsx");
   check(
