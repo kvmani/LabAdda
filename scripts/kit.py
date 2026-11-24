@@ -41,6 +41,7 @@ LAUNCHERS = (
     "restore.sh",
     "uninstall-keep-data.sh",
     "reattach-nginx.sh",
+    "admin.sh",
 )
 # Operator tools copied out of the release archive so the server never runs unverified code.
 TOOL_SCRIPTS = (

@@ -174,6 +174,10 @@ else
 fi
 check "status.sh" bash "$KIT/status.sh" --site rollout
 cp "$P/last.log" "$P/status.log"; cat "$P/status.log"
+check "status --json is valid JSON naming the site" bash -c "bash '$KIT/status.sh' --site rollout --json | python3.12 -c 'import json,sys;assert json.load(sys.stdin)[\"site\"]==\"rollout\"'"
+check "labadda-admin check reports healthy" bash "$KIT/admin.sh" check --site rollout
+check "labadda-admin lists backups" bash "$KIT/admin.sh" backups --site rollout
+check "labadda-admin support report" bash "$KIT/admin.sh" support-report "$P" --site rollout
 check "install.sh again is a no-op" "${INSTALL[@]}"
 check "status shows a backup" grep -q "backup" "$P/status.log"
 check "backup-now with off-server copy" bash "$KIT/backup-now.sh" --copy-to "$P/usb"

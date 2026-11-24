@@ -74,9 +74,9 @@ step_tools() {
     mv "$next" "$TOOLS_DIR"
     mkdir -p "$SBIN_DIR"
     local n
-    for n in status backup-now restore upgrade reattach-nginx; do ln -sfn "$TOOLS_DIR/bin/$n.sh" "$SBIN_DIR/labadda-$n"; done
+    for n in admin status backup-now restore upgrade reattach-nginx; do ln -sfn "$TOOLS_DIR/bin/$n.sh" "$SBIN_DIR/labadda-$n"; done
   fi
-  ok "tools in $TOOLS_DIR; commands labadda-status, labadda-backup-now, labadda-restore, labadda-upgrade, labadda-reattach-nginx"
+  ok "tools in $TOOLS_DIR; commands labadda-admin (all jobs), labadda-status, labadda-backup-now, labadda-restore, labadda-upgrade, labadda-reattach-nginx"
 }
 
 step_database() {

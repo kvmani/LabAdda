@@ -28,7 +28,7 @@ fi
 run rm -f "$SYSTEMD_DIR/$UNIT" "$NGINX_DIR/conf.d/labadda-$SITE.conf" "$snippet"
 run svc daemon-reload || true
 [[ ! -x $(command -v nginx || echo /nonexistent) ]] || run "$SYSTEMCTL" reload nginx || true
-run rm -f "$SBIN_DIR"/labadda-status "$SBIN_DIR"/labadda-backup-now "$SBIN_DIR"/labadda-restore "$SBIN_DIR"/labadda-upgrade "$SBIN_DIR"/labadda-reattach-nginx
+run rm -f "$SBIN_DIR"/labadda-admin "$SBIN_DIR"/labadda-status "$SBIN_DIR"/labadda-backup-now "$SBIN_DIR"/labadda-restore "$SBIN_DIR"/labadda-upgrade "$SBIN_DIR"/labadda-reattach-nginx
 ok "stopped and removed the service, timer and web site"
 say "    KEPT: $INSTANCE_ROOT  $BACKUP_ROOT  $ETC_DIR  database labadda_$SITE  tools in $TOOLS_DIR"
 say "    To bring it back: run install.sh from a kit again; it recognises the kept data."

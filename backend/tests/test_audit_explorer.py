@@ -205,3 +205,12 @@ def test_deactivated_administrator_loses_the_explorer(as_user, ids, db_factory):
         db.get(User, ids["users"]["admin"]).is_active = False
         db.commit()
     assert client.get("/admin/audit").status_code in (401, 403)
+
+
+def test_export_file_is_named_by_the_site_day_not_the_host_clock(as_user, ids, settings):
+    # 20:00 UTC on 11 November is already 12 November in the Asia/Kolkata site zone.
+    late = datetime(2026, 11, 11, 20, 0, tzinfo=UTC)
+    with patch("labadda.people.utcnow", return_value=late):
+        response = as_user("admin").get("/admin/audit/export.csv")
+    assert response.status_code == 200
+    assert 'filename="audit-20261112.csv"' in response.headers["content-disposition"]

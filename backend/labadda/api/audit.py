@@ -4,7 +4,7 @@ import csv
 import io
 import uuid
 from collections.abc import Callable, Iterator
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
@@ -17,6 +17,7 @@ from ..audit_explorer import AuditFilters
 from ..config import Settings
 from ..deps import Actor, current_actor, get_db, get_settings, require_console
 from ..errors import ApiError, Invalid
+from ..people import site_date
 from ..people_export import safe_cell
 
 router = APIRouter(prefix="/admin/audit", tags=["audit"])
@@ -141,7 +142,8 @@ def export_audit(
     except DBAPIError:
         db.rollback()
         raise ApiError(*UNAVAILABLE, status=503) from None
-    stamp = datetime.now().strftime("%Y%m%d")
+    # The site day, not the host clock: the file name must match the dates inside it.
+    stamp = site_date(settings).strftime("%Y%m%d")
     return StreamingResponse(
         _stream(request, ids),
         media_type="text/csv; charset=utf-8",
